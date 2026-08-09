@@ -1,0 +1,1948 @@
+
+main <?:0,0> (10 instructions, 40 bytes at 0x573df040)
+0+ params, 4 slots, 0 upvalues, 0 locals, 1 constant, 4 functions
+	1	[-]	CLOSURE  	0 0	; 0x573df140
+	2	[-]	CLOSURE  	1 1	; 0x573df420
+	3	[-]	MOVE     	0 0
+	4	[-]	CLOSURE  	2 2	; 0x573e0e30
+	5	[-]	MOVE     	0 1
+	6	[-]	CLOSURE  	3 3	; 0x573e1420
+	7	[-]	MOVE     	0 2
+	8	[-]	MOVE     	0 1
+	9	[-]	SETGLOBAL	3 -1	; main
+	10	[-]	RETURN   	0 1
+constants (1) for 0x573df040:
+	1	"main"
+locals (0) for 0x573df040:
+upvalues (0) for 0x573df040:
+
+function <?:8,30> (98 instructions, 392 bytes at 0x573df140)
+2 params, 8 slots, 0 upvalues, 0 locals, 18 constants, 0 functions
+	1	[-]	LE       	0 -1 1	; 90 -
+	2	[-]	JMP      	8	; to 11
+	3	[-]	GETGLOBAL	2 -2	; layerClip
+	4	[-]	MOVE     	3 0
+	5	[-]	LOADK    	4 -3	; 0
+	6	[-]	LOADK    	5 -4	; 180
+	7	[-]	LOADK    	6 -5	; 75
+	8	[-]	LOADK    	7 -6	; 200
+	9	[-]	CALL     	2 6 1
+	10	[-]	JMP      	87	; to 98
+	11	[-]	LE       	0 -7 1	; 80 -
+	12	[-]	JMP      	8	; to 21
+	13	[-]	GETGLOBAL	2 -2	; layerClip
+	14	[-]	MOVE     	3 0
+	15	[-]	LOADK    	4 -3	; 0
+	16	[-]	LOADK    	5 -8	; 160
+	17	[-]	LOADK    	6 -5	; 75
+	18	[-]	LOADK    	7 -4	; 180
+	19	[-]	CALL     	2 6 1
+	20	[-]	JMP      	77	; to 98
+	21	[-]	LE       	0 -9 1	; 70 -
+	22	[-]	JMP      	8	; to 31
+	23	[-]	GETGLOBAL	2 -2	; layerClip
+	24	[-]	MOVE     	3 0
+	25	[-]	LOADK    	4 -3	; 0
+	26	[-]	LOADK    	5 -10	; 140
+	27	[-]	LOADK    	6 -5	; 75
+	28	[-]	LOADK    	7 -8	; 160
+	29	[-]	CALL     	2 6 1
+	30	[-]	JMP      	67	; to 98
+	31	[-]	LE       	0 -11 1	; 60 -
+	32	[-]	JMP      	8	; to 41
+	33	[-]	GETGLOBAL	2 -2	; layerClip
+	34	[-]	MOVE     	3 0
+	35	[-]	LOADK    	4 -3	; 0
+	36	[-]	LOADK    	5 -12	; 120
+	37	[-]	LOADK    	6 -5	; 75
+	38	[-]	LOADK    	7 -10	; 140
+	39	[-]	CALL     	2 6 1
+	40	[-]	JMP      	57	; to 98
+	41	[-]	LE       	0 -13 1	; 50 -
+	42	[-]	JMP      	8	; to 51
+	43	[-]	GETGLOBAL	2 -2	; layerClip
+	44	[-]	MOVE     	3 0
+	45	[-]	LOADK    	4 -3	; 0
+	46	[-]	LOADK    	5 -14	; 100
+	47	[-]	LOADK    	6 -5	; 75
+	48	[-]	LOADK    	7 -12	; 120
+	49	[-]	CALL     	2 6 1
+	50	[-]	JMP      	47	; to 98
+	51	[-]	LE       	0 -15 1	; 40 -
+	52	[-]	JMP      	8	; to 61
+	53	[-]	GETGLOBAL	2 -2	; layerClip
+	54	[-]	MOVE     	3 0
+	55	[-]	LOADK    	4 -3	; 0
+	56	[-]	LOADK    	5 -7	; 80
+	57	[-]	LOADK    	6 -5	; 75
+	58	[-]	LOADK    	7 -14	; 100
+	59	[-]	CALL     	2 6 1
+	60	[-]	JMP      	37	; to 98
+	61	[-]	LE       	0 -16 1	; 30 -
+	62	[-]	JMP      	8	; to 71
+	63	[-]	GETGLOBAL	2 -2	; layerClip
+	64	[-]	MOVE     	3 0
+	65	[-]	LOADK    	4 -3	; 0
+	66	[-]	LOADK    	5 -11	; 60
+	67	[-]	LOADK    	6 -5	; 75
+	68	[-]	LOADK    	7 -7	; 80
+	69	[-]	CALL     	2 6 1
+	70	[-]	JMP      	27	; to 98
+	71	[-]	LE       	0 -17 1	; 20 -
+	72	[-]	JMP      	8	; to 81
+	73	[-]	GETGLOBAL	2 -2	; layerClip
+	74	[-]	MOVE     	3 0
+	75	[-]	LOADK    	4 -3	; 0
+	76	[-]	LOADK    	5 -15	; 40
+	77	[-]	LOADK    	6 -5	; 75
+	78	[-]	LOADK    	7 -11	; 60
+	79	[-]	CALL     	2 6 1
+	80	[-]	JMP      	17	; to 98
+	81	[-]	LE       	0 -18 1	; 10 -
+	82	[-]	JMP      	8	; to 91
+	83	[-]	GETGLOBAL	2 -2	; layerClip
+	84	[-]	MOVE     	3 0
+	85	[-]	LOADK    	4 -3	; 0
+	86	[-]	LOADK    	5 -17	; 20
+	87	[-]	LOADK    	6 -5	; 75
+	88	[-]	LOADK    	7 -15	; 40
+	89	[-]	CALL     	2 6 1
+	90	[-]	JMP      	7	; to 98
+	91	[-]	GETGLOBAL	2 -2	; layerClip
+	92	[-]	MOVE     	3 0
+	93	[-]	LOADK    	4 -3	; 0
+	94	[-]	LOADK    	5 -3	; 0
+	95	[-]	LOADK    	6 -5	; 75
+	96	[-]	LOADK    	7 -17	; 20
+	97	[-]	CALL     	2 6 1
+	98	[-]	RETURN   	0 1
+constants (18) for 0x573df140:
+	1	90
+	2	"layerClip"
+	3	0
+	4	180
+	5	75
+	6	200
+	7	80
+	8	160
+	9	70
+	10	140
+	11	60
+	12	120
+	13	50
+	14	100
+	15	40
+	16	30
+	17	20
+	18	10
+locals (0) for 0x573df140:
+upvalues (0) for 0x573df140:
+
+function <?:33,374> (1009 instructions, 4036 bytes at 0x573df420)
+2 params, 30 slots, 1 upvalue, 0 locals, 79 constants, 0 functions
+	1	[-]	LOADK    	2 -1	; 0
+	2	[-]	LOADK    	3 -1	; 0
+	3	[-]	LOADK    	4 -2	; 2
+	4	[-]	LOADK    	5 -1	; 0
+	5	[-]	SUB      	6 0 1
+	6	[-]	EQ       	1 0 1
+	7	[-]	JMP      	5	; to 13
+	8	[-]	LT       	0 6 -2	; - 2
+	9	[-]	JMP      	3	; to 13
+	10	[-]	LT       	0 -3 6	; -2 -
+	11	[-]	JMP      	1	; to 13
+	12	[-]	LOADK    	5 -4	; 10
+	13	[-]	LOADK    	7 -1	; 0
+	14	[-]	LOADK    	8 -1	; 0
+	15	[-]	LOADK    	9 -1	; 0
+	16	[-]	LOADK    	10 -1	; 0
+	17	[-]	LOADK    	11 -1	; 0
+	18	[-]	LOADK    	12 -1	; 0
+	19	[-]	LOADK    	13 -1	; 0
+	20	[-]	LOADK    	14 -1	; 0
+	21	[-]	LOADK    	15 -1	; 0
+	22	[-]	LOADK    	16 -1	; 0
+	23	[-]	LOADK    	17 -1	; 0
+	24	[-]	GETGLOBAL	18 -5	; layerName
+	25	[-]	GETTABLE 	18 18 -6	; "plot"
+	26	[-]	SUB      	18 18 -7	; - 4
+	27	[-]	GETGLOBAL	19 -5	; layerName
+	28	[-]	GETTABLE 	19 19 -6	; "plot"
+	29	[-]	ADD      	19 19 -8	; - 50
+	30	[-]	LOADK    	20 -9	; 1
+	31	[-]	FORPREP  	18 4	; to 36
+	32	[-]	GETGLOBAL	22 -10	; layerLoad
+	33	[-]	MOVE     	23 21
+	34	[-]	LOADK    	24 -11	; ""
+	35	[-]	CALL     	22 3 1
+	36	[-]	FORLOOP  	18 -5	; to 32
+	37	[-]	EQ       	1 0 -9	; - 1
+	38	[-]	JMP      	23	; to 62
+	39	[-]	GETGLOBAL	18 -12	; layerCopy
+	40	[-]	GETGLOBAL	19 -5	; layerName
+	41	[-]	GETTABLE 	19 19 -6	; "plot"
+	42	[-]	ADD      	19 19 -13	; - 40
+	43	[-]	GETGLOBAL	20 -5	; layerName
+	44	[-]	GETTABLE 	20 20 -14	; "sys_2_d"
+	45	[-]	CALL     	18 3 1
+	46	[-]	GETGLOBAL	18 -15	; layerClip
+	47	[-]	GETGLOBAL	19 -5	; layerName
+	48	[-]	GETTABLE 	19 19 -6	; "plot"
+	49	[-]	ADD      	19 19 -13	; - 40
+	50	[-]	LOADK    	20 -1	; 0
+	51	[-]	LOADK    	21 -1	; 0
+	52	[-]	LOADK    	22 -16	; 30
+	53	[-]	LOADK    	23 -17	; 15
+	54	[-]	CALL     	18 6 1
+	55	[-]	GETGLOBAL	18 -18	; layerPosition
+	56	[-]	GETGLOBAL	19 -5	; layerName
+	57	[-]	GETTABLE 	19 19 -6	; "plot"
+	58	[-]	ADD      	19 19 -13	; - 40
+	59	[-]	LOADK    	20 -19	; 5
+	60	[-]	LOADK    	21 -20	; 80
+	61	[-]	CALL     	18 4 1
+	62	[-]	GETGLOBAL	18 -21	; comSectionStoryGetCount
+	63	[-]	CALL     	18 1 2
+	64	[-]	EQ       	1 0 18
+	65	[-]	JMP      	23	; to 89
+	66	[-]	GETGLOBAL	18 -12	; layerCopy
+	67	[-]	GETGLOBAL	19 -5	; layerName
+	68	[-]	GETTABLE 	19 19 -6	; "plot"
+	69	[-]	ADD      	19 19 -22	; - 41
+	70	[-]	GETGLOBAL	20 -5	; layerName
+	71	[-]	GETTABLE 	20 20 -14	; "sys_2_d"
+	72	[-]	CALL     	18 3 1
+	73	[-]	GETGLOBAL	18 -15	; layerClip
+	74	[-]	GETGLOBAL	19 -5	; layerName
+	75	[-]	GETTABLE 	19 19 -6	; "plot"
+	76	[-]	ADD      	19 19 -22	; - 41
+	77	[-]	LOADK    	20 -16	; 30
+	78	[-]	LOADK    	21 -1	; 0
+	79	[-]	LOADK    	22 -23	; 60
+	80	[-]	LOADK    	23 -17	; 15
+	81	[-]	CALL     	18 6 1
+	82	[-]	GETGLOBAL	18 -18	; layerPosition
+	83	[-]	GETGLOBAL	19 -5	; layerName
+	84	[-]	GETTABLE 	19 19 -6	; "plot"
+	85	[-]	ADD      	19 19 -22	; - 41
+	86	[-]	LOADK    	20 -24	; 449
+	87	[-]	LOADK    	21 -20	; 80
+	88	[-]	CALL     	18 4 1
+	89	[-]	GETGLOBAL	18 -25	; sceneId2aCard
+	90	[-]	GETGLOBAL	19 -26	; gameSave
+	91	[-]	GETTABLE 	19 19 -27	; "storyRoute"
+	92	[-]	GETTABLE 	19 19 0
+	93	[-]	GETTABLE 	19 19 -28	; "sceneId"
+	94	[-]	GETTABLE 	18 18 19
+	95	[-]	GETGLOBAL	19 -12	; layerCopy
+	96	[-]	GETGLOBAL	20 -5	; layerName
+	97	[-]	GETTABLE 	20 20 -29	; "cardLabel1"
+	98	[-]	GETGLOBAL	21 -30	; sceneState
+	99	[-]	GETTABLE 	21 21 18
+	100	[-]	GETTABLE 	21 21 -5	; "layerName"
+	101	[-]	CALL     	19 3 1
+	102	[-]	GETGLOBAL	19 -15	; layerClip
+	103	[-]	GETGLOBAL	20 -5	; layerName
+	104	[-]	GETTABLE 	20 20 -29	; "cardLabel1"
+	105	[-]	GETGLOBAL	21 -30	; sceneState
+	106	[-]	GETTABLE 	21 21 18
+	107	[-]	GETTABLE 	21 21 -31	; "clipX"
+	108	[-]	GETGLOBAL	22 -30	; sceneState
+	109	[-]	GETTABLE 	22 22 18
+	110	[-]	GETTABLE 	22 22 -32	; "clipY"
+	111	[-]	GETGLOBAL	23 -30	; sceneState
+	112	[-]	GETTABLE 	23 23 18
+	113	[-]	GETTABLE 	23 23 -31	; "clipX"
+	114	[-]	ADD      	23 23 -33	; - 145
+	115	[-]	GETGLOBAL	24 -30	; sceneState
+	116	[-]	GETTABLE 	24 24 18
+	117	[-]	GETTABLE 	24 24 -32	; "clipY"
+	118	[-]	ADD      	24 24 -17	; - 15
+	119	[-]	CALL     	19 6 1
+	120	[-]	GETGLOBAL	19 -18	; layerPosition
+	121	[-]	GETGLOBAL	20 -5	; layerName
+	122	[-]	GETTABLE 	20 20 -29	; "cardLabel1"
+	123	[-]	LOADK    	21 -34	; 330
+	124	[-]	LOADK    	22 -19	; 5
+	125	[-]	CALL     	19 4 1
+	126	[-]	GETGLOBAL	19 -21	; comSectionStoryGetCount
+	127	[-]	CALL     	19 1 2
+	128	[-]	SUB      	19 19 -2	; - 2
+	129	[-]	LT       	0 0 19
+	130	[-]	JMP      	14	; to 145
+	131	[-]	EQ       	0 6 -35	; - -1
+	132	[-]	JMP      	12	; to 145
+	133	[-]	LOADK    	7 -20	; 80
+	134	[-]	LOADK    	9 -36	; 372
+	135	[-]	LOADK    	11 -37	; 409
+	136	[-]	LOADK    	13 -38	; 103
+	137	[-]	LOADK    	15 -39	; 100
+	138	[-]	LOADK    	8 -40	; 70
+	139	[-]	LOADK    	10 -41	; 386
+	140	[-]	LOADK    	12 -42	; 419
+	141	[-]	LOADK    	14 -39	; 100
+	142	[-]	LOADK    	16 -1	; 0
+	143	[-]	ADD      	17 0 -43	; - 3
+	144	[-]	JMP      	15	; to 160
+	145	[-]	LT       	0 -43 0	; 3 -
+	146	[-]	JMP      	13	; to 160
+	147	[-]	EQ       	0 6 -9	; - 1
+	148	[-]	JMP      	11	; to 160
+	149	[-]	LOADK    	7 -20	; 80
+	150	[-]	LOADK    	9 -44	; 29
+	151	[-]	LOADK    	11 -45	; 65
+	152	[-]	LOADK    	13 -38	; 103
+	153	[-]	LOADK    	15 -39	; 100
+	154	[-]	LOADK    	8 -40	; 70
+	155	[-]	LOADK    	10 -46	; 19
+	156	[-]	LOADK    	12 -8	; 50
+	157	[-]	LOADK    	14 -39	; 100
+	158	[-]	LOADK    	16 -1	; 0
+	159	[-]	SUB      	17 0 -43	; - 3
+	160	[-]	EQ       	1 17 -1	; - 0
+	161	[-]	JMP      	301	; to 463
+	162	[-]	GETGLOBAL	19 -25	; sceneId2aCard
+	163	[-]	GETGLOBAL	20 -26	; gameSave
+	164	[-]	GETTABLE 	20 20 -27	; "storyRoute"
+	165	[-]	GETTABLE 	20 20 17
+	166	[-]	GETTABLE 	20 20 -28	; "sceneId"
+	167	[-]	GETTABLE 	19 19 20
+	168	[-]	GETGLOBAL	20 -12	; layerCopy
+	169	[-]	GETGLOBAL	21 -5	; layerName
+	170	[-]	GETTABLE 	21 21 -6	; "plot"
+	171	[-]	SUB      	21 21 -7	; - 4
+	172	[-]	GETGLOBAL	22 -47	; plotState
+	173	[-]	GETTABLE 	22 22 19
+	174	[-]	GETTABLE 	22 22 -5	; "layerName"
+	175	[-]	CALL     	20 3 1
+	176	[-]	GETGLOBAL	20 -15	; layerClip
+	177	[-]	GETGLOBAL	21 -5	; layerName
+	178	[-]	GETTABLE 	21 21 -6	; "plot"
+	179	[-]	SUB      	21 21 -7	; - 4
+	180	[-]	GETGLOBAL	22 -47	; plotState
+	181	[-]	GETTABLE 	22 22 19
+	182	[-]	GETTABLE 	22 22 -31	; "clipX"
+	183	[-]	GETGLOBAL	23 -47	; plotState
+	184	[-]	GETTABLE 	23 23 19
+	185	[-]	GETTABLE 	23 23 -32	; "clipY"
+	186	[-]	GETGLOBAL	24 -47	; plotState
+	187	[-]	GETTABLE 	24 24 19
+	188	[-]	GETTABLE 	24 24 -31	; "clipX"
+	189	[-]	ADD      	24 24 -48	; - 82
+	190	[-]	GETGLOBAL	25 -47	; plotState
+	191	[-]	GETTABLE 	25 25 19
+	192	[-]	GETTABLE 	25 25 -32	; "clipY"
+	193	[-]	ADD      	25 25 -49	; - 48
+	194	[-]	CALL     	20 6 1
+	195	[-]	GETGLOBAL	20 -12	; layerCopy
+	196	[-]	GETGLOBAL	21 -5	; layerName
+	197	[-]	GETTABLE 	21 21 -6	; "plot"
+	198	[-]	SUB      	21 21 -43	; - 3
+	199	[-]	GETGLOBAL	22 -5	; layerName
+	200	[-]	GETTABLE 	22 22 -50	; "sys_4_b"
+	201	[-]	CALL     	20 3 1
+	202	[-]	GETUPVAL 	20 0	; -
+	203	[-]	GETGLOBAL	21 -5	; layerName
+	204	[-]	GETTABLE 	21 21 -6	; "plot"
+	205	[-]	SUB      	21 21 -43	; - 3
+	206	[-]	GETGLOBAL	22 -26	; gameSave
+	207	[-]	GETTABLE 	22 22 -27	; "storyRoute"
+	208	[-]	GETTABLE 	22 22 17
+	209	[-]	GETTABLE 	22 22 -51	; "ayanoTime"
+	210	[-]	CALL     	20 3 1
+	211	[-]	GETGLOBAL	20 -52	; string
+	212	[-]	GETTABLE 	20 20 -53	; "sub"
+	213	[-]	GETGLOBAL	21 -26	; gameSave
+	214	[-]	GETTABLE 	21 21 -27	; "storyRoute"
+	215	[-]	GETTABLE 	21 21 17
+	216	[-]	GETTABLE 	21 21 -28	; "sceneId"
+	217	[-]	LOADK    	22 -54	; -4
+	218	[-]	CALL     	20 3 2
+	219	[-]	EQ       	0 20 -55	; - "_sel"
+	220	[-]	JMP      	57	; to 278
+	221	[-]	GETGLOBAL	20 -12	; layerCopy
+	222	[-]	GETGLOBAL	21 -5	; layerName
+	223	[-]	GETTABLE 	21 21 -6	; "plot"
+	224	[-]	SUB      	21 21 -2	; - 2
+	225	[-]	GETGLOBAL	22 -5	; layerName
+	226	[-]	GETTABLE 	22 22 -56	; "sys_2_c"
+	227	[-]	CALL     	20 3 1
+	228	[-]	GETGLOBAL	20 -26	; gameSave
+	229	[-]	GETTABLE 	20 20 -57	; "myCard"
+	230	[-]	GETTABLE 	20 20 19
+	231	[-]	GETTABLE 	20 20 -58	; "hold"
+	232	[-]	EQ       	0 20 -35	; - -1
+	233	[-]	JMP      	22	; to 256
+	234	[-]	EQ       	0 4 -2	; - 2
+	235	[-]	JMP      	10	; to 246
+	236	[-]	GETGLOBAL	20 -15	; layerClip
+	237	[-]	GETGLOBAL	21 -5	; layerName
+	238	[-]	GETTABLE 	21 21 -6	; "plot"
+	239	[-]	SUB      	21 21 -2	; - 2
+	240	[-]	LOADK    	22 -1	; 0
+	241	[-]	LOADK    	23 -59	; 95
+	242	[-]	LOADK    	24 -60	; 83
+	243	[-]	LOADK    	25 -61	; 114
+	244	[-]	CALL     	20 6 1
+	245	[-]	JMP      	88	; to 334
+	246	[-]	GETGLOBAL	20 -15	; layerClip
+	247	[-]	GETGLOBAL	21 -5	; layerName
+	248	[-]	GETTABLE 	21 21 -6	; "plot"
+	249	[-]	SUB      	21 21 -2	; - 2
+	250	[-]	LOADK    	22 -1	; 0
+	251	[-]	LOADK    	23 -62	; 76
+	252	[-]	LOADK    	24 -60	; 83
+	253	[-]	LOADK    	25 -59	; 95
+	254	[-]	CALL     	20 6 1
+	255	[-]	JMP      	78	; to 334
+	256	[-]	EQ       	0 4 -2	; - 2
+	257	[-]	JMP      	10	; to 268
+	258	[-]	GETGLOBAL	20 -15	; layerClip
+	259	[-]	GETGLOBAL	21 -5	; layerName
+	260	[-]	GETTABLE 	21 21 -6	; "plot"
+	261	[-]	SUB      	21 21 -2	; - 2
+	262	[-]	LOADK    	22 -1	; 0
+	263	[-]	LOADK    	23 -46	; 19
+	264	[-]	LOADK    	24 -60	; 83
+	265	[-]	LOADK    	25 -63	; 38
+	266	[-]	CALL     	20 6 1
+	267	[-]	JMP      	66	; to 334
+	268	[-]	GETGLOBAL	20 -15	; layerClip
+	269	[-]	GETGLOBAL	21 -5	; layerName
+	270	[-]	GETTABLE 	21 21 -6	; "plot"
+	271	[-]	SUB      	21 21 -2	; - 2
+	272	[-]	LOADK    	22 -1	; 0
+	273	[-]	LOADK    	23 -1	; 0
+	274	[-]	LOADK    	24 -60	; 83
+	275	[-]	LOADK    	25 -46	; 19
+	276	[-]	CALL     	20 6 1
+	277	[-]	JMP      	56	; to 334
+	278	[-]	GETGLOBAL	20 -12	; layerCopy
+	279	[-]	GETGLOBAL	21 -5	; layerName
+	280	[-]	GETTABLE 	21 21 -6	; "plot"
+	281	[-]	SUB      	21 21 -2	; - 2
+	282	[-]	GETGLOBAL	22 -5	; layerName
+	283	[-]	GETTABLE 	22 22 -64	; "sys_2_b"
+	284	[-]	CALL     	20 3 1
+	285	[-]	GETGLOBAL	20 -26	; gameSave
+	286	[-]	GETTABLE 	20 20 -57	; "myCard"
+	287	[-]	GETTABLE 	20 20 19
+	288	[-]	GETTABLE 	20 20 -58	; "hold"
+	289	[-]	EQ       	0 20 -35	; - -1
+	290	[-]	JMP      	22	; to 313
+	291	[-]	EQ       	0 4 -2	; - 2
+	292	[-]	JMP      	10	; to 303
+	293	[-]	GETGLOBAL	20 -15	; layerClip
+	294	[-]	GETGLOBAL	21 -5	; layerName
+	295	[-]	GETTABLE 	21 21 -6	; "plot"
+	296	[-]	SUB      	21 21 -2	; - 2
+	297	[-]	LOADK    	22 -1	; 0
+	298	[-]	LOADK    	23 -59	; 95
+	299	[-]	LOADK    	24 -60	; 83
+	300	[-]	LOADK    	25 -61	; 114
+	301	[-]	CALL     	20 6 1
+	302	[-]	JMP      	31	; to 334
+	303	[-]	GETGLOBAL	20 -15	; layerClip
+	304	[-]	GETGLOBAL	21 -5	; layerName
+	305	[-]	GETTABLE 	21 21 -6	; "plot"
+	306	[-]	SUB      	21 21 -2	; - 2
+	307	[-]	LOADK    	22 -1	; 0
+	308	[-]	LOADK    	23 -62	; 76
+	309	[-]	LOADK    	24 -60	; 83
+	310	[-]	LOADK    	25 -59	; 95
+	311	[-]	CALL     	20 6 1
+	312	[-]	JMP      	21	; to 334
+	313	[-]	EQ       	0 4 -2	; - 2
+	314	[-]	JMP      	10	; to 325
+	315	[-]	GETGLOBAL	20 -15	; layerClip
+	316	[-]	GETGLOBAL	21 -5	; layerName
+	317	[-]	GETTABLE 	21 21 -6	; "plot"
+	318	[-]	SUB      	21 21 -2	; - 2
+	319	[-]	LOADK    	22 -1	; 0
+	320	[-]	LOADK    	23 -46	; 19
+	321	[-]	LOADK    	24 -60	; 83
+	322	[-]	LOADK    	25 -63	; 38
+	323	[-]	CALL     	20 6 1
+	324	[-]	JMP      	9	; to 334
+	325	[-]	GETGLOBAL	20 -15	; layerClip
+	326	[-]	GETGLOBAL	21 -5	; layerName
+	327	[-]	GETTABLE 	21 21 -6	; "plot"
+	328	[-]	SUB      	21 21 -2	; - 2
+	329	[-]	LOADK    	22 -1	; 0
+	330	[-]	LOADK    	23 -1	; 0
+	331	[-]	LOADK    	24 -60	; 83
+	332	[-]	LOADK    	25 -46	; 19
+	333	[-]	CALL     	20 6 1
+	334	[-]	GETGLOBAL	20 -65	; layerScale
+	335	[-]	GETGLOBAL	21 -5	; layerName
+	336	[-]	GETTABLE 	21 21 -6	; "plot"
+	337	[-]	SUB      	21 21 -7	; - 4
+	338	[-]	MOVE     	22 7
+	339	[-]	MOVE     	23 7
+	340	[-]	CALL     	20 4 1
+	341	[-]	GETGLOBAL	20 -65	; layerScale
+	342	[-]	GETGLOBAL	21 -5	; layerName
+	343	[-]	GETTABLE 	21 21 -6	; "plot"
+	344	[-]	SUB      	21 21 -2	; - 2
+	345	[-]	MOVE     	22 7
+	346	[-]	MOVE     	23 7
+	347	[-]	CALL     	20 4 1
+	348	[-]	GETGLOBAL	20 -65	; layerScale
+	349	[-]	GETGLOBAL	21 -5	; layerName
+	350	[-]	GETTABLE 	21 21 -6	; "plot"
+	351	[-]	SUB      	21 21 -43	; - 3
+	352	[-]	MOVE     	22 7
+	353	[-]	MOVE     	23 7
+	354	[-]	CALL     	20 4 1
+	355	[-]	GETGLOBAL	20 -66	; layerMoveScale
+	356	[-]	GETGLOBAL	21 -5	; layerName
+	357	[-]	GETTABLE 	21 21 -6	; "plot"
+	358	[-]	SUB      	21 21 -7	; - 4
+	359	[-]	MOVE     	22 8
+	360	[-]	MOVE     	23 8
+	361	[-]	MOVE     	24 5
+	362	[-]	CALL     	20 5 1
+	363	[-]	GETGLOBAL	20 -66	; layerMoveScale
+	364	[-]	GETGLOBAL	21 -5	; layerName
+	365	[-]	GETTABLE 	21 21 -6	; "plot"
+	366	[-]	SUB      	21 21 -2	; - 2
+	367	[-]	MOVE     	22 8
+	368	[-]	MOVE     	23 8
+	369	[-]	MOVE     	24 5
+	370	[-]	CALL     	20 5 1
+	371	[-]	GETGLOBAL	20 -66	; layerMoveScale
+	372	[-]	GETGLOBAL	21 -5	; layerName
+	373	[-]	GETTABLE 	21 21 -6	; "plot"
+	374	[-]	SUB      	21 21 -43	; - 3
+	375	[-]	MOVE     	22 8
+	376	[-]	MOVE     	23 8
+	377	[-]	MOVE     	24 5
+	378	[-]	CALL     	20 5 1
+	379	[-]	GETGLOBAL	20 -18	; layerPosition
+	380	[-]	GETGLOBAL	21 -5	; layerName
+	381	[-]	GETTABLE 	21 21 -6	; "plot"
+	382	[-]	SUB      	21 21 -7	; - 4
+	383	[-]	MOVE     	22 9
+	384	[-]	LOADK    	23 -23	; 60
+	385	[-]	CALL     	20 4 1
+	386	[-]	GETGLOBAL	20 -18	; layerPosition
+	387	[-]	GETGLOBAL	21 -5	; layerName
+	388	[-]	GETTABLE 	21 21 -6	; "plot"
+	389	[-]	SUB      	21 21 -2	; - 2
+	390	[-]	MOVE     	22 9
+	391	[-]	MOVE     	23 13
+	392	[-]	CALL     	20 4 1
+	393	[-]	GETGLOBAL	20 -18	; layerPosition
+	394	[-]	GETGLOBAL	21 -5	; layerName
+	395	[-]	GETTABLE 	21 21 -6	; "plot"
+	396	[-]	SUB      	21 21 -43	; - 3
+	397	[-]	ADD      	22 9 -7	; - 4
+	398	[-]	LOADK    	23 -67	; 85
+	399	[-]	CALL     	20 4 1
+	400	[-]	GETGLOBAL	20 -68	; layerMovePosition
+	401	[-]	GETGLOBAL	21 -5	; layerName
+	402	[-]	GETTABLE 	21 21 -6	; "plot"
+	403	[-]	SUB      	21 21 -7	; - 4
+	404	[-]	MOVE     	22 10
+	405	[-]	LOADK    	23 -23	; 60
+	406	[-]	MOVE     	24 5
+	407	[-]	CALL     	20 5 1
+	408	[-]	GETGLOBAL	20 -68	; layerMovePosition
+	409	[-]	GETGLOBAL	21 -5	; layerName
+	410	[-]	GETTABLE 	21 21 -6	; "plot"
+	411	[-]	SUB      	21 21 -2	; - 2
+	412	[-]	MOVE     	22 10
+	413	[-]	MOVE     	23 14
+	414	[-]	MOVE     	24 5
+	415	[-]	CALL     	20 5 1
+	416	[-]	GETGLOBAL	20 -68	; layerMovePosition
+	417	[-]	GETGLOBAL	21 -5	; layerName
+	418	[-]	GETTABLE 	21 21 -6	; "plot"
+	419	[-]	SUB      	21 21 -43	; - 3
+	420	[-]	ADD      	22 10 -7	; - 4
+	421	[-]	LOADK    	23 -67	; 85
+	422	[-]	MOVE     	24 5
+	423	[-]	CALL     	20 5 1
+	424	[-]	GETGLOBAL	20 -69	; layerAlpha
+	425	[-]	GETGLOBAL	21 -5	; layerName
+	426	[-]	GETTABLE 	21 21 -6	; "plot"
+	427	[-]	SUB      	21 21 -7	; - 4
+	428	[-]	MOVE     	22 15
+	429	[-]	CALL     	20 3 1
+	430	[-]	GETGLOBAL	20 -69	; layerAlpha
+	431	[-]	GETGLOBAL	21 -5	; layerName
+	432	[-]	GETTABLE 	21 21 -6	; "plot"
+	433	[-]	SUB      	21 21 -2	; - 2
+	434	[-]	MOVE     	22 15
+	435	[-]	CALL     	20 3 1
+	436	[-]	GETGLOBAL	20 -69	; layerAlpha
+	437	[-]	GETGLOBAL	21 -5	; layerName
+	438	[-]	GETTABLE 	21 21 -6	; "plot"
+	439	[-]	SUB      	21 21 -43	; - 3
+	440	[-]	MOVE     	22 15
+	441	[-]	CALL     	20 3 1
+	442	[-]	GETGLOBAL	20 -70	; layerMoveAlpha
+	443	[-]	GETGLOBAL	21 -5	; layerName
+	444	[-]	GETTABLE 	21 21 -6	; "plot"
+	445	[-]	SUB      	21 21 -7	; - 4
+	446	[-]	MOVE     	22 16
+	447	[-]	MOVE     	23 5
+	448	[-]	CALL     	20 4 1
+	449	[-]	GETGLOBAL	20 -70	; layerMoveAlpha
+	450	[-]	GETGLOBAL	21 -5	; layerName
+	451	[-]	GETTABLE 	21 21 -6	; "plot"
+	452	[-]	SUB      	21 21 -2	; - 2
+	453	[-]	MOVE     	22 16
+	454	[-]	MOVE     	23 5
+	455	[-]	CALL     	20 4 1
+	456	[-]	GETGLOBAL	20 -70	; layerMoveAlpha
+	457	[-]	GETGLOBAL	21 -5	; layerName
+	458	[-]	GETTABLE 	21 21 -6	; "plot"
+	459	[-]	SUB      	21 21 -43	; - 3
+	460	[-]	MOVE     	22 16
+	461	[-]	MOVE     	23 5
+	462	[-]	CALL     	20 4 1
+	463	[-]	LT       	0 -2 0	; 2 -
+	464	[-]	JMP      	3	; to 468
+	465	[-]	SUB      	0 0 -2	; - 2
+	466	[-]	LOADK    	4 -1	; 0
+	467	[-]	JMP      	4	; to 472
+	468	[-]	LT       	0 -9 0	; 1 -
+	469	[-]	JMP      	2	; to 472
+	470	[-]	SUB      	0 0 -9	; - 1
+	471	[-]	LOADK    	4 -9	; 1
+	472	[-]	LOADK    	19 -1	; 0
+	473	[-]	LOADK    	20 -7	; 4
+	474	[-]	LOADK    	21 -9	; 1
+	475	[-]	FORPREP  	19 532	; to 1008
+	476	[-]	GETGLOBAL	23 -26	; gameSave
+	477	[-]	GETTABLE 	23 23 -27	; "storyRoute"
+	478	[-]	ADD      	24 0 22
+	479	[-]	GETTABLE 	23 23 24
+	480	[-]	GETTABLE 	23 23 -28	; "sceneId"
+	481	[-]	EQ       	1 23 -35	; - -1
+	482	[-]	JMP      	526	; to 1009
+	483	[-]	GETGLOBAL	23 -25	; sceneId2aCard
+	484	[-]	GETGLOBAL	24 -26	; gameSave
+	485	[-]	GETTABLE 	24 24 -27	; "storyRoute"
+	486	[-]	ADD      	25 0 22
+	487	[-]	GETTABLE 	24 24 25
+	488	[-]	GETTABLE 	24 24 -28	; "sceneId"
+	489	[-]	GETTABLE 	23 23 24
+	490	[-]	GETGLOBAL	24 -12	; layerCopy
+	491	[-]	GETGLOBAL	25 -5	; layerName
+	492	[-]	GETTABLE 	25 25 -6	; "plot"
+	493	[-]	MUL      	26 22 -7	; - 4
+	494	[-]	ADD      	25 25 26
+	495	[-]	GETGLOBAL	26 -47	; plotState
+	496	[-]	GETTABLE 	26 26 23
+	497	[-]	GETTABLE 	26 26 -5	; "layerName"
+	498	[-]	CALL     	24 3 1
+	499	[-]	GETGLOBAL	24 -15	; layerClip
+	500	[-]	GETGLOBAL	25 -5	; layerName
+	501	[-]	GETTABLE 	25 25 -6	; "plot"
+	502	[-]	MUL      	26 22 -7	; - 4
+	503	[-]	ADD      	25 25 26
+	504	[-]	GETGLOBAL	26 -47	; plotState
+	505	[-]	GETTABLE 	26 26 23
+	506	[-]	GETTABLE 	26 26 -31	; "clipX"
+	507	[-]	GETGLOBAL	27 -47	; plotState
+	508	[-]	GETTABLE 	27 27 23
+	509	[-]	GETTABLE 	27 27 -32	; "clipY"
+	510	[-]	GETGLOBAL	28 -47	; plotState
+	511	[-]	GETTABLE 	28 28 23
+	512	[-]	GETTABLE 	28 28 -31	; "clipX"
+	513	[-]	ADD      	28 28 -48	; - 82
+	514	[-]	GETGLOBAL	29 -47	; plotState
+	515	[-]	GETTABLE 	29 29 23
+	516	[-]	GETTABLE 	29 29 -32	; "clipY"
+	517	[-]	ADD      	29 29 -49	; - 48
+	518	[-]	CALL     	24 6 1
+	519	[-]	GETGLOBAL	24 -12	; layerCopy
+	520	[-]	GETGLOBAL	25 -5	; layerName
+	521	[-]	GETTABLE 	25 25 -6	; "plot"
+	522	[-]	MUL      	26 22 -7	; - 4
+	523	[-]	ADD      	25 25 26
+	524	[-]	ADD      	25 25 -9	; - 1
+	525	[-]	GETGLOBAL	26 -5	; layerName
+	526	[-]	GETTABLE 	26 26 -50	; "sys_4_b"
+	527	[-]	CALL     	24 3 1
+	528	[-]	GETUPVAL 	24 0	; -
+	529	[-]	GETGLOBAL	25 -5	; layerName
+	530	[-]	GETTABLE 	25 25 -6	; "plot"
+	531	[-]	MUL      	26 22 -7	; - 4
+	532	[-]	ADD      	25 25 26
+	533	[-]	ADD      	25 25 -9	; - 1
+	534	[-]	GETGLOBAL	26 -26	; gameSave
+	535	[-]	GETTABLE 	26 26 -27	; "storyRoute"
+	536	[-]	ADD      	27 0 22
+	537	[-]	GETTABLE 	26 26 27
+	538	[-]	GETTABLE 	26 26 -51	; "ayanoTime"
+	539	[-]	CALL     	24 3 1
+	540	[-]	GETGLOBAL	24 -52	; string
+	541	[-]	GETTABLE 	24 24 -53	; "sub"
+	542	[-]	GETGLOBAL	25 -26	; gameSave
+	543	[-]	GETTABLE 	25 25 -27	; "storyRoute"
+	544	[-]	ADD      	26 0 22
+	545	[-]	GETTABLE 	25 25 26
+	546	[-]	GETTABLE 	25 25 -28	; "sceneId"
+	547	[-]	LOADK    	26 -54	; -4
+	548	[-]	CALL     	24 3 2
+	549	[-]	EQ       	0 24 -55	; - "_sel"
+	550	[-]	JMP      	67	; to 618
+	551	[-]	GETGLOBAL	24 -12	; layerCopy
+	552	[-]	GETGLOBAL	25 -5	; layerName
+	553	[-]	GETTABLE 	25 25 -6	; "plot"
+	554	[-]	MUL      	26 22 -7	; - 4
+	555	[-]	ADD      	25 25 26
+	556	[-]	ADD      	25 25 -2	; - 2
+	557	[-]	GETGLOBAL	26 -5	; layerName
+	558	[-]	GETTABLE 	26 26 -56	; "sys_2_c"
+	559	[-]	CALL     	24 3 1
+	560	[-]	GETGLOBAL	24 -26	; gameSave
+	561	[-]	GETTABLE 	24 24 -57	; "myCard"
+	562	[-]	GETTABLE 	24 24 23
+	563	[-]	GETTABLE 	24 24 -58	; "hold"
+	564	[-]	EQ       	0 24 -35	; - -1
+	565	[-]	JMP      	26	; to 592
+	566	[-]	EQ       	0 4 -2	; - 2
+	567	[-]	JMP      	12	; to 580
+	568	[-]	GETGLOBAL	24 -15	; layerClip
+	569	[-]	GETGLOBAL	25 -5	; layerName
+	570	[-]	GETTABLE 	25 25 -6	; "plot"
+	571	[-]	MUL      	26 22 -7	; - 4
+	572	[-]	ADD      	25 25 26
+	573	[-]	ADD      	25 25 -2	; - 2
+	574	[-]	LOADK    	26 -1	; 0
+	575	[-]	LOADK    	27 -59	; 95
+	576	[-]	LOADK    	28 -60	; 83
+	577	[-]	LOADK    	29 -61	; 114
+	578	[-]	CALL     	24 6 1
+	579	[-]	JMP      	104	; to 684
+	580	[-]	GETGLOBAL	24 -15	; layerClip
+	581	[-]	GETGLOBAL	25 -5	; layerName
+	582	[-]	GETTABLE 	25 25 -6	; "plot"
+	583	[-]	MUL      	26 22 -7	; - 4
+	584	[-]	ADD      	25 25 26
+	585	[-]	ADD      	25 25 -2	; - 2
+	586	[-]	LOADK    	26 -1	; 0
+	587	[-]	LOADK    	27 -62	; 76
+	588	[-]	LOADK    	28 -60	; 83
+	589	[-]	LOADK    	29 -59	; 95
+	590	[-]	CALL     	24 6 1
+	591	[-]	JMP      	92	; to 684
+	592	[-]	EQ       	0 4 -2	; - 2
+	593	[-]	JMP      	12	; to 606
+	594	[-]	GETGLOBAL	24 -15	; layerClip
+	595	[-]	GETGLOBAL	25 -5	; layerName
+	596	[-]	GETTABLE 	25 25 -6	; "plot"
+	597	[-]	MUL      	26 22 -7	; - 4
+	598	[-]	ADD      	25 25 26
+	599	[-]	ADD      	25 25 -2	; - 2
+	600	[-]	LOADK    	26 -1	; 0
+	601	[-]	LOADK    	27 -46	; 19
+	602	[-]	LOADK    	28 -60	; 83
+	603	[-]	LOADK    	29 -63	; 38
+	604	[-]	CALL     	24 6 1
+	605	[-]	JMP      	78	; to 684
+	606	[-]	GETGLOBAL	24 -15	; layerClip
+	607	[-]	GETGLOBAL	25 -5	; layerName
+	608	[-]	GETTABLE 	25 25 -6	; "plot"
+	609	[-]	MUL      	26 22 -7	; - 4
+	610	[-]	ADD      	25 25 26
+	611	[-]	ADD      	25 25 -2	; - 2
+	612	[-]	LOADK    	26 -1	; 0
+	613	[-]	LOADK    	27 -1	; 0
+	614	[-]	LOADK    	28 -60	; 83
+	615	[-]	LOADK    	29 -46	; 19
+	616	[-]	CALL     	24 6 1
+	617	[-]	JMP      	66	; to 684
+	618	[-]	GETGLOBAL	24 -12	; layerCopy
+	619	[-]	GETGLOBAL	25 -5	; layerName
+	620	[-]	GETTABLE 	25 25 -6	; "plot"
+	621	[-]	MUL      	26 22 -7	; - 4
+	622	[-]	ADD      	25 25 26
+	623	[-]	ADD      	25 25 -2	; - 2
+	624	[-]	GETGLOBAL	26 -5	; layerName
+	625	[-]	GETTABLE 	26 26 -64	; "sys_2_b"
+	626	[-]	CALL     	24 3 1
+	627	[-]	GETGLOBAL	24 -26	; gameSave
+	628	[-]	GETTABLE 	24 24 -57	; "myCard"
+	629	[-]	GETTABLE 	24 24 23
+	630	[-]	GETTABLE 	24 24 -58	; "hold"
+	631	[-]	EQ       	0 24 -35	; - -1
+	632	[-]	JMP      	26	; to 659
+	633	[-]	EQ       	0 4 -2	; - 2
+	634	[-]	JMP      	12	; to 647
+	635	[-]	GETGLOBAL	24 -15	; layerClip
+	636	[-]	GETGLOBAL	25 -5	; layerName
+	637	[-]	GETTABLE 	25 25 -6	; "plot"
+	638	[-]	MUL      	26 22 -7	; - 4
+	639	[-]	ADD      	25 25 26
+	640	[-]	ADD      	25 25 -2	; - 2
+	641	[-]	LOADK    	26 -1	; 0
+	642	[-]	LOADK    	27 -59	; 95
+	643	[-]	LOADK    	28 -60	; 83
+	644	[-]	LOADK    	29 -61	; 114
+	645	[-]	CALL     	24 6 1
+	646	[-]	JMP      	37	; to 684
+	647	[-]	GETGLOBAL	24 -15	; layerClip
+	648	[-]	GETGLOBAL	25 -5	; layerName
+	649	[-]	GETTABLE 	25 25 -6	; "plot"
+	650	[-]	MUL      	26 22 -7	; - 4
+	651	[-]	ADD      	25 25 26
+	652	[-]	ADD      	25 25 -2	; - 2
+	653	[-]	LOADK    	26 -1	; 0
+	654	[-]	LOADK    	27 -62	; 76
+	655	[-]	LOADK    	28 -60	; 83
+	656	[-]	LOADK    	29 -59	; 95
+	657	[-]	CALL     	24 6 1
+	658	[-]	JMP      	25	; to 684
+	659	[-]	EQ       	0 4 -2	; - 2
+	660	[-]	JMP      	12	; to 673
+	661	[-]	GETGLOBAL	24 -15	; layerClip
+	662	[-]	GETGLOBAL	25 -5	; layerName
+	663	[-]	GETTABLE 	25 25 -6	; "plot"
+	664	[-]	MUL      	26 22 -7	; - 4
+	665	[-]	ADD      	25 25 26
+	666	[-]	ADD      	25 25 -2	; - 2
+	667	[-]	LOADK    	26 -1	; 0
+	668	[-]	LOADK    	27 -46	; 19
+	669	[-]	LOADK    	28 -60	; 83
+	670	[-]	LOADK    	29 -63	; 38
+	671	[-]	CALL     	24 6 1
+	672	[-]	JMP      	11	; to 684
+	673	[-]	GETGLOBAL	24 -15	; layerClip
+	674	[-]	GETGLOBAL	25 -5	; layerName
+	675	[-]	GETTABLE 	25 25 -6	; "plot"
+	676	[-]	MUL      	26 22 -7	; - 4
+	677	[-]	ADD      	25 25 26
+	678	[-]	ADD      	25 25 -2	; - 2
+	679	[-]	LOADK    	26 -1	; 0
+	680	[-]	LOADK    	27 -1	; 0
+	681	[-]	LOADK    	28 -60	; 83
+	682	[-]	LOADK    	29 -46	; 19
+	683	[-]	CALL     	24 6 1
+	684	[-]	EQ       	0 4 -1	; - 0
+	685	[-]	JMP      	29	; to 715
+	686	[-]	LT       	0 -1 6	; 0 -
+	687	[-]	JMP      	10	; to 698
+	688	[-]	LOADK    	7 -71	; 90
+	689	[-]	ADD      	24 4 -9	; - 1
+	690	[-]	MUL      	24 24 -59	; - 95
+	691	[-]	ADD      	9 24 -46	; - 19
+	692	[-]	ADD      	24 4 -9	; - 1
+	693	[-]	MUL      	24 24 -59	; - 95
+	694	[-]	ADD      	11 24 -72	; - 55
+	695	[-]	LOADK    	13 -73	; 106
+	696	[-]	LOADK    	15 -39	; 100
+	697	[-]	JMP      	9	; to 707
+	698	[-]	LT       	0 6 -1	; - 0
+	699	[-]	JMP      	7	; to 707
+	700	[-]	LOADK    	7 -40	; 70
+	701	[-]	MUL      	24 4 -59	; - 95
+	702	[-]	ADD      	9 24 -46	; - 19
+	703	[-]	MUL      	24 4 -59	; - 95
+	704	[-]	ADD      	11 24 -8	; - 50
+	705	[-]	LOADK    	13 -39	; 100
+	706	[-]	LOADK    	15 -1	; 0
+	707	[-]	LOADK    	8 -20	; 80
+	708	[-]	MUL      	24 4 -59	; - 95
+	709	[-]	ADD      	10 24 -44	; - 29
+	710	[-]	MUL      	24 4 -59	; - 95
+	711	[-]	ADD      	12 24 -45	; - 65
+	712	[-]	LOADK    	14 -38	; 103
+	713	[-]	LOADK    	16 -39	; 100
+	714	[-]	JMP      	125	; to 840
+	715	[-]	EQ       	0 4 -9	; - 1
+	716	[-]	JMP      	31	; to 748
+	717	[-]	LT       	0 -1 6	; 0 -
+	718	[-]	JMP      	10	; to 729
+	719	[-]	LOADK    	7 -39	; 100
+	720	[-]	ADD      	24 4 -9	; - 1
+	721	[-]	MUL      	24 24 -59	; - 95
+	722	[-]	ADD      	9 24 -74	; - 9
+	723	[-]	ADD      	24 4 -9	; - 1
+	724	[-]	MUL      	24 24 -59	; - 95
+	725	[-]	ADD      	11 24 -8	; - 50
+	726	[-]	LOADK    	13 -75	; 109
+	727	[-]	LOADK    	15 -39	; 100
+	728	[-]	JMP      	11	; to 740
+	729	[-]	LT       	0 6 -1	; - 0
+	730	[-]	JMP      	9	; to 740
+	731	[-]	LOADK    	7 -20	; 80
+	732	[-]	SUB      	24 4 -9	; - 1
+	733	[-]	MUL      	24 24 -59	; - 95
+	734	[-]	ADD      	9 24 -44	; - 29
+	735	[-]	SUB      	24 4 -9	; - 1
+	736	[-]	MUL      	24 24 -59	; - 95
+	737	[-]	ADD      	11 24 -45	; - 65
+	738	[-]	LOADK    	13 -38	; 103
+	739	[-]	LOADK    	15 -39	; 100
+	740	[-]	LOADK    	8 -71	; 90
+	741	[-]	MUL      	24 4 -59	; - 95
+	742	[-]	ADD      	10 24 -76	; - 14
+	743	[-]	MUL      	24 4 -59	; - 95
+	744	[-]	ADD      	12 24 -72	; - 55
+	745	[-]	LOADK    	14 -73	; 106
+	746	[-]	LOADK    	16 -39	; 100
+	747	[-]	JMP      	92	; to 840
+	748	[-]	EQ       	0 4 -2	; - 2
+	749	[-]	JMP      	28	; to 778
+	750	[-]	LT       	0 -1 6	; 0 -
+	751	[-]	JMP      	7	; to 759
+	752	[-]	ADD      	24 4 6
+	753	[-]	MUL      	24 24 -59	; - 95
+	754	[-]	ADD      	9 24 -7	; - 4
+	755	[-]	ADD      	24 4 6
+	756	[-]	MUL      	24 24 -59	; - 95
+	757	[-]	ADD      	11 24 -77	; - 45
+	758	[-]	JMP      	8	; to 767
+	759	[-]	LT       	0 6 -1	; - 0
+	760	[-]	JMP      	6	; to 767
+	761	[-]	ADD      	24 4 6
+	762	[-]	MUL      	24 24 -59	; - 95
+	763	[-]	ADD      	9 24 -76	; - 14
+	764	[-]	ADD      	24 4 6
+	765	[-]	MUL      	24 24 -59	; - 95
+	766	[-]	ADD      	11 24 -72	; - 55
+	767	[-]	LOADK    	13 -73	; 106
+	768	[-]	LOADK    	7 -71	; 90
+	769	[-]	LOADK    	15 -39	; 100
+	770	[-]	LOADK    	8 -39	; 100
+	771	[-]	MUL      	24 4 -59	; - 95
+	772	[-]	ADD      	10 24 -74	; - 9
+	773	[-]	MUL      	24 4 -59	; - 95
+	774	[-]	ADD      	12 24 -8	; - 50
+	775	[-]	LOADK    	14 -75	; 109
+	776	[-]	LOADK    	16 -39	; 100
+	777	[-]	JMP      	62	; to 840
+	778	[-]	EQ       	0 4 -43	; - 3
+	779	[-]	JMP      	31	; to 811
+	780	[-]	LT       	0 -1 6	; 0 -
+	781	[-]	JMP      	10	; to 792
+	782	[-]	LOADK    	7 -20	; 80
+	783	[-]	ADD      	24 4 -9	; - 1
+	784	[-]	MUL      	24 24 -59	; - 95
+	785	[-]	SUB      	9 24 -78	; - 8
+	786	[-]	ADD      	24 4 -9	; - 1
+	787	[-]	MUL      	24 24 -59	; - 95
+	788	[-]	ADD      	11 24 -44	; - 29
+	789	[-]	LOADK    	13 -38	; 103
+	790	[-]	LOADK    	15 -39	; 100
+	791	[-]	JMP      	11	; to 803
+	792	[-]	LT       	0 6 -1	; - 0
+	793	[-]	JMP      	9	; to 803
+	794	[-]	LOADK    	7 -39	; 100
+	795	[-]	SUB      	24 4 -9	; - 1
+	796	[-]	MUL      	24 24 -59	; - 95
+	797	[-]	ADD      	9 24 -74	; - 9
+	798	[-]	SUB      	24 4 -9	; - 1
+	799	[-]	MUL      	24 24 -59	; - 95
+	800	[-]	ADD      	11 24 -8	; - 50
+	801	[-]	LOADK    	13 -75	; 109
+	802	[-]	LOADK    	15 -39	; 100
+	803	[-]	LOADK    	8 -71	; 90
+	804	[-]	MUL      	24 4 -59	; - 95
+	805	[-]	ADD      	10 24 -7	; - 4
+	806	[-]	MUL      	24 4 -59	; - 95
+	807	[-]	ADD      	12 24 -77	; - 45
+	808	[-]	LOADK    	14 -73	; 106
+	809	[-]	LOADK    	16 -39	; 100
+	810	[-]	JMP      	29	; to 840
+	811	[-]	EQ       	0 4 -7	; - 4
+	812	[-]	JMP      	27	; to 840
+	813	[-]	LT       	0 -1 6	; 0 -
+	814	[-]	JMP      	7	; to 822
+	815	[-]	LOADK    	7 -40	; 70
+	816	[-]	MUL      	9 4 -59	; - 95
+	817	[-]	MUL      	24 4 -59	; - 95
+	818	[-]	ADD      	11 24 -79	; - 33
+	819	[-]	LOADK    	13 -39	; 100
+	820	[-]	LOADK    	15 -1	; 0
+	821	[-]	JMP      	11	; to 833
+	822	[-]	LT       	0 6 -1	; - 0
+	823	[-]	JMP      	9	; to 833
+	824	[-]	LOADK    	7 -71	; 90
+	825	[-]	SUB      	24 4 -9	; - 1
+	826	[-]	MUL      	24 24 -59	; - 95
+	827	[-]	ADD      	9 24 -7	; - 4
+	828	[-]	SUB      	24 4 -9	; - 1
+	829	[-]	MUL      	24 24 -59	; - 95
+	830	[-]	ADD      	11 24 -77	; - 45
+	831	[-]	LOADK    	13 -73	; 106
+	832	[-]	LOADK    	15 -39	; 100
+	833	[-]	LOADK    	8 -20	; 80
+	834	[-]	MUL      	24 4 -59	; - 95
+	835	[-]	SUB      	10 24 -78	; - 8
+	836	[-]	MUL      	24 4 -59	; - 95
+	837	[-]	ADD      	12 24 -44	; - 29
+	838	[-]	LOADK    	14 -38	; 103
+	839	[-]	LOADK    	16 -39	; 100
+	840	[-]	GETGLOBAL	24 -65	; layerScale
+	841	[-]	GETGLOBAL	25 -5	; layerName
+	842	[-]	GETTABLE 	25 25 -6	; "plot"
+	843	[-]	MUL      	26 22 -7	; - 4
+	844	[-]	ADD      	25 25 26
+	845	[-]	MOVE     	26 7
+	846	[-]	MOVE     	27 7
+	847	[-]	CALL     	24 4 1
+	848	[-]	GETGLOBAL	24 -65	; layerScale
+	849	[-]	GETGLOBAL	25 -5	; layerName
+	850	[-]	GETTABLE 	25 25 -6	; "plot"
+	851	[-]	MUL      	26 22 -7	; - 4
+	852	[-]	ADD      	25 25 26
+	853	[-]	ADD      	25 25 -2	; - 2
+	854	[-]	MOVE     	26 7
+	855	[-]	MOVE     	27 7
+	856	[-]	CALL     	24 4 1
+	857	[-]	GETGLOBAL	24 -65	; layerScale
+	858	[-]	GETGLOBAL	25 -5	; layerName
+	859	[-]	GETTABLE 	25 25 -6	; "plot"
+	860	[-]	MUL      	26 22 -7	; - 4
+	861	[-]	ADD      	25 25 26
+	862	[-]	ADD      	25 25 -9	; - 1
+	863	[-]	MOVE     	26 7
+	864	[-]	MOVE     	27 7
+	865	[-]	CALL     	24 4 1
+	866	[-]	GETGLOBAL	24 -66	; layerMoveScale
+	867	[-]	GETGLOBAL	25 -5	; layerName
+	868	[-]	GETTABLE 	25 25 -6	; "plot"
+	869	[-]	MUL      	26 22 -7	; - 4
+	870	[-]	ADD      	25 25 26
+	871	[-]	MOVE     	26 8
+	872	[-]	MOVE     	27 8
+	873	[-]	MOVE     	28 5
+	874	[-]	CALL     	24 5 1
+	875	[-]	GETGLOBAL	24 -66	; layerMoveScale
+	876	[-]	GETGLOBAL	25 -5	; layerName
+	877	[-]	GETTABLE 	25 25 -6	; "plot"
+	878	[-]	MUL      	26 22 -7	; - 4
+	879	[-]	ADD      	25 25 26
+	880	[-]	ADD      	25 25 -2	; - 2
+	881	[-]	MOVE     	26 8
+	882	[-]	MOVE     	27 8
+	883	[-]	MOVE     	28 5
+	884	[-]	CALL     	24 5 1
+	885	[-]	GETGLOBAL	24 -66	; layerMoveScale
+	886	[-]	GETGLOBAL	25 -5	; layerName
+	887	[-]	GETTABLE 	25 25 -6	; "plot"
+	888	[-]	MUL      	26 22 -7	; - 4
+	889	[-]	ADD      	25 25 26
+	890	[-]	ADD      	25 25 -9	; - 1
+	891	[-]	MOVE     	26 8
+	892	[-]	MOVE     	27 8
+	893	[-]	MOVE     	28 5
+	894	[-]	CALL     	24 5 1
+	895	[-]	GETGLOBAL	24 -18	; layerPosition
+	896	[-]	GETGLOBAL	25 -5	; layerName
+	897	[-]	GETTABLE 	25 25 -6	; "plot"
+	898	[-]	MUL      	26 22 -7	; - 4
+	899	[-]	ADD      	25 25 26
+	900	[-]	MOVE     	26 9
+	901	[-]	LOADK    	27 -23	; 60
+	902	[-]	CALL     	24 4 1
+	903	[-]	GETGLOBAL	24 -18	; layerPosition
+	904	[-]	GETGLOBAL	25 -5	; layerName
+	905	[-]	GETTABLE 	25 25 -6	; "plot"
+	906	[-]	MUL      	26 22 -7	; - 4
+	907	[-]	ADD      	25 25 26
+	908	[-]	ADD      	25 25 -2	; - 2
+	909	[-]	MOVE     	26 9
+	910	[-]	MOVE     	27 13
+	911	[-]	CALL     	24 4 1
+	912	[-]	GETGLOBAL	24 -18	; layerPosition
+	913	[-]	GETGLOBAL	25 -5	; layerName
+	914	[-]	GETTABLE 	25 25 -6	; "plot"
+	915	[-]	MUL      	26 22 -7	; - 4
+	916	[-]	ADD      	25 25 26
+	917	[-]	ADD      	25 25 -9	; - 1
+	918	[-]	ADD      	26 9 -7	; - 4
+	919	[-]	LOADK    	27 -67	; 85
+	920	[-]	CALL     	24 4 1
+	921	[-]	GETGLOBAL	24 -68	; layerMovePosition
+	922	[-]	GETGLOBAL	25 -5	; layerName
+	923	[-]	GETTABLE 	25 25 -6	; "plot"
+	924	[-]	MUL      	26 22 -7	; - 4
+	925	[-]	ADD      	25 25 26
+	926	[-]	MOVE     	26 10
+	927	[-]	LOADK    	27 -23	; 60
+	928	[-]	MOVE     	28 5
+	929	[-]	CALL     	24 5 1
+	930	[-]	GETGLOBAL	24 -68	; layerMovePosition
+	931	[-]	GETGLOBAL	25 -5	; layerName
+	932	[-]	GETTABLE 	25 25 -6	; "plot"
+	933	[-]	MUL      	26 22 -7	; - 4
+	934	[-]	ADD      	25 25 26
+	935	[-]	ADD      	25 25 -2	; - 2
+	936	[-]	MOVE     	26 10
+	937	[-]	MOVE     	27 14
+	938	[-]	MOVE     	28 5
+	939	[-]	CALL     	24 5 1
+	940	[-]	GETGLOBAL	24 -68	; layerMovePosition
+	941	[-]	GETGLOBAL	25 -5	; layerName
+	942	[-]	GETTABLE 	25 25 -6	; "plot"
+	943	[-]	MUL      	26 22 -7	; - 4
+	944	[-]	ADD      	25 25 26
+	945	[-]	ADD      	25 25 -9	; - 1
+	946	[-]	ADD      	26 10 -7	; - 4
+	947	[-]	LOADK    	27 -67	; 85
+	948	[-]	MOVE     	28 5
+	949	[-]	CALL     	24 5 1
+	950	[-]	GETGLOBAL	24 -69	; layerAlpha
+	951	[-]	GETGLOBAL	25 -5	; layerName
+	952	[-]	GETTABLE 	25 25 -6	; "plot"
+	953	[-]	MUL      	26 22 -7	; - 4
+	954	[-]	ADD      	25 25 26
+	955	[-]	MOVE     	26 15
+	956	[-]	CALL     	24 3 1
+	957	[-]	GETGLOBAL	24 -69	; layerAlpha
+	958	[-]	GETGLOBAL	25 -5	; layerName
+	959	[-]	GETTABLE 	25 25 -6	; "plot"
+	960	[-]	MUL      	26 22 -7	; - 4
+	961	[-]	ADD      	25 25 26
+	962	[-]	ADD      	25 25 -2	; - 2
+	963	[-]	MOVE     	26 15
+	964	[-]	CALL     	24 3 1
+	965	[-]	GETGLOBAL	24 -69	; layerAlpha
+	966	[-]	GETGLOBAL	25 -5	; layerName
+	967	[-]	GETTABLE 	25 25 -6	; "plot"
+	968	[-]	MUL      	26 22 -7	; - 4
+	969	[-]	ADD      	25 25 26
+	970	[-]	ADD      	25 25 -9	; - 1
+	971	[-]	MOVE     	26 15
+	972	[-]	CALL     	24 3 1
+	973	[-]	GETGLOBAL	24 -70	; layerMoveAlpha
+	974	[-]	GETGLOBAL	25 -5	; layerName
+	975	[-]	GETTABLE 	25 25 -6	; "plot"
+	976	[-]	MUL      	26 22 -7	; - 4
+	977	[-]	ADD      	25 25 26
+	978	[-]	MOVE     	26 16
+	979	[-]	MOVE     	27 5
+	980	[-]	CALL     	24 4 1
+	981	[-]	GETGLOBAL	24 -70	; layerMoveAlpha
+	982	[-]	GETGLOBAL	25 -5	; layerName
+	983	[-]	GETTABLE 	25 25 -6	; "plot"
+	984	[-]	MUL      	26 22 -7	; - 4
+	985	[-]	ADD      	25 25 26
+	986	[-]	ADD      	25 25 -2	; - 2
+	987	[-]	MOVE     	26 16
+	988	[-]	MOVE     	27 5
+	989	[-]	CALL     	24 4 1
+	990	[-]	GETGLOBAL	24 -70	; layerMoveAlpha
+	991	[-]	GETGLOBAL	25 -5	; layerName
+	992	[-]	GETTABLE 	25 25 -6	; "plot"
+	993	[-]	MUL      	26 22 -7	; - 4
+	994	[-]	ADD      	25 25 26
+	995	[-]	ADD      	25 25 -9	; - 1
+	996	[-]	MOVE     	26 16
+	997	[-]	MOVE     	27 5
+	998	[-]	CALL     	24 4 1
+	999	[-]	ADD      	3 3 -9	; - 1
+	1000	[-]	ADD      	4 4 -9	; - 1
+	1001	[-]	LE       	1 -19 3	; 5 -
+	1002	[-]	JMP      	6	; to 1009
+	1003	[-]	EQ       	0 4 -19	; - 5
+	1004	[-]	JMP      	3	; to 1008
+	1005	[-]	JMP      	3	; to 1009
+	1006	[-]	JMP      	1	; to 1008
+	1007	[-]	JMP      	1	; to 1009
+	1008	[-]	FORLOOP  	19 -533	; to 476
+	1009	[-]	RETURN   	0 1
+constants (79) for 0x573df420:
+	1	0
+	2	2
+	3	-2
+	4	10
+	5	"layerName"
+	6	"plot"
+	7	4
+	8	50
+	9	1
+	10	"layerLoad"
+	11	""
+	12	"layerCopy"
+	13	40
+	14	"sys_2_d"
+	15	"layerClip"
+	16	30
+	17	15
+	18	"layerPosition"
+	19	5
+	20	80
+	21	"comSectionStoryGetCount"
+	22	41
+	23	60
+	24	449
+	25	"sceneId2aCard"
+	26	"gameSave"
+	27	"storyRoute"
+	28	"sceneId"
+	29	"cardLabel1"
+	30	"sceneState"
+	31	"clipX"
+	32	"clipY"
+	33	145
+	34	330
+	35	-1
+	36	372
+	37	409
+	38	103
+	39	100
+	40	70
+	41	386
+	42	419
+	43	3
+	44	29
+	45	65
+	46	19
+	47	"plotState"
+	48	82
+	49	48
+	50	"sys_4_b"
+	51	"ayanoTime"
+	52	"string"
+	53	"sub"
+	54	-4
+	55	"_sel"
+	56	"sys_2_c"
+	57	"myCard"
+	58	"hold"
+	59	95
+	60	83
+	61	114
+	62	76
+	63	38
+	64	"sys_2_b"
+	65	"layerScale"
+	66	"layerMoveScale"
+	67	85
+	68	"layerMovePosition"
+	69	"layerAlpha"
+	70	"layerMoveAlpha"
+	71	90
+	72	55
+	73	106
+	74	9
+	75	109
+	76	14
+	77	45
+	78	8
+	79	33
+locals (0) for 0x573df420:
+upvalues (0) for 0x573df420:
+
+function <?:376,406> (115 instructions, 460 bytes at 0x573e0e30)
+0 params, 6 slots, 1 upvalue, 0 locals, 36 constants, 0 functions
+	1	[-]	GETGLOBAL	0 -1	; savedataTitle
+	2	[-]	LOADK    	1 -2	; "\227\130\185\227\131\136\227\131\188\227\131\170\227\131\188\227\131\162\227\131\188\227\131\137"
+	3	[-]	LOADK    	2 -3	; ""
+	4	[-]	CALL     	0 3 1
+	5	[-]	GETGLOBAL	0 -4	; wait
+	6	[-]	LOADK    	1 -5	; 1
+	7	[-]	CALL     	0 2 1
+	8	[-]	GETGLOBAL	0 -6	; cInitGame
+	9	[-]	CALL     	0 1 1
+	10	[-]	GETGLOBAL	0 -7	; layerCopy
+	11	[-]	LOADK    	1 -8	; 100
+	12	[-]	GETGLOBAL	2 -9	; layerName
+	13	[-]	GETTABLE 	2 2 -10	; "effectBlack"
+	14	[-]	CALL     	0 3 1
+	15	[-]	GETGLOBAL	0 -7	; layerCopy
+	16	[-]	GETGLOBAL	1 -9	; layerName
+	17	[-]	GETTABLE 	1 1 -11	; "bg1"
+	18	[-]	GETGLOBAL	2 -9	; layerName
+	19	[-]	GETTABLE 	2 2 -12	; "bg_1_a_0"
+	20	[-]	CALL     	0 3 1
+	21	[-]	GETGLOBAL	0 -7	; layerCopy
+	22	[-]	GETGLOBAL	1 -9	; layerName
+	23	[-]	GETTABLE 	1 1 -11	; "bg1"
+	24	[-]	ADD      	1 1 -5	; - 1
+	25	[-]	GETGLOBAL	2 -9	; layerName
+	26	[-]	GETTABLE 	2 2 -13	; "sys_2_a"
+	27	[-]	CALL     	0 3 1
+	28	[-]	GETGLOBAL	0 -14	; layerClip
+	29	[-]	GETGLOBAL	1 -9	; layerName
+	30	[-]	GETTABLE 	1 1 -11	; "bg1"
+	31	[-]	ADD      	1 1 -5	; - 1
+	32	[-]	LOADK    	2 -15	; 0
+	33	[-]	LOADK    	3 -15	; 0
+	34	[-]	LOADK    	4 -16	; 139
+	35	[-]	LOADK    	5 -17	; 37
+	36	[-]	CALL     	0 6 1
+	37	[-]	GETGLOBAL	0 -18	; layerPosition
+	38	[-]	GETGLOBAL	1 -9	; layerName
+	39	[-]	GETTABLE 	1 1 -11	; "bg1"
+	40	[-]	ADD      	1 1 -5	; - 1
+	41	[-]	LOADK    	2 -19	; 5
+	42	[-]	LOADK    	3 -19	; 5
+	43	[-]	CALL     	0 4 1
+	44	[-]	GETGLOBAL	0 -7	; layerCopy
+	45	[-]	GETGLOBAL	1 -9	; layerName
+	46	[-]	GETTABLE 	1 1 -11	; "bg1"
+	47	[-]	ADD      	1 1 -20	; - 2
+	48	[-]	GETGLOBAL	2 -9	; layerName
+	49	[-]	GETTABLE 	2 2 -13	; "sys_2_a"
+	50	[-]	CALL     	0 3 1
+	51	[-]	GETGLOBAL	0 -14	; layerClip
+	52	[-]	GETGLOBAL	1 -9	; layerName
+	53	[-]	GETTABLE 	1 1 -11	; "bg1"
+	54	[-]	ADD      	1 1 -20	; - 2
+	55	[-]	LOADK    	2 -15	; 0
+	56	[-]	LOADK    	3 -21	; 40
+	57	[-]	LOADK    	4 -16	; 139
+	58	[-]	LOADK    	5 -22	; 120
+	59	[-]	CALL     	0 6 1
+	60	[-]	GETGLOBAL	0 -18	; layerPosition
+	61	[-]	GETGLOBAL	1 -9	; layerName
+	62	[-]	GETTABLE 	1 1 -11	; "bg1"
+	63	[-]	ADD      	1 1 -20	; - 2
+	64	[-]	LOADK    	2 -23	; 195
+	65	[-]	LOADK    	3 -24	; 56
+	66	[-]	CALL     	0 4 1
+	67	[-]	GETGLOBAL	0 -7	; layerCopy
+	68	[-]	GETGLOBAL	1 -9	; layerName
+	69	[-]	GETTABLE 	1 1 -11	; "bg1"
+	70	[-]	ADD      	1 1 -25	; - 3
+	71	[-]	GETGLOBAL	2 -9	; layerName
+	72	[-]	GETTABLE 	2 2 -13	; "sys_2_a"
+	73	[-]	CALL     	0 3 1
+	74	[-]	GETGLOBAL	0 -14	; layerClip
+	75	[-]	GETGLOBAL	1 -9	; layerName
+	76	[-]	GETTABLE 	1 1 -11	; "bg1"
+	77	[-]	ADD      	1 1 -25	; - 3
+	78	[-]	LOADK    	2 -15	; 0
+	79	[-]	LOADK    	3 -22	; 120
+	80	[-]	LOADK    	4 -16	; 139
+	81	[-]	LOADK    	5 -23	; 195
+	82	[-]	CALL     	0 6 1
+	83	[-]	GETGLOBAL	0 -18	; layerPosition
+	84	[-]	GETGLOBAL	1 -9	; layerName
+	85	[-]	GETTABLE 	1 1 -11	; "bg1"
+	86	[-]	ADD      	1 1 -25	; - 3
+	87	[-]	LOADK    	2 -26	; 338
+	88	[-]	LOADK    	3 -27	; 190
+	89	[-]	CALL     	0 4 1
+	90	[-]	GETUPVAL 	0 0	; -
+	91	[-]	GETGLOBAL	1 -28	; selectItemNo
+	92	[-]	GETGLOBAL	2 -28	; selectItemNo
+	93	[-]	CALL     	0 3 1
+	94	[-]	GETGLOBAL	0 -29	; layerLoadAsync
+	95	[-]	LOADK    	1 -15	; 0
+	96	[-]	GETGLOBAL	2 -9	; layerName
+	97	[-]	GETTABLE 	2 2 -30	; "card1"
+	98	[-]	GETGLOBAL	3 -31	; cGetFileName
+	99	[-]	LOADK    	4 -32	; "card"
+	100	[-]	LOADK    	5 -33	; "crd_1_a"
+	101	[-]	CALL     	3 3 0
+	102	[-]	CALL     	0 0 1
+	103	[-]	GETGLOBAL	0 -34	; layerMoveAlpha
+	104	[-]	LOADK    	1 -8	; 100
+	105	[-]	LOADK    	2 -15	; 0
+	106	[-]	LOADK    	3 -35	; 60
+	107	[-]	CALL     	0 4 1
+	108	[-]	GETGLOBAL	0 -4	; wait
+	109	[-]	LOADK    	1 -35	; 60
+	110	[-]	CALL     	0 2 1
+	111	[-]	GETGLOBAL	0 -36	; layerLoad
+	112	[-]	LOADK    	1 -8	; 100
+	113	[-]	LOADK    	2 -3	; ""
+	114	[-]	CALL     	0 3 1
+	115	[-]	RETURN   	0 1
+constants (36) for 0x573e0e30:
+	1	"savedataTitle"
+	2	"\227\130\185\227\131\136\227\131\188\227\131\170\227\131\188\227\131\162\227\131\188\227\131\137"
+	3	""
+	4	"wait"
+	5	1
+	6	"cInitGame"
+	7	"layerCopy"
+	8	100
+	9	"layerName"
+	10	"effectBlack"
+	11	"bg1"
+	12	"bg_1_a_0"
+	13	"sys_2_a"
+	14	"layerClip"
+	15	0
+	16	139
+	17	37
+	18	"layerPosition"
+	19	5
+	20	2
+	21	40
+	22	120
+	23	195
+	24	56
+	25	3
+	26	338
+	27	190
+	28	"selectItemNo"
+	29	"layerLoadAsync"
+	30	"card1"
+	31	"cGetFileName"
+	32	"card"
+	33	"crd_1_a"
+	34	"layerMoveAlpha"
+	35	60
+	36	"layerLoad"
+locals (0) for 0x573e0e30:
+upvalues (0) for 0x573e0e30:
+
+function <?:410,608> (461 instructions, 1844 bytes at 0x573e1420)
+0 params, 19 slots, 2 upvalues, 0 locals, 91 constants, 0 functions
+	1	[-]	GETGLOBAL	0 -1	; advPart
+	2	[-]	LOADBOOL 	1 0 0
+	3	[-]	CALL     	0 2 1
+	4	[-]	GETGLOBAL	0 -2	; logEnable
+	5	[-]	LOADBOOL 	1 0 0
+	6	[-]	CALL     	0 2 1
+	7	[-]	GETGLOBAL	0 -3	; systemConfig
+	8	[-]	GETTABLE 	0 0 -4	; "unsetConfigButton"
+	9	[-]	CALL     	0 1 1
+	10	[-]	GETGLOBAL	0 -5	; gameSave
+	11	[-]	GETTABLE 	0 0 -6	; "tutorial"
+	12	[-]	GETTABLE 	0 0 -7	; "firstFragment"
+	13	[-]	EQ       	0 0 -8	; - 0
+	14	[-]	JMP      	35	; to 50
+	15	[-]	GETGLOBAL	0 -5	; gameSave
+	16	[-]	GETTABLE 	0 0 -9	; "startMenuState"
+	17	[-]	EQ       	0 0 -10	; - 1
+	18	[-]	JMP      	11	; to 30
+	19	[-]	LOADK    	0 -12	; "s1s_10"
+	20	[-]	SETGLOBAL	0 -11	; doScriptScene
+	21	[-]	GETGLOBAL	0 -13	; run
+	22	[-]	GETGLOBAL	1 -14	; cGetFileName
+	23	[-]	LOADK    	2 -15	; "script"
+	24	[-]	LOADK    	3 -16	; "snr_s1_10_s"
+	25	[-]	CALL     	1 3 0
+	26	[-]	CALL     	0 0 1
+	27	[-]	GETGLOBAL	0 -17	; quit
+	28	[-]	CALL     	0 1 1
+	29	[-]	JMP      	20	; to 50
+	30	[-]	GETGLOBAL	0 -18	; vms
+	31	[-]	LOADK    	1 -19	; 16817
+	32	[-]	LOADK    	2 -20	; "NONVOICE"
+	33	[-]	LOADK    	3 -21	; "\227\128\144\226\150\160\227\129\138\227\129\151\227\130\137\227\129\155\227\128\145\227\130\178\227\131\188\227\131\160\227\131\161\227\131\139\227\131\165\227\131\188\227\129\171\227\128\129\227\128\142\239\188\166\239\189\146\239\189\129\239\189\135\239\189\141\239\189\133\239\189\142\239\189\148\227\128\143\227\131\162\227\131\188\227\131\137\227\129\140\232\191\189\229\138\160\227\129\149\227\130\140\227\129\190\227\129\151\227\129\159\227\128\130"
+	34	[-]	CALL     	0 4 1
+	35	[-]	GETGLOBAL	0 -18	; vms
+	36	[-]	LOADK    	1 -22	; 16818
+	37	[-]	LOADK    	2 -20	; "NONVOICE"
+	38	[-]	LOADK    	3 -23	; "\227\128\144\226\150\160\227\129\138\227\129\151\227\130\137\227\129\155\227\128\145\231\137\169\232\170\158\227\129\174\231\182\154\227\129\141\227\129\175\239\188\166\239\189\146\239\189\129\239\189\135\239\189\141\239\189\133\239\189\142\239\189\148\227\131\162\227\131\188\227\131\137\227\130\136\227\130\138\229\143\130\231\133\167\227\129\153\227\130\139\227\129\147\227\129\168\227\129\140\227\129\167\227\129\141\227\129\190\227\129\153\227\128\130"
+	39	[-]	CALL     	0 4 1
+	40	[-]	GETGLOBAL	0 -24	; cInitGame
+	41	[-]	CALL     	0 1 1
+	42	[-]	GETGLOBAL	0 -13	; run
+	43	[-]	GETGLOBAL	1 -14	; cGetFileName
+	44	[-]	LOADK    	2 -15	; "script"
+	45	[-]	LOADK    	3 -25	; "snr_mainmenu"
+	46	[-]	CALL     	1 3 0
+	47	[-]	CALL     	0 0 1
+	48	[-]	GETGLOBAL	0 -17	; quit
+	49	[-]	CALL     	0 1 1
+	50	[-]	GETGLOBAL	0 -26	; comSectionStoryGetCount
+	51	[-]	CALL     	0 1 2
+	52	[-]	EQ       	0 0 -8	; - 0
+	53	[-]	JMP      	10	; to 64
+	54	[-]	LOADK    	1 -27	; "s1s_20"
+	55	[-]	SETGLOBAL	1 -11	; doScriptScene
+	56	[-]	GETGLOBAL	1 -13	; run
+	57	[-]	GETGLOBAL	2 -14	; cGetFileName
+	58	[-]	LOADK    	3 -15	; "script"
+	59	[-]	LOADK    	4 -16	; "snr_s1_10_s"
+	60	[-]	CALL     	2 3 0
+	61	[-]	CALL     	1 0 1
+	62	[-]	GETGLOBAL	1 -17	; quit
+	63	[-]	CALL     	1 1 1
+	64	[-]	GETGLOBAL	1 -28	; selectItemNo
+	65	[-]	LT       	0 1 -10	; - 1
+	66	[-]	JMP      	1	; to 68
+	67	[-]	SETGLOBAL	0 -28	; selectItemNo
+	68	[-]	GETGLOBAL	1 -28	; selectItemNo
+	69	[-]	LT       	0 0 1
+	70	[-]	JMP      	1	; to 72
+	71	[-]	SETGLOBAL	0 -28	; selectItemNo
+	72	[-]	GETUPVAL 	1 0	; -
+	73	[-]	CALL     	1 1 1
+	74	[-]	LOADBOOL 	1 0 0
+	75	[-]	LOADBOOL 	2 0 0
+	76	[-]	LOADK    	3 -8	; 0
+	77	[-]	GETGLOBAL	4 -28	; selectItemNo
+	78	[-]	MOVE     	5 4
+	79	[-]	LOADBOOL 	6 0 0
+	80	[-]	LOADK    	7 -10	; 1
+	81	[-]	LOADK    	8 -10	; 1
+	82	[-]	LOADK    	9 -10	; 1
+	83	[-]	GETGLOBAL	10 -3	; systemConfig
+	84	[-]	GETTABLE 	10 10 -29	; "setConfigButton"
+	85	[-]	CALL     	10 1 1
+	86	[-]	GETGLOBAL	10 -30	; pressButton
+	87	[-]	LOADK    	11 -31	; "RIGHT"
+	88	[-]	CALL     	10 2 2
+	89	[-]	EQ       	0 10 -32	; - true
+	90	[-]	JMP      	12	; to 103
+	91	[-]	EQ       	0 6 -33	; - false
+	92	[-]	JMP      	10	; to 103
+	93	[-]	LT       	0 4 0
+	94	[-]	JMP      	8	; to 103
+	95	[-]	MOVE     	5 4
+	96	[-]	ADD      	10 4 -10	; - 1
+	97	[-]	LT       	0 0 10
+	98	[-]	JMP      	2	; to 101
+	99	[-]	TESTSET  	4 0 1
+	100	[-]	JMP      	1	; to 102
+	101	[-]	ADD      	4 4 -10	; - 1
+	102	[-]	LOADBOOL 	6 1 0
+	103	[-]	GETGLOBAL	10 -30	; pressButton
+	104	[-]	LOADK    	11 -34	; "LEFT"
+	105	[-]	CALL     	10 2 2
+	106	[-]	EQ       	0 10 -32	; - true
+	107	[-]	JMP      	7	; to 115
+	108	[-]	EQ       	0 6 -33	; - false
+	109	[-]	JMP      	5	; to 115
+	110	[-]	LT       	0 -10 4	; 1 -
+	111	[-]	JMP      	3	; to 115
+	112	[-]	MOVE     	5 4
+	113	[-]	SUB      	4 4 -10	; - 1
+	114	[-]	LOADBOOL 	6 1 0
+	115	[-]	GETGLOBAL	10 -30	; pressButton
+	116	[-]	LOADK    	11 -35	; "R"
+	117	[-]	CALL     	10 2 2
+	118	[-]	EQ       	0 10 -32	; - true
+	119	[-]	JMP      	27	; to 147
+	120	[-]	EQ       	0 6 -33	; - false
+	121	[-]	JMP      	25	; to 147
+	122	[-]	MOVE     	5 4
+	123	[-]	ADD      	10 4 -10	; - 1
+	124	[-]	MOVE     	11 0
+	125	[-]	LOADK    	12 -10	; 1
+	126	[-]	FORPREP  	10 15	; to 142
+	127	[-]	GETGLOBAL	14 -36	; sceneId2aCard
+	128	[-]	GETGLOBAL	15 -5	; gameSave
+	129	[-]	GETTABLE 	15 15 -37	; "storyRoute"
+	130	[-]	GETTABLE 	15 15 13
+	131	[-]	GETTABLE 	15 15 -38	; "sceneId"
+	132	[-]	GETTABLE 	14 14 15
+	133	[-]	MOVE     	4 13
+	134	[-]	GETGLOBAL	15 -5	; gameSave
+	135	[-]	GETTABLE 	15 15 -39	; "myCard"
+	136	[-]	GETTABLE 	15 15 14
+	137	[-]	GETTABLE 	15 15 -40	; "hold"
+	138	[-]	EQ       	0 15 -41	; - -1
+	139	[-]	JMP      	2	; to 142
+	140	[-]	MOVE     	4 13
+	141	[-]	JMP      	1	; to 143
+	142	[-]	FORLOOP  	10 -16	; to 127
+	143	[-]	GETGLOBAL	10 -42	; wait
+	144	[-]	LOADK    	11 -43	; 5
+	145	[-]	CALL     	10 2 1
+	146	[-]	LOADBOOL 	6 1 0
+	147	[-]	GETGLOBAL	10 -30	; pressButton
+	148	[-]	LOADK    	11 -44	; "L"
+	149	[-]	CALL     	10 2 2
+	150	[-]	EQ       	0 10 -32	; - true
+	151	[-]	JMP      	27	; to 179
+	152	[-]	EQ       	0 6 -33	; - false
+	153	[-]	JMP      	25	; to 179
+	154	[-]	MOVE     	5 4
+	155	[-]	SUB      	10 4 -10	; - 1
+	156	[-]	LOADK    	11 -10	; 1
+	157	[-]	LOADK    	12 -41	; -1
+	158	[-]	FORPREP  	10 15	; to 174
+	159	[-]	GETGLOBAL	14 -36	; sceneId2aCard
+	160	[-]	GETGLOBAL	15 -5	; gameSave
+	161	[-]	GETTABLE 	15 15 -37	; "storyRoute"
+	162	[-]	GETTABLE 	15 15 13
+	163	[-]	GETTABLE 	15 15 -38	; "sceneId"
+	164	[-]	GETTABLE 	14 14 15
+	165	[-]	MOVE     	4 13
+	166	[-]	GETGLOBAL	15 -5	; gameSave
+	167	[-]	GETTABLE 	15 15 -39	; "myCard"
+	168	[-]	GETTABLE 	15 15 14
+	169	[-]	GETTABLE 	15 15 -40	; "hold"
+	170	[-]	EQ       	0 15 -41	; - -1
+	171	[-]	JMP      	2	; to 174
+	172	[-]	MOVE     	4 13
+	173	[-]	JMP      	1	; to 175
+	174	[-]	FORLOOP  	10 -16	; to 159
+	175	[-]	GETGLOBAL	10 -42	; wait
+	176	[-]	LOADK    	11 -43	; 5
+	177	[-]	CALL     	10 2 1
+	178	[-]	LOADBOOL 	6 1 0
+	179	[-]	EQ       	0 6 -32	; - true
+	180	[-]	JMP      	25	; to 206
+	181	[-]	GETGLOBAL	10 -45	; keyPlaySE
+	182	[-]	GETGLOBAL	11 -46	; seName
+	183	[-]	GETTABLE 	11 11 -47	; "arrowKey"
+	184	[-]	CALL     	10 2 1
+	185	[-]	GETGLOBAL	10 -48	; fontClear
+	186	[-]	CALL     	10 1 1
+	187	[-]	GETUPVAL 	10 1	; -
+	188	[-]	MOVE     	11 4
+	189	[-]	MOVE     	12 5
+	190	[-]	CALL     	10 3 1
+	191	[-]	LOADK    	3 -8	; 0
+	192	[-]	LOADBOOL 	6 0 0
+	193	[-]	GETGLOBAL	10 -49	; layerLoad
+	194	[-]	GETGLOBAL	11 -50	; layerName
+	195	[-]	GETTABLE 	11 11 -51	; "card1"
+	196	[-]	LOADK    	12 -52	; ""
+	197	[-]	CALL     	10 3 1
+	198	[-]	GETGLOBAL	10 -49	; layerLoad
+	199	[-]	GETGLOBAL	11 -50	; layerName
+	200	[-]	GETTABLE 	11 11 -53	; "card3"
+	201	[-]	LOADK    	12 -52	; ""
+	202	[-]	CALL     	10 3 1
+	203	[-]	GETGLOBAL	10 -42	; wait
+	204	[-]	LOADK    	11 -54	; 3
+	205	[-]	CALL     	10 2 1
+	206	[-]	GETGLOBAL	10 -36	; sceneId2aCard
+	207	[-]	GETGLOBAL	11 -5	; gameSave
+	208	[-]	GETTABLE 	11 11 -37	; "storyRoute"
+	209	[-]	GETTABLE 	11 11 4
+	210	[-]	GETTABLE 	11 11 -38	; "sceneId"
+	211	[-]	GETTABLE 	10 10 11
+	212	[-]	GETGLOBAL	11 -5	; gameSave
+	213	[-]	GETTABLE 	11 11 -39	; "myCard"
+	214	[-]	GETTABLE 	11 11 10
+	215	[-]	GETTABLE 	11 11 -40	; "hold"
+	216	[-]	EQ       	1 11 -41	; - -1
+	217	[-]	JMP      	24	; to 242
+	218	[-]	LE       	0 3 -54	; - 3
+	219	[-]	JMP      	22	; to 242
+	220	[-]	LE       	0 -54 3	; 3 -
+	221	[-]	JMP      	13	; to 235
+	222	[-]	GETGLOBAL	11 -55	; layerLoadAsync
+	223	[-]	LOADK    	12 -8	; 0
+	224	[-]	GETGLOBAL	13 -50	; layerName
+	225	[-]	GETTABLE 	13 13 -51	; "card1"
+	226	[-]	GETGLOBAL	14 -14	; cGetFileName
+	227	[-]	LOADK    	15 -56	; "card"
+	228	[-]	LOADK    	16 -57	; "crd_"
+	229	[-]	MOVE     	17 10
+	230	[-]	LOADK    	18 -58	; "_a"
+	231	[-]	CONCAT   	16 16 18
+	232	[-]	CALL     	14 3 0
+	233	[-]	CALL     	11 0 1
+	234	[-]	LOADBOOL 	2 1 0
+	235	[-]	ADD      	11 3 -10	; - 1
+	236	[-]	LT       	0 -59 11	; 4 -
+	237	[-]	JMP      	3	; to 241
+	238	[-]	LOADK    	11 -59	; 4
+	239	[-]	TESTSET  	3 11 1
+	240	[-]	JMP      	1	; to 242
+	241	[-]	ADD      	3 3 -10	; - 1
+	242	[-]	EQ       	0 2 -32	; - true
+	243	[-]	JMP      	36	; to 280
+	244	[-]	GETGLOBAL	11 -60	; layerIsLoad
+	245	[-]	GETGLOBAL	12 -50	; layerName
+	246	[-]	GETTABLE 	12 12 -51	; "card1"
+	247	[-]	CALL     	11 2 2
+	248	[-]	EQ       	0 11 -32	; - true
+	249	[-]	JMP      	30	; to 280
+	250	[-]	GETGLOBAL	11 -61	; layerVisible
+	251	[-]	GETGLOBAL	12 -50	; layerName
+	252	[-]	GETTABLE 	12 12 -51	; "card1"
+	253	[-]	LOADBOOL 	13 1 0
+	254	[-]	CALL     	11 3 1
+	255	[-]	GETGLOBAL	11 -62	; layerAlpha
+	256	[-]	GETGLOBAL	12 -50	; layerName
+	257	[-]	GETTABLE 	12 12 -51	; "card1"
+	258	[-]	LOADK    	13 -8	; 0
+	259	[-]	CALL     	11 3 1
+	260	[-]	GETGLOBAL	11 -63	; layerPosition
+	261	[-]	GETGLOBAL	12 -50	; layerName
+	262	[-]	GETTABLE 	12 12 -51	; "card1"
+	263	[-]	LOADK    	13 -64	; 130
+	264	[-]	LOADK    	14 -65	; 110
+	265	[-]	CALL     	11 4 1
+	266	[-]	GETGLOBAL	11 -66	; layerMovePosition
+	267	[-]	GETGLOBAL	12 -50	; layerName
+	268	[-]	GETTABLE 	12 12 -51	; "card1"
+	269	[-]	LOADK    	13 -64	; 130
+	270	[-]	LOADK    	14 -64	; 130
+	271	[-]	LOADK    	15 -67	; 10
+	272	[-]	CALL     	11 5 1
+	273	[-]	GETGLOBAL	11 -68	; layerMoveAlpha
+	274	[-]	GETGLOBAL	12 -50	; layerName
+	275	[-]	GETTABLE 	12 12 -51	; "card1"
+	276	[-]	LOADK    	13 -69	; 100
+	277	[-]	LOADK    	14 -67	; 10
+	278	[-]	CALL     	11 4 1
+	279	[-]	LOADBOOL 	2 0 0
+	280	[-]	GETGLOBAL	11 -30	; pressButton
+	281	[-]	LOADK    	12 -70	; "CIRCLE"
+	282	[-]	CALL     	11 2 2
+	283	[-]	EQ       	1 11 -32	; - true
+	284	[-]	JMP      	1	; to 286
+	285	[-]	LOADK    	7 -8	; 0
+	286	[-]	GETGLOBAL	11 -30	; pressButton
+	287	[-]	LOADK    	12 -70	; "CIRCLE"
+	288	[-]	CALL     	11 2 2
+	289	[-]	EQ       	0 11 -32	; - true
+	290	[-]	JMP      	77	; to 368
+	291	[-]	EQ       	0 7 -8	; - 0
+	292	[-]	JMP      	75	; to 368
+	293	[-]	EQ       	0 4 -10	; - 1
+	294	[-]	JMP      	6	; to 301
+	295	[-]	GETGLOBAL	11 -14	; cGetFileName
+	296	[-]	LOADK    	12 -72	; "sysgim"
+	297	[-]	LOADK    	13 -73	; "sys_5_b"
+	298	[-]	CALL     	11 3 2
+	299	[-]	TEST     	11 0 1
+	300	[-]	JMP      	4	; to 305
+	301	[-]	GETGLOBAL	11 -14	; cGetFileName
+	302	[-]	LOADK    	12 -72	; "sysgim"
+	303	[-]	LOADK    	13 -74	; "sys_5_a"
+	304	[-]	CALL     	11 3 2
+	305	[-]	SETGLOBAL	11 -71	; fileName
+	306	[-]	GETGLOBAL	11 -45	; keyPlaySE
+	307	[-]	GETGLOBAL	12 -46	; seName
+	308	[-]	GETTABLE 	12 12 -75	; "circle"
+	309	[-]	CALL     	11 2 1
+	310	[-]	GETGLOBAL	11 -76	; comDlgYesNo
+	311	[-]	GETGLOBAL	12 -71	; fileName
+	312	[-]	LOADK    	13 -69	; 100
+	313	[-]	LOADK    	14 -77	; 80
+	314	[-]	CALL     	11 4 2
+	315	[-]	EQ       	0 11 -32	; - true
+	316	[-]	JMP      	35	; to 352
+	317	[-]	GETGLOBAL	11 -78	; comSectionUID2ScriptFileName
+	318	[-]	GETGLOBAL	12 -5	; gameSave
+	319	[-]	GETTABLE 	12 12 -37	; "storyRoute"
+	320	[-]	GETTABLE 	12 12 4
+	321	[-]	GETTABLE 	12 12 -38	; "sceneId"
+	322	[-]	CALL     	11 2 2
+	323	[-]	GETGLOBAL	12 -5	; gameSave
+	324	[-]	GETTABLE 	12 12 -37	; "storyRoute"
+	325	[-]	GETTABLE 	12 12 4
+	326	[-]	GETTABLE 	12 12 -38	; "sceneId"
+	327	[-]	SETGLOBAL	12 -11	; doScriptScene
+	328	[-]	LOADK    	12 -41	; -1
+	329	[-]	SETGLOBAL	12 -28	; selectItemNo
+	330	[-]	GETGLOBAL	12 -5	; gameSave
+	331	[-]	GETGLOBAL	13 -5	; gameSave
+	332	[-]	GETTABLE 	13 13 -37	; "storyRoute"
+	333	[-]	GETTABLE 	13 13 4
+	334	[-]	GETTABLE 	13 13 -79	; "ayanoTime"
+	335	[-]	SETTABLE 	12 -79 13	; "ayanoTime" -
+	336	[-]	GETGLOBAL	12 -80	; cClearNumStoryRoute
+	337	[-]	MOVE     	13 4
+	338	[-]	CALL     	12 2 1
+	339	[-]	GETGLOBAL	12 -24	; cInitGame
+	340	[-]	CALL     	12 1 1
+	341	[-]	GETGLOBAL	12 -48	; fontClear
+	342	[-]	CALL     	12 1 1
+	343	[-]	GETGLOBAL	12 -13	; run
+	344	[-]	GETGLOBAL	13 -14	; cGetFileName
+	345	[-]	LOADK    	14 -15	; "script"
+	346	[-]	MOVE     	15 11
+	347	[-]	CALL     	13 3 0
+	348	[-]	CALL     	12 0 1
+	349	[-]	GETGLOBAL	12 -17	; quit
+	350	[-]	CALL     	12 1 1
+	351	[-]	JMP      	3	; to 355
+	352	[-]	LOADK    	7 -10	; 1
+	353	[-]	LOADK    	8 -10	; 1
+	354	[-]	LOADK    	9 -10	; 1
+	355	[-]	GETGLOBAL	11 -49	; layerLoad
+	356	[-]	GETGLOBAL	12 -50	; layerName
+	357	[-]	GETTABLE 	12 12 -53	; "card3"
+	358	[-]	LOADK    	13 -52	; ""
+	359	[-]	CALL     	11 3 1
+	360	[-]	GETGLOBAL	11 -81	; switchScreen
+	361	[-]	LOADK    	12 -8	; 0
+	362	[-]	LOADK    	13 -52	; ""
+	363	[-]	LOADK    	14 -43	; 5
+	364	[-]	CALL     	11 4 1
+	365	[-]	GETGLOBAL	11 -42	; wait
+	366	[-]	LOADK    	12 -43	; 5
+	367	[-]	CALL     	11 2 1
+	368	[-]	GETGLOBAL	11 -30	; pressButton
+	369	[-]	LOADK    	12 -82	; "CROSS"
+	370	[-]	CALL     	11 2 2
+	371	[-]	EQ       	1 11 -32	; - true
+	372	[-]	JMP      	1	; to 374
+	373	[-]	LOADK    	8 -8	; 0
+	374	[-]	GETGLOBAL	11 -30	; pressButton
+	375	[-]	LOADK    	12 -82	; "CROSS"
+	376	[-]	CALL     	11 2 2
+	377	[-]	EQ       	0 11 -32	; - true
+	378	[-]	JMP      	11	; to 390
+	379	[-]	EQ       	0 8 -8	; - 0
+	380	[-]	JMP      	9	; to 390
+	381	[-]	GETGLOBAL	11 -3	; systemConfig
+	382	[-]	GETTABLE 	11 11 -4	; "unsetConfigButton"
+	383	[-]	CALL     	11 1 1
+	384	[-]	GETGLOBAL	11 -45	; keyPlaySE
+	385	[-]	GETGLOBAL	12 -46	; seName
+	386	[-]	GETTABLE 	12 12 -83	; "cross"
+	387	[-]	CALL     	11 2 1
+	388	[-]	SETGLOBAL	4 -28	; selectItemNo
+	389	[-]	JMP      	49	; to 439
+	390	[-]	GETGLOBAL	11 -30	; pressButton
+	391	[-]	LOADK    	12 -84	; "TRIANGLE"
+	392	[-]	CALL     	11 2 2
+	393	[-]	EQ       	1 11 -32	; - true
+	394	[-]	JMP      	1	; to 396
+	395	[-]	LOADK    	9 -8	; 0
+	396	[-]	GETGLOBAL	11 -30	; pressButton
+	397	[-]	LOADK    	12 -84	; "TRIANGLE"
+	398	[-]	CALL     	11 2 2
+	399	[-]	EQ       	0 11 -32	; - true
+	400	[-]	JMP      	34	; to 435
+	401	[-]	EQ       	0 9 -8	; - 0
+	402	[-]	JMP      	32	; to 435
+	403	[-]	GETGLOBAL	11 -3	; systemConfig
+	404	[-]	GETTABLE 	11 11 -4	; "unsetConfigButton"
+	405	[-]	CALL     	11 1 1
+	406	[-]	GETGLOBAL	11 -45	; keyPlaySE
+	407	[-]	GETGLOBAL	12 -46	; seName
+	408	[-]	GETTABLE 	12 12 -83	; "cross"
+	409	[-]	CALL     	11 2 1
+	410	[-]	GETGLOBAL	11 -85	; layerCopy
+	411	[-]	LOADK    	12 -86	; 199
+	412	[-]	GETGLOBAL	13 -50	; layerName
+	413	[-]	GETTABLE 	13 13 -87	; "effectBlack"
+	414	[-]	CALL     	11 3 1
+	415	[-]	GETGLOBAL	11 -48	; fontClear
+	416	[-]	CALL     	11 1 1
+	417	[-]	GETGLOBAL	11 -81	; switchScreen
+	418	[-]	LOADK    	12 -8	; 0
+	419	[-]	LOADK    	13 -52	; ""
+	420	[-]	LOADK    	14 -88	; 60
+	421	[-]	CALL     	11 4 1
+	422	[-]	SETGLOBAL	4 -28	; selectItemNo
+	423	[-]	GETGLOBAL	11 -89	; comSectionFragmentItemInit
+	424	[-]	CALL     	11 1 1
+	425	[-]	GETGLOBAL	11 -24	; cInitGame
+	426	[-]	CALL     	11 1 1
+	427	[-]	GETGLOBAL	11 -13	; run
+	428	[-]	GETGLOBAL	12 -14	; cGetFileName
+	429	[-]	LOADK    	13 -15	; "script"
+	430	[-]	LOADK    	14 -90	; "snr_fragment_main"
+	431	[-]	CALL     	12 3 0
+	432	[-]	CALL     	11 0 1
+	433	[-]	GETGLOBAL	11 -17	; quit
+	434	[-]	CALL     	11 1 1
+	435	[-]	GETGLOBAL	11 -42	; wait
+	436	[-]	LOADK    	12 -91	; 2
+	437	[-]	CALL     	11 2 1
+	438	[-]	JMP      	-353	; to 86
+	439	[-]	GETGLOBAL	10 -85	; layerCopy
+	440	[-]	LOADK    	11 -86	; 199
+	441	[-]	GETGLOBAL	12 -50	; layerName
+	442	[-]	GETTABLE 	12 12 -87	; "effectBlack"
+	443	[-]	CALL     	10 3 1
+	444	[-]	GETGLOBAL	10 -48	; fontClear
+	445	[-]	CALL     	10 1 1
+	446	[-]	GETGLOBAL	10 -81	; switchScreen
+	447	[-]	LOADK    	11 -8	; 0
+	448	[-]	LOADK    	12 -52	; ""
+	449	[-]	LOADK    	13 -88	; 60
+	450	[-]	CALL     	10 4 1
+	451	[-]	GETGLOBAL	10 -24	; cInitGame
+	452	[-]	CALL     	10 1 1
+	453	[-]	GETGLOBAL	10 -13	; run
+	454	[-]	GETGLOBAL	11 -14	; cGetFileName
+	455	[-]	LOADK    	12 -15	; "script"
+	456	[-]	LOADK    	13 -25	; "snr_mainmenu"
+	457	[-]	CALL     	11 3 0
+	458	[-]	CALL     	10 0 1
+	459	[-]	GETGLOBAL	10 -17	; quit
+	460	[-]	CALL     	10 1 1
+	461	[-]	RETURN   	0 1
+constants (91) for 0x573e1420:
+	1	"advPart"
+	2	"logEnable"
+	3	"systemConfig"
+	4	"unsetConfigButton"
+	5	"gameSave"
+	6	"tutorial"
+	7	"firstFragment"
+	8	0
+	9	"startMenuState"
+	10	1
+	11	"doScriptScene"
+	12	"s1s_10"
+	13	"run"
+	14	"cGetFileName"
+	15	"script"
+	16	"snr_s1_10_s"
+	17	"quit"
+	18	"vms"
+	19	16817
+	20	"NONVOICE"
+	21	"\227\128\144\226\150\160\227\129\138\227\129\151\227\130\137\227\129\155\227\128\145\227\130\178\227\131\188\227\131\160\227\131\161\227\131\139\227\131\165\227\131\188\227\129\171\227\128\129\227\128\142\239\188\166\239\189\146\239\189\129\239\189\135\239\189\141\239\189\133\239\189\142\239\189\148\227\128\143\227\131\162\227\131\188\227\131\137\227\129\140\232\191\189\229\138\160\227\129\149\227\130\140\227\129\190\227\129\151\227\129\159\227\128\130"
+	22	16818
+	23	"\227\128\144\226\150\160\227\129\138\227\129\151\227\130\137\227\129\155\227\128\145\231\137\169\232\170\158\227\129\174\231\182\154\227\129\141\227\129\175\239\188\166\239\189\146\239\189\129\239\189\135\239\189\141\239\189\133\239\189\142\239\189\148\227\131\162\227\131\188\227\131\137\227\130\136\227\130\138\229\143\130\231\133\167\227\129\153\227\130\139\227\129\147\227\129\168\227\129\140\227\129\167\227\129\141\227\129\190\227\129\153\227\128\130"
+	24	"cInitGame"
+	25	"snr_mainmenu"
+	26	"comSectionStoryGetCount"
+	27	"s1s_20"
+	28	"selectItemNo"
+	29	"setConfigButton"
+	30	"pressButton"
+	31	"RIGHT"
+	32	true
+	33	false
+	34	"LEFT"
+	35	"R"
+	36	"sceneId2aCard"
+	37	"storyRoute"
+	38	"sceneId"
+	39	"myCard"
+	40	"hold"
+	41	-1
+	42	"wait"
+	43	5
+	44	"L"
+	45	"keyPlaySE"
+	46	"seName"
+	47	"arrowKey"
+	48	"fontClear"
+	49	"layerLoad"
+	50	"layerName"
+	51	"card1"
+	52	""
+	53	"card3"
+	54	3
+	55	"layerLoadAsync"
+	56	"card"
+	57	"crd_"
+	58	"_a"
+	59	4
+	60	"layerIsLoad"
+	61	"layerVisible"
+	62	"layerAlpha"
+	63	"layerPosition"
+	64	130
+	65	110
+	66	"layerMovePosition"
+	67	10
+	68	"layerMoveAlpha"
+	69	100
+	70	"CIRCLE"
+	71	"fileName"
+	72	"sysgim"
+	73	"sys_5_b"
+	74	"sys_5_a"
+	75	"circle"
+	76	"comDlgYesNo"
+	77	80
+	78	"comSectionUID2ScriptFileName"
+	79	"ayanoTime"
+	80	"cClearNumStoryRoute"
+	81	"switchScreen"
+	82	"CROSS"
+	83	"cross"
+	84	"TRIANGLE"
+	85	"layerCopy"
+	86	199
+	87	"effectBlack"
+	88	60
+	89	"comSectionFragmentItemInit"
+	90	"snr_fragment_main"
+	91	2
+locals (0) for 0x573e1420:
+upvalues (0) for 0x573e1420:

@@ -1,0 +1,2203 @@
+
+main <?:0,0> (385 instructions, 1540 bytes at 0x57e4c010)
+0+ params, 20 slots, 0 upvalues, 0 locals, 164 constants, 5 functions
+	1	[-]	NEWTABLE 	0 0 8
+	2	[-]	NEWTABLE 	1 0 15
+	3	[-]	SETTABLE 	1 -2 -3	; "graphic_01_a" 50
+	4	[-]	SETTABLE 	1 -4 -5	; "graphic_02_a" 51
+	5	[-]	SETTABLE 	1 -6 -7	; "graphic_03_a" 52
+	6	[-]	SETTABLE 	1 -8 -9	; "graphic_04_a" 53
+	7	[-]	SETTABLE 	1 -10 -11	; "graphic_05_a" 54
+	8	[-]	SETTABLE 	1 -12 -13	; "graphic_06_a" 55
+	9	[-]	SETTABLE 	1 -14 -15	; "graphic_07_a" 64
+	10	[-]	SETTABLE 	1 -16 -17	; "thumbnail_01_a" 56
+	11	[-]	SETTABLE 	1 -18 -19	; "thumbnail_02_a" 57
+	12	[-]	SETTABLE 	1 -20 -21	; "thumbnail_03_a" 58
+	13	[-]	SETTABLE 	1 -22 -23	; "thumbnail_04_a" 59
+	14	[-]	SETTABLE 	1 -24 -25	; "thumbnail_05_a" 60
+	15	[-]	SETTABLE 	1 -26 -27	; "thumbnail_06_a" 61
+	16	[-]	SETTABLE 	1 -28 -29	; "thumbnail_07_a" 62
+	17	[-]	SETTABLE 	1 -30 -31	; "thumbnail_08_a" 63
+	18	[-]	SETTABLE 	0 -1 1	; "layerName" -
+	19	[-]	NEWTABLE 	1 0 7
+	20	[-]	SETTABLE 	1 -33 -34	; "bg" 0
+	21	[-]	SETTABLE 	1 -35 -36	; "thumbnail" 2
+	22	[-]	SETTABLE 	1 -37 -38	; "mask" 11
+	23	[-]	SETTABLE 	1 -39 -40	; "complete" 31
+	24	[-]	SETTABLE 	1 -41 -42	; "key" 32
+	25	[-]	SETTABLE 	1 -43 -44	; "cursor" 34
+	26	[-]	SETTABLE 	1 -45 -46	; "view" 35
+	27	[-]	SETTABLE 	0 -32 1	; "layerNumber" -
+	28	[-]	NEWTABLE 	1 8 0
+	29	[-]	LOADK    	2 -16	; "thumbnail_01_a"
+	30	[-]	LOADK    	3 -18	; "thumbnail_02_a"
+	31	[-]	LOADK    	4 -20	; "thumbnail_03_a"
+	32	[-]	LOADK    	5 -22	; "thumbnail_04_a"
+	33	[-]	LOADK    	6 -24	; "thumbnail_05_a"
+	34	[-]	LOADK    	7 -26	; "thumbnail_06_a"
+	35	[-]	LOADK    	8 -28	; "thumbnail_07_a"
+	36	[-]	LOADK    	9 -30	; "thumbnail_08_a"
+	37	[-]	SETLIST  	1 8 1	; 1
+	38	[-]	SETTABLE 	0 -47 1	; "thumbnailName" -
+	39	[-]	NEWTABLE 	1 0 0
+	40	[-]	SETTABLE 	0 -48 1	; "viewX" -
+	41	[-]	NEWTABLE 	1 0 0
+	42	[-]	SETTABLE 	0 -49 1	; "viewY" -
+	43	[-]	NEWTABLE 	1 0 0
+	44	[-]	SETTABLE 	0 -50 1	; "cursorX" -
+	45	[-]	NEWTABLE 	1 0 0
+	46	[-]	SETTABLE 	0 -51 1	; "cursorY" -
+	47	[-]	NEWTABLE 	1 0 0
+	48	[-]	SETTABLE 	0 -52 1	; "cgNumber" -
+	49	[-]	GETTABLE 	1 0 -52	; "cgNumber"
+	50	[-]	NEWTABLE 	2 9 0
+	51	[-]	NEWTABLE 	3 1 0
+	52	[-]	LOADK    	4 -54	; "eve_1_x"
+	53	[-]	SETLIST  	3 1 1	; 1
+	54	[-]	NEWTABLE 	4 1 0
+	55	[-]	LOADK    	5 -55	; "eve_2_x"
+	56	[-]	SETLIST  	4 1 1	; 1
+	57	[-]	NEWTABLE 	5 1 0
+	58	[-]	LOADK    	6 -56	; "eve_3_x"
+	59	[-]	SETLIST  	5 1 1	; 1
+	60	[-]	NEWTABLE 	6 1 0
+	61	[-]	LOADK    	7 -57	; "eve_4_x"
+	62	[-]	SETLIST  	6 1 1	; 1
+	63	[-]	NEWTABLE 	7 1 0
+	64	[-]	LOADK    	8 -58	; "eve_5_x"
+	65	[-]	SETLIST  	7 1 1	; 1
+	66	[-]	NEWTABLE 	8 3 0
+	67	[-]	LOADK    	9 -59	; "eve_6_a"
+	68	[-]	LOADK    	10 -60	; "eve_6_b"
+	69	[-]	LOADK    	11 -61	; "eve_6_c"
+	70	[-]	SETLIST  	8 3 1	; 1
+	71	[-]	NEWTABLE 	9 1 0
+	72	[-]	LOADK    	10 -62	; "eve_7_x"
+	73	[-]	SETLIST  	9 1 1	; 1
+	74	[-]	NEWTABLE 	10 1 0
+	75	[-]	LOADK    	11 -63	; "eve_8_x"
+	76	[-]	SETLIST  	10 1 1	; 1
+	77	[-]	NEWTABLE 	11 1 0
+	78	[-]	LOADK    	12 -64	; "eve_9_x"
+	79	[-]	SETLIST  	11 1 1	; 1
+	80	[-]	SETLIST  	2 9 1	; 1
+	81	[-]	SETTABLE 	1 -53 2	; 1 -
+	82	[-]	GETTABLE 	1 0 -52	; "cgNumber"
+	83	[-]	NEWTABLE 	2 9 0
+	84	[-]	NEWTABLE 	3 1 0
+	85	[-]	LOADK    	4 -65	; "eve_10_x"
+	86	[-]	SETLIST  	3 1 1	; 1
+	87	[-]	NEWTABLE 	4 1 0
+	88	[-]	LOADK    	5 -66	; "eve_11_x"
+	89	[-]	SETLIST  	4 1 1	; 1
+	90	[-]	NEWTABLE 	5 2 0
+	91	[-]	LOADK    	6 -67	; "eve_12_a"
+	92	[-]	LOADK    	7 -68	; "eve_12_b"
+	93	[-]	SETLIST  	5 2 1	; 1
+	94	[-]	NEWTABLE 	6 1 0
+	95	[-]	LOADK    	7 -69	; "eve_13_x"
+	96	[-]	SETLIST  	6 1 1	; 1
+	97	[-]	NEWTABLE 	7 2 0
+	98	[-]	LOADK    	8 -70	; "eve_14_a"
+	99	[-]	LOADK    	9 -71	; "eve_14_b"
+	100	[-]	SETLIST  	7 2 1	; 1
+	101	[-]	NEWTABLE 	8 2 0
+	102	[-]	LOADK    	9 -72	; "eve_15_a"
+	103	[-]	LOADK    	10 -73	; "eve_15_b"
+	104	[-]	SETLIST  	8 2 1	; 1
+	105	[-]	NEWTABLE 	9 1 0
+	106	[-]	LOADK    	10 -74	; "eve_16_x"
+	107	[-]	SETLIST  	9 1 1	; 1
+	108	[-]	NEWTABLE 	10 1 0
+	109	[-]	LOADK    	11 -75	; "eve_17_x"
+	110	[-]	SETLIST  	10 1 1	; 1
+	111	[-]	NEWTABLE 	11 1 0
+	112	[-]	LOADK    	12 -76	; "eve_18_x"
+	113	[-]	SETLIST  	11 1 1	; 1
+	114	[-]	SETLIST  	2 9 1	; 1
+	115	[-]	SETTABLE 	1 -36 2	; 2 -
+	116	[-]	GETTABLE 	1 0 -52	; "cgNumber"
+	117	[-]	NEWTABLE 	2 9 0
+	118	[-]	NEWTABLE 	3 1 0
+	119	[-]	LOADK    	4 -78	; "eve_19_x"
+	120	[-]	SETLIST  	3 1 1	; 1
+	121	[-]	NEWTABLE 	4 4 0
+	122	[-]	LOADK    	5 -79	; "eve_20_a"
+	123	[-]	LOADK    	6 -80	; "eve_20_b"
+	124	[-]	LOADK    	7 -81	; "eve_20_c"
+	125	[-]	LOADK    	8 -82	; "eve_20_d"
+	126	[-]	SETLIST  	4 4 1	; 1
+	127	[-]	NEWTABLE 	5 1 0
+	128	[-]	LOADK    	6 -83	; "eve_21_x"
+	129	[-]	SETLIST  	5 1 1	; 1
+	130	[-]	NEWTABLE 	6 2 0
+	131	[-]	LOADK    	7 -84	; "eve_22_a"
+	132	[-]	LOADK    	8 -85	; "eve_22_b"
+	133	[-]	SETLIST  	6 2 1	; 1
+	134	[-]	NEWTABLE 	7 1 0
+	135	[-]	LOADK    	8 -86	; "eve_23_x"
+	136	[-]	SETLIST  	7 1 1	; 1
+	137	[-]	NEWTABLE 	8 2 0
+	138	[-]	LOADK    	9 -87	; "eve_24_a"
+	139	[-]	LOADK    	10 -88	; "eve_24_b"
+	140	[-]	SETLIST  	8 2 1	; 1
+	141	[-]	NEWTABLE 	9 2 0
+	142	[-]	LOADK    	10 -89	; "eve_25_a"
+	143	[-]	LOADK    	11 -90	; "eve_25_b"
+	144	[-]	SETLIST  	9 2 1	; 1
+	145	[-]	NEWTABLE 	10 1 0
+	146	[-]	LOADK    	11 -91	; "eve_26_x"
+	147	[-]	SETLIST  	10 1 1	; 1
+	148	[-]	NEWTABLE 	11 2 0
+	149	[-]	LOADK    	12 -92	; "eve_27_a"
+	150	[-]	LOADK    	13 -93	; "eve_27_b"
+	151	[-]	SETLIST  	11 2 1	; 1
+	152	[-]	SETLIST  	2 9 1	; 1
+	153	[-]	SETTABLE 	1 -77 2	; 3 -
+	154	[-]	GETTABLE 	1 0 -52	; "cgNumber"
+	155	[-]	NEWTABLE 	2 9 0
+	156	[-]	NEWTABLE 	3 3 0
+	157	[-]	LOADK    	4 -95	; "eve_28_a"
+	158	[-]	LOADK    	5 -96	; "eve_28_b"
+	159	[-]	LOADK    	6 -97	; "eve_28_c"
+	160	[-]	SETLIST  	3 3 1	; 1
+	161	[-]	NEWTABLE 	4 1 0
+	162	[-]	LOADK    	5 -98	; "eve_29_x"
+	163	[-]	SETLIST  	4 1 1	; 1
+	164	[-]	NEWTABLE 	5 2 0
+	165	[-]	LOADK    	6 -99	; "eve_30_a"
+	166	[-]	LOADK    	7 -100	; "eve_30_b"
+	167	[-]	SETLIST  	5 2 1	; 1
+	168	[-]	NEWTABLE 	6 2 0
+	169	[-]	LOADK    	7 -101	; "eve_31_a"
+	170	[-]	LOADK    	8 -102	; "eve_31_b"
+	171	[-]	SETLIST  	6 2 1	; 1
+	172	[-]	NEWTABLE 	7 2 0
+	173	[-]	LOADK    	8 -103	; "eve_32_x"
+	174	[-]	LOADK    	9 -104	; "eve_32_b"
+	175	[-]	SETLIST  	7 2 1	; 1
+	176	[-]	NEWTABLE 	8 2 0
+	177	[-]	LOADK    	9 -105	; "eve_33_a"
+	178	[-]	LOADK    	10 -106	; "eve_33_b"
+	179	[-]	SETLIST  	8 2 1	; 1
+	180	[-]	NEWTABLE 	9 1 0
+	181	[-]	LOADK    	10 -107	; "eve_34_x"
+	182	[-]	SETLIST  	9 1 1	; 1
+	183	[-]	NEWTABLE 	10 1 0
+	184	[-]	LOADK    	11 -108	; "eve_35_a"
+	185	[-]	SETLIST  	10 1 1	; 1
+	186	[-]	NEWTABLE 	11 3 0
+	187	[-]	LOADK    	12 -109	; "eve_36_a"
+	188	[-]	LOADK    	13 -110	; "eve_36_b"
+	189	[-]	LOADK    	14 -111	; "eve_36_c"
+	190	[-]	SETLIST  	11 3 1	; 1
+	191	[-]	SETLIST  	2 9 1	; 1
+	192	[-]	SETTABLE 	1 -94 2	; 4 -
+	193	[-]	GETTABLE 	1 0 -52	; "cgNumber"
+	194	[-]	NEWTABLE 	2 9 0
+	195	[-]	NEWTABLE 	3 1 0
+	196	[-]	LOADK    	4 -113	; "eve_37_x"
+	197	[-]	SETLIST  	3 1 1	; 1
+	198	[-]	NEWTABLE 	4 1 0
+	199	[-]	LOADK    	5 -114	; "eve_38_x"
+	200	[-]	SETLIST  	4 1 1	; 1
+	201	[-]	NEWTABLE 	5 1 0
+	202	[-]	LOADK    	6 -115	; "eve_39_x"
+	203	[-]	SETLIST  	5 1 1	; 1
+	204	[-]	NEWTABLE 	6 1 0
+	205	[-]	LOADK    	7 -116	; "eve_40_x"
+	206	[-]	SETLIST  	6 1 1	; 1
+	207	[-]	NEWTABLE 	7 1 0
+	208	[-]	LOADK    	8 -117	; "eve_41_x"
+	209	[-]	SETLIST  	7 1 1	; 1
+	210	[-]	NEWTABLE 	8 1 0
+	211	[-]	LOADK    	9 -118	; "eve_42_x"
+	212	[-]	SETLIST  	8 1 1	; 1
+	213	[-]	NEWTABLE 	9 1 0
+	214	[-]	LOADK    	10 -119	; "eve_43_x"
+	215	[-]	SETLIST  	9 1 1	; 1
+	216	[-]	NEWTABLE 	10 1 0
+	217	[-]	LOADK    	11 -120	; "eve_44_x"
+	218	[-]	SETLIST  	10 1 1	; 1
+	219	[-]	NEWTABLE 	11 1 0
+	220	[-]	LOADK    	12 -121	; "eve_45_x"
+	221	[-]	SETLIST  	11 1 1	; 1
+	222	[-]	SETLIST  	2 9 1	; 1
+	223	[-]	SETTABLE 	1 -112 2	; 5 -
+	224	[-]	GETTABLE 	1 0 -52	; "cgNumber"
+	225	[-]	NEWTABLE 	2 9 0
+	226	[-]	NEWTABLE 	3 4 0
+	227	[-]	LOADK    	4 -123	; "eve_46_a"
+	228	[-]	LOADK    	5 -124	; "eve_46_b"
+	229	[-]	LOADK    	6 -125	; "eve_46_c"
+	230	[-]	LOADK    	7 -126	; "eve_46_d"
+	231	[-]	SETLIST  	3 4 1	; 1
+	232	[-]	NEWTABLE 	4 1 0
+	233	[-]	LOADK    	5 -127	; "eve_47_x"
+	234	[-]	SETLIST  	4 1 1	; 1
+	235	[-]	NEWTABLE 	5 1 0
+	236	[-]	LOADK    	6 -128	; "eve_48_x"
+	237	[-]	SETLIST  	5 1 1	; 1
+	238	[-]	NEWTABLE 	6 1 0
+	239	[-]	LOADK    	7 -129	; "eve_49_x"
+	240	[-]	SETLIST  	6 1 1	; 1
+	241	[-]	NEWTABLE 	7 1 0
+	242	[-]	LOADK    	8 -130	; "eve_50_x"
+	243	[-]	SETLIST  	7 1 1	; 1
+	244	[-]	NEWTABLE 	8 2 0
+	245	[-]	LOADK    	9 -131	; "eve_51_a"
+	246	[-]	LOADK    	10 -132	; "eve_51_b"
+	247	[-]	SETLIST  	8 2 1	; 1
+	248	[-]	NEWTABLE 	9 1 0
+	249	[-]	LOADK    	10 -133	; "eve_52_x"
+	250	[-]	SETLIST  	9 1 1	; 1
+	251	[-]	NEWTABLE 	10 1 0
+	252	[-]	LOADK    	11 -134	; "eve_53_x"
+	253	[-]	SETLIST  	10 1 1	; 1
+	254	[-]	NEWTABLE 	11 1 0
+	255	[-]	LOADK    	12 -135	; "eve_54_x"
+	256	[-]	SETLIST  	11 1 1	; 1
+	257	[-]	SETLIST  	2 9 1	; 1
+	258	[-]	SETTABLE 	1 -122 2	; 6 -
+	259	[-]	GETTABLE 	1 0 -52	; "cgNumber"
+	260	[-]	NEWTABLE 	2 9 0
+	261	[-]	NEWTABLE 	3 1 0
+	262	[-]	LOADK    	4 -137	; "eve_55_x"
+	263	[-]	SETLIST  	3 1 1	; 1
+	264	[-]	NEWTABLE 	4 1 0
+	265	[-]	LOADK    	5 -138	; "eve_56_x"
+	266	[-]	SETLIST  	4 1 1	; 1
+	267	[-]	NEWTABLE 	5 2 0
+	268	[-]	LOADK    	6 -139	; "eve_57_a"
+	269	[-]	LOADK    	7 -140	; "eve_57_b"
+	270	[-]	SETLIST  	5 2 1	; 1
+	271	[-]	NEWTABLE 	6 2 0
+	272	[-]	LOADK    	7 -141	; "eve_58_a"
+	273	[-]	LOADK    	8 -142	; "eve_58_b"
+	274	[-]	SETLIST  	6 2 1	; 1
+	275	[-]	NEWTABLE 	7 1 0
+	276	[-]	LOADK    	8 -143	; "eve_59_x"
+	277	[-]	SETLIST  	7 1 1	; 1
+	278	[-]	NEWTABLE 	8 1 0
+	279	[-]	LOADK    	9 -144	; "eve_60_x"
+	280	[-]	SETLIST  	8 1 1	; 1
+	281	[-]	NEWTABLE 	9 1 0
+	282	[-]	LOADK    	10 -145	; "eve_61_x"
+	283	[-]	SETLIST  	9 1 1	; 1
+	284	[-]	NEWTABLE 	10 1 0
+	285	[-]	LOADK    	11 -146	; "eve_62_x"
+	286	[-]	SETLIST  	10 1 1	; 1
+	287	[-]	NEWTABLE 	11 1 0
+	288	[-]	LOADK    	12 -147	; "eve_63_x"
+	289	[-]	SETLIST  	11 1 1	; 1
+	290	[-]	SETLIST  	2 9 1	; 1
+	291	[-]	SETTABLE 	1 -136 2	; 7 -
+	292	[-]	GETTABLE 	1 0 -52	; "cgNumber"
+	293	[-]	NEWTABLE 	2 7 0
+	294	[-]	NEWTABLE 	3 1 0
+	295	[-]	LOADK    	4 -149	; "eve_64_x"
+	296	[-]	SETLIST  	3 1 1	; 1
+	297	[-]	NEWTABLE 	4 1 0
+	298	[-]	LOADK    	5 -150	; "eve_69_x"
+	299	[-]	SETLIST  	4 1 1	; 1
+	300	[-]	NEWTABLE 	5 1 0
+	301	[-]	LOADK    	6 -151	; "eve_70_x"
+	302	[-]	SETLIST  	5 1 1	; 1
+	303	[-]	NEWTABLE 	6 1 0
+	304	[-]	LOADK    	7 -152	; "eve_71_x"
+	305	[-]	SETLIST  	6 1 1	; 1
+	306	[-]	NEWTABLE 	7 1 0
+	307	[-]	LOADK    	8 -153	; "eve_72_x"
+	308	[-]	SETLIST  	7 1 1	; 1
+	309	[-]	NEWTABLE 	8 2 0
+	310	[-]	LOADK    	9 -154	; "eve_73_a"
+	311	[-]	LOADK    	10 -155	; "eve_73_b"
+	312	[-]	SETLIST  	8 2 1	; 1
+	313	[-]	NEWTABLE 	9 1 0
+	314	[-]	LOADK    	10 -156	; "eve_74_x"
+	315	[-]	SETLIST  	9 1 1	; 1
+	316	[-]	SETLIST  	2 7 1	; 1
+	317	[-]	SETTABLE 	1 -148 2	; 8 -
+	318	[-]	LOADK    	1 -53	; 1
+	319	[-]	LOADK    	2 -34	; 0
+	320	[-]	LOADK    	3 -53	; 1
+	321	[-]	LOADBOOL 	4 0 0
+	322	[-]	LOADK    	5 -34	; 0
+	323	[-]	LOADK    	6 -53	; 1
+	324	[-]	LOADK    	7 -157	; 70
+	325	[-]	GETGLOBAL	8 -158	; math
+	326	[-]	GETTABLE 	8 8 -159	; "ceil"
+	327	[-]	DIV      	9 7 -160	; - 9
+	328	[-]	CALL     	8 2 2
+	329	[-]	LOADBOOL 	9 0 0
+	330	[-]	LOADK    	10 -53	; 1
+	331	[-]	LOADK    	11 -148	; 8
+	332	[-]	LOADK    	12 -53	; 1
+	333	[-]	FORPREP  	10 21	; to 355
+	334	[-]	LOADK    	14 -53	; 1
+	335	[-]	LOADK    	15 -160	; 9
+	336	[-]	LOADK    	16 -53	; 1
+	337	[-]	FORPREP  	14 16	; to 354
+	338	[-]	EQ       	0 13 -148	; - 8
+	339	[-]	JMP      	4	; to 344
+	340	[-]	LT       	0 -136 17	; 7 -
+	341	[-]	JMP      	2	; to 344
+	342	[-]	JMP      	12	; to 355
+	343	[-]	JMP      	10	; to 354
+	344	[-]	GETGLOBAL	18 -161	; systemSave
+	345	[-]	GETTABLE 	18 18 -162	; "cgFlag"
+	346	[-]	GETTABLE 	19 0 -52	; "cgNumber"
+	347	[-]	GETTABLE 	19 19 13
+	348	[-]	GETTABLE 	19 19 17
+	349	[-]	GETTABLE 	19 19 -53	; 1
+	350	[-]	GETTABLE 	18 18 19
+	351	[-]	EQ       	0 18 -163	; - true
+	352	[-]	JMP      	1	; to 354
+	353	[-]	ADD      	5 5 -53	; - 1
+	354	[-]	FORLOOP  	14 -17	; to 338
+	355	[-]	FORLOOP  	10 -22	; to 334
+	356	[-]	CLOSURE  	10 0	; 0x57e4e620
+	357	[-]	MOVE     	0 0
+	358	[-]	CLOSURE  	11 1	; 0x57e4e7e0
+	359	[-]	CLOSURE  	12 2	; 0x57e4e8a0
+	360	[-]	MOVE     	0 0
+	361	[-]	MOVE     	0 3
+	362	[-]	MOVE     	0 11
+	363	[-]	MOVE     	0 10
+	364	[-]	MOVE     	0 7
+	365	[-]	MOVE     	0 5
+	366	[-]	CLOSURE  	13 3	; 0x57e4efa0
+	367	[-]	MOVE     	0 0
+	368	[-]	MOVE     	0 7
+	369	[-]	MOVE     	0 10
+	370	[-]	MOVE     	0 11
+	371	[-]	MOVE     	0 8
+	372	[-]	CLOSURE  	14 4	; 0x57e4f6b0
+	373	[-]	MOVE     	0 0
+	374	[-]	MOVE     	0 12
+	375	[-]	MOVE     	0 9
+	376	[-]	MOVE     	0 4
+	377	[-]	MOVE     	0 2
+	378	[-]	MOVE     	0 1
+	379	[-]	MOVE     	0 7
+	380	[-]	MOVE     	0 3
+	381	[-]	MOVE     	0 8
+	382	[-]	MOVE     	0 13
+	383	[-]	MOVE     	0 6
+	384	[-]	SETGLOBAL	14 -164	; main
+	385	[-]	RETURN   	0 1
+constants (164) for 0x57e4c010:
+	1	"layerName"
+	2	"graphic_01_a"
+	3	50
+	4	"graphic_02_a"
+	5	51
+	6	"graphic_03_a"
+	7	52
+	8	"graphic_04_a"
+	9	53
+	10	"graphic_05_a"
+	11	54
+	12	"graphic_06_a"
+	13	55
+	14	"graphic_07_a"
+	15	64
+	16	"thumbnail_01_a"
+	17	56
+	18	"thumbnail_02_a"
+	19	57
+	20	"thumbnail_03_a"
+	21	58
+	22	"thumbnail_04_a"
+	23	59
+	24	"thumbnail_05_a"
+	25	60
+	26	"thumbnail_06_a"
+	27	61
+	28	"thumbnail_07_a"
+	29	62
+	30	"thumbnail_08_a"
+	31	63
+	32	"layerNumber"
+	33	"bg"
+	34	0
+	35	"thumbnail"
+	36	2
+	37	"mask"
+	38	11
+	39	"complete"
+	40	31
+	41	"key"
+	42	32
+	43	"cursor"
+	44	34
+	45	"view"
+	46	35
+	47	"thumbnailName"
+	48	"viewX"
+	49	"viewY"
+	50	"cursorX"
+	51	"cursorY"
+	52	"cgNumber"
+	53	1
+	54	"eve_1_x"
+	55	"eve_2_x"
+	56	"eve_3_x"
+	57	"eve_4_x"
+	58	"eve_5_x"
+	59	"eve_6_a"
+	60	"eve_6_b"
+	61	"eve_6_c"
+	62	"eve_7_x"
+	63	"eve_8_x"
+	64	"eve_9_x"
+	65	"eve_10_x"
+	66	"eve_11_x"
+	67	"eve_12_a"
+	68	"eve_12_b"
+	69	"eve_13_x"
+	70	"eve_14_a"
+	71	"eve_14_b"
+	72	"eve_15_a"
+	73	"eve_15_b"
+	74	"eve_16_x"
+	75	"eve_17_x"
+	76	"eve_18_x"
+	77	3
+	78	"eve_19_x"
+	79	"eve_20_a"
+	80	"eve_20_b"
+	81	"eve_20_c"
+	82	"eve_20_d"
+	83	"eve_21_x"
+	84	"eve_22_a"
+	85	"eve_22_b"
+	86	"eve_23_x"
+	87	"eve_24_a"
+	88	"eve_24_b"
+	89	"eve_25_a"
+	90	"eve_25_b"
+	91	"eve_26_x"
+	92	"eve_27_a"
+	93	"eve_27_b"
+	94	4
+	95	"eve_28_a"
+	96	"eve_28_b"
+	97	"eve_28_c"
+	98	"eve_29_x"
+	99	"eve_30_a"
+	100	"eve_30_b"
+	101	"eve_31_a"
+	102	"eve_31_b"
+	103	"eve_32_x"
+	104	"eve_32_b"
+	105	"eve_33_a"
+	106	"eve_33_b"
+	107	"eve_34_x"
+	108	"eve_35_a"
+	109	"eve_36_a"
+	110	"eve_36_b"
+	111	"eve_36_c"
+	112	5
+	113	"eve_37_x"
+	114	"eve_38_x"
+	115	"eve_39_x"
+	116	"eve_40_x"
+	117	"eve_41_x"
+	118	"eve_42_x"
+	119	"eve_43_x"
+	120	"eve_44_x"
+	121	"eve_45_x"
+	122	6
+	123	"eve_46_a"
+	124	"eve_46_b"
+	125	"eve_46_c"
+	126	"eve_46_d"
+	127	"eve_47_x"
+	128	"eve_48_x"
+	129	"eve_49_x"
+	130	"eve_50_x"
+	131	"eve_51_a"
+	132	"eve_51_b"
+	133	"eve_52_x"
+	134	"eve_53_x"
+	135	"eve_54_x"
+	136	7
+	137	"eve_55_x"
+	138	"eve_56_x"
+	139	"eve_57_a"
+	140	"eve_57_b"
+	141	"eve_58_a"
+	142	"eve_58_b"
+	143	"eve_59_x"
+	144	"eve_60_x"
+	145	"eve_61_x"
+	146	"eve_62_x"
+	147	"eve_63_x"
+	148	8
+	149	"eve_64_x"
+	150	"eve_69_x"
+	151	"eve_70_x"
+	152	"eve_71_x"
+	153	"eve_72_x"
+	154	"eve_73_a"
+	155	"eve_73_b"
+	156	"eve_74_x"
+	157	70
+	158	"math"
+	159	"ceil"
+	160	9
+	161	"systemSave"
+	162	"cgFlag"
+	163	true
+	164	"main"
+locals (0) for 0x57e4c010:
+upvalues (0) for 0x57e4c010:
+
+function <?:236,243> (39 instructions, 156 bytes at 0x57e4e620)
+4 params, 15 slots, 1 upvalue, 0 locals, 11 constants, 0 functions
+	1	[-]	LOADK    	4 -1	; 1
+	2	[-]	GETGLOBAL	5 -2	; string
+	3	[-]	GETTABLE 	5 5 -3	; "len"
+	4	[-]	MOVE     	6 3
+	5	[-]	CALL     	5 2 2
+	6	[-]	LOADK    	6 -1	; 1
+	7	[-]	FORPREP  	4 30	; to 38
+	8	[-]	GETGLOBAL	8 -2	; string
+	9	[-]	GETTABLE 	8 8 -4	; "sub"
+	10	[-]	MOVE     	9 3
+	11	[-]	MOVE     	10 7
+	12	[-]	MOVE     	11 7
+	13	[-]	CALL     	8 4 2
+	14	[-]	GETGLOBAL	9 -5	; layerCopy
+	15	[-]	ADD      	10 0 7
+	16	[-]	SUB      	10 10 -1	; - 1
+	17	[-]	GETUPVAL 	11 0	; -
+	18	[-]	GETTABLE 	11 11 -6	; "layerName"
+	19	[-]	GETTABLE 	11 11 -7	; "graphic_03_a"
+	20	[-]	CALL     	9 3 1
+	21	[-]	GETGLOBAL	9 -8	; layerPosition
+	22	[-]	ADD      	10 0 7
+	23	[-]	SUB      	10 10 -1	; - 1
+	24	[-]	SUB      	11 7 -1	; - 1
+	25	[-]	MUL      	11 -9 11	; 7 -
+	26	[-]	ADD      	11 1 11
+	27	[-]	MOVE     	12 2
+	28	[-]	CALL     	9 4 1
+	29	[-]	GETGLOBAL	9 -10	; layerClip
+	30	[-]	ADD      	10 0 7
+	31	[-]	SUB      	10 10 -1	; - 1
+	32	[-]	LOADK    	11 -11	; 0
+	33	[-]	MUL      	12 8 -9	; - 7
+	34	[-]	LOADK    	13 -9	; 7
+	35	[-]	ADD      	14 8 -1	; - 1
+	36	[-]	MUL      	14 14 -9	; - 7
+	37	[-]	CALL     	9 6 1
+	38	[-]	FORLOOP  	4 -31	; to 8
+	39	[-]	RETURN   	0 1
+constants (11) for 0x57e4e620:
+	1	1
+	2	"string"
+	3	"len"
+	4	"sub"
+	5	"layerCopy"
+	6	"layerName"
+	7	"graphic_03_a"
+	8	"layerPosition"
+	9	7
+	10	"layerClip"
+	11	0
+locals (0) for 0x57e4e620:
+upvalues (0) for 0x57e4e620:
+
+function <?:245,247> (10 instructions, 40 bytes at 0x57e4e7e0)
+3 params, 9 slots, 0 upvalues, 0 locals, 4 constants, 0 functions
+	1	[-]	GETGLOBAL	3 -1	; layerClip
+	2	[-]	MOVE     	4 0
+	3	[-]	MUL      	5 1 -2	; - 120
+	4	[-]	MUL      	6 2 -3	; - 68
+	5	[-]	ADD      	7 1 -4	; - 1
+	6	[-]	MUL      	7 7 -2	; - 120
+	7	[-]	ADD      	8 2 -4	; - 1
+	8	[-]	MUL      	8 8 -3	; - 68
+	9	[-]	CALL     	3 6 1
+	10	[-]	RETURN   	0 1
+constants (4) for 0x57e4e7e0:
+	1	"layerClip"
+	2	120
+	3	68
+	4	1
+locals (0) for 0x57e4e7e0:
+upvalues (0) for 0x57e4e7e0:
+
+function <?:249,284> (207 instructions, 828 bytes at 0x57e4e8a0)
+0 params, 11 slots, 6 upvalues, 0 locals, 54 constants, 0 functions
+	1	[-]	GETGLOBAL	0 -1	; layerLoad
+	2	[-]	GETUPVAL 	1 0	; -
+	3	[-]	GETTABLE 	1 1 -2	; "layerNumber"
+	4	[-]	GETTABLE 	1 1 -3	; "bg"
+	5	[-]	GETGLOBAL	2 -4	; cGetFileName
+	6	[-]	LOADK    	3 -3	; "bg"
+	7	[-]	LOADK    	4 -5	; "bg_1_a_0"
+	8	[-]	CALL     	2 3 0
+	9	[-]	CALL     	0 0 1
+	10	[-]	GETGLOBAL	0 -6	; layerCopy
+	11	[-]	GETUPVAL 	1 0	; -
+	12	[-]	GETTABLE 	1 1 -2	; "layerNumber"
+	13	[-]	GETTABLE 	1 1 -3	; "bg"
+	14	[-]	ADD      	1 1 -7	; - 1
+	15	[-]	GETUPVAL 	2 0	; -
+	16	[-]	GETTABLE 	2 2 -8	; "layerName"
+	17	[-]	GETTABLE 	2 2 -9	; "graphic_01_a"
+	18	[-]	CALL     	0 3 1
+	19	[-]	LOADK    	0 -10	; 0
+	20	[-]	LOADK    	1 -10	; 0
+	21	[-]	LOADK    	2 -7	; 1
+	22	[-]	LOADK    	3 -11	; 9
+	23	[-]	LOADK    	4 -7	; 1
+	24	[-]	FORPREP  	2 86	; to 111
+	25	[-]	GETGLOBAL	6 -6	; layerCopy
+	26	[-]	GETUPVAL 	7 0	; -
+	27	[-]	GETTABLE 	7 7 -2	; "layerNumber"
+	28	[-]	GETTABLE 	7 7 -12	; "mask"
+	29	[-]	ADD      	7 7 5
+	30	[-]	GETUPVAL 	8 0	; -
+	31	[-]	GETTABLE 	8 8 -8	; "layerName"
+	32	[-]	GETTABLE 	8 8 -13	; "graphic_02_a"
+	33	[-]	CALL     	6 3 1
+	34	[-]	GETGLOBAL	6 -14	; layerPosition
+	35	[-]	GETUPVAL 	7 0	; -
+	36	[-]	GETTABLE 	7 7 -2	; "layerNumber"
+	37	[-]	GETTABLE 	7 7 -12	; "mask"
+	38	[-]	ADD      	7 7 5
+	39	[-]	MUL      	8 0 -15	; - 130
+	40	[-]	ADD      	8 -16 8	; 30 -
+	41	[-]	MUL      	9 1 -17	; - 73
+	42	[-]	ADD      	9 -18 9	; 50 -
+	43	[-]	CALL     	6 4 1
+	44	[-]	GETGLOBAL	6 -19	; systemSave
+	45	[-]	GETTABLE 	6 6 -20	; "cgFlag"
+	46	[-]	GETUPVAL 	7 0	; -
+	47	[-]	GETTABLE 	7 7 -21	; "cgNumber"
+	48	[-]	GETUPVAL 	8 1	; -
+	49	[-]	GETTABLE 	7 7 8
+	50	[-]	GETTABLE 	7 7 5
+	51	[-]	GETTABLE 	7 7 -7	; 1
+	52	[-]	GETTABLE 	6 6 7
+	53	[-]	EQ       	0 6 -22	; - true
+	54	[-]	JMP      	31	; to 86
+	55	[-]	GETGLOBAL	6 -6	; layerCopy
+	56	[-]	GETUPVAL 	7 0	; -
+	57	[-]	GETTABLE 	7 7 -2	; "layerNumber"
+	58	[-]	GETTABLE 	7 7 -23	; "thumbnail"
+	59	[-]	ADD      	7 7 5
+	60	[-]	GETUPVAL 	8 0	; -
+	61	[-]	GETTABLE 	8 8 -8	; "layerName"
+	62	[-]	GETUPVAL 	9 0	; -
+	63	[-]	GETTABLE 	9 9 -24	; "thumbnailName"
+	64	[-]	GETUPVAL 	10 1	; -
+	65	[-]	GETTABLE 	9 9 10
+	66	[-]	GETTABLE 	8 8 9
+	67	[-]	CALL     	6 3 1
+	68	[-]	GETUPVAL 	6 2	; -
+	69	[-]	GETUPVAL 	7 0	; -
+	70	[-]	GETTABLE 	7 7 -2	; "layerNumber"
+	71	[-]	GETTABLE 	7 7 -23	; "thumbnail"
+	72	[-]	ADD      	7 7 5
+	73	[-]	MOVE     	8 0
+	74	[-]	MOVE     	9 1
+	75	[-]	CALL     	6 4 1
+	76	[-]	GETGLOBAL	6 -14	; layerPosition
+	77	[-]	GETUPVAL 	7 0	; -
+	78	[-]	GETTABLE 	7 7 -2	; "layerNumber"
+	79	[-]	GETTABLE 	7 7 -23	; "thumbnail"
+	80	[-]	ADD      	7 7 5
+	81	[-]	MUL      	8 0 -15	; - 130
+	82	[-]	ADD      	8 -16 8	; 30 -
+	83	[-]	MUL      	9 1 -17	; - 73
+	84	[-]	ADD      	9 -18 9	; 50 -
+	85	[-]	CALL     	6 4 1
+	86	[-]	GETUPVAL 	6 0	; -
+	87	[-]	GETTABLE 	6 6 -25	; "cursorX"
+	88	[-]	MUL      	7 0 -15	; - 130
+	89	[-]	ADD      	7 -16 7	; 30 -
+	90	[-]	SETTABLE 	6 5 7
+	91	[-]	GETUPVAL 	6 0	; -
+	92	[-]	GETTABLE 	6 6 -26	; "cursorY"
+	93	[-]	MUL      	7 1 -17	; - 73
+	94	[-]	ADD      	7 -18 7	; 50 -
+	95	[-]	SETTABLE 	6 5 7
+	96	[-]	GETUPVAL 	6 0	; -
+	97	[-]	GETTABLE 	6 6 -27	; "viewX"
+	98	[-]	MUL      	7 0 -15	; - 130
+	99	[-]	SUB      	7 7 -28	; - 150
+	100	[-]	SETTABLE 	6 5 7
+	101	[-]	GETUPVAL 	6 0	; -
+	102	[-]	GETTABLE 	6 6 -29	; "viewY"
+	103	[-]	MUL      	7 1 -17	; - 73
+	104	[-]	SUB      	7 7 -30	; - 52
+	105	[-]	SETTABLE 	6 5 7
+	106	[-]	ADD      	0 0 -7	; - 1
+	107	[-]	LE       	0 -31 0	; 3 -
+	108	[-]	JMP      	2	; to 111
+	109	[-]	LOADK    	0 -10	; 0
+	110	[-]	ADD      	1 1 -7	; - 1
+	111	[-]	FORLOOP  	2 -87	; to 25
+	112	[-]	GETUPVAL 	2 3	; -
+	113	[-]	LOADK    	3 -32	; 25
+	114	[-]	LOADK    	4 -33	; 460
+	115	[-]	LOADK    	5 -34	; 2
+	116	[-]	LOADK    	6 -35	; "01"
+	117	[-]	CALL     	2 5 1
+	118	[-]	GETUPVAL 	2 3	; -
+	119	[-]	LOADK    	3 -36	; 27
+	120	[-]	LOADK    	4 -37	; 387
+	121	[-]	LOADK    	5 -38	; 40
+	122	[-]	GETUPVAL 	6 4	; -
+	123	[-]	CALL     	2 5 1
+	124	[-]	GETUPVAL 	2 3	; -
+	125	[-]	LOADK    	3 -39	; 29
+	126	[-]	LOADK    	4 -40	; 357
+	127	[-]	LOADK    	5 -38	; 40
+	128	[-]	GETUPVAL 	6 5	; -
+	129	[-]	LT       	0 6 -41	; - 10
+	130	[-]	JMP      	5	; to 136
+	131	[-]	LOADK    	6 -42	; "0"
+	132	[-]	GETUPVAL 	7 5	; -
+	133	[-]	CONCAT   	6 6 7
+	134	[-]	TEST     	6 0 1
+	135	[-]	JMP      	1	; to 137
+	136	[-]	GETUPVAL 	6 5	; -
+	137	[-]	CALL     	2 5 1
+	138	[-]	GETUPVAL 	2 5	; -
+	139	[-]	GETUPVAL 	3 4	; -
+	140	[-]	EQ       	0 2 3
+	141	[-]	JMP      	8	; to 150
+	142	[-]	GETGLOBAL	2 -6	; layerCopy
+	143	[-]	GETUPVAL 	3 0	; -
+	144	[-]	GETTABLE 	3 3 -2	; "layerNumber"
+	145	[-]	GETTABLE 	3 3 -43	; "complete"
+	146	[-]	GETUPVAL 	4 0	; -
+	147	[-]	GETTABLE 	4 4 -8	; "layerName"
+	148	[-]	GETTABLE 	4 4 -44	; "graphic_04_a"
+	149	[-]	CALL     	2 3 1
+	150	[-]	GETGLOBAL	2 -14	; layerPosition
+	151	[-]	GETUPVAL 	3 0	; -
+	152	[-]	GETTABLE 	3 3 -2	; "layerNumber"
+	153	[-]	GETTABLE 	3 3 -43	; "complete"
+	154	[-]	LOADK    	4 -45	; 410
+	155	[-]	LOADK    	5 -38	; 40
+	156	[-]	CALL     	2 4 1
+	157	[-]	GETGLOBAL	2 -6	; layerCopy
+	158	[-]	GETUPVAL 	3 0	; -
+	159	[-]	GETTABLE 	3 3 -2	; "layerNumber"
+	160	[-]	GETTABLE 	3 3 -46	; "key"
+	161	[-]	GETUPVAL 	4 0	; -
+	162	[-]	GETTABLE 	4 4 -8	; "layerName"
+	163	[-]	GETTABLE 	4 4 -47	; "graphic_05_a"
+	164	[-]	CALL     	2 3 1
+	165	[-]	GETGLOBAL	2 -48	; layerClip
+	166	[-]	GETUPVAL 	3 0	; -
+	167	[-]	GETTABLE 	3 3 -2	; "layerNumber"
+	168	[-]	GETTABLE 	3 3 -46	; "key"
+	169	[-]	LOADK    	4 -10	; 0
+	170	[-]	LOADK    	5 -10	; 0
+	171	[-]	LOADK    	6 -49	; 12
+	172	[-]	LOADK    	7 -50	; 18
+	173	[-]	CALL     	2 6 1
+	174	[-]	GETGLOBAL	2 -14	; layerPosition
+	175	[-]	GETUPVAL 	3 0	; -
+	176	[-]	GETTABLE 	3 3 -2	; "layerNumber"
+	177	[-]	GETTABLE 	3 3 -46	; "key"
+	178	[-]	LOADK    	4 -51	; 463
+	179	[-]	LOADK    	5 -15	; 130
+	180	[-]	CALL     	2 4 1
+	181	[-]	GETGLOBAL	2 -52	; layerVisible
+	182	[-]	GETUPVAL 	3 0	; -
+	183	[-]	GETTABLE 	3 3 -2	; "layerNumber"
+	184	[-]	GETTABLE 	3 3 -12	; "mask"
+	185	[-]	ADD      	3 3 -7	; - 1
+	186	[-]	LOADBOOL 	4 0 0
+	187	[-]	CALL     	2 3 1
+	188	[-]	GETGLOBAL	2 -6	; layerCopy
+	189	[-]	GETUPVAL 	3 0	; -
+	190	[-]	GETTABLE 	3 3 -2	; "layerNumber"
+	191	[-]	GETTABLE 	3 3 -53	; "cursor"
+	192	[-]	GETUPVAL 	4 0	; -
+	193	[-]	GETTABLE 	4 4 -8	; "layerName"
+	194	[-]	GETTABLE 	4 4 -54	; "graphic_07_a"
+	195	[-]	CALL     	2 3 1
+	196	[-]	GETGLOBAL	2 -14	; layerPosition
+	197	[-]	GETUPVAL 	3 0	; -
+	198	[-]	GETTABLE 	3 3 -2	; "layerNumber"
+	199	[-]	GETTABLE 	3 3 -53	; "cursor"
+	200	[-]	GETUPVAL 	4 0	; -
+	201	[-]	GETTABLE 	4 4 -25	; "cursorX"
+	202	[-]	GETTABLE 	4 4 -7	; 1
+	203	[-]	GETUPVAL 	5 0	; -
+	204	[-]	GETTABLE 	5 5 -26	; "cursorY"
+	205	[-]	GETTABLE 	5 5 -7	; 1
+	206	[-]	CALL     	2 4 1
+	207	[-]	RETURN   	0 1
+constants (54) for 0x57e4e8a0:
+	1	"layerLoad"
+	2	"layerNumber"
+	3	"bg"
+	4	"cGetFileName"
+	5	"bg_1_a_0"
+	6	"layerCopy"
+	7	1
+	8	"layerName"
+	9	"graphic_01_a"
+	10	0
+	11	9
+	12	"mask"
+	13	"graphic_02_a"
+	14	"layerPosition"
+	15	130
+	16	30
+	17	73
+	18	50
+	19	"systemSave"
+	20	"cgFlag"
+	21	"cgNumber"
+	22	true
+	23	"thumbnail"
+	24	"thumbnailName"
+	25	"cursorX"
+	26	"cursorY"
+	27	"viewX"
+	28	150
+	29	"viewY"
+	30	52
+	31	3
+	32	25
+	33	460
+	34	2
+	35	"01"
+	36	27
+	37	387
+	38	40
+	39	29
+	40	357
+	41	10
+	42	"0"
+	43	"complete"
+	44	"graphic_04_a"
+	45	410
+	46	"key"
+	47	"graphic_05_a"
+	48	"layerClip"
+	49	12
+	50	18
+	51	463
+	52	"layerVisible"
+	53	"cursor"
+	54	"graphic_07_a"
+locals (0) for 0x57e4e8a0:
+upvalues (0) for 0x57e4e8a0:
+
+function <?:286,362> (408 instructions, 1632 bytes at 0x57e4efa0)
+4 params, 17 slots, 5 upvalues, 0 locals, 43 constants, 0 functions
+	1	[-]	LOADK    	4 -1	; 0
+	2	[-]	LOADK    	5 -1	; 0
+	3	[-]	GETGLOBAL	6 -2	; layerLoad
+	4	[-]	GETUPVAL 	7 0	; -
+	5	[-]	GETTABLE 	7 7 -3	; "layerNumber"
+	6	[-]	GETTABLE 	7 7 -4	; "key"
+	7	[-]	LOADK    	8 -5	; ""
+	8	[-]	CALL     	6 3 1
+	9	[-]	GETGLOBAL	6 -2	; layerLoad
+	10	[-]	GETUPVAL 	7 0	; -
+	11	[-]	GETTABLE 	7 7 -3	; "layerNumber"
+	12	[-]	GETTABLE 	7 7 -4	; "key"
+	13	[-]	ADD      	7 7 -6	; - 1
+	14	[-]	LOADK    	8 -5	; ""
+	15	[-]	CALL     	6 3 1
+	16	[-]	GETUPVAL 	6 1	; -
+	17	[-]	MUL      	7 3 -7	; - 9
+	18	[-]	SUB      	6 6 7
+	19	[-]	LT       	0 6 -1	; - 0
+	20	[-]	JMP      	6	; to 27
+	21	[-]	GETUPVAL 	6 1	; -
+	22	[-]	SUB      	7 3 -6	; - 1
+	23	[-]	MUL      	7 7 -7	; - 9
+	24	[-]	SUB      	6 6 7
+	25	[-]	TEST     	6 0 1
+	26	[-]	JMP      	1	; to 28
+	27	[-]	LOADK    	6 -7	; 9
+	28	[-]	EQ       	0 0 -1	; - 0
+	29	[-]	JMP      	3	; to 33
+	30	[-]	LOADK    	7 -7	; 9
+	31	[-]	TEST     	7 0 1
+	32	[-]	JMP      	3	; to 36
+	33	[-]	GETUPVAL 	7 1	; -
+	34	[-]	MUL      	8 3 -7	; - 9
+	35	[-]	SUB      	7 7 8
+	36	[-]	LT       	0 -7 7	; 9 -
+	37	[-]	JMP      	3	; to 41
+	38	[-]	LOADK    	8 -7	; 9
+	39	[-]	TESTSET  	7 8 1
+	40	[-]	JMP      	0	; to 41
+	41	[-]	LOADK    	8 -6	; 1
+	42	[-]	MOVE     	9 7
+	43	[-]	LOADK    	10 -6	; 1
+	44	[-]	FORPREP  	8 52	; to 97
+	45	[-]	EQ       	0 0 -1	; - 0
+	46	[-]	JMP      	23	; to 70
+	47	[-]	GETGLOBAL	12 -8	; layerMovePosition
+	48	[-]	GETUPVAL 	13 0	; -
+	49	[-]	GETTABLE 	13 13 -3	; "layerNumber"
+	50	[-]	GETTABLE 	13 13 -9	; "mask"
+	51	[-]	ADD      	13 13 11
+	52	[-]	MUL      	14 4 -10	; - 130
+	53	[-]	SUB      	14 14 -11	; - 480
+	54	[-]	MUL      	15 5 -12	; - 73
+	55	[-]	ADD      	15 -13 15	; 50 -
+	56	[-]	LOADK    	16 -14	; 20
+	57	[-]	CALL     	12 5 1
+	58	[-]	GETGLOBAL	12 -8	; layerMovePosition
+	59	[-]	GETUPVAL 	13 0	; -
+	60	[-]	GETTABLE 	13 13 -3	; "layerNumber"
+	61	[-]	GETTABLE 	13 13 -15	; "thumbnail"
+	62	[-]	ADD      	13 13 11
+	63	[-]	MUL      	14 4 -10	; - 130
+	64	[-]	SUB      	14 14 -11	; - 480
+	65	[-]	MUL      	15 5 -12	; - 73
+	66	[-]	ADD      	15 -13 15	; 50 -
+	67	[-]	LOADK    	16 -14	; 20
+	68	[-]	CALL     	12 5 1
+	69	[-]	JMP      	22	; to 92
+	70	[-]	GETGLOBAL	12 -8	; layerMovePosition
+	71	[-]	GETUPVAL 	13 0	; -
+	72	[-]	GETTABLE 	13 13 -3	; "layerNumber"
+	73	[-]	GETTABLE 	13 13 -9	; "mask"
+	74	[-]	ADD      	13 13 11
+	75	[-]	MUL      	14 4 -10	; - 130
+	76	[-]	ADD      	14 14 -11	; - 480
+	77	[-]	MUL      	15 5 -12	; - 73
+	78	[-]	ADD      	15 -13 15	; 50 -
+	79	[-]	LOADK    	16 -14	; 20
+	80	[-]	CALL     	12 5 1
+	81	[-]	GETGLOBAL	12 -8	; layerMovePosition
+	82	[-]	GETUPVAL 	13 0	; -
+	83	[-]	GETTABLE 	13 13 -3	; "layerNumber"
+	84	[-]	GETTABLE 	13 13 -15	; "thumbnail"
+	85	[-]	ADD      	13 13 11
+	86	[-]	MUL      	14 4 -10	; - 130
+	87	[-]	ADD      	14 14 -11	; - 480
+	88	[-]	MUL      	15 5 -12	; - 73
+	89	[-]	ADD      	15 -13 15	; 50 -
+	90	[-]	LOADK    	16 -14	; 20
+	91	[-]	CALL     	12 5 1
+	92	[-]	ADD      	4 4 -6	; - 1
+	93	[-]	LE       	0 -16 4	; 3 -
+	94	[-]	JMP      	2	; to 97
+	95	[-]	LOADK    	4 -1	; 0
+	96	[-]	ADD      	5 5 -6	; - 1
+	97	[-]	FORLOOP  	8 -53	; to 45
+	98	[-]	EQ       	0 0 -1	; - 0
+	99	[-]	JMP      	14	; to 114
+	100	[-]	GETGLOBAL	8 -8	; layerMovePosition
+	101	[-]	GETUPVAL 	9 0	; -
+	102	[-]	GETTABLE 	9 9 -3	; "layerNumber"
+	103	[-]	GETTABLE 	9 9 -17	; "cursor"
+	104	[-]	GETUPVAL 	10 0	; -
+	105	[-]	GETTABLE 	10 10 -18	; "cursorX"
+	106	[-]	GETTABLE 	10 10 1
+	107	[-]	SUB      	10 10 -11	; - 480
+	108	[-]	GETUPVAL 	11 0	; -
+	109	[-]	GETTABLE 	11 11 -19	; "cursorY"
+	110	[-]	GETTABLE 	11 11 1
+	111	[-]	LOADK    	12 -14	; 20
+	112	[-]	CALL     	8 5 1
+	113	[-]	JMP      	13	; to 127
+	114	[-]	GETGLOBAL	8 -8	; layerMovePosition
+	115	[-]	GETUPVAL 	9 0	; -
+	116	[-]	GETTABLE 	9 9 -3	; "layerNumber"
+	117	[-]	GETTABLE 	9 9 -17	; "cursor"
+	118	[-]	GETUPVAL 	10 0	; -
+	119	[-]	GETTABLE 	10 10 -18	; "cursorX"
+	120	[-]	GETTABLE 	10 10 1
+	121	[-]	ADD      	10 10 -11	; - 480
+	122	[-]	GETUPVAL 	11 0	; -
+	123	[-]	GETTABLE 	11 11 -19	; "cursorY"
+	124	[-]	GETTABLE 	11 11 1
+	125	[-]	LOADK    	12 -14	; 20
+	126	[-]	CALL     	8 5 1
+	127	[-]	GETGLOBAL	8 -20	; wait
+	128	[-]	LOADK    	9 -14	; 20
+	129	[-]	CALL     	8 2 1
+	130	[-]	GETUPVAL 	8 2	; -
+	131	[-]	LOADK    	9 -21	; 25
+	132	[-]	LOADK    	10 -22	; 460
+	133	[-]	LOADK    	11 -23	; 2
+	134	[-]	LT       	0 3 -24	; - 10
+	135	[-]	JMP      	5	; to 141
+	136	[-]	LOADK    	12 -25	; "0"
+	137	[-]	MOVE     	13 3
+	138	[-]	CONCAT   	12 12 13
+	139	[-]	TEST     	12 0 1
+	140	[-]	JMP      	1	; to 142
+	141	[-]	MOVE     	12 3
+	142	[-]	CALL     	8 5 1
+	143	[-]	LOADK    	8 -6	; 1
+	144	[-]	MOVE     	9 7
+	145	[-]	LOADK    	10 -6	; 1
+	146	[-]	FORPREP  	8 14	; to 161
+	147	[-]	GETGLOBAL	12 -2	; layerLoad
+	148	[-]	GETUPVAL 	13 0	; -
+	149	[-]	GETTABLE 	13 13 -3	; "layerNumber"
+	150	[-]	GETTABLE 	13 13 -9	; "mask"
+	151	[-]	ADD      	13 13 11
+	152	[-]	LOADK    	14 -5	; ""
+	153	[-]	CALL     	12 3 1
+	154	[-]	GETGLOBAL	12 -2	; layerLoad
+	155	[-]	GETUPVAL 	13 0	; -
+	156	[-]	GETTABLE 	13 13 -3	; "layerNumber"
+	157	[-]	GETTABLE 	13 13 -15	; "thumbnail"
+	158	[-]	ADD      	13 13 11
+	159	[-]	LOADK    	14 -5	; ""
+	160	[-]	CALL     	12 3 1
+	161	[-]	FORLOOP  	8 -15	; to 147
+	162	[-]	LOADK    	4 -1	; 0
+	163	[-]	LOADK    	5 -1	; 0
+	164	[-]	LOADK    	8 -6	; 1
+	165	[-]	MOVE     	9 6
+	166	[-]	LOADK    	10 -6	; 1
+	167	[-]	FORPREP  	8 113	; to 281
+	168	[-]	GETGLOBAL	12 -26	; layerCopy
+	169	[-]	GETUPVAL 	13 0	; -
+	170	[-]	GETTABLE 	13 13 -3	; "layerNumber"
+	171	[-]	GETTABLE 	13 13 -9	; "mask"
+	172	[-]	ADD      	13 13 11
+	173	[-]	GETUPVAL 	14 0	; -
+	174	[-]	GETTABLE 	14 14 -27	; "layerName"
+	175	[-]	GETTABLE 	14 14 -28	; "graphic_02_a"
+	176	[-]	CALL     	12 3 1
+	177	[-]	GETGLOBAL	12 -29	; systemSave
+	178	[-]	GETTABLE 	12 12 -30	; "cgFlag"
+	179	[-]	GETUPVAL 	13 0	; -
+	180	[-]	GETTABLE 	13 13 -31	; "cgNumber"
+	181	[-]	GETTABLE 	13 13 3
+	182	[-]	GETTABLE 	13 13 11
+	183	[-]	GETTABLE 	13 13 -6	; 1
+	184	[-]	GETTABLE 	12 12 13
+	185	[-]	EQ       	0 12 -32	; - true
+	186	[-]	JMP      	20	; to 207
+	187	[-]	GETGLOBAL	12 -26	; layerCopy
+	188	[-]	GETUPVAL 	13 0	; -
+	189	[-]	GETTABLE 	13 13 -3	; "layerNumber"
+	190	[-]	GETTABLE 	13 13 -15	; "thumbnail"
+	191	[-]	ADD      	13 13 11
+	192	[-]	GETUPVAL 	14 0	; -
+	193	[-]	GETTABLE 	14 14 -27	; "layerName"
+	194	[-]	GETUPVAL 	15 0	; -
+	195	[-]	GETTABLE 	15 15 -33	; "thumbnailName"
+	196	[-]	GETTABLE 	15 15 3
+	197	[-]	GETTABLE 	14 14 15
+	198	[-]	CALL     	12 3 1
+	199	[-]	GETUPVAL 	12 3	; -
+	200	[-]	GETUPVAL 	13 0	; -
+	201	[-]	GETTABLE 	13 13 -3	; "layerNumber"
+	202	[-]	GETTABLE 	13 13 -15	; "thumbnail"
+	203	[-]	ADD      	13 13 11
+	204	[-]	MOVE     	14 4
+	205	[-]	MOVE     	15 5
+	206	[-]	CALL     	12 4 1
+	207	[-]	EQ       	0 0 -1	; - 0
+	208	[-]	JMP      	23	; to 232
+	209	[-]	GETGLOBAL	12 -34	; layerPosition
+	210	[-]	GETUPVAL 	13 0	; -
+	211	[-]	GETTABLE 	13 13 -3	; "layerNumber"
+	212	[-]	GETTABLE 	13 13 -9	; "mask"
+	213	[-]	ADD      	13 13 11
+	214	[-]	MUL      	14 4 -10	; - 130
+	215	[-]	ADD      	14 -35 14	; 30 -
+	216	[-]	ADD      	14 14 -11	; - 480
+	217	[-]	MUL      	15 5 -12	; - 73
+	218	[-]	ADD      	15 -13 15	; 50 -
+	219	[-]	CALL     	12 4 1
+	220	[-]	GETGLOBAL	12 -34	; layerPosition
+	221	[-]	GETUPVAL 	13 0	; -
+	222	[-]	GETTABLE 	13 13 -3	; "layerNumber"
+	223	[-]	GETTABLE 	13 13 -15	; "thumbnail"
+	224	[-]	ADD      	13 13 11
+	225	[-]	MUL      	14 4 -10	; - 130
+	226	[-]	ADD      	14 -35 14	; 30 -
+	227	[-]	ADD      	14 14 -11	; - 480
+	228	[-]	MUL      	15 5 -12	; - 73
+	229	[-]	ADD      	15 -13 15	; 50 -
+	230	[-]	CALL     	12 4 1
+	231	[-]	JMP      	22	; to 254
+	232	[-]	GETGLOBAL	12 -34	; layerPosition
+	233	[-]	GETUPVAL 	13 0	; -
+	234	[-]	GETTABLE 	13 13 -3	; "layerNumber"
+	235	[-]	GETTABLE 	13 13 -9	; "mask"
+	236	[-]	ADD      	13 13 11
+	237	[-]	MUL      	14 4 -10	; - 130
+	238	[-]	ADD      	14 -35 14	; 30 -
+	239	[-]	SUB      	14 14 -11	; - 480
+	240	[-]	MUL      	15 5 -12	; - 73
+	241	[-]	ADD      	15 -13 15	; 50 -
+	242	[-]	CALL     	12 4 1
+	243	[-]	GETGLOBAL	12 -34	; layerPosition
+	244	[-]	GETUPVAL 	13 0	; -
+	245	[-]	GETTABLE 	13 13 -3	; "layerNumber"
+	246	[-]	GETTABLE 	13 13 -15	; "thumbnail"
+	247	[-]	ADD      	13 13 11
+	248	[-]	MUL      	14 4 -10	; - 130
+	249	[-]	ADD      	14 -35 14	; 30 -
+	250	[-]	SUB      	14 14 -11	; - 480
+	251	[-]	MUL      	15 5 -12	; - 73
+	252	[-]	ADD      	15 -13 15	; 50 -
+	253	[-]	CALL     	12 4 1
+	254	[-]	GETGLOBAL	12 -8	; layerMovePosition
+	255	[-]	GETUPVAL 	13 0	; -
+	256	[-]	GETTABLE 	13 13 -3	; "layerNumber"
+	257	[-]	GETTABLE 	13 13 -9	; "mask"
+	258	[-]	ADD      	13 13 11
+	259	[-]	MUL      	14 4 -10	; - 130
+	260	[-]	ADD      	14 -35 14	; 30 -
+	261	[-]	MUL      	15 5 -12	; - 73
+	262	[-]	ADD      	15 -13 15	; 50 -
+	263	[-]	LOADK    	16 -14	; 20
+	264	[-]	CALL     	12 5 1
+	265	[-]	GETGLOBAL	12 -8	; layerMovePosition
+	266	[-]	GETUPVAL 	13 0	; -
+	267	[-]	GETTABLE 	13 13 -3	; "layerNumber"
+	268	[-]	GETTABLE 	13 13 -15	; "thumbnail"
+	269	[-]	ADD      	13 13 11
+	270	[-]	MUL      	14 4 -10	; - 130
+	271	[-]	ADD      	14 -35 14	; 30 -
+	272	[-]	MUL      	15 5 -12	; - 73
+	273	[-]	ADD      	15 -13 15	; 50 -
+	274	[-]	LOADK    	16 -14	; 20
+	275	[-]	CALL     	12 5 1
+	276	[-]	ADD      	4 4 -6	; - 1
+	277	[-]	LE       	0 -16 4	; 3 -
+	278	[-]	JMP      	2	; to 281
+	279	[-]	LOADK    	4 -1	; 0
+	280	[-]	ADD      	5 5 -6	; - 1
+	281	[-]	FORLOOP  	8 -114	; to 168
+	282	[-]	EQ       	0 0 -1	; - 0
+	283	[-]	JMP      	26	; to 310
+	284	[-]	GETGLOBAL	8 -34	; layerPosition
+	285	[-]	GETUPVAL 	9 0	; -
+	286	[-]	GETTABLE 	9 9 -3	; "layerNumber"
+	287	[-]	GETTABLE 	9 9 -17	; "cursor"
+	288	[-]	GETUPVAL 	10 0	; -
+	289	[-]	GETTABLE 	10 10 -18	; "cursorX"
+	290	[-]	GETTABLE 	10 10 2
+	291	[-]	ADD      	10 10 -11	; - 480
+	292	[-]	GETUPVAL 	11 0	; -
+	293	[-]	GETTABLE 	11 11 -19	; "cursorY"
+	294	[-]	GETTABLE 	11 11 2
+	295	[-]	LOADK    	12 -14	; 20
+	296	[-]	CALL     	8 5 1
+	297	[-]	GETGLOBAL	8 -8	; layerMovePosition
+	298	[-]	GETUPVAL 	9 0	; -
+	299	[-]	GETTABLE 	9 9 -3	; "layerNumber"
+	300	[-]	GETTABLE 	9 9 -17	; "cursor"
+	301	[-]	GETUPVAL 	10 0	; -
+	302	[-]	GETTABLE 	10 10 -18	; "cursorX"
+	303	[-]	GETTABLE 	10 10 2
+	304	[-]	GETUPVAL 	11 0	; -
+	305	[-]	GETTABLE 	11 11 -19	; "cursorY"
+	306	[-]	GETTABLE 	11 11 2
+	307	[-]	LOADK    	12 -14	; 20
+	308	[-]	CALL     	8 5 1
+	309	[-]	JMP      	25	; to 335
+	310	[-]	GETGLOBAL	8 -34	; layerPosition
+	311	[-]	GETUPVAL 	9 0	; -
+	312	[-]	GETTABLE 	9 9 -3	; "layerNumber"
+	313	[-]	GETTABLE 	9 9 -17	; "cursor"
+	314	[-]	GETUPVAL 	10 0	; -
+	315	[-]	GETTABLE 	10 10 -18	; "cursorX"
+	316	[-]	GETTABLE 	10 10 2
+	317	[-]	SUB      	10 10 -11	; - 480
+	318	[-]	GETUPVAL 	11 0	; -
+	319	[-]	GETTABLE 	11 11 -19	; "cursorY"
+	320	[-]	GETTABLE 	11 11 2
+	321	[-]	LOADK    	12 -14	; 20
+	322	[-]	CALL     	8 5 1
+	323	[-]	GETGLOBAL	8 -8	; layerMovePosition
+	324	[-]	GETUPVAL 	9 0	; -
+	325	[-]	GETTABLE 	9 9 -3	; "layerNumber"
+	326	[-]	GETTABLE 	9 9 -17	; "cursor"
+	327	[-]	GETUPVAL 	10 0	; -
+	328	[-]	GETTABLE 	10 10 -18	; "cursorX"
+	329	[-]	GETTABLE 	10 10 2
+	330	[-]	GETUPVAL 	11 0	; -
+	331	[-]	GETTABLE 	11 11 -19	; "cursorY"
+	332	[-]	GETTABLE 	11 11 2
+	333	[-]	LOADK    	12 -14	; 20
+	334	[-]	CALL     	8 5 1
+	335	[-]	GETGLOBAL	8 -36	; layerVisible
+	336	[-]	GETUPVAL 	9 0	; -
+	337	[-]	GETTABLE 	9 9 -3	; "layerNumber"
+	338	[-]	GETTABLE 	9 9 -9	; "mask"
+	339	[-]	ADD      	9 9 1
+	340	[-]	LOADBOOL 	10 1 0
+	341	[-]	CALL     	8 3 1
+	342	[-]	GETGLOBAL	8 -36	; layerVisible
+	343	[-]	GETUPVAL 	9 0	; -
+	344	[-]	GETTABLE 	9 9 -3	; "layerNumber"
+	345	[-]	GETTABLE 	9 9 -9	; "mask"
+	346	[-]	ADD      	9 9 2
+	347	[-]	LOADBOOL 	10 0 0
+	348	[-]	CALL     	8 3 1
+	349	[-]	GETGLOBAL	8 -20	; wait
+	350	[-]	LOADK    	9 -14	; 20
+	351	[-]	CALL     	8 2 1
+	352	[-]	EQ       	1 3 -6	; - 1
+	353	[-]	JMP      	24	; to 378
+	354	[-]	GETGLOBAL	8 -26	; layerCopy
+	355	[-]	GETUPVAL 	9 0	; -
+	356	[-]	GETTABLE 	9 9 -3	; "layerNumber"
+	357	[-]	GETTABLE 	9 9 -4	; "key"
+	358	[-]	GETUPVAL 	10 0	; -
+	359	[-]	GETTABLE 	10 10 -27	; "layerName"
+	360	[-]	GETTABLE 	10 10 -37	; "graphic_06_a"
+	361	[-]	CALL     	8 3 1
+	362	[-]	GETGLOBAL	8 -38	; layerClip
+	363	[-]	GETUPVAL 	9 0	; -
+	364	[-]	GETTABLE 	9 9 -3	; "layerNumber"
+	365	[-]	GETTABLE 	9 9 -4	; "key"
+	366	[-]	LOADK    	10 -1	; 0
+	367	[-]	LOADK    	11 -1	; 0
+	368	[-]	LOADK    	12 -39	; 12
+	369	[-]	LOADK    	13 -40	; 18
+	370	[-]	CALL     	8 6 1
+	371	[-]	GETGLOBAL	8 -34	; layerPosition
+	372	[-]	GETUPVAL 	9 0	; -
+	373	[-]	GETTABLE 	9 9 -3	; "layerNumber"
+	374	[-]	GETTABLE 	9 9 -4	; "key"
+	375	[-]	LOADK    	10 -41	; 5
+	376	[-]	LOADK    	11 -10	; 130
+	377	[-]	CALL     	8 4 1
+	378	[-]	GETUPVAL 	8 4	; -
+	379	[-]	LT       	0 3 8
+	380	[-]	JMP      	27	; to 408
+	381	[-]	GETGLOBAL	8 -26	; layerCopy
+	382	[-]	GETUPVAL 	9 0	; -
+	383	[-]	GETTABLE 	9 9 -3	; "layerNumber"
+	384	[-]	GETTABLE 	9 9 -4	; "key"
+	385	[-]	ADD      	9 9 -6	; - 1
+	386	[-]	GETUPVAL 	10 0	; -
+	387	[-]	GETTABLE 	10 10 -27	; "layerName"
+	388	[-]	GETTABLE 	10 10 -42	; "graphic_05_a"
+	389	[-]	CALL     	8 3 1
+	390	[-]	GETGLOBAL	8 -38	; layerClip
+	391	[-]	GETUPVAL 	9 0	; -
+	392	[-]	GETTABLE 	9 9 -3	; "layerNumber"
+	393	[-]	GETTABLE 	9 9 -4	; "key"
+	394	[-]	ADD      	9 9 -6	; - 1
+	395	[-]	LOADK    	10 -1	; 0
+	396	[-]	LOADK    	11 -1	; 0
+	397	[-]	LOADK    	12 -39	; 12
+	398	[-]	LOADK    	13 -40	; 18
+	399	[-]	CALL     	8 6 1
+	400	[-]	GETGLOBAL	8 -34	; layerPosition
+	401	[-]	GETUPVAL 	9 0	; -
+	402	[-]	GETTABLE 	9 9 -3	; "layerNumber"
+	403	[-]	GETTABLE 	9 9 -4	; "key"
+	404	[-]	ADD      	9 9 -6	; - 1
+	405	[-]	LOADK    	10 -43	; 463
+	406	[-]	LOADK    	11 -10	; 130
+	407	[-]	CALL     	8 4 1
+	408	[-]	RETURN   	0 1
+constants (43) for 0x57e4efa0:
+	1	0
+	2	"layerLoad"
+	3	"layerNumber"
+	4	"key"
+	5	""
+	6	1
+	7	9
+	8	"layerMovePosition"
+	9	"mask"
+	10	130
+	11	480
+	12	73
+	13	50
+	14	20
+	15	"thumbnail"
+	16	3
+	17	"cursor"
+	18	"cursorX"
+	19	"cursorY"
+	20	"wait"
+	21	25
+	22	460
+	23	2
+	24	10
+	25	"0"
+	26	"layerCopy"
+	27	"layerName"
+	28	"graphic_02_a"
+	29	"systemSave"
+	30	"cgFlag"
+	31	"cgNumber"
+	32	true
+	33	"thumbnailName"
+	34	"layerPosition"
+	35	30
+	36	"layerVisible"
+	37	"graphic_06_a"
+	38	"layerClip"
+	39	12
+	40	18
+	41	5
+	42	"graphic_05_a"
+	43	463
+locals (0) for 0x57e4efa0:
+upvalues (0) for 0x57e4efa0:
+
+function <?:366,550> (769 instructions, 3076 bytes at 0x57e4f6b0)
+0 params, 11 slots, 11 upvalues, 0 locals, 73 constants, 0 functions
+	1	[-]	GETGLOBAL	0 -1	; advPart
+	2	[-]	LOADBOOL 	1 0 0
+	3	[-]	CALL     	0 2 1
+	4	[-]	GETGLOBAL	0 -2	; logEnable
+	5	[-]	LOADBOOL 	1 0 0
+	6	[-]	CALL     	0 2 1
+	7	[-]	GETGLOBAL	0 -3	; systemConfig
+	8	[-]	GETTABLE 	0 0 -4	; "unsetConfigButton"
+	9	[-]	CALL     	0 1 1
+	10	[-]	GETGLOBAL	0 -5	; startLoading
+	11	[-]	CALL     	0 1 1
+	12	[-]	GETGLOBAL	0 -6	; pairs
+	13	[-]	GETUPVAL 	1 0	; -
+	14	[-]	GETTABLE 	1 1 -7	; "layerName"
+	15	[-]	CALL     	0 2 4
+	16	[-]	JMP      	7	; to 24
+	17	[-]	GETGLOBAL	5 -8	; comLayerLoadFalse
+	18	[-]	MOVE     	6 4
+	19	[-]	LOADK    	7 -9	; "graphic/"
+	20	[-]	MOVE     	8 3
+	21	[-]	LOADK    	9 -10	; ".gim"
+	22	[-]	CONCAT   	7 7 9
+	23	[-]	CALL     	5 3 1
+	24	[-]	TFORLOOP 	0 2
+	25	[-]	JMP      	-9	; to 17
+	26	[-]	GETGLOBAL	0 -11	; waitLoading
+	27	[-]	CALL     	0 1 1
+	28	[-]	GETGLOBAL	0 -12	; endLoading
+	29	[-]	CALL     	0 1 1
+	30	[-]	GETUPVAL 	0 1	; -
+	31	[-]	CALL     	0 1 1
+	32	[-]	GETUPVAL 	0 2	; -
+	33	[-]	EQ       	0 0 -13	; - false
+	34	[-]	JMP      	500	; to 535
+	35	[-]	GETGLOBAL	0 -14	; pressButton
+	36	[-]	LOADK    	1 -15	; "UP"
+	37	[-]	CALL     	0 2 2
+	38	[-]	EQ       	0 0 -16	; - true
+	39	[-]	JMP      	17	; to 57
+	40	[-]	GETUPVAL 	0 3	; -
+	41	[-]	EQ       	0 0 -13	; - false
+	42	[-]	JMP      	14	; to 57
+	43	[-]	GETUPVAL 	0 5	; -
+	44	[-]	SETUPVAL 	0 4	; -
+	45	[-]	GETUPVAL 	0 5	; -
+	46	[-]	SUB      	0 0 -17	; - 3
+	47	[-]	LT       	0 0 -18	; - 1
+	48	[-]	JMP      	3	; to 52
+	49	[-]	GETUPVAL 	0 5	; -
+	50	[-]	TEST     	0 0 1
+	51	[-]	JMP      	2	; to 54
+	52	[-]	GETUPVAL 	0 5	; -
+	53	[-]	SUB      	0 0 -17	; - 3
+	54	[-]	SETUPVAL 	0 5	; -
+	55	[-]	LOADBOOL 	0 1 0
+	56	[-]	SETUPVAL 	0 3	; -
+	57	[-]	GETGLOBAL	0 -14	; pressButton
+	58	[-]	LOADK    	1 -19	; "DOWN"
+	59	[-]	CALL     	0 2 2
+	60	[-]	EQ       	0 0 -16	; - true
+	61	[-]	JMP      	39	; to 101
+	62	[-]	GETUPVAL 	0 3	; -
+	63	[-]	EQ       	0 0 -13	; - false
+	64	[-]	JMP      	36	; to 101
+	65	[-]	GETUPVAL 	0 5	; -
+	66	[-]	SETUPVAL 	0 4	; -
+	67	[-]	GETUPVAL 	0 6	; -
+	68	[-]	GETUPVAL 	1 7	; -
+	69	[-]	MUL      	1 1 -20	; - 9
+	70	[-]	SUB      	0 0 1
+	71	[-]	LT       	0 0 -21	; - 0
+	72	[-]	JMP      	16	; to 89
+	73	[-]	GETUPVAL 	0 5	; -
+	74	[-]	ADD      	0 0 -17	; - 3
+	75	[-]	GETUPVAL 	1 6	; -
+	76	[-]	GETUPVAL 	2 7	; -
+	77	[-]	SUB      	2 2 -18	; - 1
+	78	[-]	MUL      	2 2 -20	; - 9
+	79	[-]	SUB      	1 1 2
+	80	[-]	LT       	0 1 0
+	81	[-]	JMP      	3	; to 85
+	82	[-]	GETUPVAL 	0 5	; -
+	83	[-]	TEST     	0 0 1
+	84	[-]	JMP      	2	; to 87
+	85	[-]	GETUPVAL 	0 5	; -
+	86	[-]	ADD      	0 0 -17	; - 3
+	87	[-]	SETUPVAL 	0 5	; -
+	88	[-]	JMP      	10	; to 99
+	89	[-]	GETUPVAL 	0 5	; -
+	90	[-]	ADD      	0 0 -17	; - 3
+	91	[-]	LT       	0 -20 0	; 9 -
+	92	[-]	JMP      	3	; to 96
+	93	[-]	GETUPVAL 	0 5	; -
+	94	[-]	TEST     	0 0 1
+	95	[-]	JMP      	2	; to 98
+	96	[-]	GETUPVAL 	0 5	; -
+	97	[-]	ADD      	0 0 -17	; - 3
+	98	[-]	SETUPVAL 	0 5	; -
+	99	[-]	LOADBOOL 	0 1 0
+	100	[-]	SETUPVAL 	0 3	; -
+	101	[-]	GETGLOBAL	0 -14	; pressButton
+	102	[-]	LOADK    	1 -22	; "RIGHT"
+	103	[-]	CALL     	0 2 2
+	104	[-]	EQ       	0 0 -16	; - true
+	105	[-]	JMP      	107	; to 213
+	106	[-]	GETUPVAL 	0 3	; -
+	107	[-]	EQ       	0 0 -13	; - false
+	108	[-]	JMP      	104	; to 213
+	109	[-]	GETUPVAL 	0 5	; -
+	110	[-]	SETUPVAL 	0 4	; -
+	111	[-]	GETUPVAL 	0 7	; -
+	112	[-]	ADD      	0 0 -18	; - 1
+	113	[-]	GETUPVAL 	1 8	; -
+	114	[-]	LE       	0 0 1
+	115	[-]	JMP      	67	; to 183
+	116	[-]	GETUPVAL 	0 5	; -
+	117	[-]	EQ       	1 0 -17	; - 3
+	118	[-]	JMP      	6	; to 125
+	119	[-]	GETUPVAL 	0 5	; -
+	120	[-]	EQ       	1 0 -23	; - 6
+	121	[-]	JMP      	3	; to 125
+	122	[-]	GETUPVAL 	0 5	; -
+	123	[-]	EQ       	0 0 -20	; - 9
+	124	[-]	JMP      	36	; to 161
+	125	[-]	GETUPVAL 	0 7	; -
+	126	[-]	ADD      	0 0 -18	; - 1
+	127	[-]	SETUPVAL 	0 7	; -
+	128	[-]	GETUPVAL 	0 5	; -
+	129	[-]	SUB      	0 0 -24	; - 2
+	130	[-]	SETUPVAL 	0 5	; -
+	131	[-]	GETUPVAL 	0 6	; -
+	132	[-]	GETUPVAL 	1 7	; -
+	133	[-]	MUL      	1 1 -20	; - 9
+	134	[-]	SUB      	0 0 1
+	135	[-]	LT       	0 0 -21	; - 0
+	136	[-]	JMP      	17	; to 154
+	137	[-]	GETUPVAL 	0 5	; -
+	138	[-]	GETUPVAL 	1 6	; -
+	139	[-]	GETUPVAL 	2 7	; -
+	140	[-]	SUB      	2 2 -18	; - 1
+	141	[-]	MUL      	2 2 -20	; - 9
+	142	[-]	SUB      	1 1 2
+	143	[-]	LT       	0 1 0
+	144	[-]	JMP      	7	; to 152
+	145	[-]	GETUPVAL 	0 6	; -
+	146	[-]	GETUPVAL 	1 7	; -
+	147	[-]	SUB      	1 1 -18	; - 1
+	148	[-]	MUL      	1 1 -20	; - 9
+	149	[-]	SUB      	0 0 1
+	150	[-]	TEST     	0 0 1
+	151	[-]	JMP      	1	; to 153
+	152	[-]	GETUPVAL 	0 5	; -
+	153	[-]	SETUPVAL 	0 5	; -
+	154	[-]	GETUPVAL 	0 9	; -
+	155	[-]	LOADK    	1 -21	; 0
+	156	[-]	GETUPVAL 	2 4	; -
+	157	[-]	GETUPVAL 	3 5	; -
+	158	[-]	GETUPVAL 	4 7	; -
+	159	[-]	CALL     	0 5 1
+	160	[-]	JMP      	52	; to 213
+	161	[-]	GETUPVAL 	0 5	; -
+	162	[-]	ADD      	0 0 -18	; - 1
+	163	[-]	GETUPVAL 	1 6	; -
+	164	[-]	GETUPVAL 	2 7	; -
+	165	[-]	SUB      	2 2 -18	; - 1
+	166	[-]	MUL      	2 2 -20	; - 9
+	167	[-]	SUB      	1 1 2
+	168	[-]	LT       	0 1 0
+	169	[-]	JMP      	3	; to 173
+	170	[-]	GETUPVAL 	0 5	; -
+	171	[-]	TEST     	0 0 1
+	172	[-]	JMP      	2	; to 175
+	173	[-]	GETUPVAL 	0 5	; -
+	174	[-]	ADD      	0 0 -18	; - 1
+	175	[-]	SETUPVAL 	0 5	; -
+	176	[-]	GETUPVAL 	0 5	; -
+	177	[-]	GETUPVAL 	1 4	; -
+	178	[-]	EQ       	0 0 1
+	179	[-]	JMP      	0	; to 180
+	180	[-]	LOADBOOL 	0 1 0
+	181	[-]	SETUPVAL 	0 3	; -
+	182	[-]	JMP      	30	; to 213
+	183	[-]	GETUPVAL 	0 5	; -
+	184	[-]	EQ       	1 0 -17	; - 3
+	185	[-]	JMP      	27	; to 213
+	186	[-]	GETUPVAL 	0 5	; -
+	187	[-]	EQ       	1 0 -23	; - 6
+	188	[-]	JMP      	24	; to 213
+	189	[-]	GETUPVAL 	0 5	; -
+	190	[-]	EQ       	1 0 -20	; - 9
+	191	[-]	JMP      	21	; to 213
+	192	[-]	GETUPVAL 	0 5	; -
+	193	[-]	ADD      	0 0 -18	; - 1
+	194	[-]	GETUPVAL 	1 6	; -
+	195	[-]	GETUPVAL 	2 7	; -
+	196	[-]	SUB      	2 2 -18	; - 1
+	197	[-]	MUL      	2 2 -20	; - 9
+	198	[-]	SUB      	1 1 2
+	199	[-]	LT       	0 1 0
+	200	[-]	JMP      	3	; to 204
+	201	[-]	GETUPVAL 	0 5	; -
+	202	[-]	TEST     	0 0 1
+	203	[-]	JMP      	2	; to 206
+	204	[-]	GETUPVAL 	0 5	; -
+	205	[-]	ADD      	0 0 -18	; - 1
+	206	[-]	SETUPVAL 	0 5	; -
+	207	[-]	GETUPVAL 	0 5	; -
+	208	[-]	GETUPVAL 	1 4	; -
+	209	[-]	EQ       	0 0 1
+	210	[-]	JMP      	0	; to 211
+	211	[-]	LOADBOOL 	0 1 0
+	212	[-]	SETUPVAL 	0 3	; -
+	213	[-]	GETGLOBAL	0 -14	; pressButton
+	214	[-]	LOADK    	1 -25	; "LEFT"
+	215	[-]	CALL     	0 2 2
+	216	[-]	EQ       	0 0 -16	; - true
+	217	[-]	JMP      	59	; to 277
+	218	[-]	GETUPVAL 	0 3	; -
+	219	[-]	EQ       	0 0 -13	; - false
+	220	[-]	JMP      	56	; to 277
+	221	[-]	GETUPVAL 	0 5	; -
+	222	[-]	SETUPVAL 	0 4	; -
+	223	[-]	GETUPVAL 	0 7	; -
+	224	[-]	SUB      	0 0 -18	; - 1
+	225	[-]	LE       	0 -18 0	; 1 -
+	226	[-]	JMP      	32	; to 259
+	227	[-]	GETUPVAL 	0 5	; -
+	228	[-]	EQ       	1 0 -18	; - 1
+	229	[-]	JMP      	6	; to 236
+	230	[-]	GETUPVAL 	0 5	; -
+	231	[-]	EQ       	1 0 -26	; - 4
+	232	[-]	JMP      	3	; to 236
+	233	[-]	GETUPVAL 	0 5	; -
+	234	[-]	EQ       	0 0 -27	; - 7
+	235	[-]	JMP      	13	; to 249
+	236	[-]	GETUPVAL 	0 7	; -
+	237	[-]	SUB      	0 0 -18	; - 1
+	238	[-]	SETUPVAL 	0 7	; -
+	239	[-]	GETUPVAL 	0 5	; -
+	240	[-]	ADD      	0 0 -24	; - 2
+	241	[-]	SETUPVAL 	0 5	; -
+	242	[-]	GETUPVAL 	0 9	; -
+	243	[-]	LOADK    	1 -18	; 1
+	244	[-]	GETUPVAL 	2 4	; -
+	245	[-]	GETUPVAL 	3 5	; -
+	246	[-]	GETUPVAL 	4 7	; -
+	247	[-]	CALL     	0 5 1
+	248	[-]	JMP      	28	; to 277
+	249	[-]	GETUPVAL 	0 5	; -
+	250	[-]	SUB      	0 0 -18	; - 1
+	251	[-]	SETUPVAL 	0 5	; -
+	252	[-]	GETUPVAL 	0 5	; -
+	253	[-]	GETUPVAL 	1 4	; -
+	254	[-]	EQ       	0 0 1
+	255	[-]	JMP      	0	; to 256
+	256	[-]	LOADBOOL 	0 1 0
+	257	[-]	SETUPVAL 	0 3	; -
+	258	[-]	JMP      	18	; to 277
+	259	[-]	GETUPVAL 	0 5	; -
+	260	[-]	EQ       	1 0 -18	; - 1
+	261	[-]	JMP      	15	; to 277
+	262	[-]	GETUPVAL 	0 5	; -
+	263	[-]	EQ       	1 0 -26	; - 4
+	264	[-]	JMP      	12	; to 277
+	265	[-]	GETUPVAL 	0 5	; -
+	266	[-]	EQ       	1 0 -27	; - 7
+	267	[-]	JMP      	9	; to 277
+	268	[-]	GETUPVAL 	0 5	; -
+	269	[-]	SUB      	0 0 -18	; - 1
+	270	[-]	SETUPVAL 	0 5	; -
+	271	[-]	GETUPVAL 	0 5	; -
+	272	[-]	GETUPVAL 	1 4	; -
+	273	[-]	EQ       	0 0 1
+	274	[-]	JMP      	0	; to 275
+	275	[-]	LOADBOOL 	0 1 0
+	276	[-]	SETUPVAL 	0 3	; -
+	277	[-]	GETGLOBAL	0 -14	; pressButton
+	278	[-]	LOADK    	1 -28	; "L"
+	279	[-]	CALL     	0 2 2
+	280	[-]	EQ       	0 0 -16	; - true
+	281	[-]	JMP      	16	; to 298
+	282	[-]	GETUPVAL 	0 3	; -
+	283	[-]	EQ       	0 0 -13	; - false
+	284	[-]	JMP      	13	; to 298
+	285	[-]	GETUPVAL 	0 7	; -
+	286	[-]	SUB      	0 0 -18	; - 1
+	287	[-]	LE       	0 -18 0	; 1 -
+	288	[-]	JMP      	9	; to 298
+	289	[-]	GETUPVAL 	0 7	; -
+	290	[-]	SUB      	0 0 -18	; - 1
+	291	[-]	SETUPVAL 	0 7	; -
+	292	[-]	GETUPVAL 	0 9	; -
+	293	[-]	LOADK    	1 -18	; 1
+	294	[-]	GETUPVAL 	2 5	; -
+	295	[-]	GETUPVAL 	3 5	; -
+	296	[-]	GETUPVAL 	4 7	; -
+	297	[-]	CALL     	0 5 1
+	298	[-]	GETGLOBAL	0 -14	; pressButton
+	299	[-]	LOADK    	1 -29	; "R"
+	300	[-]	CALL     	0 2 2
+	301	[-]	EQ       	0 0 -16	; - true
+	302	[-]	JMP      	40	; to 343
+	303	[-]	GETUPVAL 	0 3	; -
+	304	[-]	EQ       	0 0 -13	; - false
+	305	[-]	JMP      	37	; to 343
+	306	[-]	GETUPVAL 	0 7	; -
+	307	[-]	ADD      	0 0 -18	; - 1
+	308	[-]	GETUPVAL 	1 8	; -
+	309	[-]	LE       	0 0 1
+	310	[-]	JMP      	32	; to 343
+	311	[-]	GETUPVAL 	0 7	; -
+	312	[-]	ADD      	0 0 -18	; - 1
+	313	[-]	SETUPVAL 	0 7	; -
+	314	[-]	GETUPVAL 	0 6	; -
+	315	[-]	GETUPVAL 	1 7	; -
+	316	[-]	MUL      	1 1 -20	; - 9
+	317	[-]	SUB      	0 0 1
+	318	[-]	LT       	0 0 -21	; - 0
+	319	[-]	JMP      	17	; to 337
+	320	[-]	GETUPVAL 	0 5	; -
+	321	[-]	GETUPVAL 	1 6	; -
+	322	[-]	GETUPVAL 	2 7	; -
+	323	[-]	SUB      	2 2 -18	; - 1
+	324	[-]	MUL      	2 2 -20	; - 9
+	325	[-]	SUB      	1 1 2
+	326	[-]	LT       	0 1 0
+	327	[-]	JMP      	7	; to 335
+	328	[-]	GETUPVAL 	0 6	; -
+	329	[-]	GETUPVAL 	1 7	; -
+	330	[-]	SUB      	1 1 -18	; - 1
+	331	[-]	MUL      	1 1 -20	; - 9
+	332	[-]	SUB      	0 0 1
+	333	[-]	TEST     	0 0 1
+	334	[-]	JMP      	1	; to 336
+	335	[-]	GETUPVAL 	0 5	; -
+	336	[-]	SETUPVAL 	0 5	; -
+	337	[-]	GETUPVAL 	0 9	; -
+	338	[-]	LOADK    	1 -21	; 0
+	339	[-]	GETUPVAL 	2 5	; -
+	340	[-]	GETUPVAL 	3 5	; -
+	341	[-]	GETUPVAL 	4 7	; -
+	342	[-]	CALL     	0 5 1
+	343	[-]	GETGLOBAL	0 -14	; pressButton
+	344	[-]	LOADK    	1 -30	; "CROSS"
+	345	[-]	CALL     	0 2 2
+	346	[-]	EQ       	0 0 -16	; - true
+	347	[-]	JMP      	8	; to 356
+	348	[-]	GETGLOBAL	0 -31	; keyPlaySE
+	349	[-]	GETGLOBAL	1 -32	; seName
+	350	[-]	GETTABLE 	1 1 -33	; "cross"
+	351	[-]	CALL     	0 2 1
+	352	[-]	GETGLOBAL	0 -34	; wait
+	353	[-]	LOADK    	1 -35	; 10
+	354	[-]	CALL     	0 2 1
+	355	[-]	JMP      	400	; to 756
+	356	[-]	GETGLOBAL	0 -14	; pressButton
+	357	[-]	LOADK    	1 -36	; "CIRCLE"
+	358	[-]	CALL     	0 2 2
+	359	[-]	EQ       	0 0 -16	; - true
+	360	[-]	JMP      	125	; to 486
+	361	[-]	GETUPVAL 	0 3	; -
+	362	[-]	EQ       	0 0 -13	; - false
+	363	[-]	JMP      	122	; to 486
+	364	[-]	GETGLOBAL	0 -37	; systemSave
+	365	[-]	GETTABLE 	0 0 -38	; "cgFlag"
+	366	[-]	GETUPVAL 	1 0	; -
+	367	[-]	GETTABLE 	1 1 -39	; "cgNumber"
+	368	[-]	GETUPVAL 	2 7	; -
+	369	[-]	GETTABLE 	1 1 2
+	370	[-]	GETUPVAL 	2 5	; -
+	371	[-]	GETTABLE 	1 1 2
+	372	[-]	GETTABLE 	1 1 -18	; 1
+	373	[-]	GETTABLE 	0 0 1
+	374	[-]	EQ       	0 0 -16	; - true
+	375	[-]	JMP      	110	; to 486
+	376	[-]	GETGLOBAL	0 -31	; keyPlaySE
+	377	[-]	GETGLOBAL	1 -32	; seName
+	378	[-]	GETTABLE 	1 1 -40	; "circle"
+	379	[-]	CALL     	0 2 1
+	380	[-]	LOADBOOL 	0 1 0
+	381	[-]	SETUPVAL 	0 2	; -
+	382	[-]	GETGLOBAL	0 -41	; layerLoad
+	383	[-]	GETUPVAL 	1 0	; -
+	384	[-]	GETTABLE 	1 1 -42	; "layerNumber"
+	385	[-]	GETTABLE 	1 1 -43	; "view"
+	386	[-]	GETGLOBAL	2 -44	; cGetFileName
+	387	[-]	LOADK    	3 -45	; "event"
+	388	[-]	GETUPVAL 	4 0	; -
+	389	[-]	GETTABLE 	4 4 -39	; "cgNumber"
+	390	[-]	GETUPVAL 	5 7	; -
+	391	[-]	GETTABLE 	4 4 5
+	392	[-]	GETUPVAL 	5 5	; -
+	393	[-]	GETTABLE 	4 4 5
+	394	[-]	GETTABLE 	4 4 -18	; 1
+	395	[-]	CALL     	2 3 0
+	396	[-]	CALL     	0 0 1
+	397	[-]	GETGLOBAL	0 -46	; layerPosition
+	398	[-]	GETUPVAL 	1 0	; -
+	399	[-]	GETTABLE 	1 1 -42	; "layerNumber"
+	400	[-]	GETTABLE 	1 1 -43	; "view"
+	401	[-]	GETUPVAL 	2 0	; -
+	402	[-]	GETTABLE 	2 2 -47	; "viewX"
+	403	[-]	GETUPVAL 	3 5	; -
+	404	[-]	GETTABLE 	2 2 3
+	405	[-]	GETUPVAL 	3 0	; -
+	406	[-]	GETTABLE 	3 3 -48	; "viewY"
+	407	[-]	GETUPVAL 	4 5	; -
+	408	[-]	GETTABLE 	3 3 4
+	409	[-]	CALL     	0 4 1
+	410	[-]	GETGLOBAL	0 -49	; layerMovePosition
+	411	[-]	GETUPVAL 	1 0	; -
+	412	[-]	GETTABLE 	1 1 -42	; "layerNumber"
+	413	[-]	GETTABLE 	1 1 -43	; "view"
+	414	[-]	LOADK    	2 -21	; 0
+	415	[-]	LOADK    	3 -21	; 0
+	416	[-]	LOADK    	4 -50	; 30
+	417	[-]	CALL     	0 5 1
+	418	[-]	GETGLOBAL	0 -51	; layerScale
+	419	[-]	GETUPVAL 	1 0	; -
+	420	[-]	GETTABLE 	1 1 -42	; "layerNumber"
+	421	[-]	GETTABLE 	1 1 -43	; "view"
+	422	[-]	LOADK    	2 -52	; 25
+	423	[-]	LOADK    	3 -52	; 25
+	424	[-]	CALL     	0 4 1
+	425	[-]	GETGLOBAL	0 -53	; layerMoveScale
+	426	[-]	GETUPVAL 	1 0	; -
+	427	[-]	GETTABLE 	1 1 -42	; "layerNumber"
+	428	[-]	GETTABLE 	1 1 -43	; "view"
+	429	[-]	LOADK    	2 -54	; 100
+	430	[-]	LOADK    	3 -54	; 100
+	431	[-]	LOADK    	4 -50	; 30
+	432	[-]	CALL     	0 5 1
+	433	[-]	GETGLOBAL	0 -34	; wait
+	434	[-]	LOADK    	1 -50	; 30
+	435	[-]	CALL     	0 2 1
+	436	[-]	GETUPVAL 	0 0	; -
+	437	[-]	GETTABLE 	0 0 -39	; "cgNumber"
+	438	[-]	GETUPVAL 	1 7	; -
+	439	[-]	GETTABLE 	0 0 1
+	440	[-]	GETUPVAL 	1 5	; -
+	441	[-]	GETTABLE 	0 0 1
+	442	[-]	LEN      	0 0
+	443	[-]	LT       	0 -18 0	; 1 -
+	444	[-]	JMP      	41	; to 486
+	445	[-]	LOADK    	0 -24	; 2
+	446	[-]	GETUPVAL 	1 0	; -
+	447	[-]	GETTABLE 	1 1 -39	; "cgNumber"
+	448	[-]	GETUPVAL 	2 7	; -
+	449	[-]	GETTABLE 	1 1 2
+	450	[-]	GETUPVAL 	2 5	; -
+	451	[-]	GETTABLE 	1 1 2
+	452	[-]	LEN      	1 1
+	453	[-]	LOADK    	2 -18	; 1
+	454	[-]	FORPREP  	0 30	; to 485
+	455	[-]	GETGLOBAL	4 -37	; systemSave
+	456	[-]	GETTABLE 	4 4 -38	; "cgFlag"
+	457	[-]	GETUPVAL 	5 0	; -
+	458	[-]	GETTABLE 	5 5 -39	; "cgNumber"
+	459	[-]	GETUPVAL 	6 7	; -
+	460	[-]	GETTABLE 	5 5 6
+	461	[-]	GETUPVAL 	6 5	; -
+	462	[-]	GETTABLE 	5 5 6
+	463	[-]	GETTABLE 	5 5 3
+	464	[-]	GETTABLE 	4 4 5
+	465	[-]	EQ       	0 4 -16	; - true
+	466	[-]	JMP      	18	; to 485
+	467	[-]	GETGLOBAL	4 -55	; layerLoadAsync
+	468	[-]	LOADK    	5 -21	; 0
+	469	[-]	GETUPVAL 	6 0	; -
+	470	[-]	GETTABLE 	6 6 -42	; "layerNumber"
+	471	[-]	GETTABLE 	6 6 -43	; "view"
+	472	[-]	ADD      	6 6 3
+	473	[-]	SUB      	6 6 -18	; - 1
+	474	[-]	GETGLOBAL	7 -44	; cGetFileName
+	475	[-]	LOADK    	8 -45	; "event"
+	476	[-]	GETUPVAL 	9 0	; -
+	477	[-]	GETTABLE 	9 9 -39	; "cgNumber"
+	478	[-]	GETUPVAL 	10 7	; -
+	479	[-]	GETTABLE 	9 9 10
+	480	[-]	GETUPVAL 	10 5	; -
+	481	[-]	GETTABLE 	9 9 10
+	482	[-]	GETTABLE 	9 9 3
+	483	[-]	CALL     	7 3 0
+	484	[-]	CALL     	4 0 1
+	485	[-]	FORLOOP  	0 -31	; to 455
+	486	[-]	GETUPVAL 	0 3	; -
+	487	[-]	EQ       	0 0 -16	; - true
+	488	[-]	JMP      	263	; to 752
+	489	[-]	GETUPVAL 	0 4	; -
+	490	[-]	GETUPVAL 	1 5	; -
+	491	[-]	EQ       	1 0 1
+	492	[-]	JMP      	4	; to 497
+	493	[-]	GETGLOBAL	0 -31	; keyPlaySE
+	494	[-]	GETGLOBAL	1 -32	; seName
+	495	[-]	GETTABLE 	1 1 -56	; "arrowKey"
+	496	[-]	CALL     	0 2 1
+	497	[-]	GETGLOBAL	0 -57	; layerVisible
+	498	[-]	GETUPVAL 	1 0	; -
+	499	[-]	GETTABLE 	1 1 -42	; "layerNumber"
+	500	[-]	GETTABLE 	1 1 -58	; "mask"
+	501	[-]	GETUPVAL 	2 4	; -
+	502	[-]	ADD      	1 1 2
+	503	[-]	LOADBOOL 	2 1 0
+	504	[-]	CALL     	0 3 1
+	505	[-]	GETGLOBAL	0 -57	; layerVisible
+	506	[-]	GETUPVAL 	1 0	; -
+	507	[-]	GETTABLE 	1 1 -42	; "layerNumber"
+	508	[-]	GETTABLE 	1 1 -58	; "mask"
+	509	[-]	GETUPVAL 	2 5	; -
+	510	[-]	ADD      	1 1 2
+	511	[-]	LOADBOOL 	2 0 0
+	512	[-]	CALL     	0 3 1
+	513	[-]	GETGLOBAL	0 -49	; layerMovePosition
+	514	[-]	GETUPVAL 	1 0	; -
+	515	[-]	GETTABLE 	1 1 -42	; "layerNumber"
+	516	[-]	GETTABLE 	1 1 -59	; "cursor"
+	517	[-]	GETUPVAL 	2 0	; -
+	518	[-]	GETTABLE 	2 2 -60	; "cursorX"
+	519	[-]	GETUPVAL 	3 5	; -
+	520	[-]	GETTABLE 	2 2 3
+	521	[-]	GETUPVAL 	3 0	; -
+	522	[-]	GETTABLE 	3 3 -61	; "cursorY"
+	523	[-]	GETUPVAL 	4 5	; -
+	524	[-]	GETTABLE 	3 3 4
+	525	[-]	LOADK    	4 -62	; 5
+	526	[-]	CALL     	0 5 1
+	527	[-]	GETGLOBAL	0 -63	; fontClear
+	528	[-]	CALL     	0 1 1
+	529	[-]	LOADBOOL 	0 0 0
+	530	[-]	SETUPVAL 	0 3	; -
+	531	[-]	GETGLOBAL	0 -34	; wait
+	532	[-]	LOADK    	1 -62	; 5
+	533	[-]	CALL     	0 2 1
+	534	[-]	JMP      	217	; to 752
+	535	[-]	GETGLOBAL	0 -14	; pressButton
+	536	[-]	LOADK    	1 -36	; "CIRCLE"
+	537	[-]	CALL     	0 2 2
+	538	[-]	EQ       	0 0 -16	; - true
+	539	[-]	JMP      	152	; to 692
+	540	[-]	GETUPVAL 	0 10	; -
+	541	[-]	ADD      	0 0 -18	; - 1
+	542	[-]	GETUPVAL 	1 0	; -
+	543	[-]	GETTABLE 	1 1 -39	; "cgNumber"
+	544	[-]	GETUPVAL 	2 7	; -
+	545	[-]	GETTABLE 	1 1 2
+	546	[-]	GETUPVAL 	2 5	; -
+	547	[-]	GETTABLE 	1 1 2
+	548	[-]	LEN      	1 1
+	549	[-]	LT       	0 1 0
+	550	[-]	JMP      	3	; to 554
+	551	[-]	LOADK    	0 -64	; -1
+	552	[-]	TEST     	0 0 1
+	553	[-]	JMP      	2	; to 556
+	554	[-]	GETUPVAL 	0 10	; -
+	555	[-]	ADD      	0 0 -18	; - 1
+	556	[-]	SETUPVAL 	0 10	; -
+	557	[-]	GETUPVAL 	0 10	; -
+	558	[-]	LT       	0 -18 0	; 1 -
+	559	[-]	JMP      	38	; to 598
+	560	[-]	GETUPVAL 	0 10	; -
+	561	[-]	GETUPVAL 	1 0	; -
+	562	[-]	GETTABLE 	1 1 -39	; "cgNumber"
+	563	[-]	GETUPVAL 	2 7	; -
+	564	[-]	GETTABLE 	1 1 2
+	565	[-]	GETUPVAL 	2 5	; -
+	566	[-]	GETTABLE 	1 1 2
+	567	[-]	LEN      	1 1
+	568	[-]	LOADK    	2 -18	; 1
+	569	[-]	FORPREP  	0 27	; to 597
+	570	[-]	GETGLOBAL	4 -37	; systemSave
+	571	[-]	GETTABLE 	4 4 -38	; "cgFlag"
+	572	[-]	GETUPVAL 	5 0	; -
+	573	[-]	GETTABLE 	5 5 -39	; "cgNumber"
+	574	[-]	GETUPVAL 	6 7	; -
+	575	[-]	GETTABLE 	5 5 6
+	576	[-]	GETUPVAL 	6 5	; -
+	577	[-]	GETTABLE 	5 5 6
+	578	[-]	GETTABLE 	5 5 3
+	579	[-]	GETTABLE 	4 4 5
+	580	[-]	EQ       	0 4 -16	; - true
+	581	[-]	JMP      	3	; to 585
+	582	[-]	SETUPVAL 	3 10	; -
+	583	[-]	JMP      	14	; to 598
+	584	[-]	JMP      	12	; to 597
+	585	[-]	GETUPVAL 	4 0	; -
+	586	[-]	GETTABLE 	4 4 -39	; "cgNumber"
+	587	[-]	GETUPVAL 	5 7	; -
+	588	[-]	GETTABLE 	4 4 5
+	589	[-]	GETUPVAL 	5 5	; -
+	590	[-]	GETTABLE 	4 4 5
+	591	[-]	LEN      	4 4
+	592	[-]	EQ       	0 3 4
+	593	[-]	JMP      	3	; to 597
+	594	[-]	LOADK    	4 -64	; -1
+	595	[-]	SETUPVAL 	4 10	; -
+	596	[-]	JMP      	1	; to 598
+	597	[-]	FORLOOP  	0 -28	; to 570
+	598	[-]	GETUPVAL 	0 10	; -
+	599	[-]	EQ       	0 0 -64	; - -1
+	600	[-]	JMP      	56	; to 657
+	601	[-]	GETGLOBAL	0 -31	; keyPlaySE
+	602	[-]	GETGLOBAL	1 -32	; seName
+	603	[-]	GETTABLE 	1 1 -33	; "cross"
+	604	[-]	CALL     	0 2 1
+	605	[-]	GETGLOBAL	0 -53	; layerMoveScale
+	606	[-]	GETUPVAL 	1 0	; -
+	607	[-]	GETTABLE 	1 1 -42	; "layerNumber"
+	608	[-]	GETTABLE 	1 1 -43	; "view"
+	609	[-]	LOADK    	2 -52	; 25
+	610	[-]	LOADK    	3 -52	; 25
+	611	[-]	LOADK    	4 -50	; 30
+	612	[-]	CALL     	0 5 1
+	613	[-]	GETGLOBAL	0 -49	; layerMovePosition
+	614	[-]	GETUPVAL 	1 0	; -
+	615	[-]	GETTABLE 	1 1 -42	; "layerNumber"
+	616	[-]	GETTABLE 	1 1 -43	; "view"
+	617	[-]	GETUPVAL 	2 0	; -
+	618	[-]	GETTABLE 	2 2 -47	; "viewX"
+	619	[-]	GETUPVAL 	3 5	; -
+	620	[-]	GETTABLE 	2 2 3
+	621	[-]	GETUPVAL 	3 0	; -
+	622	[-]	GETTABLE 	3 3 -48	; "viewY"
+	623	[-]	GETUPVAL 	4 5	; -
+	624	[-]	GETTABLE 	3 3 4
+	625	[-]	LOADK    	4 -50	; 30
+	626	[-]	CALL     	0 5 1
+	627	[-]	GETGLOBAL	0 -34	; wait
+	628	[-]	LOADK    	1 -50	; 30
+	629	[-]	CALL     	0 2 1
+	630	[-]	LOADK    	0 -18	; 1
+	631	[-]	GETUPVAL 	1 0	; -
+	632	[-]	GETTABLE 	1 1 -39	; "cgNumber"
+	633	[-]	GETUPVAL 	2 7	; -
+	634	[-]	GETTABLE 	1 1 2
+	635	[-]	GETUPVAL 	2 5	; -
+	636	[-]	GETTABLE 	1 1 2
+	637	[-]	LEN      	1 1
+	638	[-]	LOADK    	2 -18	; 1
+	639	[-]	FORPREP  	0 8	; to 648
+	640	[-]	GETGLOBAL	4 -41	; layerLoad
+	641	[-]	GETUPVAL 	5 0	; -
+	642	[-]	GETTABLE 	5 5 -42	; "layerNumber"
+	643	[-]	GETTABLE 	5 5 -43	; "view"
+	644	[-]	ADD      	5 5 3
+	645	[-]	SUB      	5 5 -18	; - 1
+	646	[-]	LOADK    	6 -65	; ""
+	647	[-]	CALL     	4 3 1
+	648	[-]	FORLOOP  	0 -9	; to 640
+	649	[-]	GETGLOBAL	0 -34	; wait
+	650	[-]	LOADK    	1 -35	; 10
+	651	[-]	CALL     	0 2 1
+	652	[-]	LOADK    	0 -18	; 1
+	653	[-]	SETUPVAL 	0 10	; -
+	654	[-]	LOADBOOL 	0 0 0
+	655	[-]	SETUPVAL 	0 2	; -
+	656	[-]	JMP      	35	; to 692
+	657	[-]	GETGLOBAL	0 -66	; layerIsLoad
+	658	[-]	GETUPVAL 	1 0	; -
+	659	[-]	GETTABLE 	1 1 -42	; "layerNumber"
+	660	[-]	GETTABLE 	1 1 -43	; "view"
+	661	[-]	GETUPVAL 	2 10	; -
+	662	[-]	ADD      	1 1 2
+	663	[-]	SUB      	1 1 -18	; - 1
+	664	[-]	CALL     	0 2 2
+	665	[-]	EQ       	0 0 -16	; - true
+	666	[-]	JMP      	1	; to 668
+	667	[-]	JMP      	4	; to 672
+	668	[-]	GETGLOBAL	0 -34	; wait
+	669	[-]	LOADK    	1 -18	; 1
+	670	[-]	CALL     	0 2 1
+	671	[-]	JMP      	-15	; to 657
+	672	[-]	GETGLOBAL	0 -31	; keyPlaySE
+	673	[-]	GETGLOBAL	1 -32	; seName
+	674	[-]	GETTABLE 	1 1 -40	; "circle"
+	675	[-]	CALL     	0 2 1
+	676	[-]	GETGLOBAL	0 -67	; layerCopy
+	677	[-]	GETUPVAL 	1 0	; -
+	678	[-]	GETTABLE 	1 1 -42	; "layerNumber"
+	679	[-]	GETTABLE 	1 1 -43	; "view"
+	680	[-]	GETUPVAL 	2 0	; -
+	681	[-]	GETTABLE 	2 2 -42	; "layerNumber"
+	682	[-]	GETTABLE 	2 2 -43	; "view"
+	683	[-]	GETUPVAL 	3 10	; -
+	684	[-]	ADD      	2 2 3
+	685	[-]	SUB      	2 2 -18	; - 1
+	686	[-]	CALL     	0 3 1
+	687	[-]	GETGLOBAL	0 -68	; switchScreen
+	688	[-]	LOADK    	1 -21	; 0
+	689	[-]	LOADK    	2 -65	; ""
+	690	[-]	LOADK    	3 -50	; 30
+	691	[-]	CALL     	0 4 1
+	692	[-]	GETGLOBAL	0 -14	; pressButton
+	693	[-]	LOADK    	1 -30	; "CROSS"
+	694	[-]	CALL     	0 2 2
+	695	[-]	EQ       	0 0 -16	; - true
+	696	[-]	JMP      	55	; to 752
+	697	[-]	GETGLOBAL	0 -31	; keyPlaySE
+	698	[-]	GETGLOBAL	1 -32	; seName
+	699	[-]	GETTABLE 	1 1 -33	; "cross"
+	700	[-]	CALL     	0 2 1
+	701	[-]	GETGLOBAL	0 -53	; layerMoveScale
+	702	[-]	GETUPVAL 	1 0	; -
+	703	[-]	GETTABLE 	1 1 -42	; "layerNumber"
+	704	[-]	GETTABLE 	1 1 -43	; "view"
+	705	[-]	LOADK    	2 -52	; 25
+	706	[-]	LOADK    	3 -52	; 25
+	707	[-]	LOADK    	4 -50	; 30
+	708	[-]	CALL     	0 5 1
+	709	[-]	GETGLOBAL	0 -49	; layerMovePosition
+	710	[-]	GETUPVAL 	1 0	; -
+	711	[-]	GETTABLE 	1 1 -42	; "layerNumber"
+	712	[-]	GETTABLE 	1 1 -43	; "view"
+	713	[-]	GETUPVAL 	2 0	; -
+	714	[-]	GETTABLE 	2 2 -47	; "viewX"
+	715	[-]	GETUPVAL 	3 5	; -
+	716	[-]	GETTABLE 	2 2 3
+	717	[-]	GETUPVAL 	3 0	; -
+	718	[-]	GETTABLE 	3 3 -48	; "viewY"
+	719	[-]	GETUPVAL 	4 5	; -
+	720	[-]	GETTABLE 	3 3 4
+	721	[-]	LOADK    	4 -50	; 30
+	722	[-]	CALL     	0 5 1
+	723	[-]	GETGLOBAL	0 -34	; wait
+	724	[-]	LOADK    	1 -50	; 30
+	725	[-]	CALL     	0 2 1
+	726	[-]	LOADK    	0 -18	; 1
+	727	[-]	GETUPVAL 	1 0	; -
+	728	[-]	GETTABLE 	1 1 -39	; "cgNumber"
+	729	[-]	GETUPVAL 	2 7	; -
+	730	[-]	GETTABLE 	1 1 2
+	731	[-]	GETUPVAL 	2 5	; -
+	732	[-]	GETTABLE 	1 1 2
+	733	[-]	LEN      	1 1
+	734	[-]	LOADK    	2 -18	; 1
+	735	[-]	FORPREP  	0 8	; to 744
+	736	[-]	GETGLOBAL	4 -41	; layerLoad
+	737	[-]	GETUPVAL 	5 0	; -
+	738	[-]	GETTABLE 	5 5 -42	; "layerNumber"
+	739	[-]	GETTABLE 	5 5 -43	; "view"
+	740	[-]	ADD      	5 5 3
+	741	[-]	SUB      	5 5 -18	; - 1
+	742	[-]	LOADK    	6 -65	; ""
+	743	[-]	CALL     	4 3 1
+	744	[-]	FORLOOP  	0 -9	; to 736
+	745	[-]	GETGLOBAL	0 -34	; wait
+	746	[-]	LOADK    	1 -35	; 10
+	747	[-]	CALL     	0 2 1
+	748	[-]	LOADK    	0 -18	; 1
+	749	[-]	SETUPVAL 	0 10	; -
+	750	[-]	LOADBOOL 	0 0 0
+	751	[-]	SETUPVAL 	0 2	; -
+	752	[-]	GETGLOBAL	0 -34	; wait
+	753	[-]	LOADK    	1 -24	; 2
+	754	[-]	CALL     	0 2 1
+	755	[-]	JMP      	-724	; to 32
+	756	[-]	GETGLOBAL	0 -69	; cInitGame
+	757	[-]	CALL     	0 1 1
+	758	[-]	GETGLOBAL	0 -68	; switchScreen
+	759	[-]	LOADK    	1 -21	; 0
+	760	[-]	LOADK    	2 -65	; ""
+	761	[-]	LOADK    	3 -70	; 60
+	762	[-]	CALL     	0 4 1
+	763	[-]	GETGLOBAL	0 -71	; run
+	764	[-]	GETGLOBAL	1 -44	; cGetFileName
+	765	[-]	LOADK    	2 -72	; "script"
+	766	[-]	LOADK    	3 -73	; "snr_mainmenu"
+	767	[-]	CALL     	1 3 0
+	768	[-]	CALL     	0 0 1
+	769	[-]	RETURN   	0 1
+constants (73) for 0x57e4f6b0:
+	1	"advPart"
+	2	"logEnable"
+	3	"systemConfig"
+	4	"unsetConfigButton"
+	5	"startLoading"
+	6	"pairs"
+	7	"layerName"
+	8	"comLayerLoadFalse"
+	9	"graphic/"
+	10	".gim"
+	11	"waitLoading"
+	12	"endLoading"
+	13	false
+	14	"pressButton"
+	15	"UP"
+	16	true
+	17	3
+	18	1
+	19	"DOWN"
+	20	9
+	21	0
+	22	"RIGHT"
+	23	6
+	24	2
+	25	"LEFT"
+	26	4
+	27	7
+	28	"L"
+	29	"R"
+	30	"CROSS"
+	31	"keyPlaySE"
+	32	"seName"
+	33	"cross"
+	34	"wait"
+	35	10
+	36	"CIRCLE"
+	37	"systemSave"
+	38	"cgFlag"
+	39	"cgNumber"
+	40	"circle"
+	41	"layerLoad"
+	42	"layerNumber"
+	43	"view"
+	44	"cGetFileName"
+	45	"event"
+	46	"layerPosition"
+	47	"viewX"
+	48	"viewY"
+	49	"layerMovePosition"
+	50	30
+	51	"layerScale"
+	52	25
+	53	"layerMoveScale"
+	54	100
+	55	"layerLoadAsync"
+	56	"arrowKey"
+	57	"layerVisible"
+	58	"mask"
+	59	"cursor"
+	60	"cursorX"
+	61	"cursorY"
+	62	5
+	63	"fontClear"
+	64	-1
+	65	""
+	66	"layerIsLoad"
+	67	"layerCopy"
+	68	"switchScreen"
+	69	"cInitGame"
+	70	60
+	71	"run"
+	72	"script"
+	73	"snr_mainmenu"
+locals (0) for 0x57e4f6b0:
+upvalues (0) for 0x57e4f6b0:

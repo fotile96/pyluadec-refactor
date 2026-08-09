@@ -1,0 +1,299 @@
+
+main <?:0,0> (5 instructions, 20 bytes at 0x57801010)
+0+ params, 2 slots, 0 upvalues, 0 locals, 2 constants, 2 functions
+	1	[-]	CLOSURE  	0 0	; 0x57801120
+	2	[-]	SETGLOBAL	0 -1	; libGomRin
+	3	[-]	CLOSURE  	0 1	; 0x57801180
+	4	[-]	SETGLOBAL	0 -2	; main
+	5	[-]	RETURN   	0 1
+constants (2) for 0x57801010:
+	1	"libGomRin"
+	2	"main"
+locals (0) for 0x57801010:
+upvalues (0) for 0x57801010:
+
+function <?:8,9> (1 instruction, 4 bytes at 0x57801120)
+0 params, 2 slots, 0 upvalues, 0 locals, 0 constants, 0 functions
+	1	[-]	RETURN   	0 1
+constants (0) for 0x57801120:
+locals (0) for 0x57801120:
+upvalues (0) for 0x57801120:
+
+function <?:13,100> (226 instructions, 904 bytes at 0x57801180)
+0 params, 10 slots, 0 upvalues, 0 locals, 47 constants, 0 functions
+	1	[-]	GETGLOBAL	0 -1	; cInitGame
+	2	[-]	CALL     	0 1 1
+	3	[-]	LOADK    	0 -2	; 1
+	4	[-]	LOADBOOL 	1 0 0
+	5	[-]	GETGLOBAL	2 -3	; cfontPrint
+	6	[-]	LOADK    	3 -4	; 0
+	7	[-]	LOADK    	4 -5	; 200
+	8	[-]	LOADK    	5 -6	; 100
+	9	[-]	LOADK    	6 -7	; 16777215
+	10	[-]	LOADK    	7 -8	; 255
+	11	[-]	LOADK    	8 -9	; "SEC7F"
+	12	[-]	CALL     	2 7 1
+	13	[-]	GETGLOBAL	2 -3	; cfontPrint
+	14	[-]	LOADK    	3 -4	; 0
+	15	[-]	LOADK    	4 -5	; 200
+	16	[-]	LOADK    	5 -10	; 150
+	17	[-]	LOADK    	6 -7	; 16777215
+	18	[-]	LOADK    	7 -11	; 16711680
+	19	[-]	LOADK    	8 -12	; "PROLOGUE"
+	20	[-]	CALL     	2 7 1
+	21	[-]	GETGLOBAL	2 -3	; cfontPrint
+	22	[-]	LOADK    	3 -4	; 0
+	23	[-]	LOADK    	4 -5	; 200
+	24	[-]	LOADK    	5 -5	; 200
+	25	[-]	LOADK    	6 -7	; 16777215
+	26	[-]	LOADK    	7 -11	; 16711680
+	27	[-]	LOADK    	8 -13	; "STORY"
+	28	[-]	CALL     	2 7 1
+	29	[-]	GETGLOBAL	2 -3	; cfontPrint
+	30	[-]	LOADK    	3 -4	; 0
+	31	[-]	LOADK    	4 -5	; 200
+	32	[-]	LOADK    	5 -14	; 250
+	33	[-]	LOADK    	6 -7	; 16777215
+	34	[-]	LOADK    	7 -11	; 16711680
+	35	[-]	LOADK    	8 -15	; "DEBUG"
+	36	[-]	CALL     	2 7 1
+	37	[-]	LOADK    	2 -2	; 1
+	38	[-]	GETGLOBAL	3 -16	; pressButton
+	39	[-]	LOADK    	4 -17	; "UP"
+	40	[-]	CALL     	3 2 2
+	41	[-]	EQ       	0 3 -18	; - true
+	42	[-]	JMP      	10	; to 53
+	43	[-]	EQ       	0 1 -19	; - false
+	44	[-]	JMP      	8	; to 53
+	45	[-]	SUB      	3 0 -2	; - 1
+	46	[-]	LT       	0 3 -2	; - 1
+	47	[-]	JMP      	3	; to 51
+	48	[-]	LOADK    	3 -2	; 1
+	49	[-]	TESTSET  	0 3 1
+	50	[-]	JMP      	1	; to 52
+	51	[-]	SUB      	0 0 -2	; - 1
+	52	[-]	LOADBOOL 	1 1 0
+	53	[-]	GETGLOBAL	3 -16	; pressButton
+	54	[-]	LOADK    	4 -20	; "DOWN"
+	55	[-]	CALL     	3 2 2
+	56	[-]	EQ       	0 3 -18	; - true
+	57	[-]	JMP      	10	; to 68
+	58	[-]	EQ       	0 1 -19	; - false
+	59	[-]	JMP      	8	; to 68
+	60	[-]	ADD      	3 0 -2	; - 1
+	61	[-]	LT       	0 -21 3	; 4 -
+	62	[-]	JMP      	3	; to 66
+	63	[-]	LOADK    	3 -21	; 4
+	64	[-]	TESTSET  	0 3 1
+	65	[-]	JMP      	1	; to 67
+	66	[-]	ADD      	0 0 -2	; - 1
+	67	[-]	LOADBOOL 	1 1 0
+	68	[-]	GETGLOBAL	3 -16	; pressButton
+	69	[-]	LOADK    	4 -22	; "CIRCLE"
+	70	[-]	CALL     	3 2 2
+	71	[-]	EQ       	0 3 -18	; - true
+	72	[-]	JMP      	4	; to 77
+	73	[-]	EQ       	0 2 -4	; - 0
+	74	[-]	JMP      	3	; to 78
+	75	[-]	JMP      	90	; to 166
+	76	[-]	JMP      	1	; to 78
+	77	[-]	LOADK    	2 -4	; 0
+	78	[-]	EQ       	0 1 -18	; - true
+	79	[-]	JMP      	82	; to 162
+	80	[-]	GETGLOBAL	3 -23	; fontClear
+	81	[-]	CALL     	3 1 1
+	82	[-]	EQ       	0 0 -2	; - 1
+	83	[-]	JMP      	9	; to 93
+	84	[-]	GETGLOBAL	3 -3	; cfontPrint
+	85	[-]	LOADK    	4 -4	; 0
+	86	[-]	LOADK    	5 -5	; 200
+	87	[-]	LOADK    	6 -6	; 100
+	88	[-]	LOADK    	7 -7	; 16777215
+	89	[-]	LOADK    	8 -8	; 255
+	90	[-]	LOADK    	9 -9	; "SEC7F"
+	91	[-]	CALL     	3 7 1
+	92	[-]	JMP      	8	; to 101
+	93	[-]	GETGLOBAL	3 -3	; cfontPrint
+	94	[-]	LOADK    	4 -4	; 0
+	95	[-]	LOADK    	5 -5	; 200
+	96	[-]	LOADK    	6 -6	; 100
+	97	[-]	LOADK    	7 -7	; 16777215
+	98	[-]	LOADK    	8 -11	; 16711680
+	99	[-]	LOADK    	9 -9	; "SEC7F"
+	100	[-]	CALL     	3 7 1
+	101	[-]	EQ       	0 0 -24	; - 2
+	102	[-]	JMP      	9	; to 112
+	103	[-]	GETGLOBAL	3 -3	; cfontPrint
+	104	[-]	LOADK    	4 -4	; 0
+	105	[-]	LOADK    	5 -5	; 200
+	106	[-]	LOADK    	6 -10	; 150
+	107	[-]	LOADK    	7 -7	; 16777215
+	108	[-]	LOADK    	8 -8	; 255
+	109	[-]	LOADK    	9 -12	; "PROLOGUE"
+	110	[-]	CALL     	3 7 1
+	111	[-]	JMP      	8	; to 120
+	112	[-]	GETGLOBAL	3 -3	; cfontPrint
+	113	[-]	LOADK    	4 -4	; 0
+	114	[-]	LOADK    	5 -5	; 200
+	115	[-]	LOADK    	6 -10	; 150
+	116	[-]	LOADK    	7 -7	; 16777215
+	117	[-]	LOADK    	8 -11	; 16711680
+	118	[-]	LOADK    	9 -12	; "PROLOGUE"
+	119	[-]	CALL     	3 7 1
+	120	[-]	EQ       	0 0 -25	; - 3
+	121	[-]	JMP      	9	; to 131
+	122	[-]	GETGLOBAL	3 -3	; cfontPrint
+	123	[-]	LOADK    	4 -4	; 0
+	124	[-]	LOADK    	5 -5	; 200
+	125	[-]	LOADK    	6 -5	; 200
+	126	[-]	LOADK    	7 -7	; 16777215
+	127	[-]	LOADK    	8 -8	; 255
+	128	[-]	LOADK    	9 -13	; "STORY"
+	129	[-]	CALL     	3 7 1
+	130	[-]	JMP      	8	; to 139
+	131	[-]	GETGLOBAL	3 -3	; cfontPrint
+	132	[-]	LOADK    	4 -4	; 0
+	133	[-]	LOADK    	5 -5	; 200
+	134	[-]	LOADK    	6 -5	; 200
+	135	[-]	LOADK    	7 -7	; 16777215
+	136	[-]	LOADK    	8 -11	; 16711680
+	137	[-]	LOADK    	9 -13	; "STORY"
+	138	[-]	CALL     	3 7 1
+	139	[-]	EQ       	0 0 -21	; - 4
+	140	[-]	JMP      	9	; to 150
+	141	[-]	GETGLOBAL	3 -3	; cfontPrint
+	142	[-]	LOADK    	4 -4	; 0
+	143	[-]	LOADK    	5 -5	; 200
+	144	[-]	LOADK    	6 -14	; 250
+	145	[-]	LOADK    	7 -7	; 16777215
+	146	[-]	LOADK    	8 -8	; 255
+	147	[-]	LOADK    	9 -15	; "DEBUG"
+	148	[-]	CALL     	3 7 1
+	149	[-]	JMP      	8	; to 158
+	150	[-]	GETGLOBAL	3 -3	; cfontPrint
+	151	[-]	LOADK    	4 -4	; 0
+	152	[-]	LOADK    	5 -5	; 200
+	153	[-]	LOADK    	6 -14	; 250
+	154	[-]	LOADK    	7 -7	; 16777215
+	155	[-]	LOADK    	8 -11	; 16711680
+	156	[-]	LOADK    	9 -15	; "DEBUG"
+	157	[-]	CALL     	3 7 1
+	158	[-]	LOADBOOL 	1 0 0
+	159	[-]	GETGLOBAL	3 -26	; wait
+	160	[-]	LOADK    	4 -27	; 5
+	161	[-]	CALL     	3 2 1
+	162	[-]	GETGLOBAL	3 -26	; wait
+	163	[-]	LOADK    	4 -2	; 1
+	164	[-]	CALL     	3 2 1
+	165	[-]	JMP      	-128	; to 38
+	166	[-]	GETGLOBAL	3 -23	; fontClear
+	167	[-]	CALL     	3 1 1
+	168	[-]	EQ       	0 0 -2	; - 1
+	169	[-]	JMP      	48	; to 218
+	170	[-]	LOADBOOL 	3 1 0
+	171	[-]	SETGLOBAL	3 -28	; cardIDFlag
+	172	[-]	LOADK    	3 -2	; 1
+	173	[-]	LOADK    	4 -29	; 195
+	174	[-]	LOADK    	5 -2	; 1
+	175	[-]	FORPREP  	3 4	; to 180
+	176	[-]	GETGLOBAL	7 -30	; gameSave
+	177	[-]	GETTABLE 	7 7 -31	; "myCard"
+	178	[-]	GETTABLE 	7 7 6
+	179	[-]	SETTABLE 	7 -32 -2	; "hold" 1
+	180	[-]	FORLOOP  	3 -5	; to 176
+	181	[-]	GETGLOBAL	3 -30	; gameSave
+	182	[-]	SETTABLE 	3 -33 -24	; "startMenuState" 2
+	183	[-]	GETGLOBAL	3 -30	; gameSave
+	184	[-]	GETTABLE 	3 3 -31	; "myCard"
+	185	[-]	GETTABLE 	3 3 -2	; 1
+	186	[-]	SETTABLE 	3 -32 -2	; "hold" 1
+	187	[-]	GETGLOBAL	3 -30	; gameSave
+	188	[-]	GETTABLE 	3 3 -31	; "myCard"
+	189	[-]	GETTABLE 	3 3 -24	; 2
+	190	[-]	SETTABLE 	3 -32 -2	; "hold" 1
+	191	[-]	GETGLOBAL	3 -30	; gameSave
+	192	[-]	GETTABLE 	3 3 -34	; "tutorial"
+	193	[-]	SETTABLE 	3 -35 -2	; "firstStory" 1
+	194	[-]	GETGLOBAL	3 -30	; gameSave
+	195	[-]	GETTABLE 	3 3 -34	; "tutorial"
+	196	[-]	SETTABLE 	3 -36 -2	; "firstFragmentBegin" 1
+	197	[-]	GETGLOBAL	3 -30	; gameSave
+	198	[-]	GETTABLE 	3 3 -34	; "tutorial"
+	199	[-]	SETTABLE 	3 -37 -2	; "firstFragment" 1
+	200	[-]	GETGLOBAL	3 -30	; gameSave
+	201	[-]	SETTABLE 	3 -38 -4	; "ayanoTime" 0
+	202	[-]	GETGLOBAL	3 -30	; gameSave
+	203	[-]	GETTABLE 	3 3 -39	; "storyRoute"
+	204	[-]	GETTABLE 	3 3 -2	; 1
+	205	[-]	SETTABLE 	3 -40 -41	; "sceneId" "e1s_10"
+	206	[-]	GETGLOBAL	3 -30	; gameSave
+	207	[-]	GETTABLE 	3 3 -39	; "storyRoute"
+	208	[-]	GETTABLE 	3 3 -2	; 1
+	209	[-]	SETTABLE 	3 -38 -4	; "ayanoTime" 0
+	210	[-]	GETGLOBAL	3 -42	; run
+	211	[-]	GETGLOBAL	4 -43	; cGetFileName
+	212	[-]	LOADK    	5 -44	; "script"
+	213	[-]	LOADK    	6 -45	; "snr_fragment_main"
+	214	[-]	CALL     	4 3 0
+	215	[-]	CALL     	3 0 1
+	216	[-]	GETGLOBAL	3 -46	; quit
+	217	[-]	CALL     	3 1 1
+	218	[-]	GETGLOBAL	3 -42	; run
+	219	[-]	GETGLOBAL	4 -43	; cGetFileName
+	220	[-]	LOADK    	5 -44	; "script"
+	221	[-]	LOADK    	6 -47	; "snr_mainmenu"
+	222	[-]	CALL     	4 3 0
+	223	[-]	CALL     	3 0 1
+	224	[-]	GETGLOBAL	3 -46	; quit
+	225	[-]	CALL     	3 1 1
+	226	[-]	RETURN   	0 1
+constants (47) for 0x57801180:
+	1	"cInitGame"
+	2	1
+	3	"cfontPrint"
+	4	0
+	5	200
+	6	100
+	7	16777215
+	8	255
+	9	"SEC7F"
+	10	150
+	11	16711680
+	12	"PROLOGUE"
+	13	"STORY"
+	14	250
+	15	"DEBUG"
+	16	"pressButton"
+	17	"UP"
+	18	true
+	19	false
+	20	"DOWN"
+	21	4
+	22	"CIRCLE"
+	23	"fontClear"
+	24	2
+	25	3
+	26	"wait"
+	27	5
+	28	"cardIDFlag"
+	29	195
+	30	"gameSave"
+	31	"myCard"
+	32	"hold"
+	33	"startMenuState"
+	34	"tutorial"
+	35	"firstStory"
+	36	"firstFragmentBegin"
+	37	"firstFragment"
+	38	"ayanoTime"
+	39	"storyRoute"
+	40	"sceneId"
+	41	"e1s_10"
+	42	"run"
+	43	"cGetFileName"
+	44	"script"
+	45	"snr_fragment_main"
+	46	"quit"
+	47	"snr_mainmenu"
+locals (0) for 0x57801180:
+upvalues (0) for 0x57801180:

@@ -1,0 +1,3837 @@
+
+main <?:0,0> (303 instructions, 1212 bytes at 0x58159010)
+0+ params, 13 slots, 0 upvalues, 0 locals, 88 constants, 8 functions
+	1	[-]	NEWTABLE 	0 0 7
+	2	[-]	NEWTABLE 	1 0 3
+	3	[-]	SETTABLE 	1 -2 -3	; "bg" 0
+	4	[-]	SETTABLE 	1 -4 -5	; "logo" 1
+	5	[-]	SETTABLE 	1 -6 -7	; "menu" 2
+	6	[-]	SETTABLE 	0 -1 1	; "layerNumber" -
+	7	[-]	NEWTABLE 	1 8 0
+	8	[-]	LOADK    	2 -9	; "title_02_a"
+	9	[-]	LOADK    	3 -10	; "title_05_a"
+	10	[-]	LOADK    	4 -11	; "title_06_a"
+	11	[-]	LOADK    	5 -12	; "title_08_a"
+	12	[-]	LOADK    	6 -13	; "title_09_a"
+	13	[-]	LOADK    	7 -14	; "title_10_a"
+	14	[-]	LOADK    	8 -15	; "title_11_a"
+	15	[-]	LOADK    	9 -16	; "title_12_a"
+	16	[-]	SETLIST  	1 8 1	; 1
+	17	[-]	SETTABLE 	0 -8 1	; "layerKey0" -
+	18	[-]	NEWTABLE 	1 9 0
+	19	[-]	LOADK    	2 -18	; "title_03_a"
+	20	[-]	LOADK    	3 -10	; "title_05_a"
+	21	[-]	LOADK    	4 -11	; "title_06_a"
+	22	[-]	LOADK    	5 -19	; "title_07_a"
+	23	[-]	LOADK    	6 -12	; "title_08_a"
+	24	[-]	LOADK    	7 -13	; "title_09_a"
+	25	[-]	LOADK    	8 -14	; "title_10_a"
+	26	[-]	LOADK    	9 -15	; "title_11_a"
+	27	[-]	LOADK    	10 -16	; "title_12_a"
+	28	[-]	SETLIST  	1 9 1	; 1
+	29	[-]	SETTABLE 	0 -17 1	; "layerKey1" -
+	30	[-]	NEWTABLE 	1 10 0
+	31	[-]	LOADK    	2 -18	; "title_03_a"
+	32	[-]	LOADK    	3 -21	; "title_04_a"
+	33	[-]	LOADK    	4 -10	; "title_05_a"
+	34	[-]	LOADK    	5 -11	; "title_06_a"
+	35	[-]	LOADK    	6 -19	; "title_07_a"
+	36	[-]	LOADK    	7 -12	; "title_08_a"
+	37	[-]	LOADK    	8 -13	; "title_09_a"
+	38	[-]	LOADK    	9 -14	; "title_10_a"
+	39	[-]	LOADK    	10 -15	; "title_11_a"
+	40	[-]	LOADK    	11 -16	; "title_12_a"
+	41	[-]	SETLIST  	1 10 1	; 1
+	42	[-]	SETTABLE 	0 -20 1	; "layerKey2" -
+	43	[-]	NEWTABLE 	1 11 0
+	44	[-]	LOADK    	2 -18	; "title_03_a"
+	45	[-]	LOADK    	3 -21	; "title_04_a"
+	46	[-]	LOADK    	4 -23	; "title_13_a"
+	47	[-]	LOADK    	5 -10	; "title_05_a"
+	48	[-]	LOADK    	6 -11	; "title_06_a"
+	49	[-]	LOADK    	7 -19	; "title_07_a"
+	50	[-]	LOADK    	8 -12	; "title_08_a"
+	51	[-]	LOADK    	9 -13	; "title_09_a"
+	52	[-]	LOADK    	10 -14	; "title_10_a"
+	53	[-]	LOADK    	11 -15	; "title_11_a"
+	54	[-]	LOADK    	12 -16	; "title_12_a"
+	55	[-]	SETLIST  	1 11 1	; 1
+	56	[-]	SETTABLE 	0 -22 1	; "layerKey3" -
+	57	[-]	NEWTABLE 	1 0 12
+	58	[-]	SETTABLE 	1 -9 -25	; "title_02_a" 102
+	59	[-]	SETTABLE 	1 -18 -26	; "title_03_a" 88
+	60	[-]	SETTABLE 	1 -21 -27	; "title_04_a" 119
+	61	[-]	SETTABLE 	1 -10 -28	; "title_05_a" 67
+	62	[-]	SETTABLE 	1 -11 -29	; "title_06_a" 75
+	63	[-]	SETTABLE 	1 -19 -25	; "title_07_a" 102
+	64	[-]	SETTABLE 	1 -12 -30	; "title_08_a" 101
+	65	[-]	SETTABLE 	1 -13 -31	; "title_09_a" 116
+	66	[-]	SETTABLE 	1 -14 -32	; "title_10_a" 132
+	67	[-]	SETTABLE 	1 -15 -33	; "title_11_a" 127
+	68	[-]	SETTABLE 	1 -16 -31	; "title_12_a" 116
+	69	[-]	SETTABLE 	1 -23 -34	; "title_13_a" 117
+	70	[-]	SETTABLE 	0 -24 1	; "layerWidth" -
+	71	[-]	NEWTABLE 	1 0 12
+	72	[-]	SETTABLE 	1 -9 -36	; "title_02_a" 72
+	73	[-]	SETTABLE 	1 -18 -37	; "title_03_a" 70
+	74	[-]	SETTABLE 	1 -21 -38	; "title_04_a" 68
+	75	[-]	SETTABLE 	1 -10 -39	; "title_05_a" 62
+	76	[-]	SETTABLE 	1 -11 -40	; "title_06_a" 59
+	77	[-]	SETTABLE 	1 -19 -41	; "title_07_a" 32
+	78	[-]	SETTABLE 	1 -12 -42	; "title_08_a" 40
+	79	[-]	SETTABLE 	1 -13 -43	; "title_09_a" 34
+	80	[-]	SETTABLE 	1 -14 -44	; "title_10_a" 36
+	81	[-]	SETTABLE 	1 -15 -42	; "title_11_a" 40
+	82	[-]	SETTABLE 	1 -16 -43	; "title_12_a" 34
+	83	[-]	SETTABLE 	1 -23 -28	; "title_13_a" 67
+	84	[-]	SETTABLE 	0 -35 1	; "layerHeight" -
+	85	[-]	GETGLOBAL	1 -45	; gameSave
+	86	[-]	GETTABLE 	1 1 -46	; "startMenuState"
+	87	[-]	EQ       	0 1 -7	; - 2
+	88	[-]	JMP      	2	; to 91
+	89	[-]	GETGLOBAL	1 -47	; systemSave
+	90	[-]	SETTABLE 	1 -48 -49	; "libFlag" true
+	91	[-]	GETGLOBAL	1 -45	; gameSave
+	92	[-]	GETTABLE 	1 1 -50	; "myCard"
+	93	[-]	GETTABLE 	1 1 -51	; 133
+	94	[-]	GETTABLE 	1 1 -52	; "hold"
+	95	[-]	EQ       	0 1 -5	; - 1
+	96	[-]	JMP      	2	; to 99
+	97	[-]	GETGLOBAL	1 -47	; systemSave
+	98	[-]	SETTABLE 	1 -53 -49	; "novelFlag" true
+	99	[-]	GETGLOBAL	1 -45	; gameSave
+	100	[-]	GETTABLE 	1 1 -50	; "myCard"
+	101	[-]	GETTABLE 	1 1 -54	; 141
+	102	[-]	GETTABLE 	1 1 -52	; "hold"
+	103	[-]	EQ       	0 1 -5	; - 1
+	104	[-]	JMP      	2	; to 107
+	105	[-]	GETGLOBAL	1 -47	; systemSave
+	106	[-]	SETTABLE 	1 -55 -49	; "musicFlag" true
+	107	[-]	NEWTABLE 	1 0 0
+	108	[-]	GETGLOBAL	2 -45	; gameSave
+	109	[-]	GETTABLE 	2 2 -50	; "myCard"
+	110	[-]	GETTABLE 	2 2 -51	; 133
+	111	[-]	GETTABLE 	2 2 -52	; "hold"
+	112	[-]	EQ       	0 2 -5	; - 1
+	113	[-]	JMP      	3	; to 117
+	114	[-]	GETGLOBAL	2 -47	; systemSave
+	115	[-]	GETTABLE 	2 2 -56	; "novelGetFlag"
+	116	[-]	SETTABLE 	2 -57 -49	; "novel03" true
+	117	[-]	GETGLOBAL	2 -45	; gameSave
+	118	[-]	GETTABLE 	2 2 -50	; "myCard"
+	119	[-]	GETTABLE 	2 2 -58	; 134
+	120	[-]	GETTABLE 	2 2 -52	; "hold"
+	121	[-]	EQ       	0 2 -5	; - 1
+	122	[-]	JMP      	3	; to 126
+	123	[-]	GETGLOBAL	2 -47	; systemSave
+	124	[-]	GETTABLE 	2 2 -56	; "novelGetFlag"
+	125	[-]	SETTABLE 	2 -59 -49	; "novel01" true
+	126	[-]	GETGLOBAL	2 -45	; gameSave
+	127	[-]	GETTABLE 	2 2 -50	; "myCard"
+	128	[-]	GETTABLE 	2 2 -60	; 135
+	129	[-]	GETTABLE 	2 2 -52	; "hold"
+	130	[-]	EQ       	0 2 -5	; - 1
+	131	[-]	JMP      	3	; to 135
+	132	[-]	GETGLOBAL	2 -47	; systemSave
+	133	[-]	GETTABLE 	2 2 -56	; "novelGetFlag"
+	134	[-]	SETTABLE 	2 -61 -49	; "novel04" true
+	135	[-]	GETGLOBAL	2 -45	; gameSave
+	136	[-]	GETTABLE 	2 2 -50	; "myCard"
+	137	[-]	GETTABLE 	2 2 -62	; 137
+	138	[-]	GETTABLE 	2 2 -52	; "hold"
+	139	[-]	EQ       	0 2 -5	; - 1
+	140	[-]	JMP      	3	; to 144
+	141	[-]	GETGLOBAL	2 -47	; systemSave
+	142	[-]	GETTABLE 	2 2 -56	; "novelGetFlag"
+	143	[-]	SETTABLE 	2 -63 -49	; "novel02" true
+	144	[-]	GETGLOBAL	2 -45	; gameSave
+	145	[-]	GETTABLE 	2 2 -50	; "myCard"
+	146	[-]	GETTABLE 	2 2 -64	; 138
+	147	[-]	GETTABLE 	2 2 -52	; "hold"
+	148	[-]	EQ       	0 2 -5	; - 1
+	149	[-]	JMP      	3	; to 153
+	150	[-]	GETGLOBAL	2 -47	; systemSave
+	151	[-]	GETTABLE 	2 2 -56	; "novelGetFlag"
+	152	[-]	SETTABLE 	2 -65 -49	; "novel05" true
+	153	[-]	GETGLOBAL	2 -45	; gameSave
+	154	[-]	GETTABLE 	2 2 -50	; "myCard"
+	155	[-]	GETTABLE 	2 2 -5	; 1
+	156	[-]	GETTABLE 	2 2 -52	; "hold"
+	157	[-]	EQ       	0 2 -5	; - 1
+	158	[-]	JMP      	3	; to 162
+	159	[-]	GETGLOBAL	2 -47	; systemSave
+	160	[-]	GETTABLE 	2 2 -66	; "memoryFlag"
+	161	[-]	SETTABLE 	2 -67 -49	; "snr_s0_10_f" true
+	162	[-]	GETGLOBAL	2 -45	; gameSave
+	163	[-]	GETTABLE 	2 2 -50	; "myCard"
+	164	[-]	GETTABLE 	2 2 -51	; 133
+	165	[-]	GETTABLE 	2 2 -52	; "hold"
+	166	[-]	EQ       	0 2 -5	; - 1
+	167	[-]	JMP      	3	; to 171
+	168	[-]	GETGLOBAL	2 -47	; systemSave
+	169	[-]	GETTABLE 	2 2 -66	; "memoryFlag"
+	170	[-]	SETTABLE 	2 -68 -49	; "snr_s1_10_f" true
+	171	[-]	GETGLOBAL	2 -45	; gameSave
+	172	[-]	GETTABLE 	2 2 -50	; "myCard"
+	173	[-]	GETTABLE 	2 2 -58	; 134
+	174	[-]	GETTABLE 	2 2 -52	; "hold"
+	175	[-]	EQ       	0 2 -5	; - 1
+	176	[-]	JMP      	3	; to 180
+	177	[-]	GETGLOBAL	2 -47	; systemSave
+	178	[-]	GETTABLE 	2 2 -66	; "memoryFlag"
+	179	[-]	SETTABLE 	2 -69 -49	; "snr_s2_10_f" true
+	180	[-]	GETGLOBAL	2 -45	; gameSave
+	181	[-]	GETTABLE 	2 2 -50	; "myCard"
+	182	[-]	GETTABLE 	2 2 -60	; 135
+	183	[-]	GETTABLE 	2 2 -52	; "hold"
+	184	[-]	EQ       	0 2 -5	; - 1
+	185	[-]	JMP      	3	; to 189
+	186	[-]	GETGLOBAL	2 -47	; systemSave
+	187	[-]	GETTABLE 	2 2 -66	; "memoryFlag"
+	188	[-]	SETTABLE 	2 -70 -49	; "snr_s3_10_fa" true
+	189	[-]	GETGLOBAL	2 -45	; gameSave
+	190	[-]	GETTABLE 	2 2 -50	; "myCard"
+	191	[-]	GETTABLE 	2 2 -71	; 136
+	192	[-]	GETTABLE 	2 2 -52	; "hold"
+	193	[-]	EQ       	0 2 -5	; - 1
+	194	[-]	JMP      	3	; to 198
+	195	[-]	GETGLOBAL	2 -47	; systemSave
+	196	[-]	GETTABLE 	2 2 -66	; "memoryFlag"
+	197	[-]	SETTABLE 	2 -72 -49	; "snr_s3_10_fb" true
+	198	[-]	GETGLOBAL	2 -45	; gameSave
+	199	[-]	GETTABLE 	2 2 -50	; "myCard"
+	200	[-]	GETTABLE 	2 2 -73	; 145
+	201	[-]	GETTABLE 	2 2 -52	; "hold"
+	202	[-]	EQ       	0 2 -5	; - 1
+	203	[-]	JMP      	3	; to 207
+	204	[-]	GETGLOBAL	2 -47	; systemSave
+	205	[-]	GETTABLE 	2 2 -66	; "memoryFlag"
+	206	[-]	SETTABLE 	2 -74 -49	; "snr_s3_10_fc" true
+	207	[-]	GETGLOBAL	2 -45	; gameSave
+	208	[-]	GETTABLE 	2 2 -50	; "myCard"
+	209	[-]	GETTABLE 	2 2 -62	; 137
+	210	[-]	GETTABLE 	2 2 -52	; "hold"
+	211	[-]	EQ       	0 2 -5	; - 1
+	212	[-]	JMP      	3	; to 216
+	213	[-]	GETGLOBAL	2 -47	; systemSave
+	214	[-]	GETTABLE 	2 2 -66	; "memoryFlag"
+	215	[-]	SETTABLE 	2 -75 -49	; "snr_s4_10_fa" true
+	216	[-]	GETGLOBAL	2 -45	; gameSave
+	217	[-]	GETTABLE 	2 2 -50	; "myCard"
+	218	[-]	GETTABLE 	2 2 -64	; 138
+	219	[-]	GETTABLE 	2 2 -52	; "hold"
+	220	[-]	EQ       	0 2 -5	; - 1
+	221	[-]	JMP      	3	; to 225
+	222	[-]	GETGLOBAL	2 -47	; systemSave
+	223	[-]	GETTABLE 	2 2 -66	; "memoryFlag"
+	224	[-]	SETTABLE 	2 -76 -49	; "snr_s4_10_fb" true
+	225	[-]	GETGLOBAL	2 -45	; gameSave
+	226	[-]	GETTABLE 	2 2 -50	; "myCard"
+	227	[-]	GETTABLE 	2 2 -77	; 139
+	228	[-]	GETTABLE 	2 2 -52	; "hold"
+	229	[-]	EQ       	0 2 -5	; - 1
+	230	[-]	JMP      	3	; to 234
+	231	[-]	GETGLOBAL	2 -47	; systemSave
+	232	[-]	GETTABLE 	2 2 -66	; "memoryFlag"
+	233	[-]	SETTABLE 	2 -78 -49	; "snr_s5_10_f" true
+	234	[-]	GETGLOBAL	2 -45	; gameSave
+	235	[-]	GETTABLE 	2 2 -50	; "myCard"
+	236	[-]	GETTABLE 	2 2 -79	; 140
+	237	[-]	GETTABLE 	2 2 -52	; "hold"
+	238	[-]	EQ       	0 2 -5	; - 1
+	239	[-]	JMP      	3	; to 243
+	240	[-]	GETGLOBAL	2 -47	; systemSave
+	241	[-]	GETTABLE 	2 2 -66	; "memoryFlag"
+	242	[-]	SETTABLE 	2 -80 -49	; "snr_s6_10_f" true
+	243	[-]	GETGLOBAL	2 -45	; gameSave
+	244	[-]	GETTABLE 	2 2 -50	; "myCard"
+	245	[-]	GETTABLE 	2 2 -54	; 141
+	246	[-]	GETTABLE 	2 2 -52	; "hold"
+	247	[-]	EQ       	0 2 -5	; - 1
+	248	[-]	JMP      	3	; to 252
+	249	[-]	GETGLOBAL	2 -47	; systemSave
+	250	[-]	GETTABLE 	2 2 -66	; "memoryFlag"
+	251	[-]	SETTABLE 	2 -81 -49	; "snr_s7_10_f" true
+	252	[-]	GETGLOBAL	2 -45	; gameSave
+	253	[-]	GETTABLE 	2 2 -50	; "myCard"
+	254	[-]	GETTABLE 	2 2 -82	; 142
+	255	[-]	GETTABLE 	2 2 -52	; "hold"
+	256	[-]	EQ       	0 2 -5	; - 1
+	257	[-]	JMP      	3	; to 261
+	258	[-]	GETGLOBAL	2 -47	; systemSave
+	259	[-]	GETTABLE 	2 2 -66	; "memoryFlag"
+	260	[-]	SETTABLE 	2 -83 -49	; "snr_s8_10_f" true
+	261	[-]	GETGLOBAL	2 -45	; gameSave
+	262	[-]	GETTABLE 	2 2 -50	; "myCard"
+	263	[-]	GETTABLE 	2 2 -84	; 143
+	264	[-]	GETTABLE 	2 2 -52	; "hold"
+	265	[-]	EQ       	0 2 -5	; - 1
+	266	[-]	JMP      	3	; to 270
+	267	[-]	GETGLOBAL	2 -47	; systemSave
+	268	[-]	GETTABLE 	2 2 -66	; "memoryFlag"
+	269	[-]	SETTABLE 	2 -85 -49	; "snr_e1_10_f" true
+	270	[-]	GETGLOBAL	2 -45	; gameSave
+	271	[-]	GETTABLE 	2 2 -50	; "myCard"
+	272	[-]	GETTABLE 	2 2 -86	; 144
+	273	[-]	GETTABLE 	2 2 -52	; "hold"
+	274	[-]	EQ       	0 2 -5	; - 1
+	275	[-]	JMP      	3	; to 279
+	276	[-]	GETGLOBAL	2 -47	; systemSave
+	277	[-]	GETTABLE 	2 2 -66	; "memoryFlag"
+	278	[-]	SETTABLE 	2 -87 -49	; "snr_e2_10_f" true
+	279	[-]	CLOSURE  	2 0	; 0x5815a2b0
+	280	[-]	MOVE     	0 0
+	281	[-]	CLOSURE  	3 1	; 0x5815a3a0
+	282	[-]	MOVE     	0 0
+	283	[-]	CLOSURE  	4 2	; 0x5815a480
+	284	[-]	MOVE     	0 0
+	285	[-]	MOVE     	0 1
+	286	[-]	MOVE     	0 2
+	287	[-]	MOVE     	0 3
+	288	[-]	CLOSURE  	5 3	; 0x5815bb60
+	289	[-]	CLOSURE  	6 4	; 0x5815c0f0
+	290	[-]	CLOSURE  	7 5	; 0x5815c1d0
+	291	[-]	MOVE     	0 5
+	292	[-]	CLOSURE  	8 6	; 0x5815c440
+	293	[-]	MOVE     	0 5
+	294	[-]	CLOSURE  	9 7	; 0x5815c580
+	295	[-]	MOVE     	0 4
+	296	[-]	MOVE     	0 1
+	297	[-]	MOVE     	0 0
+	298	[-]	MOVE     	0 7
+	299	[-]	MOVE     	0 2
+	300	[-]	MOVE     	0 3
+	301	[-]	MOVE     	0 8
+	302	[-]	SETGLOBAL	9 -88	; main
+	303	[-]	RETURN   	0 1
+constants (88) for 0x58159010:
+	1	"layerNumber"
+	2	"bg"
+	3	0
+	4	"logo"
+	5	1
+	6	"menu"
+	7	2
+	8	"layerKey0"
+	9	"title_02_a"
+	10	"title_05_a"
+	11	"title_06_a"
+	12	"title_08_a"
+	13	"title_09_a"
+	14	"title_10_a"
+	15	"title_11_a"
+	16	"title_12_a"
+	17	"layerKey1"
+	18	"title_03_a"
+	19	"title_07_a"
+	20	"layerKey2"
+	21	"title_04_a"
+	22	"layerKey3"
+	23	"title_13_a"
+	24	"layerWidth"
+	25	102
+	26	88
+	27	119
+	28	67
+	29	75
+	30	101
+	31	116
+	32	132
+	33	127
+	34	117
+	35	"layerHeight"
+	36	72
+	37	70
+	38	68
+	39	62
+	40	59
+	41	32
+	42	40
+	43	34
+	44	36
+	45	"gameSave"
+	46	"startMenuState"
+	47	"systemSave"
+	48	"libFlag"
+	49	true
+	50	"myCard"
+	51	133
+	52	"hold"
+	53	"novelFlag"
+	54	141
+	55	"musicFlag"
+	56	"novelGetFlag"
+	57	"novel03"
+	58	134
+	59	"novel01"
+	60	135
+	61	"novel04"
+	62	137
+	63	"novel02"
+	64	138
+	65	"novel05"
+	66	"memoryFlag"
+	67	"snr_s0_10_f"
+	68	"snr_s1_10_f"
+	69	"snr_s2_10_f"
+	70	"snr_s3_10_fa"
+	71	136
+	72	"snr_s3_10_fb"
+	73	145
+	74	"snr_s3_10_fc"
+	75	"snr_s4_10_fa"
+	76	"snr_s4_10_fb"
+	77	139
+	78	"snr_s5_10_f"
+	79	140
+	80	"snr_s6_10_f"
+	81	"snr_s7_10_f"
+	82	142
+	83	"snr_s8_10_f"
+	84	143
+	85	"snr_e1_10_f"
+	86	144
+	87	"snr_e2_10_f"
+	88	"main"
+locals (0) for 0x58159010:
+upvalues (0) for 0x58159010:
+
+function <?:204,207> (14 instructions, 56 bytes at 0x5815a2b0)
+2 params, 9 slots, 1 upvalue, 0 locals, 5 constants, 0 functions
+	1	[-]	GETUPVAL 	2 0	; -
+	2	[-]	GETTABLE 	2 2 -1	; "layerHeight"
+	3	[-]	GETTABLE 	2 2 1
+	4	[-]	DIV      	2 2 -2	; - 2
+	5	[-]	GETGLOBAL	3 -3	; layerClip
+	6	[-]	MOVE     	4 0
+	7	[-]	LOADK    	5 -4	; 0
+	8	[-]	LOADK    	6 -4	; 0
+	9	[-]	GETUPVAL 	7 0	; -
+	10	[-]	GETTABLE 	7 7 -5	; "layerWidth"
+	11	[-]	GETTABLE 	7 7 1
+	12	[-]	MOVE     	8 2
+	13	[-]	CALL     	3 6 1
+	14	[-]	RETURN   	0 1
+constants (5) for 0x5815a2b0:
+	1	"layerHeight"
+	2	2
+	3	"layerClip"
+	4	0
+	5	"layerWidth"
+locals (0) for 0x5815a2b0:
+upvalues (0) for 0x5815a2b0:
+
+function <?:209,213> (17 instructions, 68 bytes at 0x5815a3a0)
+2 params, 10 slots, 1 upvalue, 0 locals, 5 constants, 0 functions
+	1	[-]	GETUPVAL 	2 0	; -
+	2	[-]	GETTABLE 	2 2 -1	; "layerHeight"
+	3	[-]	GETTABLE 	2 2 1
+	4	[-]	DIV      	2 2 -2	; - 2
+	5	[-]	GETUPVAL 	3 0	; -
+	6	[-]	GETTABLE 	3 3 -1	; "layerHeight"
+	7	[-]	GETTABLE 	3 3 1
+	8	[-]	GETGLOBAL	4 -3	; layerClip
+	9	[-]	MOVE     	5 0
+	10	[-]	LOADK    	6 -4	; 0
+	11	[-]	MOVE     	7 2
+	12	[-]	GETUPVAL 	8 0	; -
+	13	[-]	GETTABLE 	8 8 -5	; "layerWidth"
+	14	[-]	GETTABLE 	8 8 1
+	15	[-]	MOVE     	9 3
+	16	[-]	CALL     	4 6 1
+	17	[-]	RETURN   	0 1
+constants (5) for 0x5815a3a0:
+	1	"layerHeight"
+	2	2
+	3	"layerClip"
+	4	0
+	5	"layerWidth"
+locals (0) for 0x5815a3a0:
+upvalues (0) for 0x5815a3a0:
+
+function <?:215,426> (892 instructions, 3568 bytes at 0x5815a480)
+0 params, 8 slots, 4 upvalues, 0 locals, 89 constants, 0 functions
+	1	[-]	GETGLOBAL	0 -1	; savedataTitle
+	2	[-]	LOADK    	1 -2	; "\227\130\191\227\130\164\227\131\136\227\131\171"
+	3	[-]	LOADK    	2 -3	; ""
+	4	[-]	CALL     	0 3 1
+	5	[-]	GETGLOBAL	0 -4	; cPlayLoopSeWrap
+	6	[-]	GETGLOBAL	1 -5	; cGetFileName
+	7	[-]	LOADK    	2 -6	; "loop"
+	8	[-]	LOADK    	3 -7	; "loop_10"
+	9	[-]	CALL     	1 3 0
+	10	[-]	CALL     	0 0 1
+	11	[-]	GETGLOBAL	0 -8	; layerCopy
+	12	[-]	GETUPVAL 	1 0	; -
+	13	[-]	GETTABLE 	1 1 -9	; "layerNumber"
+	14	[-]	GETTABLE 	1 1 -10	; "bg"
+	15	[-]	GETGLOBAL	2 -11	; layerName
+	16	[-]	GETTABLE 	2 2 -12	; "titleBG"
+	17	[-]	CALL     	0 3 1
+	18	[-]	GETGLOBAL	0 -8	; layerCopy
+	19	[-]	GETUPVAL 	1 0	; -
+	20	[-]	GETTABLE 	1 1 -9	; "layerNumber"
+	21	[-]	GETTABLE 	1 1 -13	; "logo"
+	22	[-]	GETGLOBAL	2 -11	; layerName
+	23	[-]	GETTABLE 	2 2 -14	; "title_01_a"
+	24	[-]	CALL     	0 3 1
+	25	[-]	GETGLOBAL	0 -15	; layerPosition
+	26	[-]	GETUPVAL 	1 0	; -
+	27	[-]	GETTABLE 	1 1 -9	; "layerNumber"
+	28	[-]	GETTABLE 	1 1 -13	; "logo"
+	29	[-]	LOADK    	2 -16	; 38
+	30	[-]	LOADK    	3 -17	; 10
+	31	[-]	CALL     	0 4 1
+	32	[-]	GETGLOBAL	0 -8	; layerCopy
+	33	[-]	LOADK    	1 -18	; 20
+	34	[-]	GETGLOBAL	2 -11	; layerName
+	35	[-]	GETTABLE 	2 2 -19	; "effectWhite"
+	36	[-]	CALL     	0 3 1
+	37	[-]	GETGLOBAL	0 -20	; layerBlend
+	38	[-]	LOADK    	1 -18	; 20
+	39	[-]	LOADK    	2 -21	; "ADD"
+	40	[-]	CALL     	0 3 1
+	41	[-]	GETGLOBAL	0 -22	; layerMoveAlpha
+	42	[-]	LOADK    	1 -18	; 20
+	43	[-]	LOADK    	2 -23	; 0
+	44	[-]	LOADK    	3 -24	; 180
+	45	[-]	CALL     	0 4 1
+	46	[-]	GETGLOBAL	0 -25	; wait
+	47	[-]	LOADK    	1 -24	; 180
+	48	[-]	CALL     	0 2 1
+	49	[-]	GETGLOBAL	0 -26	; layerLoad
+	50	[-]	LOADK    	1 -18	; 20
+	51	[-]	LOADK    	2 -3	; ""
+	52	[-]	CALL     	0 3 1
+	53	[-]	GETGLOBAL	0 -27	; gameSave
+	54	[-]	GETTABLE 	0 0 -28	; "startMenuState"
+	55	[-]	EQ       	0 0 -23	; - 0
+	56	[-]	JMP      	177	; to 234
+	57	[-]	NEWTABLE 	0 0 8
+	58	[-]	SETTABLE 	0 -29 -30	; "prologue" 1
+	59	[-]	SETTABLE 	0 -31 -32	; "library" 2
+	60	[-]	SETTABLE 	0 -33 -34	; "option" 3
+	61	[-]	SETTABLE 	0 -35 -36	; "load" 4
+	62	[-]	SETTABLE 	0 -37 -38	; "novel" 5
+	63	[-]	SETTABLE 	0 -39 -40	; "scene" 6
+	64	[-]	SETTABLE 	0 -41 -42	; "cg" 7
+	65	[-]	SETTABLE 	0 -43 -44	; "music" 8
+	66	[-]	SETUPVAL 	0 1	; -
+	67	[-]	LOADK    	0 -30	; 1
+	68	[-]	GETUPVAL 	1 0	; -
+	69	[-]	GETTABLE 	1 1 -45	; "layerKey0"
+	70	[-]	LEN      	1 1
+	71	[-]	LOADK    	2 -30	; 1
+	72	[-]	FORPREP  	0 150	; to 223
+	73	[-]	GETGLOBAL	4 -8	; layerCopy
+	74	[-]	GETUPVAL 	5 0	; -
+	75	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	76	[-]	GETTABLE 	5 5 -46	; "menu"
+	77	[-]	ADD      	5 5 3
+	78	[-]	GETGLOBAL	6 -11	; layerName
+	79	[-]	GETUPVAL 	7 0	; -
+	80	[-]	GETTABLE 	7 7 -45	; "layerKey0"
+	81	[-]	GETTABLE 	7 7 3
+	82	[-]	GETTABLE 	6 6 7
+	83	[-]	CALL     	4 3 1
+	84	[-]	GETUPVAL 	4 2	; -
+	85	[-]	GETUPVAL 	5 0	; -
+	86	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	87	[-]	GETTABLE 	5 5 -46	; "menu"
+	88	[-]	ADD      	5 5 3
+	89	[-]	GETUPVAL 	6 0	; -
+	90	[-]	GETTABLE 	6 6 -45	; "layerKey0"
+	91	[-]	GETTABLE 	6 6 3
+	92	[-]	CALL     	4 3 1
+	93	[-]	GETUPVAL 	4 1	; -
+	94	[-]	GETTABLE 	4 4 -29	; "prologue"
+	95	[-]	EQ       	0 3 4
+	96	[-]	JMP      	11	; to 108
+	97	[-]	GETGLOBAL	4 -15	; layerPosition
+	98	[-]	GETUPVAL 	5 0	; -
+	99	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	100	[-]	GETTABLE 	5 5 -46	; "menu"
+	101	[-]	GETUPVAL 	6 1	; -
+	102	[-]	GETTABLE 	6 6 -29	; "prologue"
+	103	[-]	ADD      	5 5 6
+	104	[-]	LOADK    	6 -47	; 193
+	105	[-]	LOADK    	7 -48	; 139
+	106	[-]	CALL     	4 4 1
+	107	[-]	JMP      	104	; to 212
+	108	[-]	GETUPVAL 	4 1	; -
+	109	[-]	GETTABLE 	4 4 -31	; "library"
+	110	[-]	EQ       	0 3 4
+	111	[-]	JMP      	11	; to 123
+	112	[-]	GETGLOBAL	4 -15	; layerPosition
+	113	[-]	GETUPVAL 	5 0	; -
+	114	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	115	[-]	GETTABLE 	5 5 -46	; "menu"
+	116	[-]	GETUPVAL 	6 1	; -
+	117	[-]	GETTABLE 	6 6 -31	; "library"
+	118	[-]	ADD      	5 5 6
+	119	[-]	LOADK    	6 -49	; 205
+	120	[-]	LOADK    	7 -50	; 208
+	121	[-]	CALL     	4 4 1
+	122	[-]	JMP      	89	; to 212
+	123	[-]	GETUPVAL 	4 1	; -
+	124	[-]	GETTABLE 	4 4 -33	; "option"
+	125	[-]	EQ       	0 3 4
+	126	[-]	JMP      	11	; to 138
+	127	[-]	GETGLOBAL	4 -15	; layerPosition
+	128	[-]	GETUPVAL 	5 0	; -
+	129	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	130	[-]	GETTABLE 	5 5 -46	; "menu"
+	131	[-]	GETUPVAL 	6 1	; -
+	132	[-]	GETTABLE 	6 6 -33	; "option"
+	133	[-]	ADD      	5 5 6
+	134	[-]	LOADK    	6 -51	; 215
+	135	[-]	LOADK    	7 -52	; 241
+	136	[-]	CALL     	4 4 1
+	137	[-]	JMP      	74	; to 212
+	138	[-]	GETUPVAL 	4 1	; -
+	139	[-]	GETTABLE 	4 4 -35	; "load"
+	140	[-]	EQ       	0 3 4
+	141	[-]	JMP      	11	; to 153
+	142	[-]	GETGLOBAL	4 -15	; layerPosition
+	143	[-]	GETUPVAL 	5 0	; -
+	144	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	145	[-]	GETTABLE 	5 5 -46	; "menu"
+	146	[-]	GETUPVAL 	6 1	; -
+	147	[-]	GETTABLE 	6 6 -35	; "load"
+	148	[-]	ADD      	5 5 6
+	149	[-]	LOADK    	6 -53	; 330
+	150	[-]	LOADK    	7 -54	; 142
+	151	[-]	CALL     	4 4 1
+	152	[-]	JMP      	59	; to 212
+	153	[-]	GETUPVAL 	4 1	; -
+	154	[-]	GETTABLE 	4 4 -37	; "novel"
+	155	[-]	EQ       	0 3 4
+	156	[-]	JMP      	11	; to 168
+	157	[-]	GETGLOBAL	4 -15	; layerPosition
+	158	[-]	GETUPVAL 	5 0	; -
+	159	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	160	[-]	GETTABLE 	5 5 -46	; "menu"
+	161	[-]	GETUPVAL 	6 1	; -
+	162	[-]	GETTABLE 	6 6 -37	; "novel"
+	163	[-]	ADD      	5 5 6
+	164	[-]	LOADK    	6 -55	; 353
+	165	[-]	LOADK    	7 -56	; 185
+	166	[-]	CALL     	4 4 1
+	167	[-]	JMP      	44	; to 212
+	168	[-]	GETUPVAL 	4 1	; -
+	169	[-]	GETTABLE 	4 4 -39	; "scene"
+	170	[-]	EQ       	0 3 4
+	171	[-]	JMP      	11	; to 183
+	172	[-]	GETGLOBAL	4 -15	; layerPosition
+	173	[-]	GETUPVAL 	5 0	; -
+	174	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	175	[-]	GETTABLE 	5 5 -46	; "menu"
+	176	[-]	GETUPVAL 	6 1	; -
+	177	[-]	GETTABLE 	6 6 -39	; "scene"
+	178	[-]	ADD      	5 5 6
+	179	[-]	LOADK    	6 -57	; 335
+	180	[-]	LOADK    	7 -58	; 207
+	181	[-]	CALL     	4 4 1
+	182	[-]	JMP      	29	; to 212
+	183	[-]	GETUPVAL 	4 1	; -
+	184	[-]	GETTABLE 	4 4 -41	; "cg"
+	185	[-]	EQ       	0 3 4
+	186	[-]	JMP      	11	; to 198
+	187	[-]	GETGLOBAL	4 -15	; layerPosition
+	188	[-]	GETUPVAL 	5 0	; -
+	189	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	190	[-]	GETTABLE 	5 5 -46	; "menu"
+	191	[-]	GETUPVAL 	6 1	; -
+	192	[-]	GETTABLE 	6 6 -41	; "cg"
+	193	[-]	ADD      	5 5 6
+	194	[-]	LOADK    	6 -59	; 340
+	195	[-]	LOADK    	7 -60	; 223
+	196	[-]	CALL     	4 4 1
+	197	[-]	JMP      	14	; to 212
+	198	[-]	GETUPVAL 	4 1	; -
+	199	[-]	GETTABLE 	4 4 -43	; "music"
+	200	[-]	EQ       	0 3 4
+	201	[-]	JMP      	10	; to 212
+	202	[-]	GETGLOBAL	4 -15	; layerPosition
+	203	[-]	GETUPVAL 	5 0	; -
+	204	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	205	[-]	GETTABLE 	5 5 -46	; "menu"
+	206	[-]	GETUPVAL 	6 1	; -
+	207	[-]	GETTABLE 	6 6 -43	; "music"
+	208	[-]	ADD      	5 5 6
+	209	[-]	LOADK    	6 -61	; 352
+	210	[-]	LOADK    	7 -62	; 243
+	211	[-]	CALL     	4 4 1
+	212	[-]	GETUPVAL 	4 1	; -
+	213	[-]	GETTABLE 	4 4 -37	; "novel"
+	214	[-]	LE       	0 4 3
+	215	[-]	JMP      	7	; to 223
+	216	[-]	GETGLOBAL	4 -63	; layerVisible
+	217	[-]	GETUPVAL 	5 0	; -
+	218	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	219	[-]	GETTABLE 	5 5 -46	; "menu"
+	220	[-]	ADD      	5 5 3
+	221	[-]	LOADBOOL 	6 0 0
+	222	[-]	CALL     	4 3 1
+	223	[-]	FORLOOP  	0 -151	; to 73
+	224	[-]	GETUPVAL 	0 3	; -
+	225	[-]	GETUPVAL 	1 0	; -
+	226	[-]	GETTABLE 	1 1 -9	; "layerNumber"
+	227	[-]	GETTABLE 	1 1 -46	; "menu"
+	228	[-]	ADD      	1 1 -30	; - 1
+	229	[-]	GETUPVAL 	2 0	; -
+	230	[-]	GETTABLE 	2 2 -45	; "layerKey0"
+	231	[-]	GETTABLE 	2 2 -30	; 1
+	232	[-]	CALL     	0 3 1
+	233	[-]	JMP      	640	; to 874
+	234	[-]	GETGLOBAL	0 -27	; gameSave
+	235	[-]	GETTABLE 	0 0 -28	; "startMenuState"
+	236	[-]	EQ       	0 0 -30	; - 1
+	237	[-]	JMP      	193	; to 431
+	238	[-]	NEWTABLE 	0 0 9
+	239	[-]	SETTABLE 	0 -64 -30	; "story" 1
+	240	[-]	SETTABLE 	0 -31 -32	; "library" 2
+	241	[-]	SETTABLE 	0 -33 -34	; "option" 3
+	242	[-]	SETTABLE 	0 -65 -36	; "save" 4
+	243	[-]	SETTABLE 	0 -35 -38	; "load" 5
+	244	[-]	SETTABLE 	0 -37 -40	; "novel" 6
+	245	[-]	SETTABLE 	0 -39 -42	; "scene" 7
+	246	[-]	SETTABLE 	0 -41 -44	; "cg" 8
+	247	[-]	SETTABLE 	0 -43 -66	; "music" 9
+	248	[-]	SETUPVAL 	0 1	; -
+	249	[-]	LOADK    	0 -30	; 1
+	250	[-]	GETUPVAL 	1 0	; -
+	251	[-]	GETTABLE 	1 1 -67	; "layerKey1"
+	252	[-]	LEN      	1 1
+	253	[-]	LOADK    	2 -30	; 1
+	254	[-]	FORPREP  	0 165	; to 420
+	255	[-]	GETGLOBAL	4 -8	; layerCopy
+	256	[-]	GETUPVAL 	5 0	; -
+	257	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	258	[-]	GETTABLE 	5 5 -46	; "menu"
+	259	[-]	ADD      	5 5 3
+	260	[-]	GETGLOBAL	6 -11	; layerName
+	261	[-]	GETUPVAL 	7 0	; -
+	262	[-]	GETTABLE 	7 7 -67	; "layerKey1"
+	263	[-]	GETTABLE 	7 7 3
+	264	[-]	GETTABLE 	6 6 7
+	265	[-]	CALL     	4 3 1
+	266	[-]	GETUPVAL 	4 2	; -
+	267	[-]	GETUPVAL 	5 0	; -
+	268	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	269	[-]	GETTABLE 	5 5 -46	; "menu"
+	270	[-]	ADD      	5 5 3
+	271	[-]	GETUPVAL 	6 0	; -
+	272	[-]	GETTABLE 	6 6 -67	; "layerKey1"
+	273	[-]	GETTABLE 	6 6 3
+	274	[-]	CALL     	4 3 1
+	275	[-]	GETUPVAL 	4 1	; -
+	276	[-]	GETTABLE 	4 4 -64	; "story"
+	277	[-]	EQ       	0 3 4
+	278	[-]	JMP      	11	; to 290
+	279	[-]	GETGLOBAL	4 -15	; layerPosition
+	280	[-]	GETUPVAL 	5 0	; -
+	281	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	282	[-]	GETTABLE 	5 5 -46	; "menu"
+	283	[-]	GETUPVAL 	6 1	; -
+	284	[-]	GETTABLE 	6 6 -64	; "story"
+	285	[-]	ADD      	5 5 6
+	286	[-]	LOADK    	6 -68	; 210
+	287	[-]	LOADK    	7 -69	; 120
+	288	[-]	CALL     	4 4 1
+	289	[-]	JMP      	119	; to 409
+	290	[-]	GETUPVAL 	4 1	; -
+	291	[-]	GETTABLE 	4 4 -31	; "library"
+	292	[-]	EQ       	0 3 4
+	293	[-]	JMP      	11	; to 305
+	294	[-]	GETGLOBAL	4 -15	; layerPosition
+	295	[-]	GETUPVAL 	5 0	; -
+	296	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	297	[-]	GETTABLE 	5 5 -46	; "menu"
+	298	[-]	GETUPVAL 	6 1	; -
+	299	[-]	GETTABLE 	6 6 -31	; "library"
+	300	[-]	ADD      	5 5 6
+	301	[-]	LOADK    	6 -49	; 205
+	302	[-]	LOADK    	7 -50	; 208
+	303	[-]	CALL     	4 4 1
+	304	[-]	JMP      	104	; to 409
+	305	[-]	GETUPVAL 	4 1	; -
+	306	[-]	GETTABLE 	4 4 -33	; "option"
+	307	[-]	EQ       	0 3 4
+	308	[-]	JMP      	11	; to 320
+	309	[-]	GETGLOBAL	4 -15	; layerPosition
+	310	[-]	GETUPVAL 	5 0	; -
+	311	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	312	[-]	GETTABLE 	5 5 -46	; "menu"
+	313	[-]	GETUPVAL 	6 1	; -
+	314	[-]	GETTABLE 	6 6 -33	; "option"
+	315	[-]	ADD      	5 5 6
+	316	[-]	LOADK    	6 -51	; 215
+	317	[-]	LOADK    	7 -52	; 241
+	318	[-]	CALL     	4 4 1
+	319	[-]	JMP      	89	; to 409
+	320	[-]	GETUPVAL 	4 1	; -
+	321	[-]	GETTABLE 	4 4 -65	; "save"
+	322	[-]	EQ       	0 3 4
+	323	[-]	JMP      	11	; to 335
+	324	[-]	GETGLOBAL	4 -15	; layerPosition
+	325	[-]	GETUPVAL 	5 0	; -
+	326	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	327	[-]	GETTABLE 	5 5 -46	; "menu"
+	328	[-]	GETUPVAL 	6 1	; -
+	329	[-]	GETTABLE 	6 6 -65	; "save"
+	330	[-]	ADD      	5 5 6
+	331	[-]	LOADK    	6 -70	; 48
+	332	[-]	LOADK    	7 -71	; 145
+	333	[-]	CALL     	4 4 1
+	334	[-]	JMP      	74	; to 409
+	335	[-]	GETUPVAL 	4 1	; -
+	336	[-]	GETTABLE 	4 4 -35	; "load"
+	337	[-]	EQ       	0 3 4
+	338	[-]	JMP      	11	; to 350
+	339	[-]	GETGLOBAL	4 -15	; layerPosition
+	340	[-]	GETUPVAL 	5 0	; -
+	341	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	342	[-]	GETTABLE 	5 5 -46	; "menu"
+	343	[-]	GETUPVAL 	6 1	; -
+	344	[-]	GETTABLE 	6 6 -35	; "load"
+	345	[-]	ADD      	5 5 6
+	346	[-]	LOADK    	6 -53	; 330
+	347	[-]	LOADK    	7 -54	; 142
+	348	[-]	CALL     	4 4 1
+	349	[-]	JMP      	59	; to 409
+	350	[-]	GETUPVAL 	4 1	; -
+	351	[-]	GETTABLE 	4 4 -37	; "novel"
+	352	[-]	EQ       	0 3 4
+	353	[-]	JMP      	11	; to 365
+	354	[-]	GETGLOBAL	4 -15	; layerPosition
+	355	[-]	GETUPVAL 	5 0	; -
+	356	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	357	[-]	GETTABLE 	5 5 -46	; "menu"
+	358	[-]	GETUPVAL 	6 1	; -
+	359	[-]	GETTABLE 	6 6 -37	; "novel"
+	360	[-]	ADD      	5 5 6
+	361	[-]	LOADK    	6 -55	; 353
+	362	[-]	LOADK    	7 -56	; 185
+	363	[-]	CALL     	4 4 1
+	364	[-]	JMP      	44	; to 409
+	365	[-]	GETUPVAL 	4 1	; -
+	366	[-]	GETTABLE 	4 4 -39	; "scene"
+	367	[-]	EQ       	0 3 4
+	368	[-]	JMP      	11	; to 380
+	369	[-]	GETGLOBAL	4 -15	; layerPosition
+	370	[-]	GETUPVAL 	5 0	; -
+	371	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	372	[-]	GETTABLE 	5 5 -46	; "menu"
+	373	[-]	GETUPVAL 	6 1	; -
+	374	[-]	GETTABLE 	6 6 -39	; "scene"
+	375	[-]	ADD      	5 5 6
+	376	[-]	LOADK    	6 -57	; 335
+	377	[-]	LOADK    	7 -58	; 207
+	378	[-]	CALL     	4 4 1
+	379	[-]	JMP      	29	; to 409
+	380	[-]	GETUPVAL 	4 1	; -
+	381	[-]	GETTABLE 	4 4 -41	; "cg"
+	382	[-]	EQ       	0 3 4
+	383	[-]	JMP      	11	; to 395
+	384	[-]	GETGLOBAL	4 -15	; layerPosition
+	385	[-]	GETUPVAL 	5 0	; -
+	386	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	387	[-]	GETTABLE 	5 5 -46	; "menu"
+	388	[-]	GETUPVAL 	6 1	; -
+	389	[-]	GETTABLE 	6 6 -41	; "cg"
+	390	[-]	ADD      	5 5 6
+	391	[-]	LOADK    	6 -59	; 340
+	392	[-]	LOADK    	7 -60	; 223
+	393	[-]	CALL     	4 4 1
+	394	[-]	JMP      	14	; to 409
+	395	[-]	GETUPVAL 	4 1	; -
+	396	[-]	GETTABLE 	4 4 -43	; "music"
+	397	[-]	EQ       	0 3 4
+	398	[-]	JMP      	10	; to 409
+	399	[-]	GETGLOBAL	4 -15	; layerPosition
+	400	[-]	GETUPVAL 	5 0	; -
+	401	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	402	[-]	GETTABLE 	5 5 -46	; "menu"
+	403	[-]	GETUPVAL 	6 1	; -
+	404	[-]	GETTABLE 	6 6 -43	; "music"
+	405	[-]	ADD      	5 5 6
+	406	[-]	LOADK    	6 -61	; 352
+	407	[-]	LOADK    	7 -62	; 243
+	408	[-]	CALL     	4 4 1
+	409	[-]	GETUPVAL 	4 1	; -
+	410	[-]	GETTABLE 	4 4 -37	; "novel"
+	411	[-]	LE       	0 4 3
+	412	[-]	JMP      	7	; to 420
+	413	[-]	GETGLOBAL	4 -63	; layerVisible
+	414	[-]	GETUPVAL 	5 0	; -
+	415	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	416	[-]	GETTABLE 	5 5 -46	; "menu"
+	417	[-]	ADD      	5 5 3
+	418	[-]	LOADBOOL 	6 0 0
+	419	[-]	CALL     	4 3 1
+	420	[-]	FORLOOP  	0 -166	; to 255
+	421	[-]	GETUPVAL 	0 3	; -
+	422	[-]	GETUPVAL 	1 0	; -
+	423	[-]	GETTABLE 	1 1 -9	; "layerNumber"
+	424	[-]	GETTABLE 	1 1 -46	; "menu"
+	425	[-]	ADD      	1 1 -30	; - 1
+	426	[-]	GETUPVAL 	2 0	; -
+	427	[-]	GETTABLE 	2 2 -67	; "layerKey1"
+	428	[-]	GETTABLE 	2 2 -30	; 1
+	429	[-]	CALL     	0 3 1
+	430	[-]	JMP      	443	; to 874
+	431	[-]	GETGLOBAL	0 -27	; gameSave
+	432	[-]	GETTABLE 	0 0 -28	; "startMenuState"
+	433	[-]	EQ       	0 0 -32	; - 2
+	434	[-]	JMP      	439	; to 874
+	435	[-]	NEWTABLE 	0 0 10
+	436	[-]	SETTABLE 	0 -64 -30	; "story" 1
+	437	[-]	SETTABLE 	0 -72 -32	; "fragment" 2
+	438	[-]	SETTABLE 	0 -31 -34	; "library" 3
+	439	[-]	SETTABLE 	0 -33 -36	; "option" 4
+	440	[-]	SETTABLE 	0 -65 -38	; "save" 5
+	441	[-]	SETTABLE 	0 -35 -40	; "load" 6
+	442	[-]	SETTABLE 	0 -37 -42	; "novel" 7
+	443	[-]	SETTABLE 	0 -39 -44	; "scene" 8
+	444	[-]	SETTABLE 	0 -41 -66	; "cg" 9
+	445	[-]	SETTABLE 	0 -43 -17	; "music" 10
+	446	[-]	SETUPVAL 	0 1	; -
+	447	[-]	GETGLOBAL	0 -27	; gameSave
+	448	[-]	GETTABLE 	0 0 -73	; "myCard"
+	449	[-]	GETTABLE 	0 0 -74	; 140
+	450	[-]	GETTABLE 	0 0 -75	; "hold"
+	451	[-]	EQ       	0 0 -76	; - -1
+	452	[-]	JMP      	197	; to 650
+	453	[-]	LOADK    	0 -30	; 1
+	454	[-]	GETUPVAL 	1 0	; -
+	455	[-]	GETTABLE 	1 1 -77	; "layerKey2"
+	456	[-]	LEN      	1 1
+	457	[-]	LOADK    	2 -30	; 1
+	458	[-]	FORPREP  	0 180	; to 639
+	459	[-]	GETGLOBAL	4 -8	; layerCopy
+	460	[-]	GETUPVAL 	5 0	; -
+	461	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	462	[-]	GETTABLE 	5 5 -46	; "menu"
+	463	[-]	ADD      	5 5 3
+	464	[-]	GETGLOBAL	6 -11	; layerName
+	465	[-]	GETUPVAL 	7 0	; -
+	466	[-]	GETTABLE 	7 7 -77	; "layerKey2"
+	467	[-]	GETTABLE 	7 7 3
+	468	[-]	GETTABLE 	6 6 7
+	469	[-]	CALL     	4 3 1
+	470	[-]	GETUPVAL 	4 2	; -
+	471	[-]	GETUPVAL 	5 0	; -
+	472	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	473	[-]	GETTABLE 	5 5 -46	; "menu"
+	474	[-]	ADD      	5 5 3
+	475	[-]	GETUPVAL 	6 0	; -
+	476	[-]	GETTABLE 	6 6 -77	; "layerKey2"
+	477	[-]	GETTABLE 	6 6 3
+	478	[-]	CALL     	4 3 1
+	479	[-]	GETUPVAL 	4 1	; -
+	480	[-]	GETTABLE 	4 4 -64	; "story"
+	481	[-]	EQ       	0 3 4
+	482	[-]	JMP      	11	; to 494
+	483	[-]	GETGLOBAL	4 -15	; layerPosition
+	484	[-]	GETUPVAL 	5 0	; -
+	485	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	486	[-]	GETTABLE 	5 5 -46	; "menu"
+	487	[-]	GETUPVAL 	6 1	; -
+	488	[-]	GETTABLE 	6 6 -64	; "story"
+	489	[-]	ADD      	5 5 6
+	490	[-]	LOADK    	6 -68	; 210
+	491	[-]	LOADK    	7 -69	; 120
+	492	[-]	CALL     	4 4 1
+	493	[-]	JMP      	134	; to 628
+	494	[-]	GETUPVAL 	4 1	; -
+	495	[-]	GETTABLE 	4 4 -72	; "fragment"
+	496	[-]	EQ       	0 3 4
+	497	[-]	JMP      	11	; to 509
+	498	[-]	GETGLOBAL	4 -15	; layerPosition
+	499	[-]	GETUPVAL 	5 0	; -
+	500	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	501	[-]	GETTABLE 	5 5 -46	; "menu"
+	502	[-]	GETUPVAL 	6 1	; -
+	503	[-]	GETTABLE 	6 6 -72	; "fragment"
+	504	[-]	ADD      	5 5 6
+	505	[-]	LOADK    	6 -78	; 190
+	506	[-]	LOADK    	7 -79	; 160
+	507	[-]	CALL     	4 4 1
+	508	[-]	JMP      	119	; to 628
+	509	[-]	GETUPVAL 	4 1	; -
+	510	[-]	GETTABLE 	4 4 -31	; "library"
+	511	[-]	EQ       	0 3 4
+	512	[-]	JMP      	11	; to 524
+	513	[-]	GETGLOBAL	4 -15	; layerPosition
+	514	[-]	GETUPVAL 	5 0	; -
+	515	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	516	[-]	GETTABLE 	5 5 -46	; "menu"
+	517	[-]	GETUPVAL 	6 1	; -
+	518	[-]	GETTABLE 	6 6 -31	; "library"
+	519	[-]	ADD      	5 5 6
+	520	[-]	LOADK    	6 -49	; 205
+	521	[-]	LOADK    	7 -50	; 208
+	522	[-]	CALL     	4 4 1
+	523	[-]	JMP      	104	; to 628
+	524	[-]	GETUPVAL 	4 1	; -
+	525	[-]	GETTABLE 	4 4 -33	; "option"
+	526	[-]	EQ       	0 3 4
+	527	[-]	JMP      	11	; to 539
+	528	[-]	GETGLOBAL	4 -15	; layerPosition
+	529	[-]	GETUPVAL 	5 0	; -
+	530	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	531	[-]	GETTABLE 	5 5 -46	; "menu"
+	532	[-]	GETUPVAL 	6 1	; -
+	533	[-]	GETTABLE 	6 6 -33	; "option"
+	534	[-]	ADD      	5 5 6
+	535	[-]	LOADK    	6 -51	; 215
+	536	[-]	LOADK    	7 -52	; 241
+	537	[-]	CALL     	4 4 1
+	538	[-]	JMP      	89	; to 628
+	539	[-]	GETUPVAL 	4 1	; -
+	540	[-]	GETTABLE 	4 4 -65	; "save"
+	541	[-]	EQ       	0 3 4
+	542	[-]	JMP      	11	; to 554
+	543	[-]	GETGLOBAL	4 -15	; layerPosition
+	544	[-]	GETUPVAL 	5 0	; -
+	545	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	546	[-]	GETTABLE 	5 5 -46	; "menu"
+	547	[-]	GETUPVAL 	6 1	; -
+	548	[-]	GETTABLE 	6 6 -65	; "save"
+	549	[-]	ADD      	5 5 6
+	550	[-]	LOADK    	6 -70	; 48
+	551	[-]	LOADK    	7 -71	; 145
+	552	[-]	CALL     	4 4 1
+	553	[-]	JMP      	74	; to 628
+	554	[-]	GETUPVAL 	4 1	; -
+	555	[-]	GETTABLE 	4 4 -35	; "load"
+	556	[-]	EQ       	0 3 4
+	557	[-]	JMP      	11	; to 569
+	558	[-]	GETGLOBAL	4 -15	; layerPosition
+	559	[-]	GETUPVAL 	5 0	; -
+	560	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	561	[-]	GETTABLE 	5 5 -46	; "menu"
+	562	[-]	GETUPVAL 	6 1	; -
+	563	[-]	GETTABLE 	6 6 -35	; "load"
+	564	[-]	ADD      	5 5 6
+	565	[-]	LOADK    	6 -53	; 330
+	566	[-]	LOADK    	7 -54	; 142
+	567	[-]	CALL     	4 4 1
+	568	[-]	JMP      	59	; to 628
+	569	[-]	GETUPVAL 	4 1	; -
+	570	[-]	GETTABLE 	4 4 -37	; "novel"
+	571	[-]	EQ       	0 3 4
+	572	[-]	JMP      	11	; to 584
+	573	[-]	GETGLOBAL	4 -15	; layerPosition
+	574	[-]	GETUPVAL 	5 0	; -
+	575	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	576	[-]	GETTABLE 	5 5 -46	; "menu"
+	577	[-]	GETUPVAL 	6 1	; -
+	578	[-]	GETTABLE 	6 6 -37	; "novel"
+	579	[-]	ADD      	5 5 6
+	580	[-]	LOADK    	6 -55	; 353
+	581	[-]	LOADK    	7 -56	; 185
+	582	[-]	CALL     	4 4 1
+	583	[-]	JMP      	44	; to 628
+	584	[-]	GETUPVAL 	4 1	; -
+	585	[-]	GETTABLE 	4 4 -39	; "scene"
+	586	[-]	EQ       	0 3 4
+	587	[-]	JMP      	11	; to 599
+	588	[-]	GETGLOBAL	4 -15	; layerPosition
+	589	[-]	GETUPVAL 	5 0	; -
+	590	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	591	[-]	GETTABLE 	5 5 -46	; "menu"
+	592	[-]	GETUPVAL 	6 1	; -
+	593	[-]	GETTABLE 	6 6 -39	; "scene"
+	594	[-]	ADD      	5 5 6
+	595	[-]	LOADK    	6 -57	; 335
+	596	[-]	LOADK    	7 -58	; 207
+	597	[-]	CALL     	4 4 1
+	598	[-]	JMP      	29	; to 628
+	599	[-]	GETUPVAL 	4 1	; -
+	600	[-]	GETTABLE 	4 4 -41	; "cg"
+	601	[-]	EQ       	0 3 4
+	602	[-]	JMP      	11	; to 614
+	603	[-]	GETGLOBAL	4 -15	; layerPosition
+	604	[-]	GETUPVAL 	5 0	; -
+	605	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	606	[-]	GETTABLE 	5 5 -46	; "menu"
+	607	[-]	GETUPVAL 	6 1	; -
+	608	[-]	GETTABLE 	6 6 -41	; "cg"
+	609	[-]	ADD      	5 5 6
+	610	[-]	LOADK    	6 -59	; 340
+	611	[-]	LOADK    	7 -60	; 223
+	612	[-]	CALL     	4 4 1
+	613	[-]	JMP      	14	; to 628
+	614	[-]	GETUPVAL 	4 1	; -
+	615	[-]	GETTABLE 	4 4 -43	; "music"
+	616	[-]	EQ       	0 3 4
+	617	[-]	JMP      	10	; to 628
+	618	[-]	GETGLOBAL	4 -15	; layerPosition
+	619	[-]	GETUPVAL 	5 0	; -
+	620	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	621	[-]	GETTABLE 	5 5 -46	; "menu"
+	622	[-]	GETUPVAL 	6 1	; -
+	623	[-]	GETTABLE 	6 6 -43	; "music"
+	624	[-]	ADD      	5 5 6
+	625	[-]	LOADK    	6 -61	; 352
+	626	[-]	LOADK    	7 -62	; 243
+	627	[-]	CALL     	4 4 1
+	628	[-]	GETUPVAL 	4 1	; -
+	629	[-]	GETTABLE 	4 4 -37	; "novel"
+	630	[-]	LE       	0 4 3
+	631	[-]	JMP      	7	; to 639
+	632	[-]	GETGLOBAL	4 -63	; layerVisible
+	633	[-]	GETUPVAL 	5 0	; -
+	634	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	635	[-]	GETTABLE 	5 5 -46	; "menu"
+	636	[-]	ADD      	5 5 3
+	637	[-]	LOADBOOL 	6 0 0
+	638	[-]	CALL     	4 3 1
+	639	[-]	FORLOOP  	0 -181	; to 459
+	640	[-]	GETUPVAL 	0 3	; -
+	641	[-]	GETUPVAL 	1 0	; -
+	642	[-]	GETTABLE 	1 1 -9	; "layerNumber"
+	643	[-]	GETTABLE 	1 1 -46	; "menu"
+	644	[-]	ADD      	1 1 -30	; - 1
+	645	[-]	GETUPVAL 	2 0	; -
+	646	[-]	GETTABLE 	2 2 -77	; "layerKey2"
+	647	[-]	GETTABLE 	2 2 -30	; 1
+	648	[-]	CALL     	0 3 1
+	649	[-]	JMP      	224	; to 874
+	650	[-]	NEWTABLE 	0 0 11
+	651	[-]	SETTABLE 	0 -64 -30	; "story" 1
+	652	[-]	SETTABLE 	0 -72 -32	; "fragment" 2
+	653	[-]	SETTABLE 	0 -80 -34	; "section7" 3
+	654	[-]	SETTABLE 	0 -31 -36	; "library" 4
+	655	[-]	SETTABLE 	0 -33 -38	; "option" 5
+	656	[-]	SETTABLE 	0 -65 -40	; "save" 6
+	657	[-]	SETTABLE 	0 -35 -42	; "load" 7
+	658	[-]	SETTABLE 	0 -37 -44	; "novel" 8
+	659	[-]	SETTABLE 	0 -39 -66	; "scene" 9
+	660	[-]	SETTABLE 	0 -41 -17	; "cg" 10
+	661	[-]	SETTABLE 	0 -43 -81	; "music" 11
+	662	[-]	SETUPVAL 	0 1	; -
+	663	[-]	LOADK    	0 -30	; 1
+	664	[-]	GETUPVAL 	1 0	; -
+	665	[-]	GETTABLE 	1 1 -82	; "layerKey3"
+	666	[-]	LEN      	1 1
+	667	[-]	LOADK    	2 -30	; 1
+	668	[-]	FORPREP  	0 195	; to 864
+	669	[-]	GETGLOBAL	4 -8	; layerCopy
+	670	[-]	GETUPVAL 	5 0	; -
+	671	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	672	[-]	GETTABLE 	5 5 -46	; "menu"
+	673	[-]	ADD      	5 5 3
+	674	[-]	GETGLOBAL	6 -11	; layerName
+	675	[-]	GETUPVAL 	7 0	; -
+	676	[-]	GETTABLE 	7 7 -82	; "layerKey3"
+	677	[-]	GETTABLE 	7 7 3
+	678	[-]	GETTABLE 	6 6 7
+	679	[-]	CALL     	4 3 1
+	680	[-]	GETUPVAL 	4 2	; -
+	681	[-]	GETUPVAL 	5 0	; -
+	682	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	683	[-]	GETTABLE 	5 5 -46	; "menu"
+	684	[-]	ADD      	5 5 3
+	685	[-]	GETUPVAL 	6 0	; -
+	686	[-]	GETTABLE 	6 6 -82	; "layerKey3"
+	687	[-]	GETTABLE 	6 6 3
+	688	[-]	CALL     	4 3 1
+	689	[-]	GETUPVAL 	4 1	; -
+	690	[-]	GETTABLE 	4 4 -64	; "story"
+	691	[-]	EQ       	0 3 4
+	692	[-]	JMP      	11	; to 704
+	693	[-]	GETGLOBAL	4 -15	; layerPosition
+	694	[-]	GETUPVAL 	5 0	; -
+	695	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	696	[-]	GETTABLE 	5 5 -46	; "menu"
+	697	[-]	GETUPVAL 	6 1	; -
+	698	[-]	GETTABLE 	6 6 -64	; "story"
+	699	[-]	ADD      	5 5 6
+	700	[-]	LOADK    	6 -68	; 210
+	701	[-]	LOADK    	7 -83	; 110
+	702	[-]	CALL     	4 4 1
+	703	[-]	JMP      	149	; to 853
+	704	[-]	GETUPVAL 	4 1	; -
+	705	[-]	GETTABLE 	4 4 -72	; "fragment"
+	706	[-]	EQ       	0 3 4
+	707	[-]	JMP      	11	; to 719
+	708	[-]	GETGLOBAL	4 -15	; layerPosition
+	709	[-]	GETUPVAL 	5 0	; -
+	710	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	711	[-]	GETTABLE 	5 5 -46	; "menu"
+	712	[-]	GETUPVAL 	6 1	; -
+	713	[-]	GETTABLE 	6 6 -72	; "fragment"
+	714	[-]	ADD      	5 5 6
+	715	[-]	LOADK    	6 -78	; 190
+	716	[-]	LOADK    	7 -71	; 145
+	717	[-]	CALL     	4 4 1
+	718	[-]	JMP      	134	; to 853
+	719	[-]	GETUPVAL 	4 1	; -
+	720	[-]	GETTABLE 	4 4 -80	; "section7"
+	721	[-]	EQ       	0 3 4
+	722	[-]	JMP      	11	; to 734
+	723	[-]	GETGLOBAL	4 -15	; layerPosition
+	724	[-]	GETUPVAL 	5 0	; -
+	725	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	726	[-]	GETTABLE 	5 5 -46	; "menu"
+	727	[-]	GETUPVAL 	6 1	; -
+	728	[-]	GETTABLE 	6 6 -80	; "section7"
+	729	[-]	ADD      	5 5 6
+	730	[-]	LOADK    	6 -84	; 194
+	731	[-]	LOADK    	7 -24	; 180
+	732	[-]	CALL     	4 4 1
+	733	[-]	JMP      	119	; to 853
+	734	[-]	GETUPVAL 	4 1	; -
+	735	[-]	GETTABLE 	4 4 -31	; "library"
+	736	[-]	EQ       	0 3 4
+	737	[-]	JMP      	11	; to 749
+	738	[-]	GETGLOBAL	4 -15	; layerPosition
+	739	[-]	GETUPVAL 	5 0	; -
+	740	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	741	[-]	GETTABLE 	5 5 -46	; "menu"
+	742	[-]	GETUPVAL 	6 1	; -
+	743	[-]	GETTABLE 	6 6 -31	; "library"
+	744	[-]	ADD      	5 5 6
+	745	[-]	LOADK    	6 -49	; 205
+	746	[-]	LOADK    	7 -50	; 208
+	747	[-]	CALL     	4 4 1
+	748	[-]	JMP      	104	; to 853
+	749	[-]	GETUPVAL 	4 1	; -
+	750	[-]	GETTABLE 	4 4 -33	; "option"
+	751	[-]	EQ       	0 3 4
+	752	[-]	JMP      	11	; to 764
+	753	[-]	GETGLOBAL	4 -15	; layerPosition
+	754	[-]	GETUPVAL 	5 0	; -
+	755	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	756	[-]	GETTABLE 	5 5 -46	; "menu"
+	757	[-]	GETUPVAL 	6 1	; -
+	758	[-]	GETTABLE 	6 6 -33	; "option"
+	759	[-]	ADD      	5 5 6
+	760	[-]	LOADK    	6 -51	; 215
+	761	[-]	LOADK    	7 -52	; 241
+	762	[-]	CALL     	4 4 1
+	763	[-]	JMP      	89	; to 853
+	764	[-]	GETUPVAL 	4 1	; -
+	765	[-]	GETTABLE 	4 4 -65	; "save"
+	766	[-]	EQ       	0 3 4
+	767	[-]	JMP      	11	; to 779
+	768	[-]	GETGLOBAL	4 -15	; layerPosition
+	769	[-]	GETUPVAL 	5 0	; -
+	770	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	771	[-]	GETTABLE 	5 5 -46	; "menu"
+	772	[-]	GETUPVAL 	6 1	; -
+	773	[-]	GETTABLE 	6 6 -65	; "save"
+	774	[-]	ADD      	5 5 6
+	775	[-]	LOADK    	6 -70	; 48
+	776	[-]	LOADK    	7 -71	; 145
+	777	[-]	CALL     	4 4 1
+	778	[-]	JMP      	74	; to 853
+	779	[-]	GETUPVAL 	4 1	; -
+	780	[-]	GETTABLE 	4 4 -35	; "load"
+	781	[-]	EQ       	0 3 4
+	782	[-]	JMP      	11	; to 794
+	783	[-]	GETGLOBAL	4 -15	; layerPosition
+	784	[-]	GETUPVAL 	5 0	; -
+	785	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	786	[-]	GETTABLE 	5 5 -46	; "menu"
+	787	[-]	GETUPVAL 	6 1	; -
+	788	[-]	GETTABLE 	6 6 -35	; "load"
+	789	[-]	ADD      	5 5 6
+	790	[-]	LOADK    	6 -53	; 330
+	791	[-]	LOADK    	7 -54	; 142
+	792	[-]	CALL     	4 4 1
+	793	[-]	JMP      	59	; to 853
+	794	[-]	GETUPVAL 	4 1	; -
+	795	[-]	GETTABLE 	4 4 -37	; "novel"
+	796	[-]	EQ       	0 3 4
+	797	[-]	JMP      	11	; to 809
+	798	[-]	GETGLOBAL	4 -15	; layerPosition
+	799	[-]	GETUPVAL 	5 0	; -
+	800	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	801	[-]	GETTABLE 	5 5 -46	; "menu"
+	802	[-]	GETUPVAL 	6 1	; -
+	803	[-]	GETTABLE 	6 6 -37	; "novel"
+	804	[-]	ADD      	5 5 6
+	805	[-]	LOADK    	6 -55	; 353
+	806	[-]	LOADK    	7 -56	; 185
+	807	[-]	CALL     	4 4 1
+	808	[-]	JMP      	44	; to 853
+	809	[-]	GETUPVAL 	4 1	; -
+	810	[-]	GETTABLE 	4 4 -39	; "scene"
+	811	[-]	EQ       	0 3 4
+	812	[-]	JMP      	11	; to 824
+	813	[-]	GETGLOBAL	4 -15	; layerPosition
+	814	[-]	GETUPVAL 	5 0	; -
+	815	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	816	[-]	GETTABLE 	5 5 -46	; "menu"
+	817	[-]	GETUPVAL 	6 1	; -
+	818	[-]	GETTABLE 	6 6 -39	; "scene"
+	819	[-]	ADD      	5 5 6
+	820	[-]	LOADK    	6 -57	; 335
+	821	[-]	LOADK    	7 -58	; 207
+	822	[-]	CALL     	4 4 1
+	823	[-]	JMP      	29	; to 853
+	824	[-]	GETUPVAL 	4 1	; -
+	825	[-]	GETTABLE 	4 4 -41	; "cg"
+	826	[-]	EQ       	0 3 4
+	827	[-]	JMP      	11	; to 839
+	828	[-]	GETGLOBAL	4 -15	; layerPosition
+	829	[-]	GETUPVAL 	5 0	; -
+	830	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	831	[-]	GETTABLE 	5 5 -46	; "menu"
+	832	[-]	GETUPVAL 	6 1	; -
+	833	[-]	GETTABLE 	6 6 -41	; "cg"
+	834	[-]	ADD      	5 5 6
+	835	[-]	LOADK    	6 -59	; 340
+	836	[-]	LOADK    	7 -60	; 223
+	837	[-]	CALL     	4 4 1
+	838	[-]	JMP      	14	; to 853
+	839	[-]	GETUPVAL 	4 1	; -
+	840	[-]	GETTABLE 	4 4 -43	; "music"
+	841	[-]	EQ       	0 3 4
+	842	[-]	JMP      	10	; to 853
+	843	[-]	GETGLOBAL	4 -15	; layerPosition
+	844	[-]	GETUPVAL 	5 0	; -
+	845	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	846	[-]	GETTABLE 	5 5 -46	; "menu"
+	847	[-]	GETUPVAL 	6 1	; -
+	848	[-]	GETTABLE 	6 6 -43	; "music"
+	849	[-]	ADD      	5 5 6
+	850	[-]	LOADK    	6 -61	; 352
+	851	[-]	LOADK    	7 -62	; 243
+	852	[-]	CALL     	4 4 1
+	853	[-]	GETUPVAL 	4 1	; -
+	854	[-]	GETTABLE 	4 4 -37	; "novel"
+	855	[-]	LE       	0 4 3
+	856	[-]	JMP      	7	; to 864
+	857	[-]	GETGLOBAL	4 -63	; layerVisible
+	858	[-]	GETUPVAL 	5 0	; -
+	859	[-]	GETTABLE 	5 5 -9	; "layerNumber"
+	860	[-]	GETTABLE 	5 5 -46	; "menu"
+	861	[-]	ADD      	5 5 3
+	862	[-]	LOADBOOL 	6 0 0
+	863	[-]	CALL     	4 3 1
+	864	[-]	FORLOOP  	0 -196	; to 669
+	865	[-]	GETUPVAL 	0 3	; -
+	866	[-]	GETUPVAL 	1 0	; -
+	867	[-]	GETTABLE 	1 1 -9	; "layerNumber"
+	868	[-]	GETTABLE 	1 1 -46	; "menu"
+	869	[-]	ADD      	1 1 -30	; - 1
+	870	[-]	GETUPVAL 	2 0	; -
+	871	[-]	GETTABLE 	2 2 -82	; "layerKey3"
+	872	[-]	GETTABLE 	2 2 -30	; 1
+	873	[-]	CALL     	0 3 1
+	874	[-]	GETGLOBAL	0 -85	; systemSave
+	875	[-]	GETTABLE 	0 0 -86	; "libFlag"
+	876	[-]	EQ       	1 0 -87	; - true
+	877	[-]	JMP      	9	; to 887
+	878	[-]	GETGLOBAL	0 -63	; layerVisible
+	879	[-]	GETUPVAL 	1 0	; -
+	880	[-]	GETTABLE 	1 1 -9	; "layerNumber"
+	881	[-]	GETTABLE 	1 1 -46	; "menu"
+	882	[-]	GETUPVAL 	2 1	; -
+	883	[-]	GETTABLE 	2 2 -31	; "library"
+	884	[-]	ADD      	1 1 2
+	885	[-]	LOADBOOL 	2 0 0
+	886	[-]	CALL     	0 3 1
+	887	[-]	GETGLOBAL	0 -88	; switchScreen
+	888	[-]	LOADK    	1 -23	; 0
+	889	[-]	LOADK    	2 -3	; ""
+	890	[-]	LOADK    	3 -89	; 30
+	891	[-]	CALL     	0 4 1
+	892	[-]	RETURN   	0 1
+constants (89) for 0x5815a480:
+	1	"savedataTitle"
+	2	"\227\130\191\227\130\164\227\131\136\227\131\171"
+	3	""
+	4	"cPlayLoopSeWrap"
+	5	"cGetFileName"
+	6	"loop"
+	7	"loop_10"
+	8	"layerCopy"
+	9	"layerNumber"
+	10	"bg"
+	11	"layerName"
+	12	"titleBG"
+	13	"logo"
+	14	"title_01_a"
+	15	"layerPosition"
+	16	38
+	17	10
+	18	20
+	19	"effectWhite"
+	20	"layerBlend"
+	21	"ADD"
+	22	"layerMoveAlpha"
+	23	0
+	24	180
+	25	"wait"
+	26	"layerLoad"
+	27	"gameSave"
+	28	"startMenuState"
+	29	"prologue"
+	30	1
+	31	"library"
+	32	2
+	33	"option"
+	34	3
+	35	"load"
+	36	4
+	37	"novel"
+	38	5
+	39	"scene"
+	40	6
+	41	"cg"
+	42	7
+	43	"music"
+	44	8
+	45	"layerKey0"
+	46	"menu"
+	47	193
+	48	139
+	49	205
+	50	208
+	51	215
+	52	241
+	53	330
+	54	142
+	55	353
+	56	185
+	57	335
+	58	207
+	59	340
+	60	223
+	61	352
+	62	243
+	63	"layerVisible"
+	64	"story"
+	65	"save"
+	66	9
+	67	"layerKey1"
+	68	210
+	69	120
+	70	48
+	71	145
+	72	"fragment"
+	73	"myCard"
+	74	140
+	75	"hold"
+	76	-1
+	77	"layerKey2"
+	78	190
+	79	160
+	80	"section7"
+	81	11
+	82	"layerKey3"
+	83	110
+	84	194
+	85	"systemSave"
+	86	"libFlag"
+	87	true
+	88	"switchScreen"
+	89	30
+locals (0) for 0x5815a480:
+upvalues (0) for 0x5815a480:
+
+function <?:428,433> (18 instructions, 72 bytes at 0x5815bb60)
+0 params, 4 slots, 0 upvalues, 0 locals, 9 constants, 0 functions
+	1	[-]	GETGLOBAL	0 -1	; layerCopy
+	2	[-]	LOADK    	1 -2	; 0
+	3	[-]	GETGLOBAL	2 -3	; backLayerName
+	4	[-]	GETTABLE 	2 2 -4	; "black"
+	5	[-]	CALL     	0 3 1
+	6	[-]	GETGLOBAL	0 -5	; layerAlpha
+	7	[-]	LOADK    	1 -2	; 0
+	8	[-]	LOADK    	2 -2	; 0
+	9	[-]	CALL     	0 3 1
+	10	[-]	GETGLOBAL	0 -6	; layerMoveAlpha
+	11	[-]	LOADK    	1 -2	; 0
+	12	[-]	LOADK    	2 -7	; 60
+	13	[-]	LOADK    	3 -8	; 20
+	14	[-]	CALL     	0 4 1
+	15	[-]	GETGLOBAL	0 -9	; wait
+	16	[-]	LOADK    	1 -8	; 20
+	17	[-]	CALL     	0 2 1
+	18	[-]	RETURN   	0 1
+constants (9) for 0x5815bb60:
+	1	"layerCopy"
+	2	0
+	3	"backLayerName"
+	4	"black"
+	5	"layerAlpha"
+	6	"layerMoveAlpha"
+	7	60
+	8	20
+	9	"wait"
+locals (0) for 0x5815bb60:
+upvalues (0) for 0x5815bb60:
+
+function <?:435,439> (13 instructions, 52 bytes at 0x5815c0f0)
+0 params, 4 slots, 0 upvalues, 0 locals, 6 constants, 0 functions
+	1	[-]	GETGLOBAL	0 -1	; layerMoveAlpha
+	2	[-]	LOADK    	1 -2	; 0
+	3	[-]	LOADK    	2 -2	; 0
+	4	[-]	LOADK    	3 -3	; 20
+	5	[-]	CALL     	0 4 1
+	6	[-]	GETGLOBAL	0 -4	; wait
+	7	[-]	LOADK    	1 -3	; 20
+	8	[-]	CALL     	0 2 1
+	9	[-]	GETGLOBAL	0 -5	; layerLoad
+	10	[-]	LOADK    	1 -2	; 0
+	11	[-]	LOADK    	2 -6	; ""
+	12	[-]	CALL     	0 3 1
+	13	[-]	RETURN   	0 1
+constants (6) for 0x5815c0f0:
+	1	"layerMoveAlpha"
+	2	0
+	3	20
+	4	"wait"
+	5	"layerLoad"
+	6	""
+locals (0) for 0x5815c0f0:
+upvalues (0) for 0x5815c0f0:
+
+function <?:441,454> (28 instructions, 112 bytes at 0x5815c1d0)
+0 params, 4 slots, 1 upvalue, 0 locals, 12 constants, 0 functions
+	1	[-]	GETGLOBAL	0 -1	; pageScreen
+	2	[-]	LOADK    	1 -2	; 1
+	3	[-]	CALL     	0 2 1
+	4	[-]	GETGLOBAL	0 -3	; fontClear
+	5	[-]	CALL     	0 1 1
+	6	[-]	GETUPVAL 	0 0	; -
+	7	[-]	CALL     	0 1 1
+	8	[-]	GETGLOBAL	0 -4	; runListLoad
+	9	[-]	CALL     	0 1 1
+	10	[-]	GETGLOBAL	0 -1	; pageScreen
+	11	[-]	LOADK    	1 -5	; 0
+	12	[-]	CALL     	0 2 1
+	13	[-]	GETGLOBAL	0 -6	; succeedLoadGamedata
+	14	[-]	CALL     	0 1 2
+	15	[-]	TEST     	0 0 0
+	16	[-]	JMP      	11	; to 28
+	17	[-]	GETGLOBAL	0 -7	; runAutoLoad
+	18	[-]	CALL     	0 1 1
+	19	[-]	GETGLOBAL	0 -8	; cInitGame
+	20	[-]	CALL     	0 1 1
+	21	[-]	GETGLOBAL	0 -9	; switchScreen
+	22	[-]	LOADK    	1 -5	; 0
+	23	[-]	LOADK    	2 -10	; ""
+	24	[-]	LOADK    	3 -11	; 60
+	25	[-]	CALL     	0 4 1
+	26	[-]	GETGLOBAL	0 -12	; applyGamedata
+	27	[-]	CALL     	0 1 1
+	28	[-]	RETURN   	0 1
+constants (12) for 0x5815c1d0:
+	1	"pageScreen"
+	2	1
+	3	"fontClear"
+	4	"runListLoad"
+	5	0
+	6	"succeedLoadGamedata"
+	7	"runAutoLoad"
+	8	"cInitGame"
+	9	"switchScreen"
+	10	""
+	11	60
+	12	"applyGamedata"
+locals (0) for 0x5815c1d0:
+upvalues (0) for 0x5815c1d0:
+
+function <?:456,464> (16 instructions, 64 bytes at 0x5815c440)
+0 params, 2 slots, 1 upvalue, 0 locals, 6 constants, 0 functions
+	1	[-]	GETGLOBAL	0 -1	; pageScreen
+	2	[-]	LOADK    	1 -2	; 1
+	3	[-]	CALL     	0 2 1
+	4	[-]	GETGLOBAL	0 -3	; fontClear
+	5	[-]	CALL     	0 1 1
+	6	[-]	GETUPVAL 	0 0	; -
+	7	[-]	CALL     	0 1 1
+	8	[-]	GETGLOBAL	0 -4	; runListSave
+	9	[-]	CALL     	0 1 1
+	10	[-]	GETGLOBAL	0 -5	; autoSystemSave
+	11	[-]	LOADK    	1 -2	; 1
+	12	[-]	CALL     	0 2 1
+	13	[-]	GETGLOBAL	0 -1	; pageScreen
+	14	[-]	LOADK    	1 -6	; 0
+	15	[-]	CALL     	0 2 1
+	16	[-]	RETURN   	0 1
+constants (6) for 0x5815c440:
+	1	"pageScreen"
+	2	1
+	3	"fontClear"
+	4	"runListSave"
+	5	"autoSystemSave"
+	6	0
+locals (0) for 0x5815c440:
+upvalues (0) for 0x5815c440:
+
+function <?:468,1113> (2182 instructions, 8728 bytes at 0x5815c580)
+0 params, 12 slots, 7 upvalues, 0 locals, 80 constants, 0 functions
+	1	[-]	GETGLOBAL	0 -1	; advPart
+	2	[-]	LOADBOOL 	1 0 0
+	3	[-]	CALL     	0 2 1
+	4	[-]	GETGLOBAL	0 -2	; logEnable
+	5	[-]	LOADBOOL 	1 0 0
+	6	[-]	CALL     	0 2 1
+	7	[-]	GETGLOBAL	0 -3	; systemConfig
+	8	[-]	GETTABLE 	0 0 -4	; "unsetConfigButton"
+	9	[-]	CALL     	0 1 1
+	10	[-]	GETGLOBAL	0 -5	; cInitGame
+	11	[-]	CALL     	0 1 1
+	12	[-]	GETUPVAL 	0 0	; -
+	13	[-]	CALL     	0 1 1
+	14	[-]	LOADK    	0 -6	; 1
+	15	[-]	LOADK    	1 -7	; 0
+	16	[-]	LOADBOOL 	2 0 0
+	17	[-]	LOADBOOL 	3 0 0
+	18	[-]	GETGLOBAL	4 -8	; gameSave
+	19	[-]	GETTABLE 	4 4 -9	; "startMenuState"
+	20	[-]	EQ       	0 4 -7	; - 0
+	21	[-]	JMP      	536	; to 558
+	22	[-]	EQ       	0 3 -10	; - false
+	23	[-]	JMP      	267	; to 291
+	24	[-]	GETGLOBAL	4 -11	; pressButton
+	25	[-]	LOADK    	5 -12	; "UP"
+	26	[-]	CALL     	4 2 2
+	27	[-]	EQ       	0 4 -13	; - true
+	28	[-]	JMP      	39	; to 68
+	29	[-]	EQ       	0 2 -10	; - false
+	30	[-]	JMP      	37	; to 68
+	31	[-]	MOVE     	1 0
+	32	[-]	GETUPVAL 	4 1	; -
+	33	[-]	GETTABLE 	4 4 -14	; "option"
+	34	[-]	LT       	0 4 0
+	35	[-]	JMP      	3	; to 39
+	36	[-]	GETUPVAL 	4 1	; -
+	37	[-]	GETTABLE 	0 4 -15	; "prologue"
+	38	[-]	JMP      	10	; to 49
+	39	[-]	SUB      	4 0 -6	; - 1
+	40	[-]	GETUPVAL 	5 1	; -
+	41	[-]	GETTABLE 	5 5 -15	; "prologue"
+	42	[-]	LT       	0 4 5
+	43	[-]	JMP      	4	; to 48
+	44	[-]	GETUPVAL 	4 1	; -
+	45	[-]	GETTABLE 	4 4 -15	; "prologue"
+	46	[-]	TESTSET  	0 4 1
+	47	[-]	JMP      	1	; to 49
+	48	[-]	SUB      	0 0 -6	; - 1
+	49	[-]	GETUPVAL 	4 1	; -
+	50	[-]	GETTABLE 	4 4 -16	; "library"
+	51	[-]	EQ       	0 0 4
+	52	[-]	JMP      	14	; to 67
+	53	[-]	GETGLOBAL	4 -17	; systemSave
+	54	[-]	GETTABLE 	4 4 -18	; "libFlag"
+	55	[-]	EQ       	1 4 -13	; - true
+	56	[-]	JMP      	10	; to 67
+	57	[-]	SUB      	4 0 -6	; - 1
+	58	[-]	GETUPVAL 	5 1	; -
+	59	[-]	GETTABLE 	5 5 -15	; "prologue"
+	60	[-]	LT       	0 4 5
+	61	[-]	JMP      	4	; to 66
+	62	[-]	GETUPVAL 	4 1	; -
+	63	[-]	GETTABLE 	4 4 -15	; "prologue"
+	64	[-]	TESTSET  	0 4 1
+	65	[-]	JMP      	1	; to 67
+	66	[-]	SUB      	0 0 -6	; - 1
+	67	[-]	LOADBOOL 	2 1 0
+	68	[-]	GETGLOBAL	4 -11	; pressButton
+	69	[-]	LOADK    	5 -19	; "DOWN"
+	70	[-]	CALL     	4 2 2
+	71	[-]	EQ       	0 4 -13	; - true
+	72	[-]	JMP      	39	; to 112
+	73	[-]	EQ       	0 2 -10	; - false
+	74	[-]	JMP      	37	; to 112
+	75	[-]	MOVE     	1 0
+	76	[-]	GETUPVAL 	4 1	; -
+	77	[-]	GETTABLE 	4 4 -14	; "option"
+	78	[-]	LT       	0 4 0
+	79	[-]	JMP      	3	; to 83
+	80	[-]	GETUPVAL 	4 1	; -
+	81	[-]	GETTABLE 	0 4 -16	; "library"
+	82	[-]	JMP      	10	; to 93
+	83	[-]	ADD      	4 0 -6	; - 1
+	84	[-]	GETUPVAL 	5 1	; -
+	85	[-]	GETTABLE 	5 5 -14	; "option"
+	86	[-]	LT       	0 5 4
+	87	[-]	JMP      	4	; to 92
+	88	[-]	GETUPVAL 	4 1	; -
+	89	[-]	GETTABLE 	4 4 -14	; "option"
+	90	[-]	TESTSET  	0 4 1
+	91	[-]	JMP      	1	; to 93
+	92	[-]	ADD      	0 0 -6	; - 1
+	93	[-]	GETUPVAL 	4 1	; -
+	94	[-]	GETTABLE 	4 4 -16	; "library"
+	95	[-]	EQ       	0 0 4
+	96	[-]	JMP      	14	; to 111
+	97	[-]	GETGLOBAL	4 -17	; systemSave
+	98	[-]	GETTABLE 	4 4 -18	; "libFlag"
+	99	[-]	EQ       	1 4 -13	; - true
+	100	[-]	JMP      	10	; to 111
+	101	[-]	ADD      	4 0 -6	; - 1
+	102	[-]	GETUPVAL 	5 1	; -
+	103	[-]	GETTABLE 	5 5 -14	; "option"
+	104	[-]	LT       	0 5 4
+	105	[-]	JMP      	4	; to 110
+	106	[-]	GETUPVAL 	4 1	; -
+	107	[-]	GETTABLE 	4 4 -14	; "option"
+	108	[-]	TESTSET  	0 4 1
+	109	[-]	JMP      	1	; to 111
+	110	[-]	ADD      	0 0 -6	; - 1
+	111	[-]	LOADBOOL 	2 1 0
+	112	[-]	GETGLOBAL	4 -11	; pressButton
+	113	[-]	LOADK    	5 -20	; "RIGHT"
+	114	[-]	CALL     	4 2 2
+	115	[-]	EQ       	0 4 -13	; - true
+	116	[-]	JMP      	6	; to 123
+	117	[-]	EQ       	0 2 -10	; - false
+	118	[-]	JMP      	4	; to 123
+	119	[-]	MOVE     	1 0
+	120	[-]	GETUPVAL 	4 1	; -
+	121	[-]	GETTABLE 	0 4 -21	; "load"
+	122	[-]	LOADBOOL 	2 1 0
+	123	[-]	GETGLOBAL	4 -11	; pressButton
+	124	[-]	LOADK    	5 -22	; "LEFT"
+	125	[-]	CALL     	4 2 2
+	126	[-]	EQ       	0 4 -13	; - true
+	127	[-]	JMP      	6	; to 134
+	128	[-]	EQ       	0 2 -10	; - false
+	129	[-]	JMP      	4	; to 134
+	130	[-]	MOVE     	1 0
+	131	[-]	GETUPVAL 	4 1	; -
+	132	[-]	GETTABLE 	0 4 -15	; "prologue"
+	133	[-]	LOADBOOL 	2 1 0
+	134	[-]	GETGLOBAL	4 -11	; pressButton
+	135	[-]	LOADK    	5 -23	; "CIRCLE"
+	136	[-]	CALL     	4 2 2
+	137	[-]	EQ       	0 4 -13	; - true
+	138	[-]	JMP      	386	; to 525
+	139	[-]	EQ       	0 2 -10	; - false
+	140	[-]	JMP      	384	; to 525
+	141	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	142	[-]	GETGLOBAL	5 -25	; seName
+	143	[-]	GETTABLE 	5 5 -26	; "circle"
+	144	[-]	CALL     	4 2 1
+	145	[-]	GETGLOBAL	4 -27	; wait
+	146	[-]	LOADK    	5 -28	; 10
+	147	[-]	CALL     	4 2 1
+	148	[-]	GETUPVAL 	4 1	; -
+	149	[-]	GETTABLE 	4 4 -15	; "prologue"
+	150	[-]	EQ       	0 0 4
+	151	[-]	JMP      	18	; to 170
+	152	[-]	GETGLOBAL	4 -5	; cInitGame
+	153	[-]	CALL     	4 1 1
+	154	[-]	GETGLOBAL	4 -29	; switchScreen
+	155	[-]	LOADK    	5 -7	; 0
+	156	[-]	LOADK    	6 -30	; ""
+	157	[-]	LOADK    	7 -31	; 60
+	158	[-]	CALL     	4 4 1
+	159	[-]	LOADK    	4 -33	; "sof_10"
+	160	[-]	SETGLOBAL	4 -32	; doScriptScene
+	161	[-]	GETGLOBAL	4 -34	; run
+	162	[-]	GETGLOBAL	5 -35	; cGetFileName
+	163	[-]	LOADK    	6 -36	; "script"
+	164	[-]	LOADK    	7 -37	; "snr_s0_10_f"
+	165	[-]	CALL     	5 3 0
+	166	[-]	CALL     	4 0 1
+	167	[-]	GETGLOBAL	4 -38	; quit
+	168	[-]	CALL     	4 1 1
+	169	[-]	JMP      	102	; to 272
+	170	[-]	GETUPVAL 	4 1	; -
+	171	[-]	GETTABLE 	4 4 -16	; "library"
+	172	[-]	EQ       	0 0 4
+	173	[-]	JMP      	84	; to 258
+	174	[-]	LOADBOOL 	3 1 0
+	175	[-]	GETGLOBAL	4 -17	; systemSave
+	176	[-]	GETTABLE 	4 4 -39	; "novelFlag"
+	177	[-]	EQ       	1 4 -13	; - true
+	178	[-]	JMP      	3	; to 182
+	179	[-]	GETUPVAL 	4 1	; -
+	180	[-]	GETTABLE 	0 4 -40	; "scene"
+	181	[-]	JMP      	2	; to 184
+	182	[-]	GETUPVAL 	4 1	; -
+	183	[-]	GETTABLE 	0 4 -41	; "novel"
+	184	[-]	LOADK    	4 -6	; 1
+	185	[-]	GETUPVAL 	5 2	; -
+	186	[-]	GETTABLE 	5 5 -42	; "layerKey0"
+	187	[-]	LEN      	5 5
+	188	[-]	LOADK    	6 -6	; 1
+	189	[-]	FORPREP  	4 63	; to 253
+	190	[-]	GETUPVAL 	8 1	; -
+	191	[-]	GETTABLE 	8 8 -41	; "novel"
+	192	[-]	LT       	0 7 8
+	193	[-]	JMP      	13	; to 207
+	194	[-]	GETUPVAL 	8 1	; -
+	195	[-]	GETTABLE 	8 8 -16	; "library"
+	196	[-]	EQ       	1 7 8
+	197	[-]	JMP      	55	; to 253
+	198	[-]	GETGLOBAL	8 -43	; layerMoveAlpha
+	199	[-]	GETUPVAL 	9 2	; -
+	200	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	201	[-]	GETTABLE 	9 9 -45	; "menu"
+	202	[-]	ADD      	9 9 7
+	203	[-]	LOADK    	10 -46	; 50
+	204	[-]	LOADK    	11 -47	; 30
+	205	[-]	CALL     	8 4 1
+	206	[-]	JMP      	46	; to 253
+	207	[-]	GETUPVAL 	8 1	; -
+	208	[-]	GETTABLE 	8 8 -41	; "novel"
+	209	[-]	EQ       	0 7 8
+	210	[-]	JMP      	4	; to 215
+	211	[-]	GETGLOBAL	8 -17	; systemSave
+	212	[-]	GETTABLE 	8 8 -39	; "novelFlag"
+	213	[-]	EQ       	0 8 -13	; - true
+	214	[-]	JMP      	8	; to 223
+	215	[-]	GETUPVAL 	8 1	; -
+	216	[-]	GETTABLE 	8 8 -48	; "music"
+	217	[-]	EQ       	0 7 8
+	218	[-]	JMP      	12	; to 231
+	219	[-]	GETGLOBAL	8 -17	; systemSave
+	220	[-]	GETTABLE 	8 8 -49	; "musicFlag"
+	221	[-]	EQ       	1 8 -13	; - true
+	222	[-]	JMP      	8	; to 231
+	223	[-]	GETGLOBAL	8 -50	; layerVisible
+	224	[-]	GETUPVAL 	9 2	; -
+	225	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	226	[-]	GETTABLE 	9 9 -45	; "menu"
+	227	[-]	ADD      	9 9 7
+	228	[-]	LOADBOOL 	10 0 0
+	229	[-]	CALL     	8 3 1
+	230	[-]	JMP      	22	; to 253
+	231	[-]	GETGLOBAL	8 -51	; layerAlpha
+	232	[-]	GETUPVAL 	9 2	; -
+	233	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	234	[-]	GETTABLE 	9 9 -45	; "menu"
+	235	[-]	ADD      	9 9 7
+	236	[-]	LOADK    	10 -7	; 0
+	237	[-]	CALL     	8 3 1
+	238	[-]	GETGLOBAL	8 -50	; layerVisible
+	239	[-]	GETUPVAL 	9 2	; -
+	240	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	241	[-]	GETTABLE 	9 9 -45	; "menu"
+	242	[-]	ADD      	9 9 7
+	243	[-]	LOADBOOL 	10 1 0
+	244	[-]	CALL     	8 3 1
+	245	[-]	GETGLOBAL	8 -43	; layerMoveAlpha
+	246	[-]	GETUPVAL 	9 2	; -
+	247	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	248	[-]	GETTABLE 	9 9 -45	; "menu"
+	249	[-]	ADD      	9 9 7
+	250	[-]	LOADK    	10 -52	; 100
+	251	[-]	LOADK    	11 -47	; 30
+	252	[-]	CALL     	8 4 1
+	253	[-]	FORLOOP  	4 -64	; to 190
+	254	[-]	GETGLOBAL	4 -27	; wait
+	255	[-]	LOADK    	5 -47	; 30
+	256	[-]	CALL     	4 2 1
+	257	[-]	JMP      	14	; to 272
+	258	[-]	GETUPVAL 	4 1	; -
+	259	[-]	GETTABLE 	4 4 -14	; "option"
+	260	[-]	EQ       	0 0 4
+	261	[-]	JMP      	4	; to 266
+	262	[-]	GETGLOBAL	4 -53	; systemOption
+	263	[-]	GETTABLE 	4 4 -54	; "Option"
+	264	[-]	CALL     	4 1 1
+	265	[-]	JMP      	6	; to 272
+	266	[-]	GETUPVAL 	4 1	; -
+	267	[-]	GETTABLE 	4 4 -21	; "load"
+	268	[-]	EQ       	0 0 4
+	269	[-]	JMP      	2	; to 272
+	270	[-]	GETUPVAL 	4 3	; -
+	271	[-]	CALL     	4 1 1
+	272	[-]	GETUPVAL 	4 4	; -
+	273	[-]	GETUPVAL 	5 2	; -
+	274	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	275	[-]	GETTABLE 	5 5 -45	; "menu"
+	276	[-]	ADD      	5 5 1
+	277	[-]	GETUPVAL 	6 2	; -
+	278	[-]	GETTABLE 	6 6 -42	; "layerKey0"
+	279	[-]	GETTABLE 	6 6 1
+	280	[-]	CALL     	4 3 1
+	281	[-]	GETUPVAL 	4 5	; -
+	282	[-]	GETUPVAL 	5 2	; -
+	283	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	284	[-]	GETTABLE 	5 5 -45	; "menu"
+	285	[-]	ADD      	5 5 0
+	286	[-]	GETUPVAL 	6 2	; -
+	287	[-]	GETTABLE 	6 6 -42	; "layerKey0"
+	288	[-]	GETTABLE 	6 6 0
+	289	[-]	CALL     	4 3 1
+	290	[-]	JMP      	234	; to 525
+	291	[-]	GETGLOBAL	4 -11	; pressButton
+	292	[-]	LOADK    	5 -12	; "UP"
+	293	[-]	CALL     	4 2 2
+	294	[-]	EQ       	0 4 -13	; - true
+	295	[-]	JMP      	27	; to 323
+	296	[-]	EQ       	0 2 -10	; - false
+	297	[-]	JMP      	25	; to 323
+	298	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	299	[-]	GETGLOBAL	5 -25	; seName
+	300	[-]	GETTABLE 	5 5 -55	; "arrowKey"
+	301	[-]	CALL     	4 2 1
+	302	[-]	MOVE     	1 0
+	303	[-]	SUB      	4 0 -6	; - 1
+	304	[-]	GETUPVAL 	5 1	; -
+	305	[-]	GETTABLE 	5 5 -41	; "novel"
+	306	[-]	LT       	0 4 5
+	307	[-]	JMP      	4	; to 312
+	308	[-]	GETUPVAL 	4 1	; -
+	309	[-]	GETTABLE 	4 4 -41	; "novel"
+	310	[-]	TESTSET  	0 4 1
+	311	[-]	JMP      	1	; to 313
+	312	[-]	SUB      	0 0 -6	; - 1
+	313	[-]	GETUPVAL 	4 1	; -
+	314	[-]	GETTABLE 	4 4 -41	; "novel"
+	315	[-]	EQ       	0 0 4
+	316	[-]	JMP      	5	; to 322
+	317	[-]	GETGLOBAL	4 -17	; systemSave
+	318	[-]	GETTABLE 	4 4 -39	; "novelFlag"
+	319	[-]	EQ       	1 4 -13	; - true
+	320	[-]	JMP      	1	; to 322
+	321	[-]	ADD      	0 0 -6	; - 1
+	322	[-]	LOADBOOL 	2 1 0
+	323	[-]	GETGLOBAL	4 -11	; pressButton
+	324	[-]	LOADK    	5 -19	; "DOWN"
+	325	[-]	CALL     	4 2 2
+	326	[-]	EQ       	0 4 -13	; - true
+	327	[-]	JMP      	27	; to 355
+	328	[-]	EQ       	0 2 -10	; - false
+	329	[-]	JMP      	25	; to 355
+	330	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	331	[-]	GETGLOBAL	5 -25	; seName
+	332	[-]	GETTABLE 	5 5 -55	; "arrowKey"
+	333	[-]	CALL     	4 2 1
+	334	[-]	MOVE     	1 0
+	335	[-]	ADD      	4 0 -6	; - 1
+	336	[-]	GETUPVAL 	5 1	; -
+	337	[-]	GETTABLE 	5 5 -48	; "music"
+	338	[-]	LT       	0 5 4
+	339	[-]	JMP      	4	; to 344
+	340	[-]	GETUPVAL 	4 1	; -
+	341	[-]	GETTABLE 	4 4 -48	; "music"
+	342	[-]	TESTSET  	0 4 1
+	343	[-]	JMP      	1	; to 345
+	344	[-]	ADD      	0 0 -6	; - 1
+	345	[-]	GETUPVAL 	4 1	; -
+	346	[-]	GETTABLE 	4 4 -48	; "music"
+	347	[-]	EQ       	0 0 4
+	348	[-]	JMP      	5	; to 354
+	349	[-]	GETGLOBAL	4 -17	; systemSave
+	350	[-]	GETTABLE 	4 4 -49	; "musicFlag"
+	351	[-]	EQ       	1 4 -13	; - true
+	352	[-]	JMP      	1	; to 354
+	353	[-]	SUB      	0 0 -6	; - 1
+	354	[-]	LOADBOOL 	2 1 0
+	355	[-]	GETGLOBAL	4 -11	; pressButton
+	356	[-]	LOADK    	5 -23	; "CIRCLE"
+	357	[-]	CALL     	4 2 2
+	358	[-]	EQ       	0 4 -13	; - true
+	359	[-]	JMP      	88	; to 448
+	360	[-]	EQ       	0 2 -10	; - false
+	361	[-]	JMP      	86	; to 448
+	362	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	363	[-]	GETGLOBAL	5 -25	; seName
+	364	[-]	GETTABLE 	5 5 -26	; "circle"
+	365	[-]	CALL     	4 2 1
+	366	[-]	GETGLOBAL	4 -27	; wait
+	367	[-]	LOADK    	5 -28	; 10
+	368	[-]	CALL     	4 2 1
+	369	[-]	GETUPVAL 	4 1	; -
+	370	[-]	GETTABLE 	4 4 -41	; "novel"
+	371	[-]	EQ       	0 0 4
+	372	[-]	JMP      	16	; to 389
+	373	[-]	GETGLOBAL	4 -5	; cInitGame
+	374	[-]	CALL     	4 1 1
+	375	[-]	GETGLOBAL	4 -29	; switchScreen
+	376	[-]	LOADK    	5 -7	; 0
+	377	[-]	LOADK    	6 -30	; ""
+	378	[-]	LOADK    	7 -31	; 60
+	379	[-]	CALL     	4 4 1
+	380	[-]	GETGLOBAL	4 -34	; run
+	381	[-]	GETGLOBAL	5 -35	; cGetFileName
+	382	[-]	LOADK    	6 -36	; "script"
+	383	[-]	LOADK    	7 -56	; "snr_novel"
+	384	[-]	CALL     	5 3 0
+	385	[-]	CALL     	4 0 1
+	386	[-]	GETGLOBAL	4 -38	; quit
+	387	[-]	CALL     	4 1 1
+	388	[-]	JMP      	59	; to 448
+	389	[-]	GETUPVAL 	4 1	; -
+	390	[-]	GETTABLE 	4 4 -40	; "scene"
+	391	[-]	EQ       	0 0 4
+	392	[-]	JMP      	16	; to 409
+	393	[-]	GETGLOBAL	4 -5	; cInitGame
+	394	[-]	CALL     	4 1 1
+	395	[-]	GETGLOBAL	4 -29	; switchScreen
+	396	[-]	LOADK    	5 -7	; 0
+	397	[-]	LOADK    	6 -30	; ""
+	398	[-]	LOADK    	7 -31	; 60
+	399	[-]	CALL     	4 4 1
+	400	[-]	GETGLOBAL	4 -34	; run
+	401	[-]	GETGLOBAL	5 -35	; cGetFileName
+	402	[-]	LOADK    	6 -36	; "script"
+	403	[-]	LOADK    	7 -57	; "snr_memory"
+	404	[-]	CALL     	5 3 0
+	405	[-]	CALL     	4 0 1
+	406	[-]	GETGLOBAL	4 -38	; quit
+	407	[-]	CALL     	4 1 1
+	408	[-]	JMP      	39	; to 448
+	409	[-]	GETUPVAL 	4 1	; -
+	410	[-]	GETTABLE 	4 4 -58	; "cg"
+	411	[-]	EQ       	0 0 4
+	412	[-]	JMP      	16	; to 429
+	413	[-]	GETGLOBAL	4 -5	; cInitGame
+	414	[-]	CALL     	4 1 1
+	415	[-]	GETGLOBAL	4 -29	; switchScreen
+	416	[-]	LOADK    	5 -7	; 0
+	417	[-]	LOADK    	6 -30	; ""
+	418	[-]	LOADK    	7 -31	; 60
+	419	[-]	CALL     	4 4 1
+	420	[-]	GETGLOBAL	4 -34	; run
+	421	[-]	GETGLOBAL	5 -35	; cGetFileName
+	422	[-]	LOADK    	6 -36	; "script"
+	423	[-]	LOADK    	7 -59	; "snr_graphic"
+	424	[-]	CALL     	5 3 0
+	425	[-]	CALL     	4 0 1
+	426	[-]	GETGLOBAL	4 -38	; quit
+	427	[-]	CALL     	4 1 1
+	428	[-]	JMP      	19	; to 448
+	429	[-]	GETUPVAL 	4 1	; -
+	430	[-]	GETTABLE 	4 4 -48	; "music"
+	431	[-]	EQ       	0 0 4
+	432	[-]	JMP      	15	; to 448
+	433	[-]	GETGLOBAL	4 -5	; cInitGame
+	434	[-]	CALL     	4 1 1
+	435	[-]	GETGLOBAL	4 -29	; switchScreen
+	436	[-]	LOADK    	5 -7	; 0
+	437	[-]	LOADK    	6 -30	; ""
+	438	[-]	LOADK    	7 -31	; 60
+	439	[-]	CALL     	4 4 1
+	440	[-]	GETGLOBAL	4 -34	; run
+	441	[-]	GETGLOBAL	5 -35	; cGetFileName
+	442	[-]	LOADK    	6 -36	; "script"
+	443	[-]	LOADK    	7 -60	; "snr_music"
+	444	[-]	CALL     	5 3 0
+	445	[-]	CALL     	4 0 1
+	446	[-]	GETGLOBAL	4 -38	; quit
+	447	[-]	CALL     	4 1 1
+	448	[-]	GETGLOBAL	4 -11	; pressButton
+	449	[-]	LOADK    	5 -61	; "CROSS"
+	450	[-]	CALL     	4 2 2
+	451	[-]	EQ       	0 4 -13	; - true
+	452	[-]	JMP      	72	; to 525
+	453	[-]	EQ       	0 2 -10	; - false
+	454	[-]	JMP      	70	; to 525
+	455	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	456	[-]	GETGLOBAL	5 -25	; seName
+	457	[-]	GETTABLE 	5 5 -62	; "cross"
+	458	[-]	CALL     	4 2 1
+	459	[-]	LOADBOOL 	3 0 0
+	460	[-]	MOVE     	1 0
+	461	[-]	GETUPVAL 	4 1	; -
+	462	[-]	GETTABLE 	0 4 -16	; "library"
+	463	[-]	LOADK    	4 -6	; 1
+	464	[-]	GETUPVAL 	5 1	; -
+	465	[-]	GETTABLE 	5 5 -48	; "music"
+	466	[-]	LOADK    	6 -6	; 1
+	467	[-]	FORPREP  	4 21	; to 489
+	468	[-]	GETUPVAL 	8 1	; -
+	469	[-]	GETTABLE 	8 8 -41	; "novel"
+	470	[-]	LT       	0 7 8
+	471	[-]	JMP      	9	; to 481
+	472	[-]	GETGLOBAL	8 -43	; layerMoveAlpha
+	473	[-]	GETUPVAL 	9 2	; -
+	474	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	475	[-]	GETTABLE 	9 9 -45	; "menu"
+	476	[-]	ADD      	9 9 7
+	477	[-]	LOADK    	10 -52	; 100
+	478	[-]	LOADK    	11 -47	; 30
+	479	[-]	CALL     	8 4 1
+	480	[-]	JMP      	8	; to 489
+	481	[-]	GETGLOBAL	8 -43	; layerMoveAlpha
+	482	[-]	GETUPVAL 	9 2	; -
+	483	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	484	[-]	GETTABLE 	9 9 -45	; "menu"
+	485	[-]	ADD      	9 9 7
+	486	[-]	LOADK    	10 -7	; 0
+	487	[-]	LOADK    	11 -47	; 30
+	488	[-]	CALL     	8 4 1
+	489	[-]	FORLOOP  	4 -22	; to 468
+	490	[-]	GETGLOBAL	4 -27	; wait
+	491	[-]	LOADK    	5 -47	; 30
+	492	[-]	CALL     	4 2 1
+	493	[-]	GETUPVAL 	4 1	; -
+	494	[-]	GETTABLE 	4 4 -41	; "novel"
+	495	[-]	GETUPVAL 	5 1	; -
+	496	[-]	GETTABLE 	5 5 -48	; "music"
+	497	[-]	LOADK    	6 -6	; 1
+	498	[-]	FORPREP  	4 7	; to 506
+	499	[-]	GETGLOBAL	8 -50	; layerVisible
+	500	[-]	GETUPVAL 	9 2	; -
+	501	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	502	[-]	GETTABLE 	9 9 -45	; "menu"
+	503	[-]	ADD      	9 9 7
+	504	[-]	LOADBOOL 	10 0 0
+	505	[-]	CALL     	8 3 1
+	506	[-]	FORLOOP  	4 -8	; to 499
+	507	[-]	GETUPVAL 	4 4	; -
+	508	[-]	GETUPVAL 	5 2	; -
+	509	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	510	[-]	GETTABLE 	5 5 -45	; "menu"
+	511	[-]	ADD      	5 5 1
+	512	[-]	GETUPVAL 	6 2	; -
+	513	[-]	GETTABLE 	6 6 -42	; "layerKey0"
+	514	[-]	GETTABLE 	6 6 1
+	515	[-]	CALL     	4 3 1
+	516	[-]	GETUPVAL 	4 5	; -
+	517	[-]	GETUPVAL 	5 2	; -
+	518	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	519	[-]	GETTABLE 	5 5 -45	; "menu"
+	520	[-]	ADD      	5 5 0
+	521	[-]	GETUPVAL 	6 2	; -
+	522	[-]	GETTABLE 	6 6 -42	; "layerKey0"
+	523	[-]	GETTABLE 	6 6 0
+	524	[-]	CALL     	4 3 1
+	525	[-]	EQ       	0 2 -13	; - true
+	526	[-]	JMP      	26	; to 553
+	527	[-]	GETUPVAL 	4 4	; -
+	528	[-]	GETUPVAL 	5 2	; -
+	529	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	530	[-]	GETTABLE 	5 5 -45	; "menu"
+	531	[-]	ADD      	5 5 1
+	532	[-]	GETUPVAL 	6 2	; -
+	533	[-]	GETTABLE 	6 6 -42	; "layerKey0"
+	534	[-]	GETTABLE 	6 6 1
+	535	[-]	CALL     	4 3 1
+	536	[-]	GETUPVAL 	4 5	; -
+	537	[-]	GETUPVAL 	5 2	; -
+	538	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	539	[-]	GETTABLE 	5 5 -45	; "menu"
+	540	[-]	ADD      	5 5 0
+	541	[-]	GETUPVAL 	6 2	; -
+	542	[-]	GETTABLE 	6 6 -42	; "layerKey0"
+	543	[-]	GETTABLE 	6 6 0
+	544	[-]	CALL     	4 3 1
+	545	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	546	[-]	GETGLOBAL	5 -25	; seName
+	547	[-]	GETTABLE 	5 5 -55	; "arrowKey"
+	548	[-]	CALL     	4 2 1
+	549	[-]	GETGLOBAL	4 -27	; wait
+	550	[-]	LOADK    	5 -63	; 3
+	551	[-]	CALL     	4 2 1
+	552	[-]	LOADBOOL 	2 0 0
+	553	[-]	GETGLOBAL	4 -27	; wait
+	554	[-]	LOADK    	5 -64	; 2
+	555	[-]	CALL     	4 2 1
+	556	[-]	JMP      	-535	; to 22
+	557	[-]	JMP      	1624	; to 2182
+	558	[-]	GETGLOBAL	4 -8	; gameSave
+	559	[-]	GETTABLE 	4 4 -9	; "startMenuState"
+	560	[-]	EQ       	0 4 -6	; - 1
+	561	[-]	JMP      	541	; to 1103
+	562	[-]	EQ       	0 3 -10	; - false
+	563	[-]	JMP      	272	; to 836
+	564	[-]	GETGLOBAL	4 -11	; pressButton
+	565	[-]	LOADK    	5 -12	; "UP"
+	566	[-]	CALL     	4 2 2
+	567	[-]	EQ       	0 4 -13	; - true
+	568	[-]	JMP      	39	; to 608
+	569	[-]	EQ       	0 2 -10	; - false
+	570	[-]	JMP      	37	; to 608
+	571	[-]	MOVE     	1 0
+	572	[-]	GETUPVAL 	4 1	; -
+	573	[-]	GETTABLE 	4 4 -14	; "option"
+	574	[-]	LT       	0 4 0
+	575	[-]	JMP      	3	; to 579
+	576	[-]	GETUPVAL 	4 1	; -
+	577	[-]	GETTABLE 	0 4 -65	; "story"
+	578	[-]	JMP      	10	; to 589
+	579	[-]	SUB      	4 0 -6	; - 1
+	580	[-]	GETUPVAL 	5 1	; -
+	581	[-]	GETTABLE 	5 5 -65	; "story"
+	582	[-]	LT       	0 4 5
+	583	[-]	JMP      	4	; to 588
+	584	[-]	GETUPVAL 	4 1	; -
+	585	[-]	GETTABLE 	4 4 -65	; "story"
+	586	[-]	TESTSET  	0 4 1
+	587	[-]	JMP      	1	; to 589
+	588	[-]	SUB      	0 0 -6	; - 1
+	589	[-]	GETUPVAL 	4 1	; -
+	590	[-]	GETTABLE 	4 4 -16	; "library"
+	591	[-]	EQ       	0 0 4
+	592	[-]	JMP      	14	; to 607
+	593	[-]	GETGLOBAL	4 -17	; systemSave
+	594	[-]	GETTABLE 	4 4 -18	; "libFlag"
+	595	[-]	EQ       	1 4 -13	; - true
+	596	[-]	JMP      	10	; to 607
+	597	[-]	SUB      	4 0 -6	; - 1
+	598	[-]	GETUPVAL 	5 1	; -
+	599	[-]	GETTABLE 	5 5 -65	; "story"
+	600	[-]	LT       	0 4 5
+	601	[-]	JMP      	4	; to 606
+	602	[-]	GETUPVAL 	4 1	; -
+	603	[-]	GETTABLE 	4 4 -65	; "story"
+	604	[-]	TESTSET  	0 4 1
+	605	[-]	JMP      	1	; to 607
+	606	[-]	SUB      	0 0 -6	; - 1
+	607	[-]	LOADBOOL 	2 1 0
+	608	[-]	GETGLOBAL	4 -11	; pressButton
+	609	[-]	LOADK    	5 -19	; "DOWN"
+	610	[-]	CALL     	4 2 2
+	611	[-]	EQ       	0 4 -13	; - true
+	612	[-]	JMP      	39	; to 652
+	613	[-]	EQ       	0 2 -10	; - false
+	614	[-]	JMP      	37	; to 652
+	615	[-]	MOVE     	1 0
+	616	[-]	GETUPVAL 	4 1	; -
+	617	[-]	GETTABLE 	4 4 -14	; "option"
+	618	[-]	LT       	0 4 0
+	619	[-]	JMP      	3	; to 623
+	620	[-]	GETUPVAL 	4 1	; -
+	621	[-]	GETTABLE 	0 4 -16	; "library"
+	622	[-]	JMP      	10	; to 633
+	623	[-]	ADD      	4 0 -6	; - 1
+	624	[-]	GETUPVAL 	5 1	; -
+	625	[-]	GETTABLE 	5 5 -14	; "option"
+	626	[-]	LT       	0 5 4
+	627	[-]	JMP      	4	; to 632
+	628	[-]	GETUPVAL 	4 1	; -
+	629	[-]	GETTABLE 	4 4 -14	; "option"
+	630	[-]	TESTSET  	0 4 1
+	631	[-]	JMP      	1	; to 633
+	632	[-]	ADD      	0 0 -6	; - 1
+	633	[-]	GETUPVAL 	4 1	; -
+	634	[-]	GETTABLE 	4 4 -16	; "library"
+	635	[-]	EQ       	0 0 4
+	636	[-]	JMP      	14	; to 651
+	637	[-]	GETGLOBAL	4 -17	; systemSave
+	638	[-]	GETTABLE 	4 4 -18	; "libFlag"
+	639	[-]	EQ       	1 4 -13	; - true
+	640	[-]	JMP      	10	; to 651
+	641	[-]	ADD      	4 0 -6	; - 1
+	642	[-]	GETUPVAL 	5 1	; -
+	643	[-]	GETTABLE 	5 5 -14	; "option"
+	644	[-]	LT       	0 5 4
+	645	[-]	JMP      	4	; to 650
+	646	[-]	GETUPVAL 	4 1	; -
+	647	[-]	GETTABLE 	4 4 -14	; "option"
+	648	[-]	TESTSET  	0 4 1
+	649	[-]	JMP      	1	; to 651
+	650	[-]	ADD      	0 0 -6	; - 1
+	651	[-]	LOADBOOL 	2 1 0
+	652	[-]	GETGLOBAL	4 -11	; pressButton
+	653	[-]	LOADK    	5 -20	; "RIGHT"
+	654	[-]	CALL     	4 2 2
+	655	[-]	EQ       	0 4 -13	; - true
+	656	[-]	JMP      	6	; to 663
+	657	[-]	EQ       	0 2 -10	; - false
+	658	[-]	JMP      	4	; to 663
+	659	[-]	MOVE     	1 0
+	660	[-]	GETUPVAL 	4 1	; -
+	661	[-]	GETTABLE 	0 4 -21	; "load"
+	662	[-]	LOADBOOL 	2 1 0
+	663	[-]	GETGLOBAL	4 -11	; pressButton
+	664	[-]	LOADK    	5 -22	; "LEFT"
+	665	[-]	CALL     	4 2 2
+	666	[-]	EQ       	0 4 -13	; - true
+	667	[-]	JMP      	6	; to 674
+	668	[-]	EQ       	0 2 -10	; - false
+	669	[-]	JMP      	4	; to 674
+	670	[-]	MOVE     	1 0
+	671	[-]	GETUPVAL 	4 1	; -
+	672	[-]	GETTABLE 	0 4 -66	; "save"
+	673	[-]	LOADBOOL 	2 1 0
+	674	[-]	GETGLOBAL	4 -11	; pressButton
+	675	[-]	LOADK    	5 -23	; "CIRCLE"
+	676	[-]	CALL     	4 2 2
+	677	[-]	EQ       	0 4 -13	; - true
+	678	[-]	JMP      	391	; to 1070
+	679	[-]	EQ       	0 2 -10	; - false
+	680	[-]	JMP      	389	; to 1070
+	681	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	682	[-]	GETGLOBAL	5 -25	; seName
+	683	[-]	GETTABLE 	5 5 -26	; "circle"
+	684	[-]	CALL     	4 2 1
+	685	[-]	GETGLOBAL	4 -27	; wait
+	686	[-]	LOADK    	5 -28	; 10
+	687	[-]	CALL     	4 2 1
+	688	[-]	GETUPVAL 	4 1	; -
+	689	[-]	GETTABLE 	4 4 -65	; "story"
+	690	[-]	EQ       	0 0 4
+	691	[-]	JMP      	16	; to 708
+	692	[-]	GETGLOBAL	4 -5	; cInitGame
+	693	[-]	CALL     	4 1 1
+	694	[-]	GETGLOBAL	4 -29	; switchScreen
+	695	[-]	LOADK    	5 -7	; 0
+	696	[-]	LOADK    	6 -30	; ""
+	697	[-]	LOADK    	7 -31	; 60
+	698	[-]	CALL     	4 4 1
+	699	[-]	GETGLOBAL	4 -34	; run
+	700	[-]	GETGLOBAL	5 -35	; cGetFileName
+	701	[-]	LOADK    	6 -36	; "script"
+	702	[-]	LOADK    	7 -67	; "snr_story_main"
+	703	[-]	CALL     	5 3 0
+	704	[-]	CALL     	4 0 1
+	705	[-]	GETGLOBAL	4 -38	; quit
+	706	[-]	CALL     	4 1 1
+	707	[-]	JMP      	362	; to 1070
+	708	[-]	GETUPVAL 	4 1	; -
+	709	[-]	GETTABLE 	4 4 -16	; "library"
+	710	[-]	EQ       	0 0 4
+	711	[-]	JMP      	102	; to 814
+	712	[-]	LOADBOOL 	3 1 0
+	713	[-]	GETGLOBAL	4 -17	; systemSave
+	714	[-]	GETTABLE 	4 4 -39	; "novelFlag"
+	715	[-]	EQ       	1 4 -13	; - true
+	716	[-]	JMP      	3	; to 720
+	717	[-]	GETUPVAL 	4 1	; -
+	718	[-]	GETTABLE 	0 4 -40	; "scene"
+	719	[-]	JMP      	2	; to 722
+	720	[-]	GETUPVAL 	4 1	; -
+	721	[-]	GETTABLE 	0 4 -41	; "novel"
+	722	[-]	LOADK    	4 -6	; 1
+	723	[-]	GETUPVAL 	5 2	; -
+	724	[-]	GETTABLE 	5 5 -68	; "layerKey1"
+	725	[-]	LEN      	5 5
+	726	[-]	LOADK    	6 -6	; 1
+	727	[-]	FORPREP  	4 63	; to 791
+	728	[-]	GETUPVAL 	8 1	; -
+	729	[-]	GETTABLE 	8 8 -41	; "novel"
+	730	[-]	LT       	0 7 8
+	731	[-]	JMP      	13	; to 745
+	732	[-]	GETUPVAL 	8 1	; -
+	733	[-]	GETTABLE 	8 8 -16	; "library"
+	734	[-]	EQ       	1 7 8
+	735	[-]	JMP      	55	; to 791
+	736	[-]	GETGLOBAL	8 -43	; layerMoveAlpha
+	737	[-]	GETUPVAL 	9 2	; -
+	738	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	739	[-]	GETTABLE 	9 9 -45	; "menu"
+	740	[-]	ADD      	9 9 7
+	741	[-]	LOADK    	10 -46	; 50
+	742	[-]	LOADK    	11 -47	; 30
+	743	[-]	CALL     	8 4 1
+	744	[-]	JMP      	46	; to 791
+	745	[-]	GETUPVAL 	8 1	; -
+	746	[-]	GETTABLE 	8 8 -41	; "novel"
+	747	[-]	EQ       	0 7 8
+	748	[-]	JMP      	4	; to 753
+	749	[-]	GETGLOBAL	8 -17	; systemSave
+	750	[-]	GETTABLE 	8 8 -39	; "novelFlag"
+	751	[-]	EQ       	0 8 -13	; - true
+	752	[-]	JMP      	8	; to 761
+	753	[-]	GETUPVAL 	8 1	; -
+	754	[-]	GETTABLE 	8 8 -48	; "music"
+	755	[-]	EQ       	0 7 8
+	756	[-]	JMP      	12	; to 769
+	757	[-]	GETGLOBAL	8 -17	; systemSave
+	758	[-]	GETTABLE 	8 8 -49	; "musicFlag"
+	759	[-]	EQ       	1 8 -13	; - true
+	760	[-]	JMP      	8	; to 769
+	761	[-]	GETGLOBAL	8 -50	; layerVisible
+	762	[-]	GETUPVAL 	9 2	; -
+	763	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	764	[-]	GETTABLE 	9 9 -45	; "menu"
+	765	[-]	ADD      	9 9 7
+	766	[-]	LOADBOOL 	10 0 0
+	767	[-]	CALL     	8 3 1
+	768	[-]	JMP      	22	; to 791
+	769	[-]	GETGLOBAL	8 -51	; layerAlpha
+	770	[-]	GETUPVAL 	9 2	; -
+	771	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	772	[-]	GETTABLE 	9 9 -45	; "menu"
+	773	[-]	ADD      	9 9 7
+	774	[-]	LOADK    	10 -7	; 0
+	775	[-]	CALL     	8 3 1
+	776	[-]	GETGLOBAL	8 -50	; layerVisible
+	777	[-]	GETUPVAL 	9 2	; -
+	778	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	779	[-]	GETTABLE 	9 9 -45	; "menu"
+	780	[-]	ADD      	9 9 7
+	781	[-]	LOADBOOL 	10 1 0
+	782	[-]	CALL     	8 3 1
+	783	[-]	GETGLOBAL	8 -43	; layerMoveAlpha
+	784	[-]	GETUPVAL 	9 2	; -
+	785	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	786	[-]	GETTABLE 	9 9 -45	; "menu"
+	787	[-]	ADD      	9 9 7
+	788	[-]	LOADK    	10 -52	; 100
+	789	[-]	LOADK    	11 -47	; 30
+	790	[-]	CALL     	8 4 1
+	791	[-]	FORLOOP  	4 -64	; to 728
+	792	[-]	GETGLOBAL	4 -27	; wait
+	793	[-]	LOADK    	5 -47	; 30
+	794	[-]	CALL     	4 2 1
+	795	[-]	GETUPVAL 	4 4	; -
+	796	[-]	GETUPVAL 	5 2	; -
+	797	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	798	[-]	GETTABLE 	5 5 -45	; "menu"
+	799	[-]	ADD      	5 5 1
+	800	[-]	GETUPVAL 	6 2	; -
+	801	[-]	GETTABLE 	6 6 -68	; "layerKey1"
+	802	[-]	GETTABLE 	6 6 1
+	803	[-]	CALL     	4 3 1
+	804	[-]	GETUPVAL 	4 5	; -
+	805	[-]	GETUPVAL 	5 2	; -
+	806	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	807	[-]	GETTABLE 	5 5 -45	; "menu"
+	808	[-]	ADD      	5 5 0
+	809	[-]	GETUPVAL 	6 2	; -
+	810	[-]	GETTABLE 	6 6 -68	; "layerKey1"
+	811	[-]	GETTABLE 	6 6 0
+	812	[-]	CALL     	4 3 1
+	813	[-]	JMP      	256	; to 1070
+	814	[-]	GETUPVAL 	4 1	; -
+	815	[-]	GETTABLE 	4 4 -14	; "option"
+	816	[-]	EQ       	0 0 4
+	817	[-]	JMP      	4	; to 822
+	818	[-]	GETGLOBAL	4 -53	; systemOption
+	819	[-]	GETTABLE 	4 4 -54	; "Option"
+	820	[-]	CALL     	4 1 1
+	821	[-]	JMP      	248	; to 1070
+	822	[-]	GETUPVAL 	4 1	; -
+	823	[-]	GETTABLE 	4 4 -66	; "save"
+	824	[-]	EQ       	0 0 4
+	825	[-]	JMP      	3	; to 829
+	826	[-]	GETUPVAL 	4 6	; -
+	827	[-]	CALL     	4 1 1
+	828	[-]	JMP      	241	; to 1070
+	829	[-]	GETUPVAL 	4 1	; -
+	830	[-]	GETTABLE 	4 4 -21	; "load"
+	831	[-]	EQ       	0 0 4
+	832	[-]	JMP      	237	; to 1070
+	833	[-]	GETUPVAL 	4 3	; -
+	834	[-]	CALL     	4 1 1
+	835	[-]	JMP      	234	; to 1070
+	836	[-]	GETGLOBAL	4 -11	; pressButton
+	837	[-]	LOADK    	5 -12	; "UP"
+	838	[-]	CALL     	4 2 2
+	839	[-]	EQ       	0 4 -13	; - true
+	840	[-]	JMP      	27	; to 868
+	841	[-]	EQ       	0 2 -10	; - false
+	842	[-]	JMP      	25	; to 868
+	843	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	844	[-]	GETGLOBAL	5 -25	; seName
+	845	[-]	GETTABLE 	5 5 -55	; "arrowKey"
+	846	[-]	CALL     	4 2 1
+	847	[-]	MOVE     	1 0
+	848	[-]	SUB      	4 0 -6	; - 1
+	849	[-]	GETUPVAL 	5 1	; -
+	850	[-]	GETTABLE 	5 5 -41	; "novel"
+	851	[-]	LT       	0 4 5
+	852	[-]	JMP      	4	; to 857
+	853	[-]	GETUPVAL 	4 1	; -
+	854	[-]	GETTABLE 	4 4 -41	; "novel"
+	855	[-]	TESTSET  	0 4 1
+	856	[-]	JMP      	1	; to 858
+	857	[-]	SUB      	0 0 -6	; - 1
+	858	[-]	GETUPVAL 	4 1	; -
+	859	[-]	GETTABLE 	4 4 -41	; "novel"
+	860	[-]	EQ       	0 0 4
+	861	[-]	JMP      	5	; to 867
+	862	[-]	GETGLOBAL	4 -17	; systemSave
+	863	[-]	GETTABLE 	4 4 -39	; "novelFlag"
+	864	[-]	EQ       	1 4 -13	; - true
+	865	[-]	JMP      	1	; to 867
+	866	[-]	ADD      	0 0 -6	; - 1
+	867	[-]	LOADBOOL 	2 1 0
+	868	[-]	GETGLOBAL	4 -11	; pressButton
+	869	[-]	LOADK    	5 -19	; "DOWN"
+	870	[-]	CALL     	4 2 2
+	871	[-]	EQ       	0 4 -13	; - true
+	872	[-]	JMP      	27	; to 900
+	873	[-]	EQ       	0 2 -10	; - false
+	874	[-]	JMP      	25	; to 900
+	875	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	876	[-]	GETGLOBAL	5 -25	; seName
+	877	[-]	GETTABLE 	5 5 -55	; "arrowKey"
+	878	[-]	CALL     	4 2 1
+	879	[-]	MOVE     	1 0
+	880	[-]	ADD      	4 0 -6	; - 1
+	881	[-]	GETUPVAL 	5 1	; -
+	882	[-]	GETTABLE 	5 5 -48	; "music"
+	883	[-]	LT       	0 5 4
+	884	[-]	JMP      	4	; to 889
+	885	[-]	GETUPVAL 	4 1	; -
+	886	[-]	GETTABLE 	4 4 -48	; "music"
+	887	[-]	TESTSET  	0 4 1
+	888	[-]	JMP      	1	; to 890
+	889	[-]	ADD      	0 0 -6	; - 1
+	890	[-]	GETUPVAL 	4 1	; -
+	891	[-]	GETTABLE 	4 4 -48	; "music"
+	892	[-]	EQ       	0 0 4
+	893	[-]	JMP      	5	; to 899
+	894	[-]	GETGLOBAL	4 -17	; systemSave
+	895	[-]	GETTABLE 	4 4 -49	; "musicFlag"
+	896	[-]	EQ       	1 4 -13	; - true
+	897	[-]	JMP      	1	; to 899
+	898	[-]	SUB      	0 0 -6	; - 1
+	899	[-]	LOADBOOL 	2 1 0
+	900	[-]	GETGLOBAL	4 -11	; pressButton
+	901	[-]	LOADK    	5 -23	; "CIRCLE"
+	902	[-]	CALL     	4 2 2
+	903	[-]	EQ       	0 4 -13	; - true
+	904	[-]	JMP      	88	; to 993
+	905	[-]	EQ       	0 2 -10	; - false
+	906	[-]	JMP      	86	; to 993
+	907	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	908	[-]	GETGLOBAL	5 -25	; seName
+	909	[-]	GETTABLE 	5 5 -26	; "circle"
+	910	[-]	CALL     	4 2 1
+	911	[-]	GETGLOBAL	4 -27	; wait
+	912	[-]	LOADK    	5 -28	; 10
+	913	[-]	CALL     	4 2 1
+	914	[-]	GETUPVAL 	4 1	; -
+	915	[-]	GETTABLE 	4 4 -41	; "novel"
+	916	[-]	EQ       	0 0 4
+	917	[-]	JMP      	16	; to 934
+	918	[-]	GETGLOBAL	4 -5	; cInitGame
+	919	[-]	CALL     	4 1 1
+	920	[-]	GETGLOBAL	4 -29	; switchScreen
+	921	[-]	LOADK    	5 -7	; 0
+	922	[-]	LOADK    	6 -30	; ""
+	923	[-]	LOADK    	7 -31	; 60
+	924	[-]	CALL     	4 4 1
+	925	[-]	GETGLOBAL	4 -34	; run
+	926	[-]	GETGLOBAL	5 -35	; cGetFileName
+	927	[-]	LOADK    	6 -36	; "script"
+	928	[-]	LOADK    	7 -56	; "snr_novel"
+	929	[-]	CALL     	5 3 0
+	930	[-]	CALL     	4 0 1
+	931	[-]	GETGLOBAL	4 -38	; quit
+	932	[-]	CALL     	4 1 1
+	933	[-]	JMP      	59	; to 993
+	934	[-]	GETUPVAL 	4 1	; -
+	935	[-]	GETTABLE 	4 4 -40	; "scene"
+	936	[-]	EQ       	0 0 4
+	937	[-]	JMP      	16	; to 954
+	938	[-]	GETGLOBAL	4 -5	; cInitGame
+	939	[-]	CALL     	4 1 1
+	940	[-]	GETGLOBAL	4 -29	; switchScreen
+	941	[-]	LOADK    	5 -7	; 0
+	942	[-]	LOADK    	6 -30	; ""
+	943	[-]	LOADK    	7 -31	; 60
+	944	[-]	CALL     	4 4 1
+	945	[-]	GETGLOBAL	4 -34	; run
+	946	[-]	GETGLOBAL	5 -35	; cGetFileName
+	947	[-]	LOADK    	6 -36	; "script"
+	948	[-]	LOADK    	7 -57	; "snr_memory"
+	949	[-]	CALL     	5 3 0
+	950	[-]	CALL     	4 0 1
+	951	[-]	GETGLOBAL	4 -38	; quit
+	952	[-]	CALL     	4 1 1
+	953	[-]	JMP      	39	; to 993
+	954	[-]	GETUPVAL 	4 1	; -
+	955	[-]	GETTABLE 	4 4 -58	; "cg"
+	956	[-]	EQ       	0 0 4
+	957	[-]	JMP      	16	; to 974
+	958	[-]	GETGLOBAL	4 -5	; cInitGame
+	959	[-]	CALL     	4 1 1
+	960	[-]	GETGLOBAL	4 -29	; switchScreen
+	961	[-]	LOADK    	5 -7	; 0
+	962	[-]	LOADK    	6 -30	; ""
+	963	[-]	LOADK    	7 -31	; 60
+	964	[-]	CALL     	4 4 1
+	965	[-]	GETGLOBAL	4 -34	; run
+	966	[-]	GETGLOBAL	5 -35	; cGetFileName
+	967	[-]	LOADK    	6 -36	; "script"
+	968	[-]	LOADK    	7 -59	; "snr_graphic"
+	969	[-]	CALL     	5 3 0
+	970	[-]	CALL     	4 0 1
+	971	[-]	GETGLOBAL	4 -38	; quit
+	972	[-]	CALL     	4 1 1
+	973	[-]	JMP      	19	; to 993
+	974	[-]	GETUPVAL 	4 1	; -
+	975	[-]	GETTABLE 	4 4 -48	; "music"
+	976	[-]	EQ       	0 0 4
+	977	[-]	JMP      	15	; to 993
+	978	[-]	GETGLOBAL	4 -5	; cInitGame
+	979	[-]	CALL     	4 1 1
+	980	[-]	GETGLOBAL	4 -29	; switchScreen
+	981	[-]	LOADK    	5 -7	; 0
+	982	[-]	LOADK    	6 -30	; ""
+	983	[-]	LOADK    	7 -31	; 60
+	984	[-]	CALL     	4 4 1
+	985	[-]	GETGLOBAL	4 -34	; run
+	986	[-]	GETGLOBAL	5 -35	; cGetFileName
+	987	[-]	LOADK    	6 -36	; "script"
+	988	[-]	LOADK    	7 -60	; "snr_music"
+	989	[-]	CALL     	5 3 0
+	990	[-]	CALL     	4 0 1
+	991	[-]	GETGLOBAL	4 -38	; quit
+	992	[-]	CALL     	4 1 1
+	993	[-]	GETGLOBAL	4 -11	; pressButton
+	994	[-]	LOADK    	5 -61	; "CROSS"
+	995	[-]	CALL     	4 2 2
+	996	[-]	EQ       	0 4 -13	; - true
+	997	[-]	JMP      	72	; to 1070
+	998	[-]	EQ       	0 2 -10	; - false
+	999	[-]	JMP      	70	; to 1070
+	1000	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	1001	[-]	GETGLOBAL	5 -25	; seName
+	1002	[-]	GETTABLE 	5 5 -62	; "cross"
+	1003	[-]	CALL     	4 2 1
+	1004	[-]	LOADBOOL 	3 0 0
+	1005	[-]	MOVE     	1 0
+	1006	[-]	GETUPVAL 	4 1	; -
+	1007	[-]	GETTABLE 	0 4 -16	; "library"
+	1008	[-]	LOADK    	4 -6	; 1
+	1009	[-]	GETUPVAL 	5 1	; -
+	1010	[-]	GETTABLE 	5 5 -48	; "music"
+	1011	[-]	LOADK    	6 -6	; 1
+	1012	[-]	FORPREP  	4 21	; to 1034
+	1013	[-]	GETUPVAL 	8 1	; -
+	1014	[-]	GETTABLE 	8 8 -41	; "novel"
+	1015	[-]	LT       	0 7 8
+	1016	[-]	JMP      	9	; to 1026
+	1017	[-]	GETGLOBAL	8 -43	; layerMoveAlpha
+	1018	[-]	GETUPVAL 	9 2	; -
+	1019	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	1020	[-]	GETTABLE 	9 9 -45	; "menu"
+	1021	[-]	ADD      	9 9 7
+	1022	[-]	LOADK    	10 -52	; 100
+	1023	[-]	LOADK    	11 -47	; 30
+	1024	[-]	CALL     	8 4 1
+	1025	[-]	JMP      	8	; to 1034
+	1026	[-]	GETGLOBAL	8 -43	; layerMoveAlpha
+	1027	[-]	GETUPVAL 	9 2	; -
+	1028	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	1029	[-]	GETTABLE 	9 9 -45	; "menu"
+	1030	[-]	ADD      	9 9 7
+	1031	[-]	LOADK    	10 -7	; 0
+	1032	[-]	LOADK    	11 -47	; 30
+	1033	[-]	CALL     	8 4 1
+	1034	[-]	FORLOOP  	4 -22	; to 1013
+	1035	[-]	GETGLOBAL	4 -27	; wait
+	1036	[-]	LOADK    	5 -47	; 30
+	1037	[-]	CALL     	4 2 1
+	1038	[-]	GETUPVAL 	4 1	; -
+	1039	[-]	GETTABLE 	4 4 -41	; "novel"
+	1040	[-]	GETUPVAL 	5 1	; -
+	1041	[-]	GETTABLE 	5 5 -48	; "music"
+	1042	[-]	LOADK    	6 -6	; 1
+	1043	[-]	FORPREP  	4 7	; to 1051
+	1044	[-]	GETGLOBAL	8 -50	; layerVisible
+	1045	[-]	GETUPVAL 	9 2	; -
+	1046	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	1047	[-]	GETTABLE 	9 9 -45	; "menu"
+	1048	[-]	ADD      	9 9 7
+	1049	[-]	LOADBOOL 	10 0 0
+	1050	[-]	CALL     	8 3 1
+	1051	[-]	FORLOOP  	4 -8	; to 1044
+	1052	[-]	GETUPVAL 	4 4	; -
+	1053	[-]	GETUPVAL 	5 2	; -
+	1054	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	1055	[-]	GETTABLE 	5 5 -45	; "menu"
+	1056	[-]	ADD      	5 5 1
+	1057	[-]	GETUPVAL 	6 2	; -
+	1058	[-]	GETTABLE 	6 6 -68	; "layerKey1"
+	1059	[-]	GETTABLE 	6 6 1
+	1060	[-]	CALL     	4 3 1
+	1061	[-]	GETUPVAL 	4 5	; -
+	1062	[-]	GETUPVAL 	5 2	; -
+	1063	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	1064	[-]	GETTABLE 	5 5 -45	; "menu"
+	1065	[-]	ADD      	5 5 0
+	1066	[-]	GETUPVAL 	6 2	; -
+	1067	[-]	GETTABLE 	6 6 -68	; "layerKey1"
+	1068	[-]	GETTABLE 	6 6 0
+	1069	[-]	CALL     	4 3 1
+	1070	[-]	EQ       	0 2 -13	; - true
+	1071	[-]	JMP      	26	; to 1098
+	1072	[-]	GETUPVAL 	4 4	; -
+	1073	[-]	GETUPVAL 	5 2	; -
+	1074	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	1075	[-]	GETTABLE 	5 5 -45	; "menu"
+	1076	[-]	ADD      	5 5 1
+	1077	[-]	GETUPVAL 	6 2	; -
+	1078	[-]	GETTABLE 	6 6 -68	; "layerKey1"
+	1079	[-]	GETTABLE 	6 6 1
+	1080	[-]	CALL     	4 3 1
+	1081	[-]	GETUPVAL 	4 5	; -
+	1082	[-]	GETUPVAL 	5 2	; -
+	1083	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	1084	[-]	GETTABLE 	5 5 -45	; "menu"
+	1085	[-]	ADD      	5 5 0
+	1086	[-]	GETUPVAL 	6 2	; -
+	1087	[-]	GETTABLE 	6 6 -68	; "layerKey1"
+	1088	[-]	GETTABLE 	6 6 0
+	1089	[-]	CALL     	4 3 1
+	1090	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	1091	[-]	GETGLOBAL	5 -25	; seName
+	1092	[-]	GETTABLE 	5 5 -55	; "arrowKey"
+	1093	[-]	CALL     	4 2 1
+	1094	[-]	GETGLOBAL	4 -27	; wait
+	1095	[-]	LOADK    	5 -63	; 3
+	1096	[-]	CALL     	4 2 1
+	1097	[-]	LOADBOOL 	2 0 0
+	1098	[-]	GETGLOBAL	4 -27	; wait
+	1099	[-]	LOADK    	5 -64	; 2
+	1100	[-]	CALL     	4 2 1
+	1101	[-]	JMP      	-540	; to 562
+	1102	[-]	JMP      	1079	; to 2182
+	1103	[-]	GETGLOBAL	4 -8	; gameSave
+	1104	[-]	GETTABLE 	4 4 -9	; "startMenuState"
+	1105	[-]	EQ       	0 4 -64	; - 2
+	1106	[-]	JMP      	1075	; to 2182
+	1107	[-]	GETGLOBAL	4 -8	; gameSave
+	1108	[-]	GETTABLE 	4 4 -69	; "myCard"
+	1109	[-]	GETTABLE 	4 4 -70	; 140
+	1110	[-]	GETTABLE 	4 4 -71	; "hold"
+	1111	[-]	EQ       	0 4 -72	; - -1
+	1112	[-]	JMP      	525	; to 1638
+	1113	[-]	EQ       	0 3 -10	; - false
+	1114	[-]	JMP      	256	; to 1371
+	1115	[-]	GETGLOBAL	4 -11	; pressButton
+	1116	[-]	LOADK    	5 -12	; "UP"
+	1117	[-]	CALL     	4 2 2
+	1118	[-]	EQ       	0 4 -13	; - true
+	1119	[-]	JMP      	21	; to 1141
+	1120	[-]	EQ       	0 2 -10	; - false
+	1121	[-]	JMP      	19	; to 1141
+	1122	[-]	MOVE     	1 0
+	1123	[-]	GETUPVAL 	4 1	; -
+	1124	[-]	GETTABLE 	4 4 -14	; "option"
+	1125	[-]	LT       	0 4 0
+	1126	[-]	JMP      	3	; to 1130
+	1127	[-]	GETUPVAL 	4 1	; -
+	1128	[-]	GETTABLE 	0 4 -65	; "story"
+	1129	[-]	JMP      	10	; to 1140
+	1130	[-]	SUB      	4 0 -6	; - 1
+	1131	[-]	GETUPVAL 	5 1	; -
+	1132	[-]	GETTABLE 	5 5 -65	; "story"
+	1133	[-]	LT       	0 4 5
+	1134	[-]	JMP      	4	; to 1139
+	1135	[-]	GETUPVAL 	4 1	; -
+	1136	[-]	GETTABLE 	4 4 -65	; "story"
+	1137	[-]	TESTSET  	0 4 1
+	1138	[-]	JMP      	1	; to 1140
+	1139	[-]	SUB      	0 0 -6	; - 1
+	1140	[-]	LOADBOOL 	2 1 0
+	1141	[-]	GETGLOBAL	4 -11	; pressButton
+	1142	[-]	LOADK    	5 -19	; "DOWN"
+	1143	[-]	CALL     	4 2 2
+	1144	[-]	EQ       	0 4 -13	; - true
+	1145	[-]	JMP      	21	; to 1167
+	1146	[-]	EQ       	0 2 -10	; - false
+	1147	[-]	JMP      	19	; to 1167
+	1148	[-]	MOVE     	1 0
+	1149	[-]	GETUPVAL 	4 1	; -
+	1150	[-]	GETTABLE 	4 4 -14	; "option"
+	1151	[-]	LT       	0 4 0
+	1152	[-]	JMP      	3	; to 1156
+	1153	[-]	GETUPVAL 	4 1	; -
+	1154	[-]	GETTABLE 	0 4 -73	; "fragment"
+	1155	[-]	JMP      	10	; to 1166
+	1156	[-]	ADD      	4 0 -6	; - 1
+	1157	[-]	GETUPVAL 	5 1	; -
+	1158	[-]	GETTABLE 	5 5 -14	; "option"
+	1159	[-]	LT       	0 5 4
+	1160	[-]	JMP      	4	; to 1165
+	1161	[-]	GETUPVAL 	4 1	; -
+	1162	[-]	GETTABLE 	4 4 -14	; "option"
+	1163	[-]	TESTSET  	0 4 1
+	1164	[-]	JMP      	1	; to 1166
+	1165	[-]	ADD      	0 0 -6	; - 1
+	1166	[-]	LOADBOOL 	2 1 0
+	1167	[-]	GETGLOBAL	4 -11	; pressButton
+	1168	[-]	LOADK    	5 -20	; "RIGHT"
+	1169	[-]	CALL     	4 2 2
+	1170	[-]	EQ       	0 4 -13	; - true
+	1171	[-]	JMP      	6	; to 1178
+	1172	[-]	EQ       	0 2 -10	; - false
+	1173	[-]	JMP      	4	; to 1178
+	1174	[-]	MOVE     	1 0
+	1175	[-]	GETUPVAL 	4 1	; -
+	1176	[-]	GETTABLE 	0 4 -21	; "load"
+	1177	[-]	LOADBOOL 	2 1 0
+	1178	[-]	GETGLOBAL	4 -11	; pressButton
+	1179	[-]	LOADK    	5 -22	; "LEFT"
+	1180	[-]	CALL     	4 2 2
+	1181	[-]	EQ       	0 4 -13	; - true
+	1182	[-]	JMP      	6	; to 1189
+	1183	[-]	EQ       	0 2 -10	; - false
+	1184	[-]	JMP      	4	; to 1189
+	1185	[-]	MOVE     	1 0
+	1186	[-]	GETUPVAL 	4 1	; -
+	1187	[-]	GETTABLE 	0 4 -66	; "save"
+	1188	[-]	LOADBOOL 	2 1 0
+	1189	[-]	GETGLOBAL	4 -11	; pressButton
+	1190	[-]	LOADK    	5 -23	; "CIRCLE"
+	1191	[-]	CALL     	4 2 2
+	1192	[-]	EQ       	0 4 -13	; - true
+	1193	[-]	JMP      	411	; to 1605
+	1194	[-]	EQ       	0 2 -10	; - false
+	1195	[-]	JMP      	409	; to 1605
+	1196	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	1197	[-]	GETGLOBAL	5 -25	; seName
+	1198	[-]	GETTABLE 	5 5 -26	; "circle"
+	1199	[-]	CALL     	4 2 1
+	1200	[-]	GETGLOBAL	4 -27	; wait
+	1201	[-]	LOADK    	5 -28	; 10
+	1202	[-]	CALL     	4 2 1
+	1203	[-]	GETUPVAL 	4 1	; -
+	1204	[-]	GETTABLE 	4 4 -65	; "story"
+	1205	[-]	EQ       	0 0 4
+	1206	[-]	JMP      	16	; to 1223
+	1207	[-]	GETGLOBAL	4 -5	; cInitGame
+	1208	[-]	CALL     	4 1 1
+	1209	[-]	GETGLOBAL	4 -29	; switchScreen
+	1210	[-]	LOADK    	5 -7	; 0
+	1211	[-]	LOADK    	6 -30	; ""
+	1212	[-]	LOADK    	7 -31	; 60
+	1213	[-]	CALL     	4 4 1
+	1214	[-]	GETGLOBAL	4 -34	; run
+	1215	[-]	GETGLOBAL	5 -35	; cGetFileName
+	1216	[-]	LOADK    	6 -36	; "script"
+	1217	[-]	LOADK    	7 -67	; "snr_story_main"
+	1218	[-]	CALL     	5 3 0
+	1219	[-]	CALL     	4 0 1
+	1220	[-]	GETGLOBAL	4 -38	; quit
+	1221	[-]	CALL     	4 1 1
+	1222	[-]	JMP      	382	; to 1605
+	1223	[-]	GETUPVAL 	4 1	; -
+	1224	[-]	GETTABLE 	4 4 -73	; "fragment"
+	1225	[-]	EQ       	0 0 4
+	1226	[-]	JMP      	16	; to 1243
+	1227	[-]	GETGLOBAL	4 -5	; cInitGame
+	1228	[-]	CALL     	4 1 1
+	1229	[-]	GETGLOBAL	4 -29	; switchScreen
+	1230	[-]	LOADK    	5 -7	; 0
+	1231	[-]	LOADK    	6 -30	; ""
+	1232	[-]	LOADK    	7 -31	; 60
+	1233	[-]	CALL     	4 4 1
+	1234	[-]	GETGLOBAL	4 -34	; run
+	1235	[-]	GETGLOBAL	5 -35	; cGetFileName
+	1236	[-]	LOADK    	6 -36	; "script"
+	1237	[-]	LOADK    	7 -74	; "snr_fragment_main"
+	1238	[-]	CALL     	5 3 0
+	1239	[-]	CALL     	4 0 1
+	1240	[-]	GETGLOBAL	4 -38	; quit
+	1241	[-]	CALL     	4 1 1
+	1242	[-]	JMP      	362	; to 1605
+	1243	[-]	GETUPVAL 	4 1	; -
+	1244	[-]	GETTABLE 	4 4 -16	; "library"
+	1245	[-]	EQ       	0 0 4
+	1246	[-]	JMP      	102	; to 1349
+	1247	[-]	LOADBOOL 	3 1 0
+	1248	[-]	GETGLOBAL	4 -17	; systemSave
+	1249	[-]	GETTABLE 	4 4 -39	; "novelFlag"
+	1250	[-]	EQ       	1 4 -13	; - true
+	1251	[-]	JMP      	3	; to 1255
+	1252	[-]	GETUPVAL 	4 1	; -
+	1253	[-]	GETTABLE 	0 4 -40	; "scene"
+	1254	[-]	JMP      	2	; to 1257
+	1255	[-]	GETUPVAL 	4 1	; -
+	1256	[-]	GETTABLE 	0 4 -41	; "novel"
+	1257	[-]	LOADK    	4 -6	; 1
+	1258	[-]	GETUPVAL 	5 2	; -
+	1259	[-]	GETTABLE 	5 5 -75	; "layerKey2"
+	1260	[-]	LEN      	5 5
+	1261	[-]	LOADK    	6 -6	; 1
+	1262	[-]	FORPREP  	4 63	; to 1326
+	1263	[-]	GETUPVAL 	8 1	; -
+	1264	[-]	GETTABLE 	8 8 -41	; "novel"
+	1265	[-]	LT       	0 7 8
+	1266	[-]	JMP      	13	; to 1280
+	1267	[-]	GETUPVAL 	8 1	; -
+	1268	[-]	GETTABLE 	8 8 -16	; "library"
+	1269	[-]	EQ       	1 7 8
+	1270	[-]	JMP      	55	; to 1326
+	1271	[-]	GETGLOBAL	8 -43	; layerMoveAlpha
+	1272	[-]	GETUPVAL 	9 2	; -
+	1273	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	1274	[-]	GETTABLE 	9 9 -45	; "menu"
+	1275	[-]	ADD      	9 9 7
+	1276	[-]	LOADK    	10 -46	; 50
+	1277	[-]	LOADK    	11 -47	; 30
+	1278	[-]	CALL     	8 4 1
+	1279	[-]	JMP      	46	; to 1326
+	1280	[-]	GETUPVAL 	8 1	; -
+	1281	[-]	GETTABLE 	8 8 -41	; "novel"
+	1282	[-]	EQ       	0 7 8
+	1283	[-]	JMP      	4	; to 1288
+	1284	[-]	GETGLOBAL	8 -17	; systemSave
+	1285	[-]	GETTABLE 	8 8 -39	; "novelFlag"
+	1286	[-]	EQ       	0 8 -13	; - true
+	1287	[-]	JMP      	8	; to 1296
+	1288	[-]	GETUPVAL 	8 1	; -
+	1289	[-]	GETTABLE 	8 8 -48	; "music"
+	1290	[-]	EQ       	0 7 8
+	1291	[-]	JMP      	12	; to 1304
+	1292	[-]	GETGLOBAL	8 -17	; systemSave
+	1293	[-]	GETTABLE 	8 8 -49	; "musicFlag"
+	1294	[-]	EQ       	1 8 -13	; - true
+	1295	[-]	JMP      	8	; to 1304
+	1296	[-]	GETGLOBAL	8 -50	; layerVisible
+	1297	[-]	GETUPVAL 	9 2	; -
+	1298	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	1299	[-]	GETTABLE 	9 9 -45	; "menu"
+	1300	[-]	ADD      	9 9 7
+	1301	[-]	LOADBOOL 	10 0 0
+	1302	[-]	CALL     	8 3 1
+	1303	[-]	JMP      	22	; to 1326
+	1304	[-]	GETGLOBAL	8 -51	; layerAlpha
+	1305	[-]	GETUPVAL 	9 2	; -
+	1306	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	1307	[-]	GETTABLE 	9 9 -45	; "menu"
+	1308	[-]	ADD      	9 9 7
+	1309	[-]	LOADK    	10 -7	; 0
+	1310	[-]	CALL     	8 3 1
+	1311	[-]	GETGLOBAL	8 -50	; layerVisible
+	1312	[-]	GETUPVAL 	9 2	; -
+	1313	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	1314	[-]	GETTABLE 	9 9 -45	; "menu"
+	1315	[-]	ADD      	9 9 7
+	1316	[-]	LOADBOOL 	10 1 0
+	1317	[-]	CALL     	8 3 1
+	1318	[-]	GETGLOBAL	8 -43	; layerMoveAlpha
+	1319	[-]	GETUPVAL 	9 2	; -
+	1320	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	1321	[-]	GETTABLE 	9 9 -45	; "menu"
+	1322	[-]	ADD      	9 9 7
+	1323	[-]	LOADK    	10 -52	; 100
+	1324	[-]	LOADK    	11 -47	; 30
+	1325	[-]	CALL     	8 4 1
+	1326	[-]	FORLOOP  	4 -64	; to 1263
+	1327	[-]	GETGLOBAL	4 -27	; wait
+	1328	[-]	LOADK    	5 -47	; 30
+	1329	[-]	CALL     	4 2 1
+	1330	[-]	GETUPVAL 	4 4	; -
+	1331	[-]	GETUPVAL 	5 2	; -
+	1332	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	1333	[-]	GETTABLE 	5 5 -45	; "menu"
+	1334	[-]	ADD      	5 5 1
+	1335	[-]	GETUPVAL 	6 2	; -
+	1336	[-]	GETTABLE 	6 6 -75	; "layerKey2"
+	1337	[-]	GETTABLE 	6 6 1
+	1338	[-]	CALL     	4 3 1
+	1339	[-]	GETUPVAL 	4 5	; -
+	1340	[-]	GETUPVAL 	5 2	; -
+	1341	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	1342	[-]	GETTABLE 	5 5 -45	; "menu"
+	1343	[-]	ADD      	5 5 0
+	1344	[-]	GETUPVAL 	6 2	; -
+	1345	[-]	GETTABLE 	6 6 -75	; "layerKey2"
+	1346	[-]	GETTABLE 	6 6 0
+	1347	[-]	CALL     	4 3 1
+	1348	[-]	JMP      	256	; to 1605
+	1349	[-]	GETUPVAL 	4 1	; -
+	1350	[-]	GETTABLE 	4 4 -14	; "option"
+	1351	[-]	EQ       	0 0 4
+	1352	[-]	JMP      	4	; to 1357
+	1353	[-]	GETGLOBAL	4 -53	; systemOption
+	1354	[-]	GETTABLE 	4 4 -54	; "Option"
+	1355	[-]	CALL     	4 1 1
+	1356	[-]	JMP      	248	; to 1605
+	1357	[-]	GETUPVAL 	4 1	; -
+	1358	[-]	GETTABLE 	4 4 -66	; "save"
+	1359	[-]	EQ       	0 0 4
+	1360	[-]	JMP      	3	; to 1364
+	1361	[-]	GETUPVAL 	4 6	; -
+	1362	[-]	CALL     	4 1 1
+	1363	[-]	JMP      	241	; to 1605
+	1364	[-]	GETUPVAL 	4 1	; -
+	1365	[-]	GETTABLE 	4 4 -21	; "load"
+	1366	[-]	EQ       	0 0 4
+	1367	[-]	JMP      	237	; to 1605
+	1368	[-]	GETUPVAL 	4 3	; -
+	1369	[-]	CALL     	4 1 1
+	1370	[-]	JMP      	234	; to 1605
+	1371	[-]	GETGLOBAL	4 -11	; pressButton
+	1372	[-]	LOADK    	5 -12	; "UP"
+	1373	[-]	CALL     	4 2 2
+	1374	[-]	EQ       	0 4 -13	; - true
+	1375	[-]	JMP      	27	; to 1403
+	1376	[-]	EQ       	0 2 -10	; - false
+	1377	[-]	JMP      	25	; to 1403
+	1378	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	1379	[-]	GETGLOBAL	5 -25	; seName
+	1380	[-]	GETTABLE 	5 5 -55	; "arrowKey"
+	1381	[-]	CALL     	4 2 1
+	1382	[-]	MOVE     	1 0
+	1383	[-]	SUB      	4 0 -6	; - 1
+	1384	[-]	GETUPVAL 	5 1	; -
+	1385	[-]	GETTABLE 	5 5 -41	; "novel"
+	1386	[-]	LT       	0 4 5
+	1387	[-]	JMP      	4	; to 1392
+	1388	[-]	GETUPVAL 	4 1	; -
+	1389	[-]	GETTABLE 	4 4 -41	; "novel"
+	1390	[-]	TESTSET  	0 4 1
+	1391	[-]	JMP      	1	; to 1393
+	1392	[-]	SUB      	0 0 -6	; - 1
+	1393	[-]	GETUPVAL 	4 1	; -
+	1394	[-]	GETTABLE 	4 4 -41	; "novel"
+	1395	[-]	EQ       	0 0 4
+	1396	[-]	JMP      	5	; to 1402
+	1397	[-]	GETGLOBAL	4 -17	; systemSave
+	1398	[-]	GETTABLE 	4 4 -39	; "novelFlag"
+	1399	[-]	EQ       	1 4 -13	; - true
+	1400	[-]	JMP      	1	; to 1402
+	1401	[-]	ADD      	0 0 -6	; - 1
+	1402	[-]	LOADBOOL 	2 1 0
+	1403	[-]	GETGLOBAL	4 -11	; pressButton
+	1404	[-]	LOADK    	5 -19	; "DOWN"
+	1405	[-]	CALL     	4 2 2
+	1406	[-]	EQ       	0 4 -13	; - true
+	1407	[-]	JMP      	27	; to 1435
+	1408	[-]	EQ       	0 2 -10	; - false
+	1409	[-]	JMP      	25	; to 1435
+	1410	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	1411	[-]	GETGLOBAL	5 -25	; seName
+	1412	[-]	GETTABLE 	5 5 -55	; "arrowKey"
+	1413	[-]	CALL     	4 2 1
+	1414	[-]	MOVE     	1 0
+	1415	[-]	ADD      	4 0 -6	; - 1
+	1416	[-]	GETUPVAL 	5 1	; -
+	1417	[-]	GETTABLE 	5 5 -48	; "music"
+	1418	[-]	LT       	0 5 4
+	1419	[-]	JMP      	4	; to 1424
+	1420	[-]	GETUPVAL 	4 1	; -
+	1421	[-]	GETTABLE 	4 4 -48	; "music"
+	1422	[-]	TESTSET  	0 4 1
+	1423	[-]	JMP      	1	; to 1425
+	1424	[-]	ADD      	0 0 -6	; - 1
+	1425	[-]	GETUPVAL 	4 1	; -
+	1426	[-]	GETTABLE 	4 4 -48	; "music"
+	1427	[-]	EQ       	0 0 4
+	1428	[-]	JMP      	5	; to 1434
+	1429	[-]	GETGLOBAL	4 -17	; systemSave
+	1430	[-]	GETTABLE 	4 4 -49	; "musicFlag"
+	1431	[-]	EQ       	1 4 -13	; - true
+	1432	[-]	JMP      	1	; to 1434
+	1433	[-]	SUB      	0 0 -6	; - 1
+	1434	[-]	LOADBOOL 	2 1 0
+	1435	[-]	GETGLOBAL	4 -11	; pressButton
+	1436	[-]	LOADK    	5 -23	; "CIRCLE"
+	1437	[-]	CALL     	4 2 2
+	1438	[-]	EQ       	0 4 -13	; - true
+	1439	[-]	JMP      	88	; to 1528
+	1440	[-]	EQ       	0 2 -10	; - false
+	1441	[-]	JMP      	86	; to 1528
+	1442	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	1443	[-]	GETGLOBAL	5 -25	; seName
+	1444	[-]	GETTABLE 	5 5 -26	; "circle"
+	1445	[-]	CALL     	4 2 1
+	1446	[-]	GETGLOBAL	4 -27	; wait
+	1447	[-]	LOADK    	5 -28	; 10
+	1448	[-]	CALL     	4 2 1
+	1449	[-]	GETUPVAL 	4 1	; -
+	1450	[-]	GETTABLE 	4 4 -41	; "novel"
+	1451	[-]	EQ       	0 0 4
+	1452	[-]	JMP      	16	; to 1469
+	1453	[-]	GETGLOBAL	4 -5	; cInitGame
+	1454	[-]	CALL     	4 1 1
+	1455	[-]	GETGLOBAL	4 -29	; switchScreen
+	1456	[-]	LOADK    	5 -7	; 0
+	1457	[-]	LOADK    	6 -30	; ""
+	1458	[-]	LOADK    	7 -31	; 60
+	1459	[-]	CALL     	4 4 1
+	1460	[-]	GETGLOBAL	4 -34	; run
+	1461	[-]	GETGLOBAL	5 -35	; cGetFileName
+	1462	[-]	LOADK    	6 -36	; "script"
+	1463	[-]	LOADK    	7 -56	; "snr_novel"
+	1464	[-]	CALL     	5 3 0
+	1465	[-]	CALL     	4 0 1
+	1466	[-]	GETGLOBAL	4 -38	; quit
+	1467	[-]	CALL     	4 1 1
+	1468	[-]	JMP      	59	; to 1528
+	1469	[-]	GETUPVAL 	4 1	; -
+	1470	[-]	GETTABLE 	4 4 -40	; "scene"
+	1471	[-]	EQ       	0 0 4
+	1472	[-]	JMP      	16	; to 1489
+	1473	[-]	GETGLOBAL	4 -5	; cInitGame
+	1474	[-]	CALL     	4 1 1
+	1475	[-]	GETGLOBAL	4 -29	; switchScreen
+	1476	[-]	LOADK    	5 -7	; 0
+	1477	[-]	LOADK    	6 -30	; ""
+	1478	[-]	LOADK    	7 -31	; 60
+	1479	[-]	CALL     	4 4 1
+	1480	[-]	GETGLOBAL	4 -34	; run
+	1481	[-]	GETGLOBAL	5 -35	; cGetFileName
+	1482	[-]	LOADK    	6 -36	; "script"
+	1483	[-]	LOADK    	7 -57	; "snr_memory"
+	1484	[-]	CALL     	5 3 0
+	1485	[-]	CALL     	4 0 1
+	1486	[-]	GETGLOBAL	4 -38	; quit
+	1487	[-]	CALL     	4 1 1
+	1488	[-]	JMP      	39	; to 1528
+	1489	[-]	GETUPVAL 	4 1	; -
+	1490	[-]	GETTABLE 	4 4 -58	; "cg"
+	1491	[-]	EQ       	0 0 4
+	1492	[-]	JMP      	16	; to 1509
+	1493	[-]	GETGLOBAL	4 -5	; cInitGame
+	1494	[-]	CALL     	4 1 1
+	1495	[-]	GETGLOBAL	4 -29	; switchScreen
+	1496	[-]	LOADK    	5 -7	; 0
+	1497	[-]	LOADK    	6 -30	; ""
+	1498	[-]	LOADK    	7 -31	; 60
+	1499	[-]	CALL     	4 4 1
+	1500	[-]	GETGLOBAL	4 -34	; run
+	1501	[-]	GETGLOBAL	5 -35	; cGetFileName
+	1502	[-]	LOADK    	6 -36	; "script"
+	1503	[-]	LOADK    	7 -59	; "snr_graphic"
+	1504	[-]	CALL     	5 3 0
+	1505	[-]	CALL     	4 0 1
+	1506	[-]	GETGLOBAL	4 -38	; quit
+	1507	[-]	CALL     	4 1 1
+	1508	[-]	JMP      	19	; to 1528
+	1509	[-]	GETUPVAL 	4 1	; -
+	1510	[-]	GETTABLE 	4 4 -48	; "music"
+	1511	[-]	EQ       	0 0 4
+	1512	[-]	JMP      	15	; to 1528
+	1513	[-]	GETGLOBAL	4 -5	; cInitGame
+	1514	[-]	CALL     	4 1 1
+	1515	[-]	GETGLOBAL	4 -29	; switchScreen
+	1516	[-]	LOADK    	5 -7	; 0
+	1517	[-]	LOADK    	6 -30	; ""
+	1518	[-]	LOADK    	7 -31	; 60
+	1519	[-]	CALL     	4 4 1
+	1520	[-]	GETGLOBAL	4 -34	; run
+	1521	[-]	GETGLOBAL	5 -35	; cGetFileName
+	1522	[-]	LOADK    	6 -36	; "script"
+	1523	[-]	LOADK    	7 -60	; "snr_music"
+	1524	[-]	CALL     	5 3 0
+	1525	[-]	CALL     	4 0 1
+	1526	[-]	GETGLOBAL	4 -38	; quit
+	1527	[-]	CALL     	4 1 1
+	1528	[-]	GETGLOBAL	4 -11	; pressButton
+	1529	[-]	LOADK    	5 -61	; "CROSS"
+	1530	[-]	CALL     	4 2 2
+	1531	[-]	EQ       	0 4 -13	; - true
+	1532	[-]	JMP      	72	; to 1605
+	1533	[-]	EQ       	0 2 -10	; - false
+	1534	[-]	JMP      	70	; to 1605
+	1535	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	1536	[-]	GETGLOBAL	5 -25	; seName
+	1537	[-]	GETTABLE 	5 5 -62	; "cross"
+	1538	[-]	CALL     	4 2 1
+	1539	[-]	LOADBOOL 	3 0 0
+	1540	[-]	MOVE     	1 0
+	1541	[-]	GETUPVAL 	4 1	; -
+	1542	[-]	GETTABLE 	0 4 -16	; "library"
+	1543	[-]	LOADK    	4 -6	; 1
+	1544	[-]	GETUPVAL 	5 1	; -
+	1545	[-]	GETTABLE 	5 5 -48	; "music"
+	1546	[-]	LOADK    	6 -6	; 1
+	1547	[-]	FORPREP  	4 21	; to 1569
+	1548	[-]	GETUPVAL 	8 1	; -
+	1549	[-]	GETTABLE 	8 8 -41	; "novel"
+	1550	[-]	LT       	0 7 8
+	1551	[-]	JMP      	9	; to 1561
+	1552	[-]	GETGLOBAL	8 -43	; layerMoveAlpha
+	1553	[-]	GETUPVAL 	9 2	; -
+	1554	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	1555	[-]	GETTABLE 	9 9 -45	; "menu"
+	1556	[-]	ADD      	9 9 7
+	1557	[-]	LOADK    	10 -52	; 100
+	1558	[-]	LOADK    	11 -47	; 30
+	1559	[-]	CALL     	8 4 1
+	1560	[-]	JMP      	8	; to 1569
+	1561	[-]	GETGLOBAL	8 -43	; layerMoveAlpha
+	1562	[-]	GETUPVAL 	9 2	; -
+	1563	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	1564	[-]	GETTABLE 	9 9 -45	; "menu"
+	1565	[-]	ADD      	9 9 7
+	1566	[-]	LOADK    	10 -7	; 0
+	1567	[-]	LOADK    	11 -47	; 30
+	1568	[-]	CALL     	8 4 1
+	1569	[-]	FORLOOP  	4 -22	; to 1548
+	1570	[-]	GETGLOBAL	4 -27	; wait
+	1571	[-]	LOADK    	5 -47	; 30
+	1572	[-]	CALL     	4 2 1
+	1573	[-]	GETUPVAL 	4 1	; -
+	1574	[-]	GETTABLE 	4 4 -41	; "novel"
+	1575	[-]	GETUPVAL 	5 1	; -
+	1576	[-]	GETTABLE 	5 5 -48	; "music"
+	1577	[-]	LOADK    	6 -6	; 1
+	1578	[-]	FORPREP  	4 7	; to 1586
+	1579	[-]	GETGLOBAL	8 -50	; layerVisible
+	1580	[-]	GETUPVAL 	9 2	; -
+	1581	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	1582	[-]	GETTABLE 	9 9 -45	; "menu"
+	1583	[-]	ADD      	9 9 7
+	1584	[-]	LOADBOOL 	10 0 0
+	1585	[-]	CALL     	8 3 1
+	1586	[-]	FORLOOP  	4 -8	; to 1579
+	1587	[-]	GETUPVAL 	4 4	; -
+	1588	[-]	GETUPVAL 	5 2	; -
+	1589	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	1590	[-]	GETTABLE 	5 5 -45	; "menu"
+	1591	[-]	ADD      	5 5 1
+	1592	[-]	GETUPVAL 	6 2	; -
+	1593	[-]	GETTABLE 	6 6 -75	; "layerKey2"
+	1594	[-]	GETTABLE 	6 6 1
+	1595	[-]	CALL     	4 3 1
+	1596	[-]	GETUPVAL 	4 5	; -
+	1597	[-]	GETUPVAL 	5 2	; -
+	1598	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	1599	[-]	GETTABLE 	5 5 -45	; "menu"
+	1600	[-]	ADD      	5 5 0
+	1601	[-]	GETUPVAL 	6 2	; -
+	1602	[-]	GETTABLE 	6 6 -75	; "layerKey2"
+	1603	[-]	GETTABLE 	6 6 0
+	1604	[-]	CALL     	4 3 1
+	1605	[-]	EQ       	0 2 -13	; - true
+	1606	[-]	JMP      	26	; to 1633
+	1607	[-]	GETUPVAL 	4 4	; -
+	1608	[-]	GETUPVAL 	5 2	; -
+	1609	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	1610	[-]	GETTABLE 	5 5 -45	; "menu"
+	1611	[-]	ADD      	5 5 1
+	1612	[-]	GETUPVAL 	6 2	; -
+	1613	[-]	GETTABLE 	6 6 -75	; "layerKey2"
+	1614	[-]	GETTABLE 	6 6 1
+	1615	[-]	CALL     	4 3 1
+	1616	[-]	GETUPVAL 	4 5	; -
+	1617	[-]	GETUPVAL 	5 2	; -
+	1618	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	1619	[-]	GETTABLE 	5 5 -45	; "menu"
+	1620	[-]	ADD      	5 5 0
+	1621	[-]	GETUPVAL 	6 2	; -
+	1622	[-]	GETTABLE 	6 6 -75	; "layerKey2"
+	1623	[-]	GETTABLE 	6 6 0
+	1624	[-]	CALL     	4 3 1
+	1625	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	1626	[-]	GETGLOBAL	5 -25	; seName
+	1627	[-]	GETTABLE 	5 5 -55	; "arrowKey"
+	1628	[-]	CALL     	4 2 1
+	1629	[-]	GETGLOBAL	4 -27	; wait
+	1630	[-]	LOADK    	5 -63	; 3
+	1631	[-]	CALL     	4 2 1
+	1632	[-]	LOADBOOL 	2 0 0
+	1633	[-]	GETGLOBAL	4 -27	; wait
+	1634	[-]	LOADK    	5 -64	; 2
+	1635	[-]	CALL     	4 2 1
+	1636	[-]	JMP      	-524	; to 1113
+	1637	[-]	JMP      	544	; to 2182
+	1638	[-]	EQ       	0 3 -10	; - false
+	1639	[-]	JMP      	276	; to 1916
+	1640	[-]	GETGLOBAL	4 -11	; pressButton
+	1641	[-]	LOADK    	5 -12	; "UP"
+	1642	[-]	CALL     	4 2 2
+	1643	[-]	EQ       	0 4 -13	; - true
+	1644	[-]	JMP      	21	; to 1666
+	1645	[-]	EQ       	0 2 -10	; - false
+	1646	[-]	JMP      	19	; to 1666
+	1647	[-]	MOVE     	1 0
+	1648	[-]	GETUPVAL 	4 1	; -
+	1649	[-]	GETTABLE 	4 4 -14	; "option"
+	1650	[-]	LT       	0 4 0
+	1651	[-]	JMP      	3	; to 1655
+	1652	[-]	GETUPVAL 	4 1	; -
+	1653	[-]	GETTABLE 	0 4 -65	; "story"
+	1654	[-]	JMP      	10	; to 1665
+	1655	[-]	SUB      	4 0 -6	; - 1
+	1656	[-]	GETUPVAL 	5 1	; -
+	1657	[-]	GETTABLE 	5 5 -65	; "story"
+	1658	[-]	LT       	0 4 5
+	1659	[-]	JMP      	4	; to 1664
+	1660	[-]	GETUPVAL 	4 1	; -
+	1661	[-]	GETTABLE 	4 4 -65	; "story"
+	1662	[-]	TESTSET  	0 4 1
+	1663	[-]	JMP      	1	; to 1665
+	1664	[-]	SUB      	0 0 -6	; - 1
+	1665	[-]	LOADBOOL 	2 1 0
+	1666	[-]	GETGLOBAL	4 -11	; pressButton
+	1667	[-]	LOADK    	5 -19	; "DOWN"
+	1668	[-]	CALL     	4 2 2
+	1669	[-]	EQ       	0 4 -13	; - true
+	1670	[-]	JMP      	21	; to 1692
+	1671	[-]	EQ       	0 2 -10	; - false
+	1672	[-]	JMP      	19	; to 1692
+	1673	[-]	MOVE     	1 0
+	1674	[-]	GETUPVAL 	4 1	; -
+	1675	[-]	GETTABLE 	4 4 -14	; "option"
+	1676	[-]	LT       	0 4 0
+	1677	[-]	JMP      	3	; to 1681
+	1678	[-]	GETUPVAL 	4 1	; -
+	1679	[-]	GETTABLE 	0 4 -73	; "fragment"
+	1680	[-]	JMP      	10	; to 1691
+	1681	[-]	ADD      	4 0 -6	; - 1
+	1682	[-]	GETUPVAL 	5 1	; -
+	1683	[-]	GETTABLE 	5 5 -14	; "option"
+	1684	[-]	LT       	0 5 4
+	1685	[-]	JMP      	4	; to 1690
+	1686	[-]	GETUPVAL 	4 1	; -
+	1687	[-]	GETTABLE 	4 4 -14	; "option"
+	1688	[-]	TESTSET  	0 4 1
+	1689	[-]	JMP      	1	; to 1691
+	1690	[-]	ADD      	0 0 -6	; - 1
+	1691	[-]	LOADBOOL 	2 1 0
+	1692	[-]	GETGLOBAL	4 -11	; pressButton
+	1693	[-]	LOADK    	5 -20	; "RIGHT"
+	1694	[-]	CALL     	4 2 2
+	1695	[-]	EQ       	0 4 -13	; - true
+	1696	[-]	JMP      	6	; to 1703
+	1697	[-]	EQ       	0 2 -10	; - false
+	1698	[-]	JMP      	4	; to 1703
+	1699	[-]	MOVE     	1 0
+	1700	[-]	GETUPVAL 	4 1	; -
+	1701	[-]	GETTABLE 	0 4 -21	; "load"
+	1702	[-]	LOADBOOL 	2 1 0
+	1703	[-]	GETGLOBAL	4 -11	; pressButton
+	1704	[-]	LOADK    	5 -22	; "LEFT"
+	1705	[-]	CALL     	4 2 2
+	1706	[-]	EQ       	0 4 -13	; - true
+	1707	[-]	JMP      	6	; to 1714
+	1708	[-]	EQ       	0 2 -10	; - false
+	1709	[-]	JMP      	4	; to 1714
+	1710	[-]	MOVE     	1 0
+	1711	[-]	GETUPVAL 	4 1	; -
+	1712	[-]	GETTABLE 	0 4 -66	; "save"
+	1713	[-]	LOADBOOL 	2 1 0
+	1714	[-]	GETGLOBAL	4 -11	; pressButton
+	1715	[-]	LOADK    	5 -23	; "CIRCLE"
+	1716	[-]	CALL     	4 2 2
+	1717	[-]	EQ       	0 4 -13	; - true
+	1718	[-]	JMP      	431	; to 2150
+	1719	[-]	EQ       	0 2 -10	; - false
+	1720	[-]	JMP      	429	; to 2150
+	1721	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	1722	[-]	GETGLOBAL	5 -25	; seName
+	1723	[-]	GETTABLE 	5 5 -26	; "circle"
+	1724	[-]	CALL     	4 2 1
+	1725	[-]	GETGLOBAL	4 -27	; wait
+	1726	[-]	LOADK    	5 -28	; 10
+	1727	[-]	CALL     	4 2 1
+	1728	[-]	GETUPVAL 	4 1	; -
+	1729	[-]	GETTABLE 	4 4 -65	; "story"
+	1730	[-]	EQ       	0 0 4
+	1731	[-]	JMP      	16	; to 1748
+	1732	[-]	GETGLOBAL	4 -5	; cInitGame
+	1733	[-]	CALL     	4 1 1
+	1734	[-]	GETGLOBAL	4 -29	; switchScreen
+	1735	[-]	LOADK    	5 -7	; 0
+	1736	[-]	LOADK    	6 -30	; ""
+	1737	[-]	LOADK    	7 -31	; 60
+	1738	[-]	CALL     	4 4 1
+	1739	[-]	GETGLOBAL	4 -34	; run
+	1740	[-]	GETGLOBAL	5 -35	; cGetFileName
+	1741	[-]	LOADK    	6 -36	; "script"
+	1742	[-]	LOADK    	7 -67	; "snr_story_main"
+	1743	[-]	CALL     	5 3 0
+	1744	[-]	CALL     	4 0 1
+	1745	[-]	GETGLOBAL	4 -38	; quit
+	1746	[-]	CALL     	4 1 1
+	1747	[-]	JMP      	149	; to 1897
+	1748	[-]	GETUPVAL 	4 1	; -
+	1749	[-]	GETTABLE 	4 4 -73	; "fragment"
+	1750	[-]	EQ       	0 0 4
+	1751	[-]	JMP      	16	; to 1768
+	1752	[-]	GETGLOBAL	4 -5	; cInitGame
+	1753	[-]	CALL     	4 1 1
+	1754	[-]	GETGLOBAL	4 -29	; switchScreen
+	1755	[-]	LOADK    	5 -7	; 0
+	1756	[-]	LOADK    	6 -30	; ""
+	1757	[-]	LOADK    	7 -31	; 60
+	1758	[-]	CALL     	4 4 1
+	1759	[-]	GETGLOBAL	4 -34	; run
+	1760	[-]	GETGLOBAL	5 -35	; cGetFileName
+	1761	[-]	LOADK    	6 -36	; "script"
+	1762	[-]	LOADK    	7 -74	; "snr_fragment_main"
+	1763	[-]	CALL     	5 3 0
+	1764	[-]	CALL     	4 0 1
+	1765	[-]	GETGLOBAL	4 -38	; quit
+	1766	[-]	CALL     	4 1 1
+	1767	[-]	JMP      	129	; to 1897
+	1768	[-]	GETUPVAL 	4 1	; -
+	1769	[-]	GETTABLE 	4 4 -76	; "section7"
+	1770	[-]	EQ       	0 0 4
+	1771	[-]	JMP      	18	; to 1790
+	1772	[-]	GETGLOBAL	4 -5	; cInitGame
+	1773	[-]	CALL     	4 1 1
+	1774	[-]	GETGLOBAL	4 -29	; switchScreen
+	1775	[-]	LOADK    	5 -7	; 0
+	1776	[-]	LOADK    	6 -30	; ""
+	1777	[-]	LOADK    	7 -31	; 60
+	1778	[-]	CALL     	4 4 1
+	1779	[-]	LOADK    	4 -77	; "s7f-10"
+	1780	[-]	SETGLOBAL	4 -32	; doScriptScene
+	1781	[-]	GETGLOBAL	4 -34	; run
+	1782	[-]	GETGLOBAL	5 -35	; cGetFileName
+	1783	[-]	LOADK    	6 -36	; "script"
+	1784	[-]	LOADK    	7 -78	; "snr_s7_10_f"
+	1785	[-]	CALL     	5 3 0
+	1786	[-]	CALL     	4 0 1
+	1787	[-]	GETGLOBAL	4 -38	; quit
+	1788	[-]	CALL     	4 1 1
+	1789	[-]	JMP      	107	; to 1897
+	1790	[-]	GETUPVAL 	4 1	; -
+	1791	[-]	GETTABLE 	4 4 -16	; "library"
+	1792	[-]	EQ       	0 0 4
+	1793	[-]	JMP      	82	; to 1876
+	1794	[-]	LOADBOOL 	3 1 0
+	1795	[-]	GETGLOBAL	4 -17	; systemSave
+	1796	[-]	GETTABLE 	4 4 -39	; "novelFlag"
+	1797	[-]	EQ       	1 4 -13	; - true
+	1798	[-]	JMP      	3	; to 1802
+	1799	[-]	GETUPVAL 	4 1	; -
+	1800	[-]	GETTABLE 	0 4 -40	; "scene"
+	1801	[-]	JMP      	2	; to 1804
+	1802	[-]	GETUPVAL 	4 1	; -
+	1803	[-]	GETTABLE 	0 4 -41	; "novel"
+	1804	[-]	LOADK    	4 -6	; 1
+	1805	[-]	LOADK    	5 -79	; 11
+	1806	[-]	LOADK    	6 -6	; 1
+	1807	[-]	FORPREP  	4 63	; to 1871
+	1808	[-]	GETUPVAL 	8 1	; -
+	1809	[-]	GETTABLE 	8 8 -41	; "novel"
+	1810	[-]	LT       	0 7 8
+	1811	[-]	JMP      	13	; to 1825
+	1812	[-]	GETUPVAL 	8 1	; -
+	1813	[-]	GETTABLE 	8 8 -16	; "library"
+	1814	[-]	EQ       	1 7 8
+	1815	[-]	JMP      	55	; to 1871
+	1816	[-]	GETGLOBAL	8 -43	; layerMoveAlpha
+	1817	[-]	GETUPVAL 	9 2	; -
+	1818	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	1819	[-]	GETTABLE 	9 9 -45	; "menu"
+	1820	[-]	ADD      	9 9 7
+	1821	[-]	LOADK    	10 -46	; 50
+	1822	[-]	LOADK    	11 -47	; 30
+	1823	[-]	CALL     	8 4 1
+	1824	[-]	JMP      	46	; to 1871
+	1825	[-]	GETUPVAL 	8 1	; -
+	1826	[-]	GETTABLE 	8 8 -41	; "novel"
+	1827	[-]	EQ       	0 7 8
+	1828	[-]	JMP      	4	; to 1833
+	1829	[-]	GETGLOBAL	8 -17	; systemSave
+	1830	[-]	GETTABLE 	8 8 -39	; "novelFlag"
+	1831	[-]	EQ       	0 8 -13	; - true
+	1832	[-]	JMP      	8	; to 1841
+	1833	[-]	GETUPVAL 	8 1	; -
+	1834	[-]	GETTABLE 	8 8 -48	; "music"
+	1835	[-]	EQ       	0 7 8
+	1836	[-]	JMP      	12	; to 1849
+	1837	[-]	GETGLOBAL	8 -17	; systemSave
+	1838	[-]	GETTABLE 	8 8 -49	; "musicFlag"
+	1839	[-]	EQ       	1 8 -13	; - true
+	1840	[-]	JMP      	8	; to 1849
+	1841	[-]	GETGLOBAL	8 -50	; layerVisible
+	1842	[-]	GETUPVAL 	9 2	; -
+	1843	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	1844	[-]	GETTABLE 	9 9 -45	; "menu"
+	1845	[-]	ADD      	9 9 7
+	1846	[-]	LOADBOOL 	10 0 0
+	1847	[-]	CALL     	8 3 1
+	1848	[-]	JMP      	22	; to 1871
+	1849	[-]	GETGLOBAL	8 -51	; layerAlpha
+	1850	[-]	GETUPVAL 	9 2	; -
+	1851	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	1852	[-]	GETTABLE 	9 9 -45	; "menu"
+	1853	[-]	ADD      	9 9 7
+	1854	[-]	LOADK    	10 -7	; 0
+	1855	[-]	CALL     	8 3 1
+	1856	[-]	GETGLOBAL	8 -50	; layerVisible
+	1857	[-]	GETUPVAL 	9 2	; -
+	1858	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	1859	[-]	GETTABLE 	9 9 -45	; "menu"
+	1860	[-]	ADD      	9 9 7
+	1861	[-]	LOADBOOL 	10 1 0
+	1862	[-]	CALL     	8 3 1
+	1863	[-]	GETGLOBAL	8 -43	; layerMoveAlpha
+	1864	[-]	GETUPVAL 	9 2	; -
+	1865	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	1866	[-]	GETTABLE 	9 9 -45	; "menu"
+	1867	[-]	ADD      	9 9 7
+	1868	[-]	LOADK    	10 -52	; 100
+	1869	[-]	LOADK    	11 -47	; 30
+	1870	[-]	CALL     	8 4 1
+	1871	[-]	FORLOOP  	4 -64	; to 1808
+	1872	[-]	GETGLOBAL	4 -27	; wait
+	1873	[-]	LOADK    	5 -47	; 30
+	1874	[-]	CALL     	4 2 1
+	1875	[-]	JMP      	21	; to 1897
+	1876	[-]	GETUPVAL 	4 1	; -
+	1877	[-]	GETTABLE 	4 4 -14	; "option"
+	1878	[-]	EQ       	0 0 4
+	1879	[-]	JMP      	4	; to 1884
+	1880	[-]	GETGLOBAL	4 -53	; systemOption
+	1881	[-]	GETTABLE 	4 4 -54	; "Option"
+	1882	[-]	CALL     	4 1 1
+	1883	[-]	JMP      	13	; to 1897
+	1884	[-]	GETUPVAL 	4 1	; -
+	1885	[-]	GETTABLE 	4 4 -66	; "save"
+	1886	[-]	EQ       	0 0 4
+	1887	[-]	JMP      	3	; to 1891
+	1888	[-]	GETUPVAL 	4 6	; -
+	1889	[-]	CALL     	4 1 1
+	1890	[-]	JMP      	6	; to 1897
+	1891	[-]	GETUPVAL 	4 1	; -
+	1892	[-]	GETTABLE 	4 4 -21	; "load"
+	1893	[-]	EQ       	0 0 4
+	1894	[-]	JMP      	2	; to 1897
+	1895	[-]	GETUPVAL 	4 3	; -
+	1896	[-]	CALL     	4 1 1
+	1897	[-]	GETUPVAL 	4 4	; -
+	1898	[-]	GETUPVAL 	5 2	; -
+	1899	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	1900	[-]	GETTABLE 	5 5 -45	; "menu"
+	1901	[-]	ADD      	5 5 1
+	1902	[-]	GETUPVAL 	6 2	; -
+	1903	[-]	GETTABLE 	6 6 -80	; "layerKey3"
+	1904	[-]	GETTABLE 	6 6 1
+	1905	[-]	CALL     	4 3 1
+	1906	[-]	GETUPVAL 	4 5	; -
+	1907	[-]	GETUPVAL 	5 2	; -
+	1908	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	1909	[-]	GETTABLE 	5 5 -45	; "menu"
+	1910	[-]	ADD      	5 5 0
+	1911	[-]	GETUPVAL 	6 2	; -
+	1912	[-]	GETTABLE 	6 6 -80	; "layerKey3"
+	1913	[-]	GETTABLE 	6 6 0
+	1914	[-]	CALL     	4 3 1
+	1915	[-]	JMP      	234	; to 2150
+	1916	[-]	GETGLOBAL	4 -11	; pressButton
+	1917	[-]	LOADK    	5 -12	; "UP"
+	1918	[-]	CALL     	4 2 2
+	1919	[-]	EQ       	0 4 -13	; - true
+	1920	[-]	JMP      	27	; to 1948
+	1921	[-]	EQ       	0 2 -10	; - false
+	1922	[-]	JMP      	25	; to 1948
+	1923	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	1924	[-]	GETGLOBAL	5 -25	; seName
+	1925	[-]	GETTABLE 	5 5 -55	; "arrowKey"
+	1926	[-]	CALL     	4 2 1
+	1927	[-]	MOVE     	1 0
+	1928	[-]	SUB      	4 0 -6	; - 1
+	1929	[-]	GETUPVAL 	5 1	; -
+	1930	[-]	GETTABLE 	5 5 -41	; "novel"
+	1931	[-]	LT       	0 4 5
+	1932	[-]	JMP      	4	; to 1937
+	1933	[-]	GETUPVAL 	4 1	; -
+	1934	[-]	GETTABLE 	4 4 -41	; "novel"
+	1935	[-]	TESTSET  	0 4 1
+	1936	[-]	JMP      	1	; to 1938
+	1937	[-]	SUB      	0 0 -6	; - 1
+	1938	[-]	GETUPVAL 	4 1	; -
+	1939	[-]	GETTABLE 	4 4 -41	; "novel"
+	1940	[-]	EQ       	0 0 4
+	1941	[-]	JMP      	5	; to 1947
+	1942	[-]	GETGLOBAL	4 -17	; systemSave
+	1943	[-]	GETTABLE 	4 4 -39	; "novelFlag"
+	1944	[-]	EQ       	1 4 -13	; - true
+	1945	[-]	JMP      	1	; to 1947
+	1946	[-]	ADD      	0 0 -6	; - 1
+	1947	[-]	LOADBOOL 	2 1 0
+	1948	[-]	GETGLOBAL	4 -11	; pressButton
+	1949	[-]	LOADK    	5 -19	; "DOWN"
+	1950	[-]	CALL     	4 2 2
+	1951	[-]	EQ       	0 4 -13	; - true
+	1952	[-]	JMP      	27	; to 1980
+	1953	[-]	EQ       	0 2 -10	; - false
+	1954	[-]	JMP      	25	; to 1980
+	1955	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	1956	[-]	GETGLOBAL	5 -25	; seName
+	1957	[-]	GETTABLE 	5 5 -55	; "arrowKey"
+	1958	[-]	CALL     	4 2 1
+	1959	[-]	MOVE     	1 0
+	1960	[-]	ADD      	4 0 -6	; - 1
+	1961	[-]	GETUPVAL 	5 1	; -
+	1962	[-]	GETTABLE 	5 5 -48	; "music"
+	1963	[-]	LT       	0 5 4
+	1964	[-]	JMP      	4	; to 1969
+	1965	[-]	GETUPVAL 	4 1	; -
+	1966	[-]	GETTABLE 	4 4 -48	; "music"
+	1967	[-]	TESTSET  	0 4 1
+	1968	[-]	JMP      	1	; to 1970
+	1969	[-]	ADD      	0 0 -6	; - 1
+	1970	[-]	GETUPVAL 	4 1	; -
+	1971	[-]	GETTABLE 	4 4 -48	; "music"
+	1972	[-]	EQ       	0 0 4
+	1973	[-]	JMP      	5	; to 1979
+	1974	[-]	GETGLOBAL	4 -17	; systemSave
+	1975	[-]	GETTABLE 	4 4 -49	; "musicFlag"
+	1976	[-]	EQ       	1 4 -13	; - true
+	1977	[-]	JMP      	1	; to 1979
+	1978	[-]	SUB      	0 0 -6	; - 1
+	1979	[-]	LOADBOOL 	2 1 0
+	1980	[-]	GETGLOBAL	4 -11	; pressButton
+	1981	[-]	LOADK    	5 -23	; "CIRCLE"
+	1982	[-]	CALL     	4 2 2
+	1983	[-]	EQ       	0 4 -13	; - true
+	1984	[-]	JMP      	88	; to 2073
+	1985	[-]	EQ       	0 2 -10	; - false
+	1986	[-]	JMP      	86	; to 2073
+	1987	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	1988	[-]	GETGLOBAL	5 -25	; seName
+	1989	[-]	GETTABLE 	5 5 -26	; "circle"
+	1990	[-]	CALL     	4 2 1
+	1991	[-]	GETGLOBAL	4 -27	; wait
+	1992	[-]	LOADK    	5 -28	; 10
+	1993	[-]	CALL     	4 2 1
+	1994	[-]	GETUPVAL 	4 1	; -
+	1995	[-]	GETTABLE 	4 4 -41	; "novel"
+	1996	[-]	EQ       	0 0 4
+	1997	[-]	JMP      	16	; to 2014
+	1998	[-]	GETGLOBAL	4 -5	; cInitGame
+	1999	[-]	CALL     	4 1 1
+	2000	[-]	GETGLOBAL	4 -29	; switchScreen
+	2001	[-]	LOADK    	5 -7	; 0
+	2002	[-]	LOADK    	6 -30	; ""
+	2003	[-]	LOADK    	7 -31	; 60
+	2004	[-]	CALL     	4 4 1
+	2005	[-]	GETGLOBAL	4 -34	; run
+	2006	[-]	GETGLOBAL	5 -35	; cGetFileName
+	2007	[-]	LOADK    	6 -36	; "script"
+	2008	[-]	LOADK    	7 -56	; "snr_novel"
+	2009	[-]	CALL     	5 3 0
+	2010	[-]	CALL     	4 0 1
+	2011	[-]	GETGLOBAL	4 -38	; quit
+	2012	[-]	CALL     	4 1 1
+	2013	[-]	JMP      	59	; to 2073
+	2014	[-]	GETUPVAL 	4 1	; -
+	2015	[-]	GETTABLE 	4 4 -40	; "scene"
+	2016	[-]	EQ       	0 0 4
+	2017	[-]	JMP      	16	; to 2034
+	2018	[-]	GETGLOBAL	4 -5	; cInitGame
+	2019	[-]	CALL     	4 1 1
+	2020	[-]	GETGLOBAL	4 -29	; switchScreen
+	2021	[-]	LOADK    	5 -7	; 0
+	2022	[-]	LOADK    	6 -30	; ""
+	2023	[-]	LOADK    	7 -31	; 60
+	2024	[-]	CALL     	4 4 1
+	2025	[-]	GETGLOBAL	4 -34	; run
+	2026	[-]	GETGLOBAL	5 -35	; cGetFileName
+	2027	[-]	LOADK    	6 -36	; "script"
+	2028	[-]	LOADK    	7 -57	; "snr_memory"
+	2029	[-]	CALL     	5 3 0
+	2030	[-]	CALL     	4 0 1
+	2031	[-]	GETGLOBAL	4 -38	; quit
+	2032	[-]	CALL     	4 1 1
+	2033	[-]	JMP      	39	; to 2073
+	2034	[-]	GETUPVAL 	4 1	; -
+	2035	[-]	GETTABLE 	4 4 -58	; "cg"
+	2036	[-]	EQ       	0 0 4
+	2037	[-]	JMP      	16	; to 2054
+	2038	[-]	GETGLOBAL	4 -5	; cInitGame
+	2039	[-]	CALL     	4 1 1
+	2040	[-]	GETGLOBAL	4 -29	; switchScreen
+	2041	[-]	LOADK    	5 -7	; 0
+	2042	[-]	LOADK    	6 -30	; ""
+	2043	[-]	LOADK    	7 -31	; 60
+	2044	[-]	CALL     	4 4 1
+	2045	[-]	GETGLOBAL	4 -34	; run
+	2046	[-]	GETGLOBAL	5 -35	; cGetFileName
+	2047	[-]	LOADK    	6 -36	; "script"
+	2048	[-]	LOADK    	7 -59	; "snr_graphic"
+	2049	[-]	CALL     	5 3 0
+	2050	[-]	CALL     	4 0 1
+	2051	[-]	GETGLOBAL	4 -38	; quit
+	2052	[-]	CALL     	4 1 1
+	2053	[-]	JMP      	19	; to 2073
+	2054	[-]	GETUPVAL 	4 1	; -
+	2055	[-]	GETTABLE 	4 4 -48	; "music"
+	2056	[-]	EQ       	0 0 4
+	2057	[-]	JMP      	15	; to 2073
+	2058	[-]	GETGLOBAL	4 -5	; cInitGame
+	2059	[-]	CALL     	4 1 1
+	2060	[-]	GETGLOBAL	4 -29	; switchScreen
+	2061	[-]	LOADK    	5 -7	; 0
+	2062	[-]	LOADK    	6 -30	; ""
+	2063	[-]	LOADK    	7 -31	; 60
+	2064	[-]	CALL     	4 4 1
+	2065	[-]	GETGLOBAL	4 -34	; run
+	2066	[-]	GETGLOBAL	5 -35	; cGetFileName
+	2067	[-]	LOADK    	6 -36	; "script"
+	2068	[-]	LOADK    	7 -60	; "snr_music"
+	2069	[-]	CALL     	5 3 0
+	2070	[-]	CALL     	4 0 1
+	2071	[-]	GETGLOBAL	4 -38	; quit
+	2072	[-]	CALL     	4 1 1
+	2073	[-]	GETGLOBAL	4 -11	; pressButton
+	2074	[-]	LOADK    	5 -61	; "CROSS"
+	2075	[-]	CALL     	4 2 2
+	2076	[-]	EQ       	0 4 -13	; - true
+	2077	[-]	JMP      	72	; to 2150
+	2078	[-]	EQ       	0 2 -10	; - false
+	2079	[-]	JMP      	70	; to 2150
+	2080	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	2081	[-]	GETGLOBAL	5 -25	; seName
+	2082	[-]	GETTABLE 	5 5 -62	; "cross"
+	2083	[-]	CALL     	4 2 1
+	2084	[-]	LOADBOOL 	3 0 0
+	2085	[-]	MOVE     	1 0
+	2086	[-]	GETUPVAL 	4 1	; -
+	2087	[-]	GETTABLE 	0 4 -16	; "library"
+	2088	[-]	LOADK    	4 -6	; 1
+	2089	[-]	GETUPVAL 	5 1	; -
+	2090	[-]	GETTABLE 	5 5 -48	; "music"
+	2091	[-]	LOADK    	6 -6	; 1
+	2092	[-]	FORPREP  	4 21	; to 2114
+	2093	[-]	GETUPVAL 	8 1	; -
+	2094	[-]	GETTABLE 	8 8 -41	; "novel"
+	2095	[-]	LT       	0 7 8
+	2096	[-]	JMP      	9	; to 2106
+	2097	[-]	GETGLOBAL	8 -43	; layerMoveAlpha
+	2098	[-]	GETUPVAL 	9 2	; -
+	2099	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	2100	[-]	GETTABLE 	9 9 -45	; "menu"
+	2101	[-]	ADD      	9 9 7
+	2102	[-]	LOADK    	10 -52	; 100
+	2103	[-]	LOADK    	11 -47	; 30
+	2104	[-]	CALL     	8 4 1
+	2105	[-]	JMP      	8	; to 2114
+	2106	[-]	GETGLOBAL	8 -43	; layerMoveAlpha
+	2107	[-]	GETUPVAL 	9 2	; -
+	2108	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	2109	[-]	GETTABLE 	9 9 -45	; "menu"
+	2110	[-]	ADD      	9 9 7
+	2111	[-]	LOADK    	10 -7	; 0
+	2112	[-]	LOADK    	11 -47	; 30
+	2113	[-]	CALL     	8 4 1
+	2114	[-]	FORLOOP  	4 -22	; to 2093
+	2115	[-]	GETGLOBAL	4 -27	; wait
+	2116	[-]	LOADK    	5 -47	; 30
+	2117	[-]	CALL     	4 2 1
+	2118	[-]	GETUPVAL 	4 1	; -
+	2119	[-]	GETTABLE 	4 4 -41	; "novel"
+	2120	[-]	GETUPVAL 	5 1	; -
+	2121	[-]	GETTABLE 	5 5 -48	; "music"
+	2122	[-]	LOADK    	6 -6	; 1
+	2123	[-]	FORPREP  	4 7	; to 2131
+	2124	[-]	GETGLOBAL	8 -50	; layerVisible
+	2125	[-]	GETUPVAL 	9 2	; -
+	2126	[-]	GETTABLE 	9 9 -44	; "layerNumber"
+	2127	[-]	GETTABLE 	9 9 -45	; "menu"
+	2128	[-]	ADD      	9 9 7
+	2129	[-]	LOADBOOL 	10 0 0
+	2130	[-]	CALL     	8 3 1
+	2131	[-]	FORLOOP  	4 -8	; to 2124
+	2132	[-]	GETUPVAL 	4 4	; -
+	2133	[-]	GETUPVAL 	5 2	; -
+	2134	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	2135	[-]	GETTABLE 	5 5 -45	; "menu"
+	2136	[-]	ADD      	5 5 1
+	2137	[-]	GETUPVAL 	6 2	; -
+	2138	[-]	GETTABLE 	6 6 -80	; "layerKey3"
+	2139	[-]	GETTABLE 	6 6 1
+	2140	[-]	CALL     	4 3 1
+	2141	[-]	GETUPVAL 	4 5	; -
+	2142	[-]	GETUPVAL 	5 2	; -
+	2143	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	2144	[-]	GETTABLE 	5 5 -45	; "menu"
+	2145	[-]	ADD      	5 5 0
+	2146	[-]	GETUPVAL 	6 2	; -
+	2147	[-]	GETTABLE 	6 6 -80	; "layerKey3"
+	2148	[-]	GETTABLE 	6 6 0
+	2149	[-]	CALL     	4 3 1
+	2150	[-]	EQ       	0 2 -13	; - true
+	2151	[-]	JMP      	26	; to 2178
+	2152	[-]	GETUPVAL 	4 4	; -
+	2153	[-]	GETUPVAL 	5 2	; -
+	2154	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	2155	[-]	GETTABLE 	5 5 -45	; "menu"
+	2156	[-]	ADD      	5 5 1
+	2157	[-]	GETUPVAL 	6 2	; -
+	2158	[-]	GETTABLE 	6 6 -80	; "layerKey3"
+	2159	[-]	GETTABLE 	6 6 1
+	2160	[-]	CALL     	4 3 1
+	2161	[-]	GETUPVAL 	4 5	; -
+	2162	[-]	GETUPVAL 	5 2	; -
+	2163	[-]	GETTABLE 	5 5 -44	; "layerNumber"
+	2164	[-]	GETTABLE 	5 5 -45	; "menu"
+	2165	[-]	ADD      	5 5 0
+	2166	[-]	GETUPVAL 	6 2	; -
+	2167	[-]	GETTABLE 	6 6 -80	; "layerKey3"
+	2168	[-]	GETTABLE 	6 6 0
+	2169	[-]	CALL     	4 3 1
+	2170	[-]	GETGLOBAL	4 -24	; keyPlaySE
+	2171	[-]	GETGLOBAL	5 -25	; seName
+	2172	[-]	GETTABLE 	5 5 -55	; "arrowKey"
+	2173	[-]	CALL     	4 2 1
+	2174	[-]	GETGLOBAL	4 -27	; wait
+	2175	[-]	LOADK    	5 -63	; 3
+	2176	[-]	CALL     	4 2 1
+	2177	[-]	LOADBOOL 	2 0 0
+	2178	[-]	GETGLOBAL	4 -27	; wait
+	2179	[-]	LOADK    	5 -64	; 2
+	2180	[-]	CALL     	4 2 1
+	2181	[-]	JMP      	-544	; to 1638
+	2182	[-]	RETURN   	0 1
+constants (80) for 0x5815c580:
+	1	"advPart"
+	2	"logEnable"
+	3	"systemConfig"
+	4	"unsetConfigButton"
+	5	"cInitGame"
+	6	1
+	7	0
+	8	"gameSave"
+	9	"startMenuState"
+	10	false
+	11	"pressButton"
+	12	"UP"
+	13	true
+	14	"option"
+	15	"prologue"
+	16	"library"
+	17	"systemSave"
+	18	"libFlag"
+	19	"DOWN"
+	20	"RIGHT"
+	21	"load"
+	22	"LEFT"
+	23	"CIRCLE"
+	24	"keyPlaySE"
+	25	"seName"
+	26	"circle"
+	27	"wait"
+	28	10
+	29	"switchScreen"
+	30	""
+	31	60
+	32	"doScriptScene"
+	33	"sof_10"
+	34	"run"
+	35	"cGetFileName"
+	36	"script"
+	37	"snr_s0_10_f"
+	38	"quit"
+	39	"novelFlag"
+	40	"scene"
+	41	"novel"
+	42	"layerKey0"
+	43	"layerMoveAlpha"
+	44	"layerNumber"
+	45	"menu"
+	46	50
+	47	30
+	48	"music"
+	49	"musicFlag"
+	50	"layerVisible"
+	51	"layerAlpha"
+	52	100
+	53	"systemOption"
+	54	"Option"
+	55	"arrowKey"
+	56	"snr_novel"
+	57	"snr_memory"
+	58	"cg"
+	59	"snr_graphic"
+	60	"snr_music"
+	61	"CROSS"
+	62	"cross"
+	63	3
+	64	2
+	65	"story"
+	66	"save"
+	67	"snr_story_main"
+	68	"layerKey1"
+	69	"myCard"
+	70	140
+	71	"hold"
+	72	-1
+	73	"fragment"
+	74	"snr_fragment_main"
+	75	"layerKey2"
+	76	"section7"
+	77	"s7f-10"
+	78	"snr_s7_10_f"
+	79	11
+	80	"layerKey3"
+locals (0) for 0x5815c580:
+upvalues (0) for 0x5815c580:

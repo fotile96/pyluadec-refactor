@@ -1,0 +1,177 @@
+
+main <?:0,0> (5 instructions, 20 bytes at 0x582ea010)
+0+ params, 2 slots, 0 upvalues, 0 locals, 1 constant, 2 functions
+	1	[-]	CLOSURE  	0 0	; 0x582ea0f0
+	2	[-]	CLOSURE  	1 1	; 0x582eaba0
+	3	[-]	MOVE     	0 0
+	4	[-]	SETGLOBAL	1 -1	; main
+	5	[-]	RETURN   	0 1
+constants (1) for 0x582ea010:
+	1	"main"
+locals (0) for 0x582ea010:
+upvalues (0) for 0x582ea010:
+
+function <?:8,39> (81 instructions, 324 bytes at 0x582ea0f0)
+0 params, 6 slots, 0 upvalues, 0 locals, 39 constants, 0 functions
+	1	[-]	GETGLOBAL	0 -1	; cPlayBGMWrap
+	2	[-]	GETGLOBAL	1 -2	; cGetFileName
+	3	[-]	LOADK    	2 -3	; "bgm"
+	4	[-]	LOADK    	3 -4	; "bgm_19_x"
+	5	[-]	CALL     	1 3 0
+	6	[-]	CALL     	0 0 1
+	7	[-]	GETGLOBAL	0 -5	; cPlayLoopSeWrap
+	8	[-]	GETGLOBAL	1 -2	; cGetFileName
+	9	[-]	LOADK    	2 -6	; "loop"
+	10	[-]	LOADK    	3 -7	; "loop_3"
+	11	[-]	CALL     	1 3 0
+	12	[-]	CALL     	0 0 1
+	13	[-]	GETGLOBAL	0 -8	; wait
+	14	[-]	LOADK    	1 -9	; 1
+	15	[-]	CALL     	0 2 1
+	16	[-]	GETGLOBAL	0 -10	; layerLoad
+	17	[-]	GETGLOBAL	1 -11	; layerName
+	18	[-]	GETTABLE 	1 1 -12	; "bg1"
+	19	[-]	GETGLOBAL	2 -2	; cGetFileName
+	20	[-]	LOADK    	3 -13	; "bg"
+	21	[-]	LOADK    	4 -14	; "bg_1_b_0"
+	22	[-]	CALL     	2 3 0
+	23	[-]	CALL     	0 0 1
+	24	[-]	GETGLOBAL	0 -15	; switchScreen
+	25	[-]	LOADK    	1 -16	; 0
+	26	[-]	LOADK    	2 -17	; ""
+	27	[-]	LOADK    	3 -18	; 60
+	28	[-]	CALL     	0 4 1
+	29	[-]	GETGLOBAL	0 -8	; wait
+	30	[-]	LOADK    	1 -18	; 60
+	31	[-]	CALL     	0 2 1
+	32	[-]	GETGLOBAL	0 -10	; layerLoad
+	33	[-]	GETGLOBAL	1 -11	; layerName
+	34	[-]	GETTABLE 	1 1 -12	; "bg1"
+	35	[-]	GETGLOBAL	2 -2	; cGetFileName
+	36	[-]	LOADK    	3 -13	; "bg"
+	37	[-]	LOADK    	4 -19	; "bg_1_c_1"
+	38	[-]	CALL     	2 3 0
+	39	[-]	CALL     	0 0 1
+	40	[-]	GETGLOBAL	0 -15	; switchScreen
+	41	[-]	LOADK    	1 -16	; 0
+	42	[-]	LOADK    	2 -17	; ""
+	43	[-]	LOADK    	3 -20	; 120
+	44	[-]	CALL     	0 4 1
+	45	[-]	GETGLOBAL	0 -8	; wait
+	46	[-]	LOADK    	1 -20	; 120
+	47	[-]	CALL     	0 2 1
+	48	[-]	GETGLOBAL	0 -21	; cLoadPlaySE
+	49	[-]	GETGLOBAL	1 -2	; cGetFileName
+	50	[-]	LOADK    	2 -22	; "se"
+	51	[-]	LOADK    	3 -23	; "se_30"
+	52	[-]	CALL     	1 3 2
+	53	[-]	LOADBOOL 	2 0 0
+	54	[-]	CALL     	0 3 1
+	55	[-]	GETGLOBAL	0 -24	; oCard
+	56	[-]	GETTABLE 	0 0 -25	; "show"
+	57	[-]	GETGLOBAL	1 -2	; cGetFileName
+	58	[-]	LOADK    	2 -26	; "card"
+	59	[-]	LOADK    	3 -27	; "crd_"
+	60	[-]	GETGLOBAL	4 -28	; gameSave
+	61	[-]	GETTABLE 	4 4 -29	; "fragmentDoCardId"
+	62	[-]	LOADK    	5 -30	; "_a"
+	63	[-]	CONCAT   	3 3 5
+	64	[-]	CALL     	1 3 2
+	65	[-]	LOADK    	2 -31	; "\227\128\142\227\130\187\227\130\171\227\131\179\227\131\137\227\131\142\227\131\153\227\131\171\227\128\143\227\129\174\227\129\130\227\130\137\227\129\153\227\129\152\227\130\146\228\189\156\230\136\144\227\129\151\227\129\190\227\129\153\227\128\130"
+	66	[-]	CALL     	0 3 1
+	67	[-]	GETGLOBAL	0 -32	; cStopLoopSeWrap
+	68	[-]	CALL     	0 1 1
+	69	[-]	GETGLOBAL	0 -33	; comSectionCardEndSection
+	70	[-]	CALL     	0 1 1
+	71	[-]	LOADK    	0 -35	; "e2f-10"
+	72	[-]	SETGLOBAL	0 -34	; doScriptScene
+	73	[-]	GETGLOBAL	0 -36	; run
+	74	[-]	GETGLOBAL	1 -2	; cGetFileName
+	75	[-]	LOADK    	2 -37	; "script"
+	76	[-]	LOADK    	3 -38	; "snr_e2_10_f"
+	77	[-]	CALL     	1 3 0
+	78	[-]	CALL     	0 0 1
+	79	[-]	GETGLOBAL	0 -39	; quit
+	80	[-]	CALL     	0 1 1
+	81	[-]	RETURN   	0 1
+constants (39) for 0x582ea0f0:
+	1	"cPlayBGMWrap"
+	2	"cGetFileName"
+	3	"bgm"
+	4	"bgm_19_x"
+	5	"cPlayLoopSeWrap"
+	6	"loop"
+	7	"loop_3"
+	8	"wait"
+	9	1
+	10	"layerLoad"
+	11	"layerName"
+	12	"bg1"
+	13	"bg"
+	14	"bg_1_b_0"
+	15	"switchScreen"
+	16	0
+	17	""
+	18	60
+	19	"bg_1_c_1"
+	20	120
+	21	"cLoadPlaySE"
+	22	"se"
+	23	"se_30"
+	24	"oCard"
+	25	"show"
+	26	"card"
+	27	"crd_"
+	28	"gameSave"
+	29	"fragmentDoCardId"
+	30	"_a"
+	31	"\227\128\142\227\130\187\227\130\171\227\131\179\227\131\137\227\131\142\227\131\153\227\131\171\227\128\143\227\129\174\227\129\130\227\130\137\227\129\153\227\129\152\227\130\146\228\189\156\230\136\144\227\129\151\227\129\190\227\129\153\227\128\130"
+	32	"cStopLoopSeWrap"
+	33	"comSectionCardEndSection"
+	34	"doScriptScene"
+	35	"e2f-10"
+	36	"run"
+	37	"script"
+	38	"snr_e2_10_f"
+	39	"quit"
+locals (0) for 0x582ea0f0:
+upvalues (0) for 0x582ea0f0:
+
+function <?:45,59> (23 instructions, 92 bytes at 0x582eaba0)
+0 params, 4 slots, 1 upvalue, 0 locals, 10 constants, 0 functions
+	1	[-]	GETGLOBAL	0 -1	; comSectionCardStart
+	2	[-]	GETGLOBAL	1 -2	; gameSave
+	3	[-]	GETTABLE 	1 1 -3	; "fragmentDoSceneId"
+	4	[-]	GETGLOBAL	2 -2	; gameSave
+	5	[-]	GETTABLE 	2 2 -4	; "fragmentDoCardId"
+	6	[-]	CALL     	0 3 1
+	7	[-]	GETUPVAL 	0 0	; -
+	8	[-]	CALL     	0 1 1
+	9	[-]	GETGLOBAL	0 -5	; comSectionCardEnd
+	10	[-]	GETGLOBAL	1 -2	; gameSave
+	11	[-]	GETTABLE 	1 1 -3	; "fragmentDoSceneId"
+	12	[-]	GETGLOBAL	2 -2	; gameSave
+	13	[-]	GETTABLE 	2 2 -4	; "fragmentDoCardId"
+	14	[-]	CALL     	0 3 1
+	15	[-]	GETGLOBAL	0 -6	; run
+	16	[-]	GETGLOBAL	1 -7	; cGetFileName
+	17	[-]	LOADK    	2 -8	; "script"
+	18	[-]	LOADK    	3 -9	; "snr_fragment_main"
+	19	[-]	CALL     	1 3 0
+	20	[-]	CALL     	0 0 1
+	21	[-]	GETGLOBAL	0 -10	; quit
+	22	[-]	CALL     	0 1 1
+	23	[-]	RETURN   	0 1
+constants (10) for 0x582eaba0:
+	1	"comSectionCardStart"
+	2	"gameSave"
+	3	"fragmentDoSceneId"
+	4	"fragmentDoCardId"
+	5	"comSectionCardEnd"
+	6	"run"
+	7	"cGetFileName"
+	8	"script"
+	9	"snr_fragment_main"
+	10	"quit"
+locals (0) for 0x582eaba0:
+upvalues (0) for 0x582eaba0:
