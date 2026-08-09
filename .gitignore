@@ -1,0 +1,7 @@
+.superpowers/
+
+build/
+.venv/
+__pycache__/
+src/pyluadec/_native/*.so
+*.egg-info/
