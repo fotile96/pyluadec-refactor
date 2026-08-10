@@ -178,6 +178,29 @@ your local checkout of the 229-file corpus. None of these commands or their
 output below embed an absolute path — copy them as-is; only the environment
 variable is host-specific.
 
+### Run the test suite
+
+```bash
+PYLUADEC_CORPUS_DIR=/path/to/script_to_decompile uv run pytest
+```
+
+This — **with the environment variable** — is the documented default way to
+run the suite, not bare `uv run pytest`. Without `PYLUADEC_CORPUS_DIR`
+pointing at a real corpus checkout, 13 corpus-gated tests silently
+`pytest.skip` instead of running (`tests/conftest.py`'s `corpus_dir`
+fixture) — and that list includes the M2 exit gate
+(`tests/test_corpus_compile.py`), both migration gates
+(`tests/test_golden.py`, `tests/test_parity.py`), and the ledger
+fixed-point test (`tests/test_ledger_ratchet.py`). A bare `uv run pytest`
+still prints a green "107 passed" in that case — it is not an error, by
+design (see `tests/conftest.py`'s `corpus_dir` fixture docstring — corpus
+availability is an environment fact, not a code defect) — but a green
+result obtained that way says nothing about any of the gates above. A
+`pytest_terminal_summary` hook in `tests/conftest.py` prints a loud warning
+banner at the end of the run whenever `PYLUADEC_CORPUS_DIR` is unset or
+missing, specifically so this isn't easy to miss by skimming a scrollback;
+it does not change the exit code.
+
 ### Decompile a single file
 
 ```bash
@@ -640,6 +663,13 @@ of a `LedgerEntry` (`pyluadec.verify.ledger.LedgerEntry`):
   `null`) but nothing in M2 populates them yet — that's later milestones
   (`L2` differential-exec certification is M5 per the plan's explicit
   non-goals; `L3.1+` normalization rungs are M3).
+  **Plainly stated, `L1` means: this proto shape's fallback emission
+  compiled, and — only for the synthetic cases the differential-exec suite
+  happens to construct from source — matched stdout/exit code on those
+  specific programs. It is NOT a claim that this proto shape's real corpus
+  content was verified semantically equivalent to the original bytecode.**
+  See "Known semantic gaps" below for the concrete, verified ways fallback
+  output can diverge from the original program that `L1` says nothing about.
 - `l3_level` — which rung of `verify.normalize.NORMALIZATIONS` this entry
   was compared at, when `level` includes an L3 result. Always `null` in M2
   (the ladder is empty).
@@ -772,6 +802,93 @@ metamethods") is explicitly deferred to M4** (see the plan's non-goals:
 only mode with a justified use, and treat any future code that switches to
 `NO_METAMETHOD`/`TRUSTING` without citing the M4 calibration work as
 suspect.
+
+## Known semantic gaps
+
+This is the single most important section for a future reader to find before
+trusting what `L1` in the ledger implies about a piece of corpus content.
+Fallback emission compiling clean against the oracle (`L1`) means exactly
+that — it compiles — plus, for the synthetic cases the differential-exec
+suite constructs from source (`tests/test_fallback_*.py`), that stdout and
+exit code matched for *those specific programs*. It is **not** a claim that
+any given corpus file's fallback output is semantically equivalent to the
+original bytecode on real corpus content — the gaps below are known,
+verified ways the two can diverge, and none of them would be caught by the
+`L1` gate as it exists in M2.
+
+- **Table internal layout is not reproduced.** `NEWTABLE A B C` calls
+  `luaH_new(L, luaO_fb2int(B), luaO_fb2int(C))` in the reference VM
+  (`lvm.c`'s `OP_NEWTABLE` case) — `B`/`C` are array/hash presize hints the
+  compiler computed from the constructor's literal shape. The fallback
+  emitter discards both: `NEWTABLE` becomes plain `{}` (`fallback.py`'s
+  `_emit_simple`, the `Op.NEWTABLE` case), and `SETLIST` becomes individual
+  `t[i] = v` assignments (`_emit_simple`'s `Op.SETLIST` case) rather than the
+  batch array-part write `luaH_resizearray` performs during the original
+  `OP_SETLIST`. Two verified consequences:
+  - `local t = {1,nil,3} print(#t)` prints `3` from the original bytecode
+    and `1` from fallback-decompiled source (`#` on a table with holes is
+    only guaranteed to return *a* border, and which border depends on the
+    array part's allocated size, which the two constructions disagree on).
+  - `pairs` iteration order over constructor-built tables with a hash part
+    diverges: an independent spot-check (40 randomly generated
+    `{k1=v1, k2=v2, ...}`-style tables compiled, decompiled, and iterated
+    with `pairs`, comparing the concatenated key order) found 3/40 pure-hash
+    constructors and 16/40 mixed array+hash constructors where original and
+    decompiled key order disagreed — because `hashnum`/table-resize bucket
+    placement in `ltable.c` depends on the table's *capacity at insertion
+    time*, and the fallback-decompiled table always starts at capacity 0
+    and grows incrementally instead of being presized by `NEWTABLE`'s hint.
+  - Corpus-reachable, not just a synthetic concern: across the 229-file
+    corpus, 62 `NEWTABLE` instructions carry a non-zero hash presize (`C`),
+    92 carry a non-zero array presize (`B`) or hash presize, 92 `SETLIST`
+    instructions exist, and 7 `TFORLOOP`s (the opcode that drives `pairs`/
+    `ipairs`-style iteration and would observe any order divergence).
+  - Faithful layout needs real table-constructor reconstruction (recovering
+    the constructor literal shape, not just replaying the opcode sequence
+    into an empty table) — that is M3 structuring work, not a fallback
+    patch; fallback's job was semantic exactness for *program behavior that
+    doesn't depend on table internals*, and this is exactly the class of
+    behavior that does.
+
+- **Runtime error messages differ.** Error positions in the reference VM
+  name the file/line of the *original* source that produced the error;
+  fallback-decompiled source runs as a different file with different line
+  numbers (the `__pld_pc`-dispatch state machine has no way to reproduce the
+  original position from stripped bytecode — there is no `lineinfo` in this
+  corpus to draw from in the first place, see `CLAUDE.md`). Verified: `local
+  n = "x" for i = 1, n do end` raises `'for' limit must be a number` from
+  both the original bytecode and the fallback-decompiled source (same
+  message text, same nonzero exit code — this is what
+  `tests/test_fallback_control.py::test_runtime_error_parity` checks), but
+  the *position* differs — the original reports `errmsg.lua:2: ... in main
+  chunk`, the decompiled version reports `errmsg_dec.lua:18: ... in function
+  <errmsg_dec.lua:7>` via `__pld_error` (`FORPREP`'s error path,
+  `fallback.py`'s `Op.FORPREP` case in `_emit_terminator`) with a completely
+  different traceback shape (the state-machine's `while true do` loop is not
+  present in the original control flow at all). Any script that `pcall`s an
+  error and prints/parses the message text (not just checks `pcall`'s
+  boolean) will observe this divergence.
+
+- **Allocation and GC profile differ.** The emitted code allocates a fresh
+  `__pld_R` register table per call, a `{v = ...}` box per captured register
+  (see "The box model" above), and a `{n=..., ...}` pack table per open
+  call/vararg/return, none of which exist in the reference VM's register-
+  stack-based execution model. `collectgarbage("count")` readings, weak-
+  table behavior keyed on any of these incidental tables, and `__gc`
+  finalizer timing are consequently not preserved. Nothing in M2 attempts to
+  verify or bound this; it is a structural consequence of the box-and-table
+  translation strategy, not a bug to fix at the fallback layer.
+
+- **What the differential harness does and does not compare.**
+  `tests/diffexec.py::assert_fallback_roundtrip` — the workhorse behind
+  nearly every fallback test — compares **stdout and exit code only**. It
+  does not compare stderr text (see `test_runtime_error_parity` above, which
+  deliberately only asserts both sides are nonzero, not that the messages
+  match), does not compare table internal layout or `pairs`/`next` iteration
+  order unless the test's own `print` output happens to expose it, and does
+  not compare allocation counts, GC timing, or memory usage in any way. A
+  green differential test is evidence about stdout/exit-code equivalence for
+  the specific inputs exercised — nothing more.
 
 ## `corpus/discrepancies.json` is a gate artifact, not a record
 

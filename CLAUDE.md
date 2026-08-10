@@ -74,7 +74,17 @@ Phase 1（M0）已完成：uv 骨架、vendored pristine Lua 5.1.5、序列化�
 
 - 装依赖：`uv sync`
 - 构建原生产物（vendored lua/luac 的 sz4/sz8 变体 + 两个 pybind bridge `.so`，产出到 `build/` 与 `src/pyluadec/_native/`）：`./scripts/build_native.sh`
-- 跑全部测试：`uv run pytest`（或 `uv run pytest -v`）
+- 跑全部测试（文档化的默认调用方式——务必带上语料环境变量）：
+  `PYLUADEC_CORPUS_DIR=/path/to/script_to_decompile uv run pytest`（或加 `-v`）。
+  **不带这个环境变量的 `uv run pytest` 不是"全部测试"**：13 个语料门控用例会被
+  静默 `pytest.skip`（而不是报错中断），其中包括 M2 出口门
+  `test_corpus_compile.py`、golden/parity 两道门、以及台账不动点测试
+  `test_ledger_ratchet.py`——裸跑仍会打印形如 "107 passed" 的绿色结果，但这不
+  代表这些门跑过了。`tests/conftest.py` 装了一个 `pytest_terminal_summary`
+  钩子，语料目录缺失时会在测试结束后打印醒目的警告横幅，提醒你这一点；但**不会**
+  让裸跑本身失败——语料门控用 skip 而非 error 是有意为之（本地/CI 环境不一定都
+  能拿到 229 个语料文件），这条 CLAUDE.md 记录只是把"文档化默认值"和"裸跑的真实
+  后果"讲清楚，不改变这个行为。
 - 跑单个测试：`uv run pytest tests/test_x.py::test_y -v`
 - 一键迁移验证（三道门 + 全量测试，spec §6 Step 2；32 位与 64 位环境均可跑，64 位跑绿是 M1 出口）：`./scripts/verify_migration.sh`
 - 语料位置约定：语料从不硬编码进代码，一律经环境变量 `PYLUADEC_CORPUS_DIR` 获取（指向 229 个 `.lua` 字节码文件所在目录，参照原项目的 `/root/pyluadec/others/script_to_decompile/`）。未设置或目录不存在时，依赖语料的 pytest 用例会 `pytest.skip`（见 `tests/conftest.py` 的 `corpus_dir` fixture），不会报错中断其余测试。

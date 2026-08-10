@@ -30,10 +30,17 @@
   original bytecode and fallback-decompiled source run through the real
   `lua` interpreter and must agree on stdout and exit code.
 - L3.0 strict proto comparator (`pyluadec.verify.normalize`) online with a
-  versioned, currently-empty normalization ladder (`l3-ladder-v0`); basic-
-  block CFG (`pyluadec.cfg.blocks`) and an irreducible-graph-safe dominator
-  tree (`pyluadec.cfg.dom`, Cooper–Harvey–Kennedy) are built and actually
-  consumed by the fallback emitter (unlike the CFG in the original
-  `pyluadec`, which was built but never read by its structuring pass).
+  versioned, currently-empty normalization ladder (`l3-ladder-v0`). Basic-
+  block CFG (`pyluadec.cfg.blocks::build_cfg`) is built and actually consumed
+  by the fallback emitter — one dispatch state per basic block (unlike the
+  CFG in the original `pyluadec`, which was built but never read by its
+  structuring pass). The irreducible-graph-safe dominator tree
+  (`pyluadec.cfg.dom`, Cooper–Harvey–Kennedy) is implemented and tested
+  (`tests/test_dom.py`) but has **no production consumer yet** — it is M3
+  substrate, not something M2 reads. Likewise, `lift/effects.py`'s per-opcode
+  `InstrEffects` (`effect`, `may_error`, `reads`, `writes`, `reads_open`,
+  `writes_open`) are computed and attached to every `LirInstr` but not yet
+  read by the emitter — also M3/M4 substrate (see "Effect modes" in
+  `docs/runbooks/decompile-pipeline.md`).
 - See `docs/runbooks/decompile-pipeline.md` for the full pipeline reference
   and a reading guide for fallback output.
