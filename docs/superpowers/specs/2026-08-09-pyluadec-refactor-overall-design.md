@@ -6,7 +6,11 @@
 
 ## 1. 背景与目标
 
-本仓库从头重构 `/root/pyluadec`（Lua 5.1 字节码反编译器）。语料为 229 个 PSP 游戏 bytecode（vanilla luac 5.1.5 输出，未 strip、无优化；header 表明 sizeof(size_t)=4，其余字段与 LP64 一致，lua_Number 为普通 double）。原项目的架构级教训见根目录 CLAUDE.md（无表达式 IR、CFG 未被结构化使用、ad-hoc 特例堆积核心函数、文本断言测试）。
+本仓库从头重构 `/root/pyluadec`（Lua 5.1 字节码反编译器）。语料为 229 个 PSP 游戏 bytecode（vanilla luac 5.1.5 输出；header 表明 sizeof(size_t)=4，其余字段与 LP64 一致，lua_Number 为普通 double）。
+
+> **2026-08-10 实测更正**：起草本 spec 时假设语料"未 strip"，据此把 debug 段（lineinfo 单调性、locvars 作用域 PC 区间）当作白送的语句边界与变量命名 oracle（见 §4 ④express、§10 收敛短名单）。**该假设不成立**——229 文件 / 1944 proto 的 lineinfo、locvars、upvalue 名称全为空，`source` 为占位符 `=?`。影响：所有局部变量名必须合成；语句边界必须由控制流与寄存器生命周期推导；§4 中"debug 信息只作命名/物化 hint"的规则保留（对将来自编译的测试用例仍生效），但对本语料永不触发。摄入层无损保留这些字段的能力仍是正确设计（新编译的文件确实带 locvars，且是回归测试的一部分）。
+>
+> 唯一幸存的行信息是 `linedefined`/`lastlinedefined`（属 `DumpFunction` 主体而非 debug 段，1715/1944 非零），即每个函数在原始源码中的起止行——可作函数排布的弱校验，无语句级粒度。原项目的架构级教训见根目录 CLAUDE.md（无表达式 IR、CFG 未被结构化使用、ad-hoc 特例堆积核心函数、文本断言测试）。
 
 重构目标：
 1. 64 位环境处理 32 位 bytecode（Lua 5.2 为 stretch goal）；

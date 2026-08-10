@@ -1,0 +1,1757 @@
+
+main <?:0,0> (13 instructions, 52 bytes at 0x57fbd010)
+0+ params, 6 slots, 0 upvalues, 0 locals, 1 constant, 6 functions
+	1	[-]	CLOSURE  	0 0	; 0x57fbd120
+	2	[-]	CLOSURE  	1 1	; 0x57fbdcd0
+	3	[-]	CLOSURE  	2 2	; 0x57fbe440
+	4	[-]	CLOSURE  	3 3	; 0x57fc0ca0
+	5	[-]	CLOSURE  	4 4	; 0x57fc1970
+	6	[-]	CLOSURE  	5 5	; 0x57fc1f70
+	7	[-]	MOVE     	0 0
+	8	[-]	MOVE     	0 1
+	9	[-]	MOVE     	0 2
+	10	[-]	MOVE     	0 3
+	11	[-]	MOVE     	0 4
+	12	[-]	SETGLOBAL	5 -1	; main
+	13	[-]	RETURN   	0 1
+constants (1) for 0x57fbd010:
+	1	"main"
+locals (0) for 0x57fbd010:
+upvalues (0) for 0x57fbd010:
+
+function <?:20,64> (80 instructions, 320 bytes at 0x57fbd120)
+2 params, 8 slots, 0 upvalues, 0 locals, 38 constants, 1 function
+	1	[-]	CLOSURE  	2 0	; 0x57fbdb80
+	2	[-]	GETGLOBAL	3 -1	; cPlayBGMWrap
+	3	[-]	GETGLOBAL	4 -2	; cGetFileName
+	4	[-]	LOADK    	5 -3	; "bgm"
+	5	[-]	LOADK    	6 -4	; "bgm_11_x"
+	6	[-]	CALL     	4 3 0
+	7	[-]	CALL     	3 0 1
+	8	[-]	GETGLOBAL	3 -5	; layerLoad
+	9	[-]	GETGLOBAL	4 -6	; layerName
+	10	[-]	GETTABLE 	4 4 -7	; "event"
+	11	[-]	GETGLOBAL	5 -2	; cGetFileName
+	12	[-]	LOADK    	6 -7	; "event"
+	13	[-]	LOADK    	7 -8	; "eve_32_x"
+	14	[-]	CALL     	5 3 0
+	15	[-]	CALL     	3 0 1
+	16	[-]	GETGLOBAL	3 -5	; layerLoad
+	17	[-]	GETGLOBAL	4 -6	; layerName
+	18	[-]	GETTABLE 	4 4 -9	; "pose1"
+	19	[-]	LOADK    	5 -10	; ""
+	20	[-]	CALL     	3 3 1
+	21	[-]	GETGLOBAL	3 -5	; layerLoad
+	22	[-]	GETGLOBAL	4 -6	; layerName
+	23	[-]	GETTABLE 	4 4 -11	; "pose2"
+	24	[-]	LOADK    	5 -10	; ""
+	25	[-]	CALL     	3 3 1
+	26	[-]	GETGLOBAL	3 -12	; switchScreen
+	27	[-]	LOADK    	4 -13	; 0
+	28	[-]	LOADK    	5 -10	; ""
+	29	[-]	LOADK    	6 -14	; 5
+	30	[-]	CALL     	3 4 1
+	31	[-]	GETGLOBAL	3 -15	; wait
+	32	[-]	LOADK    	4 -14	; 5
+	33	[-]	CALL     	3 2 1
+	34	[-]	GETGLOBAL	3 -16	; comSectionStoryBegin
+	35	[-]	MOVE     	4 0
+	36	[-]	MOVE     	5 1
+	37	[-]	CALL     	3 3 1
+	38	[-]	GETGLOBAL	3 -17	; comDlgStorylineSkip
+	39	[-]	MOVE     	4 0
+	40	[-]	CALL     	3 2 2
+	41	[-]	EQ       	0 3 -18	; - true
+	42	[-]	JMP      	3	; to 46
+	43	[-]	MOVE     	3 2
+	44	[-]	CALL     	3 1 1
+	45	[-]	RETURN   	0 1
+	46	[-]	GETGLOBAL	3 -19	; vms
+	47	[-]	LOADK    	4 -20	; 16753
+	48	[-]	LOADK    	5 -21	; "NAO16020"
+	49	[-]	LOADK    	6 -22	; "\227\128\144\227\131\166\227\130\166\227\130\164\227\131\129\227\128\145\227\128\140\229\189\169\233\135\142\227\128\129\227\128\142\230\136\187\227\130\139\227\128\143\227\130\147\227\129\160\227\128\141"
+	50	[-]	CALL     	3 4 1
+	51	[-]	GETGLOBAL	3 -19	; vms
+	52	[-]	LOADK    	4 -23	; 16754
+	53	[-]	LOADK    	5 -24	; "AYA20100"
+	54	[-]	LOADK    	6 -25	; "\227\128\144\227\130\162\227\131\164\227\131\142\227\128\145\227\128\140\227\131\166\227\130\166\227\130\164\226\128\149\226\128\149\227\128\141"
+	55	[-]	CALL     	3 4 1
+	56	[-]	GETGLOBAL	3 -19	; vms
+	57	[-]	LOADK    	4 -26	; 16755
+	58	[-]	LOADK    	5 -27	; "NAO16030"
+	59	[-]	LOADK    	6 -28	; "\227\128\144\227\131\166\227\130\166\227\130\164\227\131\129\227\128\145\227\128\140\227\130\162\227\131\164\227\131\142\227\128\129\228\191\161\227\129\152\227\130\139\227\130\147\227\129\160\227\128\130\232\170\176\227\129\174\232\168\128\232\145\137\227\129\167\227\130\130\227\129\170\227\129\132\227\128\129\227\128\142\228\191\186\227\128\143\227\129\174\232\168\128\232\145\137\227\130\146\226\128\166\226\128\166\239\188\129\227\128\141"
+	60	[-]	CALL     	3 4 1
+	61	[-]	GETGLOBAL	3 -19	; vms
+	62	[-]	LOADK    	4 -29	; 16756
+	63	[-]	LOADK    	5 -30	; "AYA20110"
+	64	[-]	LOADK    	6 -31	; "\227\128\144\227\130\162\227\131\164\227\131\142\227\128\145\227\128\140\227\131\166\227\130\166\226\128\166\226\128\166\227\130\164\227\131\129\226\128\166\226\128\166\227\128\141"
+	65	[-]	CALL     	3 4 1
+	66	[-]	GETGLOBAL	3 -19	; vms
+	67	[-]	LOADK    	4 -32	; 16757
+	68	[-]	LOADK    	5 -33	; "NAO16040"
+	69	[-]	LOADK    	6 -34	; "\227\128\144\227\131\166\227\130\166\227\130\164\227\131\129\227\128\145\227\128\140\227\130\162\227\131\164\227\131\142\239\188\129\227\128\141"
+	70	[-]	CALL     	3 4 1
+	71	[-]	GETGLOBAL	3 -35	; cStopBGMWrap
+	72	[-]	CALL     	3 1 1
+	73	[-]	GETGLOBAL	3 -19	; vms
+	74	[-]	LOADK    	4 -36	; 16758
+	75	[-]	LOADK    	5 -37	; "AYA20120"
+	76	[-]	LOADK    	6 -38	; "\227\128\144\227\130\162\227\131\164\227\131\142\227\128\145\227\128\140\227\131\166\227\130\166\227\130\164\227\131\129\226\128\149\226\128\149\227\128\141"
+	77	[-]	CALL     	3 4 1
+	78	[-]	MOVE     	3 2
+	79	[-]	CALL     	3 1 1
+	80	[-]	RETURN   	0 1
+constants (38) for 0x57fbd120:
+	1	"cPlayBGMWrap"
+	2	"cGetFileName"
+	3	"bgm"
+	4	"bgm_11_x"
+	5	"layerLoad"
+	6	"layerName"
+	7	"event"
+	8	"eve_32_x"
+	9	"pose1"
+	10	""
+	11	"pose2"
+	12	"switchScreen"
+	13	0
+	14	5
+	15	"wait"
+	16	"comSectionStoryBegin"
+	17	"comDlgStorylineSkip"
+	18	true
+	19	"vms"
+	20	16753
+	21	"NAO16020"
+	22	"\227\128\144\227\131\166\227\130\166\227\130\164\227\131\129\227\128\145\227\128\140\229\189\169\233\135\142\227\128\129\227\128\142\230\136\187\227\130\139\227\128\143\227\130\147\227\129\160\227\128\141"
+	23	16754
+	24	"AYA20100"
+	25	"\227\128\144\227\130\162\227\131\164\227\131\142\227\128\145\227\128\140\227\131\166\227\130\166\227\130\164\226\128\149\226\128\149\227\128\141"
+	26	16755
+	27	"NAO16030"
+	28	"\227\128\144\227\131\166\227\130\166\227\130\164\227\131\129\227\128\145\227\128\140\227\130\162\227\131\164\227\131\142\227\128\129\228\191\161\227\129\152\227\130\139\227\130\147\227\129\160\227\128\130\232\170\176\227\129\174\232\168\128\232\145\137\227\129\167\227\130\130\227\129\170\227\129\132\227\128\129\227\128\142\228\191\186\227\128\143\227\129\174\232\168\128\232\145\137\227\130\146\226\128\166\226\128\166\239\188\129\227\128\141"
+	29	16756
+	30	"AYA20110"
+	31	"\227\128\144\227\130\162\227\131\164\227\131\142\227\128\145\227\128\140\227\131\166\227\130\166\226\128\166\226\128\166\227\130\164\227\131\129\226\128\166\226\128\166\227\128\141"
+	32	16757
+	33	"NAO16040"
+	34	"\227\128\144\227\131\166\227\130\166\227\130\164\227\131\129\227\128\145\227\128\140\227\130\162\227\131\164\227\131\142\239\188\129\227\128\141"
+	35	"cStopBGMWrap"
+	36	16758
+	37	"AYA20120"
+	38	"\227\128\144\227\130\162\227\131\164\227\131\142\227\128\145\227\128\140\227\131\166\227\130\166\227\130\164\227\131\129\226\128\149\226\128\149\227\128\141"
+locals (0) for 0x57fbd120:
+upvalues (0) for 0x57fbd120:
+
+function <?:22,26> (9 instructions, 36 bytes at 0x57fbdb80)
+0 params, 5 slots, 0 upvalues, 0 locals, 5 constants, 0 functions
+	1	[-]	LOADK    	0 -1	; 25
+	2	[-]	GETGLOBAL	1 -2	; comSectionStoryEnd
+	3	[-]	GETGLOBAL	2 -3	; gameSave
+	4	[-]	GETTABLE 	2 2 -4	; "sceneId"
+	5	[-]	GETGLOBAL	3 -3	; gameSave
+	6	[-]	GETTABLE 	3 3 -5	; "sceneName"
+	7	[-]	MOVE     	4 0
+	8	[-]	CALL     	1 4 1
+	9	[-]	RETURN   	0 1
+constants (5) for 0x57fbdb80:
+	1	25
+	2	"comSectionStoryEnd"
+	3	"gameSave"
+	4	"sceneId"
+	5	"sceneName"
+locals (0) for 0x57fbdb80:
+upvalues (0) for 0x57fbdb80:
+
+function <?:69,132> (156 instructions, 624 bytes at 0x57fbdcd0)
+2 params, 9 slots, 0 upvalues, 0 locals, 39 constants, 1 function
+	1	[-]	CLOSURE  	2 0	; 0x57fbe380
+	2	[-]	GETGLOBAL	3 -1	; cStopBGMWrap
+	3	[-]	CALL     	3 1 1
+	4	[-]	GETGLOBAL	3 -2	; layerLoad
+	5	[-]	GETGLOBAL	4 -3	; layerName
+	6	[-]	GETTABLE 	4 4 -4	; "event"
+	7	[-]	GETGLOBAL	5 -5	; cGetFileName
+	8	[-]	LOADK    	6 -4	; "event"
+	9	[-]	LOADK    	7 -6	; "eve_32_x"
+	10	[-]	CALL     	5 3 0
+	11	[-]	CALL     	3 0 1
+	12	[-]	GETGLOBAL	3 -2	; layerLoad
+	13	[-]	GETGLOBAL	4 -3	; layerName
+	14	[-]	GETTABLE 	4 4 -7	; "pose1"
+	15	[-]	LOADK    	5 -8	; ""
+	16	[-]	CALL     	3 3 1
+	17	[-]	GETGLOBAL	3 -2	; layerLoad
+	18	[-]	GETGLOBAL	4 -3	; layerName
+	19	[-]	GETTABLE 	4 4 -9	; "pose2"
+	20	[-]	LOADK    	5 -8	; ""
+	21	[-]	CALL     	3 3 1
+	22	[-]	GETGLOBAL	3 -10	; switchScreen
+	23	[-]	LOADK    	4 -11	; 0
+	24	[-]	LOADK    	5 -8	; ""
+	25	[-]	LOADK    	6 -12	; 5
+	26	[-]	CALL     	3 4 1
+	27	[-]	GETGLOBAL	3 -13	; wait
+	28	[-]	LOADK    	4 -12	; 5
+	29	[-]	CALL     	3 2 1
+	30	[-]	GETGLOBAL	3 -14	; comSectionStoryBegin
+	31	[-]	MOVE     	4 0
+	32	[-]	MOVE     	5 1
+	33	[-]	CALL     	3 3 1
+	34	[-]	GETGLOBAL	3 -15	; comDlgStorylineSkip
+	35	[-]	MOVE     	4 0
+	36	[-]	CALL     	3 2 2
+	37	[-]	EQ       	0 3 -16	; - true
+	38	[-]	JMP      	3	; to 42
+	39	[-]	MOVE     	3 2
+	40	[-]	CALL     	3 1 1
+	41	[-]	RETURN   	0 1
+	42	[-]	GETGLOBAL	3 -17	; cPlayOneshotMusic
+	43	[-]	GETGLOBAL	4 -5	; cGetFileName
+	44	[-]	LOADK    	5 -18	; "mus"
+	45	[-]	LOADK    	6 -19	; "mus_5"
+	46	[-]	CALL     	4 3 0
+	47	[-]	CALL     	3 0 1
+	48	[-]	GETGLOBAL	3 -13	; wait
+	49	[-]	LOADK    	4 -20	; 1
+	50	[-]	CALL     	3 2 1
+	51	[-]	GETGLOBAL	3 -2	; layerLoad
+	52	[-]	GETGLOBAL	4 -3	; layerName
+	53	[-]	GETTABLE 	4 4 -4	; "event"
+	54	[-]	GETGLOBAL	5 -5	; cGetFileName
+	55	[-]	LOADK    	6 -4	; "event"
+	56	[-]	LOADK    	7 -6	; "eve_32_x"
+	57	[-]	CALL     	5 3 0
+	58	[-]	CALL     	3 0 1
+	59	[-]	GETGLOBAL	3 -10	; switchScreen
+	60	[-]	LOADK    	4 -11	; 0
+	61	[-]	LOADK    	5 -8	; ""
+	62	[-]	LOADK    	6 -21	; 10
+	63	[-]	CALL     	3 4 1
+	64	[-]	GETGLOBAL	3 -13	; wait
+	65	[-]	LOADK    	4 -21	; 10
+	66	[-]	CALL     	3 2 1
+	67	[-]	GETGLOBAL	3 -2	; layerLoad
+	68	[-]	GETGLOBAL	4 -3	; layerName
+	69	[-]	GETTABLE 	4 4 -7	; "pose1"
+	70	[-]	GETGLOBAL	5 -5	; cGetFileName
+	71	[-]	LOADK    	6 -22	; "cutin"
+	72	[-]	LOADK    	7 -23	; "cut_s_s8"
+	73	[-]	CALL     	5 3 0
+	74	[-]	CALL     	3 0 1
+	75	[-]	GETGLOBAL	3 -24	; layerPosition
+	76	[-]	GETGLOBAL	4 -3	; layerName
+	77	[-]	GETTABLE 	4 4 -7	; "pose1"
+	78	[-]	LOADK    	5 -25	; 190
+	79	[-]	LOADK    	6 -26	; 242
+	80	[-]	CALL     	3 4 1
+	81	[-]	GETGLOBAL	3 -27	; layerAlpha
+	82	[-]	GETGLOBAL	4 -3	; layerName
+	83	[-]	GETTABLE 	4 4 -7	; "pose1"
+	84	[-]	LOADK    	5 -11	; 0
+	85	[-]	CALL     	3 3 1
+	86	[-]	GETGLOBAL	3 -28	; layerMovePosition
+	87	[-]	GETGLOBAL	4 -3	; layerName
+	88	[-]	GETTABLE 	4 4 -7	; "pose1"
+	89	[-]	LOADK    	5 -25	; 190
+	90	[-]	LOADK    	6 -29	; 232
+	91	[-]	LOADK    	7 -30	; 30
+	92	[-]	CALL     	3 5 1
+	93	[-]	GETGLOBAL	3 -31	; layerMoveAlpha
+	94	[-]	GETGLOBAL	4 -3	; layerName
+	95	[-]	GETTABLE 	4 4 -7	; "pose1"
+	96	[-]	LOADK    	5 -32	; 100
+	97	[-]	LOADK    	6 -30	; 30
+	98	[-]	CALL     	3 4 1
+	99	[-]	GETGLOBAL	3 -13	; wait
+	100	[-]	LOADK    	4 -30	; 30
+	101	[-]	CALL     	3 2 1
+	102	[-]	GETGLOBAL	3 -13	; wait
+	103	[-]	LOADK    	4 -33	; 240
+	104	[-]	CALL     	3 2 1
+	105	[-]	GETGLOBAL	3 -34	; cLoadPlaySE
+	106	[-]	GETGLOBAL	4 -5	; cGetFileName
+	107	[-]	LOADK    	5 -35	; "se"
+	108	[-]	LOADK    	6 -36	; "se_29"
+	109	[-]	CALL     	4 3 2
+	110	[-]	LOADBOOL 	5 0 0
+	111	[-]	CALL     	3 3 1
+	112	[-]	GETGLOBAL	3 -37	; layerMoveRotate
+	113	[-]	GETGLOBAL	4 -3	; layerName
+	114	[-]	GETTABLE 	4 4 -7	; "pose1"
+	115	[-]	LOADK    	5 -32	; 100
+	116	[-]	LOADK    	6 -32	; 100
+	117	[-]	LOADK    	7 -32	; 100
+	118	[-]	LOADK    	8 -38	; 60
+	119	[-]	CALL     	3 6 1
+	120	[-]	GETGLOBAL	3 -28	; layerMovePosition
+	121	[-]	GETGLOBAL	4 -3	; layerName
+	122	[-]	GETTABLE 	4 4 -7	; "pose1"
+	123	[-]	LOADK    	5 -39	; 270
+	124	[-]	LOADK    	6 -26	; 242
+	125	[-]	LOADK    	7 -38	; 60
+	126	[-]	CALL     	3 5 1
+	127	[-]	GETGLOBAL	3 -31	; layerMoveAlpha
+	128	[-]	GETGLOBAL	4 -3	; layerName
+	129	[-]	GETTABLE 	4 4 -7	; "pose1"
+	130	[-]	LOADK    	5 -11	; 0
+	131	[-]	LOADK    	6 -38	; 60
+	132	[-]	CALL     	3 4 1
+	133	[-]	GETGLOBAL	3 -13	; wait
+	134	[-]	LOADK    	4 -38	; 60
+	135	[-]	CALL     	3 2 1
+	136	[-]	GETGLOBAL	3 -2	; layerLoad
+	137	[-]	GETGLOBAL	4 -3	; layerName
+	138	[-]	GETTABLE 	4 4 -7	; "pose1"
+	139	[-]	LOADK    	5 -8	; ""
+	140	[-]	CALL     	3 3 1
+	141	[-]	GETGLOBAL	3 -2	; layerLoad
+	142	[-]	GETGLOBAL	4 -3	; layerName
+	143	[-]	GETTABLE 	4 4 -9	; "pose2"
+	144	[-]	LOADK    	5 -8	; ""
+	145	[-]	CALL     	3 3 1
+	146	[-]	GETGLOBAL	3 -10	; switchScreen
+	147	[-]	LOADK    	4 -11	; 0
+	148	[-]	LOADK    	5 -8	; ""
+	149	[-]	LOADK    	6 -12	; 5
+	150	[-]	CALL     	3 4 1
+	151	[-]	GETGLOBAL	3 -13	; wait
+	152	[-]	LOADK    	4 -12	; 5
+	153	[-]	CALL     	3 2 1
+	154	[-]	MOVE     	3 2
+	155	[-]	CALL     	3 1 1
+	156	[-]	RETURN   	0 1
+constants (39) for 0x57fbdcd0:
+	1	"cStopBGMWrap"
+	2	"layerLoad"
+	3	"layerName"
+	4	"event"
+	5	"cGetFileName"
+	6	"eve_32_x"
+	7	"pose1"
+	8	""
+	9	"pose2"
+	10	"switchScreen"
+	11	0
+	12	5
+	13	"wait"
+	14	"comSectionStoryBegin"
+	15	"comDlgStorylineSkip"
+	16	true
+	17	"cPlayOneshotMusic"
+	18	"mus"
+	19	"mus_5"
+	20	1
+	21	10
+	22	"cutin"
+	23	"cut_s_s8"
+	24	"layerPosition"
+	25	190
+	26	242
+	27	"layerAlpha"
+	28	"layerMovePosition"
+	29	232
+	30	30
+	31	"layerMoveAlpha"
+	32	100
+	33	240
+	34	"cLoadPlaySE"
+	35	"se"
+	36	"se_29"
+	37	"layerMoveRotate"
+	38	60
+	39	270
+locals (0) for 0x57fbdcd0:
+upvalues (0) for 0x57fbdcd0:
+
+function <?:71,75> (9 instructions, 36 bytes at 0x57fbe380)
+0 params, 5 slots, 0 upvalues, 0 locals, 5 constants, 0 functions
+	1	[-]	LOADK    	0 -1	; 25
+	2	[-]	GETGLOBAL	1 -2	; comSectionStoryEnd
+	3	[-]	GETGLOBAL	2 -3	; gameSave
+	4	[-]	GETTABLE 	2 2 -4	; "sceneId"
+	5	[-]	GETGLOBAL	3 -3	; gameSave
+	6	[-]	GETTABLE 	3 3 -5	; "sceneName"
+	7	[-]	MOVE     	4 0
+	8	[-]	CALL     	1 4 1
+	9	[-]	RETURN   	0 1
+constants (5) for 0x57fbe380:
+	1	25
+	2	"comSectionStoryEnd"
+	3	"gameSave"
+	4	"sceneId"
+	5	"sceneName"
+locals (0) for 0x57fbe380:
+upvalues (0) for 0x57fbe380:
+
+function <?:136,400> (676 instructions, 2704 bytes at 0x57fbe440)
+2 params, 8 slots, 0 upvalues, 0 locals, 150 constants, 1 function
+	1	[-]	CLOSURE  	2 0	; 0x57fc0be0
+	2	[-]	GETGLOBAL	3 -1	; cStopBGMWrap
+	3	[-]	CALL     	3 1 1
+	4	[-]	GETGLOBAL	3 -2	; layerLoad
+	5	[-]	GETGLOBAL	4 -3	; layerName
+	6	[-]	GETTABLE 	4 4 -4	; "event"
+	7	[-]	GETGLOBAL	5 -5	; cGetFileName
+	8	[-]	LOADK    	6 -4	; "event"
+	9	[-]	LOADK    	7 -6	; "eve_32_x"
+	10	[-]	CALL     	5 3 0
+	11	[-]	CALL     	3 0 1
+	12	[-]	GETGLOBAL	3 -2	; layerLoad
+	13	[-]	GETGLOBAL	4 -3	; layerName
+	14	[-]	GETTABLE 	4 4 -7	; "pose1"
+	15	[-]	LOADK    	5 -8	; ""
+	16	[-]	CALL     	3 3 1
+	17	[-]	GETGLOBAL	3 -2	; layerLoad
+	18	[-]	GETGLOBAL	4 -3	; layerName
+	19	[-]	GETTABLE 	4 4 -9	; "pose2"
+	20	[-]	LOADK    	5 -8	; ""
+	21	[-]	CALL     	3 3 1
+	22	[-]	GETGLOBAL	3 -10	; switchScreen
+	23	[-]	LOADK    	4 -11	; 0
+	24	[-]	LOADK    	5 -8	; ""
+	25	[-]	LOADK    	6 -12	; 5
+	26	[-]	CALL     	3 4 1
+	27	[-]	GETGLOBAL	3 -13	; wait
+	28	[-]	LOADK    	4 -12	; 5
+	29	[-]	CALL     	3 2 1
+	30	[-]	GETGLOBAL	3 -14	; comSectionStoryBegin
+	31	[-]	MOVE     	4 0
+	32	[-]	MOVE     	5 1
+	33	[-]	CALL     	3 3 1
+	34	[-]	GETGLOBAL	3 -15	; comDlgStorylineSkip
+	35	[-]	MOVE     	4 0
+	36	[-]	CALL     	3 2 2
+	37	[-]	EQ       	0 3 -16	; - true
+	38	[-]	JMP      	3	; to 42
+	39	[-]	MOVE     	3 2
+	40	[-]	CALL     	3 1 1
+	41	[-]	RETURN   	0 1
+	42	[-]	GETGLOBAL	3 -13	; wait
+	43	[-]	LOADK    	4 -17	; 1
+	44	[-]	CALL     	3 2 1
+	45	[-]	GETGLOBAL	3 -18	; comEffectFadeOut
+	46	[-]	LOADK    	4 -19	; 30
+	47	[-]	CALL     	3 2 1
+	48	[-]	GETGLOBAL	3 -20	; vms
+	49	[-]	LOADK    	4 -21	; 16760
+	50	[-]	LOADK    	5 -22	; "NONVOICE"
+	51	[-]	LOADK    	6 -23	; "\228\191\186\227\129\175\227\130\162\227\131\164\227\131\142\227\129\174\232\133\149\227\130\146\230\142\180\227\130\147\227\129\160\227\128\130"
+	52	[-]	CALL     	3 4 1
+	53	[-]	GETGLOBAL	3 -24	; cLoadPlaySE
+	54	[-]	GETGLOBAL	4 -5	; cGetFileName
+	55	[-]	LOADK    	5 -25	; "se"
+	56	[-]	LOADK    	6 -26	; "se_77"
+	57	[-]	CALL     	4 3 2
+	58	[-]	LOADBOOL 	5 0 0
+	59	[-]	CALL     	3 3 1
+	60	[-]	GETGLOBAL	3 -27	; comEffectYellowIn
+	61	[-]	LOADK    	4 -28	; 60
+	62	[-]	CALL     	3 2 1
+	63	[-]	GETGLOBAL	3 -13	; wait
+	64	[-]	LOADK    	4 -28	; 60
+	65	[-]	CALL     	3 2 1
+	66	[-]	GETGLOBAL	3 -20	; vms
+	67	[-]	LOADK    	4 -29	; 16761
+	68	[-]	LOADK    	5 -22	; "NONVOICE"
+	69	[-]	LOADK    	6 -30	; "\227\130\162\227\131\164\227\131\142\227\129\175\232\186\171\227\130\146\227\130\136\227\129\152\227\130\138\226\128\149\226\128\149_n\232\186\171\228\189\147\227\130\146\230\141\187\227\130\139\227\129\168\226\128\149\226\128\149"
+	70	[-]	CALL     	3 4 1
+	71	[-]	GETGLOBAL	3 -24	; cLoadPlaySE
+	72	[-]	GETGLOBAL	4 -5	; cGetFileName
+	73	[-]	LOADK    	5 -25	; "se"
+	74	[-]	LOADK    	6 -31	; "se_82"
+	75	[-]	CALL     	4 3 2
+	76	[-]	LOADBOOL 	5 0 0
+	77	[-]	CALL     	3 3 1
+	78	[-]	GETGLOBAL	3 -13	; wait
+	79	[-]	LOADK    	4 -17	; 1
+	80	[-]	CALL     	3 2 1
+	81	[-]	GETGLOBAL	3 -2	; layerLoad
+	82	[-]	GETGLOBAL	4 -3	; layerName
+	83	[-]	GETTABLE 	4 4 -4	; "event"
+	84	[-]	GETGLOBAL	5 -5	; cGetFileName
+	85	[-]	LOADK    	6 -4	; "event"
+	86	[-]	LOADK    	7 -32	; "eve_32_b"
+	87	[-]	CALL     	5 3 0
+	88	[-]	CALL     	3 0 1
+	89	[-]	GETGLOBAL	3 -10	; switchScreen
+	90	[-]	LOADK    	4 -11	; 0
+	91	[-]	LOADK    	5 -8	; ""
+	92	[-]	LOADK    	6 -19	; 30
+	93	[-]	CALL     	3 4 1
+	94	[-]	GETGLOBAL	3 -33	; cStopOneshotMusic
+	95	[-]	CALL     	3 1 1
+	96	[-]	GETGLOBAL	3 -13	; wait
+	97	[-]	LOADK    	4 -28	; 60
+	98	[-]	CALL     	3 2 1
+	99	[-]	GETGLOBAL	3 -34	; cPlayOneshotMusic
+	100	[-]	GETGLOBAL	4 -5	; cGetFileName
+	101	[-]	LOADK    	5 -35	; "mus"
+	102	[-]	LOADK    	6 -36	; "mus_6"
+	103	[-]	CALL     	4 3 0
+	104	[-]	CALL     	3 0 1
+	105	[-]	GETGLOBAL	3 -18	; comEffectFadeOut
+	106	[-]	LOADK    	4 -37	; 120
+	107	[-]	CALL     	3 2 1
+	108	[-]	GETGLOBAL	3 -13	; wait
+	109	[-]	LOADK    	4 -37	; 120
+	110	[-]	CALL     	3 2 1
+	111	[-]	GETGLOBAL	3 -38	; cPlayBGMWrap
+	112	[-]	GETGLOBAL	4 -5	; cGetFileName
+	113	[-]	LOADK    	5 -39	; "bgm"
+	114	[-]	LOADK    	6 -40	; "bgm_9_x"
+	115	[-]	CALL     	4 3 0
+	116	[-]	CALL     	3 0 1
+	117	[-]	GETGLOBAL	3 -13	; wait
+	118	[-]	LOADK    	4 -17	; 1
+	119	[-]	CALL     	3 2 1
+	120	[-]	GETGLOBAL	3 -2	; layerLoad
+	121	[-]	GETGLOBAL	4 -3	; layerName
+	122	[-]	GETTABLE 	4 4 -4	; "event"
+	123	[-]	GETGLOBAL	5 -5	; cGetFileName
+	124	[-]	LOADK    	6 -4	; "event"
+	125	[-]	LOADK    	7 -41	; "eve_46_d"
+	126	[-]	CALL     	5 3 0
+	127	[-]	CALL     	3 0 1
+	128	[-]	GETGLOBAL	3 -42	; comEffectWhiteIn
+	129	[-]	LOADK    	4 -19	; 30
+	130	[-]	CALL     	3 2 1
+	131	[-]	GETGLOBAL	3 -13	; wait
+	132	[-]	LOADK    	4 -19	; 30
+	133	[-]	CALL     	3 2 1
+	134	[-]	GETGLOBAL	3 -2	; layerLoad
+	135	[-]	GETGLOBAL	4 -3	; layerName
+	136	[-]	GETTABLE 	4 4 -4	; "event"
+	137	[-]	GETGLOBAL	5 -5	; cGetFileName
+	138	[-]	LOADK    	6 -4	; "event"
+	139	[-]	LOADK    	7 -43	; "eve_46_c"
+	140	[-]	CALL     	5 3 0
+	141	[-]	CALL     	3 0 1
+	142	[-]	GETGLOBAL	3 -42	; comEffectWhiteIn
+	143	[-]	LOADK    	4 -19	; 30
+	144	[-]	CALL     	3 2 1
+	145	[-]	GETGLOBAL	3 -13	; wait
+	146	[-]	LOADK    	4 -19	; 30
+	147	[-]	CALL     	3 2 1
+	148	[-]	GETGLOBAL	3 -2	; layerLoad
+	149	[-]	GETGLOBAL	4 -3	; layerName
+	150	[-]	GETTABLE 	4 4 -4	; "event"
+	151	[-]	GETGLOBAL	5 -5	; cGetFileName
+	152	[-]	LOADK    	6 -4	; "event"
+	153	[-]	LOADK    	7 -44	; "eve_46_b"
+	154	[-]	CALL     	5 3 0
+	155	[-]	CALL     	3 0 1
+	156	[-]	GETGLOBAL	3 -42	; comEffectWhiteIn
+	157	[-]	LOADK    	4 -19	; 30
+	158	[-]	CALL     	3 2 1
+	159	[-]	GETGLOBAL	3 -13	; wait
+	160	[-]	LOADK    	4 -19	; 30
+	161	[-]	CALL     	3 2 1
+	162	[-]	GETGLOBAL	3 -2	; layerLoad
+	163	[-]	GETGLOBAL	4 -3	; layerName
+	164	[-]	GETTABLE 	4 4 -4	; "event"
+	165	[-]	GETGLOBAL	5 -5	; cGetFileName
+	166	[-]	LOADK    	6 -4	; "event"
+	167	[-]	LOADK    	7 -45	; "eve_46_a"
+	168	[-]	CALL     	5 3 0
+	169	[-]	CALL     	3 0 1
+	170	[-]	GETGLOBAL	3 -42	; comEffectWhiteIn
+	171	[-]	LOADK    	4 -28	; 60
+	172	[-]	CALL     	3 2 1
+	173	[-]	GETGLOBAL	3 -13	; wait
+	174	[-]	LOADK    	4 -28	; 60
+	175	[-]	CALL     	3 2 1
+	176	[-]	GETGLOBAL	3 -20	; vms
+	177	[-]	LOADK    	4 -46	; 16762
+	178	[-]	LOADK    	5 -22	; "NONVOICE"
+	179	[-]	LOADK    	6 -47	; "\228\191\186\227\129\175\230\133\140\227\129\166\227\129\166\227\130\162\227\131\164\227\131\142\227\129\174\232\133\149\227\130\146\230\142\180\227\130\147\227\129\160\227\128\130"
+	180	[-]	CALL     	3 4 1
+	181	[-]	GETGLOBAL	3 -20	; vms
+	182	[-]	LOADK    	4 -48	; 16763
+	183	[-]	LOADK    	5 -49	; "NAO16050"
+	184	[-]	LOADK    	6 -50	; "\227\128\144\227\131\166\227\130\166\227\130\164\227\131\129\227\128\145\227\128\140\227\130\162\227\131\164\227\131\142\239\188\129\227\128\141"
+	185	[-]	CALL     	3 4 1
+	186	[-]	GETGLOBAL	3 -20	; vms
+	187	[-]	LOADK    	4 -51	; 16764
+	188	[-]	LOADK    	5 -22	; "NONVOICE"
+	189	[-]	LOADK    	6 -52	; "\229\141\177\227\129\134\227\129\143\227\131\144\227\131\169\227\131\179\227\130\185\227\130\146\229\180\169\227\129\151\227\129\157\227\129\134\227\129\171\227\129\170\227\130\138\227\129\170\227\129\140\227\130\137\227\130\130\227\128\129\227\130\162\227\131\164\227\131\142\227\130\146\230\138\177\227\129\141\227\129\139\227\129\139\227\129\136\227\130\139\227\128\130"
+	190	[-]	CALL     	3 4 1
+	191	[-]	GETGLOBAL	3 -24	; cLoadPlaySE
+	192	[-]	GETGLOBAL	4 -5	; cGetFileName
+	193	[-]	LOADK    	5 -25	; "se"
+	194	[-]	LOADK    	6 -53	; "se_144"
+	195	[-]	CALL     	4 3 2
+	196	[-]	LOADBOOL 	5 0 0
+	197	[-]	CALL     	3 3 1
+	198	[-]	GETGLOBAL	3 -27	; comEffectYellowIn
+	199	[-]	LOADK    	4 -28	; 60
+	200	[-]	CALL     	3 2 1
+	201	[-]	GETGLOBAL	3 -13	; wait
+	202	[-]	LOADK    	4 -28	; 60
+	203	[-]	CALL     	3 2 1
+	204	[-]	GETGLOBAL	3 -20	; vms
+	205	[-]	LOADK    	4 -54	; 16765
+	206	[-]	LOADK    	5 -55	; "NAO16060"
+	207	[-]	LOADK    	6 -56	; "\227\128\144\227\131\166\227\130\166\227\130\164\227\131\129\227\128\145\227\128\140\227\129\151\227\129\163\227\129\139\227\130\138\227\129\153\227\130\139\227\130\147\227\129\160\227\128\129\227\130\162\227\131\164\227\131\142\239\188\129\227\128\141"
+	208	[-]	CALL     	3 4 1
+	209	[-]	GETGLOBAL	3 -20	; vms
+	210	[-]	LOADK    	4 -57	; 16766
+	211	[-]	LOADK    	5 -58	; "AYA20130"
+	212	[-]	LOADK    	6 -59	; "\227\128\144\227\130\162\227\131\164\227\131\142\227\128\145\227\128\140\227\131\166\227\130\166\227\130\164\227\131\129\226\128\166\226\128\166\227\128\141"
+	213	[-]	CALL     	3 4 1
+	214	[-]	GETGLOBAL	3 -20	; vms
+	215	[-]	LOADK    	4 -60	; 16767
+	216	[-]	LOADK    	5 -22	; "NONVOICE"
+	217	[-]	LOADK    	6 -61	; "\231\155\174\227\130\146\231\158\145\227\129\163\227\129\159\227\129\190\227\129\190\227\128\129\227\129\160\227\130\137\227\130\147\227\129\168\231\137\135\232\133\149\227\130\146\228\184\139\227\129\146\227\129\166\227\129\132\227\130\139\227\128\130"
+	218	[-]	CALL     	3 4 1
+	219	[-]	GETGLOBAL	3 -20	; vms
+	220	[-]	LOADK    	4 -62	; 16768
+	221	[-]	LOADK    	5 -22	; "NONVOICE"
+	222	[-]	LOADK    	6 -63	; "\226\128\166\226\128\166\227\129\190\227\130\139\227\129\167\227\128\129\229\164\162\227\129\167\227\130\130\232\166\139\227\129\166\227\129\132\227\130\139\227\130\136\227\129\134\227\129\171\227\128\130"
+	223	[-]	CALL     	3 4 1
+	224	[-]	GETGLOBAL	3 -20	; vms
+	225	[-]	LOADK    	4 -64	; 16769
+	226	[-]	LOADK    	5 -22	; "NONVOICE"
+	227	[-]	LOADK    	6 -65	; "\227\129\152\227\130\138\227\129\152\227\130\138\227\129\168\230\137\139\227\129\140\230\177\151\227\129\167\230\187\145\227\129\163\227\129\166\227\129\132\227\129\143\227\128\130"
+	228	[-]	CALL     	3 4 1
+	229	[-]	GETGLOBAL	3 -34	; cPlayOneshotMusic
+	230	[-]	GETGLOBAL	4 -5	; cGetFileName
+	231	[-]	LOADK    	5 -35	; "mus"
+	232	[-]	LOADK    	6 -66	; "mus_43"
+	233	[-]	CALL     	4 3 0
+	234	[-]	CALL     	3 0 1
+	235	[-]	GETGLOBAL	3 -67	; comEffectBlackoutAndIn
+	236	[-]	LOADK    	4 -19	; 30
+	237	[-]	CALL     	3 2 1
+	238	[-]	GETGLOBAL	3 -20	; vms
+	239	[-]	LOADK    	4 -68	; 16770
+	240	[-]	LOADK    	5 -22	; "NONVOICE"
+	241	[-]	LOADK    	6 -69	; "\228\184\139\227\129\139\227\130\137\229\144\185\227\129\141\228\184\138\227\129\146\227\130\139\233\162\168\227\129\174\227\129\155\227\129\132\227\129\167\227\131\155\227\130\179\227\131\170\227\129\140\231\155\174\227\129\171\229\133\165\227\130\138\227\128\129\230\128\157\227\130\143\227\129\154\228\191\186\227\129\175\231\155\174\227\130\146\231\180\176\227\130\129\227\129\159\227\128\130"
+	242	[-]	CALL     	3 4 1
+	243	[-]	GETGLOBAL	3 -24	; cLoadPlaySE
+	244	[-]	GETGLOBAL	4 -5	; cGetFileName
+	245	[-]	LOADK    	5 -25	; "se"
+	246	[-]	LOADK    	6 -53	; "se_144"
+	247	[-]	CALL     	4 3 2
+	248	[-]	LOADBOOL 	5 0 0
+	249	[-]	CALL     	3 3 1
+	250	[-]	GETGLOBAL	3 -27	; comEffectYellowIn
+	251	[-]	LOADK    	4 -28	; 60
+	252	[-]	CALL     	3 2 1
+	253	[-]	GETGLOBAL	3 -13	; wait
+	254	[-]	LOADK    	4 -28	; 60
+	255	[-]	CALL     	3 2 1
+	256	[-]	GETGLOBAL	3 -20	; vms
+	257	[-]	LOADK    	4 -70	; 16771
+	258	[-]	LOADK    	5 -22	; "NONVOICE"
+	259	[-]	LOADK    	6 -71	; "\227\129\190\227\129\159\227\129\151\227\129\166\227\130\130\227\130\162\227\131\164\227\131\142\227\129\174\232\186\171\228\189\147\227\129\140\233\162\168\227\129\171\231\133\189\227\130\137\227\130\140\227\128\129\230\160\161\232\136\142\227\129\171\229\143\169\227\129\141\227\129\164\227\129\145\227\130\137\227\130\140\227\130\139\227\128\130"
+	260	[-]	CALL     	3 4 1
+	261	[-]	GETGLOBAL	3 -20	; vms
+	262	[-]	LOADK    	4 -72	; 16772
+	263	[-]	LOADK    	5 -22	; "NONVOICE"
+	264	[-]	LOADK    	6 -73	; "\227\130\162\227\131\164\227\131\142\227\129\175\232\139\166\227\129\151\227\129\146\227\129\171\231\156\137\227\130\146\229\175\132\227\129\155\227\130\139\227\128\130"
+	265	[-]	CALL     	3 4 1
+	266	[-]	GETGLOBAL	3 -20	; vms
+	267	[-]	LOADK    	4 -74	; 16773
+	268	[-]	LOADK    	5 -22	; "NONVOICE"
+	269	[-]	LOADK    	6 -75	; "\227\128\144\227\130\162\227\131\164\227\131\142\227\128\145\227\128\140\226\128\166\226\128\166\226\128\166\226\128\166\227\128\141"
+	270	[-]	CALL     	3 4 1
+	271	[-]	GETGLOBAL	3 -20	; vms
+	272	[-]	LOADK    	4 -76	; 16774
+	273	[-]	LOADK    	5 -22	; "NONVOICE"
+	274	[-]	LOADK    	6 -77	; "\227\129\160\227\129\140\227\128\129\231\155\174\227\130\146\232\166\154\227\129\190\227\129\153\230\167\152\229\173\144\227\129\140\227\129\170\227\129\132\227\128\130"
+	275	[-]	CALL     	3 4 1
+	276	[-]	GETGLOBAL	3 -1	; cStopBGMWrap
+	277	[-]	CALL     	3 1 1
+	278	[-]	GETGLOBAL	3 -13	; wait
+	279	[-]	LOADK    	4 -17	; 1
+	280	[-]	CALL     	3 2 1
+	281	[-]	GETGLOBAL	3 -18	; comEffectFadeOut
+	282	[-]	LOADK    	4 -28	; 60
+	283	[-]	CALL     	3 2 1
+	284	[-]	GETGLOBAL	3 -20	; vms
+	285	[-]	LOADK    	4 -78	; 16775
+	286	[-]	LOADK    	5 -22	; "NONVOICE"
+	287	[-]	LOADK    	6 -79	; "\227\129\157\227\129\151\227\129\166\227\129\190\227\129\159\227\128\129\229\144\141\229\137\141\227\130\146\226\128\149\226\128\149"
+	288	[-]	CALL     	3 4 1
+	289	[-]	GETGLOBAL	3 -20	; vms
+	290	[-]	LOADK    	4 -80	; 16776
+	291	[-]	LOADK    	5 -22	; "NONVOICE"
+	292	[-]	LOADK    	6 -81	; "\228\189\149\229\186\166\227\130\130\227\128\129_n\229\144\141\229\137\141\227\130\146\227\128\129_n\229\145\188\227\129\182\227\128\130"
+	293	[-]	CALL     	3 4 1
+	294	[-]	GETGLOBAL	3 -13	; wait
+	295	[-]	LOADK    	4 -17	; 1
+	296	[-]	CALL     	3 2 1
+	297	[-]	GETGLOBAL	3 -24	; cLoadPlaySE
+	298	[-]	GETGLOBAL	4 -5	; cGetFileName
+	299	[-]	LOADK    	5 -25	; "se"
+	300	[-]	LOADK    	6 -53	; "se_144"
+	301	[-]	CALL     	4 3 2
+	302	[-]	LOADBOOL 	5 0 0
+	303	[-]	CALL     	3 3 1
+	304	[-]	GETGLOBAL	3 -2	; layerLoad
+	305	[-]	GETGLOBAL	4 -3	; layerName
+	306	[-]	GETTABLE 	4 4 -4	; "event"
+	307	[-]	GETGLOBAL	5 -5	; cGetFileName
+	308	[-]	LOADK    	6 -4	; "event"
+	309	[-]	LOADK    	7 -6	; "eve_32_x"
+	310	[-]	CALL     	5 3 0
+	311	[-]	CALL     	3 0 1
+	312	[-]	GETGLOBAL	3 -42	; comEffectWhiteIn
+	313	[-]	LOADK    	4 -37	; 120
+	314	[-]	CALL     	3 2 1
+	315	[-]	GETGLOBAL	3 -13	; wait
+	316	[-]	LOADK    	4 -37	; 120
+	317	[-]	CALL     	3 2 1
+	318	[-]	GETGLOBAL	3 -20	; vms
+	319	[-]	LOADK    	4 -82	; 16777
+	320	[-]	LOADK    	5 -83	; "AYA20140"
+	321	[-]	LOADK    	6 -59	; "\227\128\144\227\130\162\227\131\164\227\131\142\227\128\145\227\128\140\227\131\166\227\130\166\227\130\164\227\131\129\226\128\166\226\128\166\227\128\141"
+	322	[-]	CALL     	3 4 1
+	323	[-]	GETGLOBAL	3 -13	; wait
+	324	[-]	LOADK    	4 -17	; 1
+	325	[-]	CALL     	3 2 1
+	326	[-]	GETGLOBAL	3 -18	; comEffectFadeOut
+	327	[-]	LOADK    	4 -19	; 30
+	328	[-]	CALL     	3 2 1
+	329	[-]	GETGLOBAL	3 -20	; vms
+	330	[-]	LOADK    	4 -84	; 16778
+	331	[-]	LOADK    	5 -22	; "NONVOICE"
+	332	[-]	LOADK    	6 -85	; "\233\155\162\227\129\153\227\130\130\227\130\147\227\129\139\227\128\130"
+	333	[-]	CALL     	3 4 1
+	334	[-]	GETGLOBAL	3 -13	; wait
+	335	[-]	LOADK    	4 -17	; 1
+	336	[-]	CALL     	3 2 1
+	337	[-]	GETGLOBAL	3 -24	; cLoadPlaySE
+	338	[-]	GETGLOBAL	4 -5	; cGetFileName
+	339	[-]	LOADK    	5 -25	; "se"
+	340	[-]	LOADK    	6 -53	; "se_144"
+	341	[-]	CALL     	4 3 2
+	342	[-]	LOADBOOL 	5 0 0
+	343	[-]	CALL     	3 3 1
+	344	[-]	GETGLOBAL	3 -2	; layerLoad
+	345	[-]	GETGLOBAL	4 -3	; layerName
+	346	[-]	GETTABLE 	4 4 -86	; "bg1"
+	347	[-]	GETGLOBAL	5 -5	; cGetFileName
+	348	[-]	LOADK    	6 -87	; "bg"
+	349	[-]	LOADK    	7 -88	; "bg_8_b_0"
+	350	[-]	CALL     	5 3 0
+	351	[-]	CALL     	3 0 1
+	352	[-]	GETGLOBAL	3 -42	; comEffectWhiteIn
+	353	[-]	LOADK    	4 -37	; 120
+	354	[-]	CALL     	3 2 1
+	355	[-]	GETGLOBAL	3 -13	; wait
+	356	[-]	LOADK    	4 -37	; 120
+	357	[-]	CALL     	3 2 1
+	358	[-]	GETGLOBAL	3 -20	; vms
+	359	[-]	LOADK    	4 -89	; 16779
+	360	[-]	LOADK    	5 -90	; "AYA19910"
+	361	[-]	LOADK    	6 -91	; "\227\128\144\227\130\162\227\131\164\227\131\142\227\128\145\227\128\140\227\131\166\227\130\166\227\130\164\226\128\149\226\128\149\227\128\141"
+	362	[-]	CALL     	3 4 1
+	363	[-]	GETGLOBAL	3 -13	; wait
+	364	[-]	LOADK    	4 -17	; 1
+	365	[-]	CALL     	3 2 1
+	366	[-]	GETGLOBAL	3 -18	; comEffectFadeOut
+	367	[-]	LOADK    	4 -19	; 30
+	368	[-]	CALL     	3 2 1
+	369	[-]	GETGLOBAL	3 -20	; vms
+	370	[-]	LOADK    	4 -92	; 16780
+	371	[-]	LOADK    	5 -22	; "NONVOICE"
+	372	[-]	LOADK    	6 -93	; "\233\155\162\227\129\149\227\129\170\227\129\132\227\128\130"
+	373	[-]	CALL     	3 4 1
+	374	[-]	GETGLOBAL	3 -13	; wait
+	375	[-]	LOADK    	4 -17	; 1
+	376	[-]	CALL     	3 2 1
+	377	[-]	GETGLOBAL	3 -24	; cLoadPlaySE
+	378	[-]	GETGLOBAL	4 -5	; cGetFileName
+	379	[-]	LOADK    	5 -25	; "se"
+	380	[-]	LOADK    	6 -53	; "se_144"
+	381	[-]	CALL     	4 3 2
+	382	[-]	LOADBOOL 	5 0 0
+	383	[-]	CALL     	3 3 1
+	384	[-]	GETGLOBAL	3 -2	; layerLoad
+	385	[-]	GETGLOBAL	4 -3	; layerName
+	386	[-]	GETTABLE 	4 4 -4	; "event"
+	387	[-]	GETGLOBAL	5 -5	; cGetFileName
+	388	[-]	LOADK    	6 -4	; "event"
+	389	[-]	LOADK    	7 -94	; "eve_33_b"
+	390	[-]	CALL     	5 3 0
+	391	[-]	CALL     	3 0 1
+	392	[-]	GETGLOBAL	3 -42	; comEffectWhiteIn
+	393	[-]	LOADK    	4 -37	; 120
+	394	[-]	CALL     	3 2 1
+	395	[-]	GETGLOBAL	3 -13	; wait
+	396	[-]	LOADK    	4 -37	; 120
+	397	[-]	CALL     	3 2 1
+	398	[-]	GETGLOBAL	3 -20	; vms
+	399	[-]	LOADK    	4 -95	; 16781
+	400	[-]	LOADK    	5 -96	; "AYA19920"
+	401	[-]	LOADK    	6 -97	; "\227\128\144\227\130\162\227\131\164\227\131\142\227\128\145\227\128\140\227\131\166\227\130\166\226\128\166\226\128\166\227\130\164\227\131\129\226\128\166\226\128\166\227\128\141"
+	402	[-]	CALL     	3 4 1
+	403	[-]	GETGLOBAL	3 -13	; wait
+	404	[-]	LOADK    	4 -17	; 1
+	405	[-]	CALL     	3 2 1
+	406	[-]	GETGLOBAL	3 -18	; comEffectFadeOut
+	407	[-]	LOADK    	4 -19	; 30
+	408	[-]	CALL     	3 2 1
+	409	[-]	GETGLOBAL	3 -20	; vms
+	410	[-]	LOADK    	4 -98	; 16782
+	411	[-]	LOADK    	5 -22	; "NONVOICE"
+	412	[-]	LOADK    	6 -99	; "\231\181\182\229\175\190\227\129\171\227\128\129\228\189\149\227\129\140\227\129\130\227\130\141\227\129\134\227\129\168\233\155\162\227\129\153\227\130\130\227\129\174\227\129\139\227\128\130"
+	413	[-]	CALL     	3 4 1
+	414	[-]	GETGLOBAL	3 -13	; wait
+	415	[-]	LOADK    	4 -17	; 1
+	416	[-]	CALL     	3 2 1
+	417	[-]	GETGLOBAL	3 -24	; cLoadPlaySE
+	418	[-]	GETGLOBAL	4 -5	; cGetFileName
+	419	[-]	LOADK    	5 -25	; "se"
+	420	[-]	LOADK    	6 -53	; "se_144"
+	421	[-]	CALL     	4 3 2
+	422	[-]	LOADBOOL 	5 0 0
+	423	[-]	CALL     	3 3 1
+	424	[-]	GETGLOBAL	3 -2	; layerLoad
+	425	[-]	GETGLOBAL	4 -3	; layerName
+	426	[-]	GETTABLE 	4 4 -4	; "event"
+	427	[-]	GETGLOBAL	5 -5	; cGetFileName
+	428	[-]	LOADK    	6 -4	; "event"
+	429	[-]	LOADK    	7 -45	; "eve_46_a"
+	430	[-]	CALL     	5 3 0
+	431	[-]	CALL     	3 0 1
+	432	[-]	GETGLOBAL	3 -42	; comEffectWhiteIn
+	433	[-]	LOADK    	4 -37	; 120
+	434	[-]	CALL     	3 2 1
+	435	[-]	GETGLOBAL	3 -13	; wait
+	436	[-]	LOADK    	4 -37	; 120
+	437	[-]	CALL     	3 2 1
+	438	[-]	GETGLOBAL	3 -20	; vms
+	439	[-]	LOADK    	4 -100	; 16783
+	440	[-]	LOADK    	5 -101	; "AYA19930"
+	441	[-]	LOADK    	6 -102	; "\227\128\144\227\130\162\227\131\164\227\131\142\227\128\145\227\128\140\227\131\166\227\130\166\227\130\164\227\131\129\226\128\149\226\128\149\227\128\141"
+	442	[-]	CALL     	3 4 1
+	443	[-]	GETGLOBAL	3 -20	; vms
+	444	[-]	LOADK    	4 -103	; 16784
+	445	[-]	LOADK    	5 -22	; "NONVOICE"
+	446	[-]	LOADK    	6 -104	; "\228\187\138\227\129\147\227\129\157\226\128\149\226\128\149"
+	447	[-]	CALL     	3 4 1
+	448	[-]	GETGLOBAL	3 -38	; cPlayBGMWrap
+	449	[-]	GETGLOBAL	4 -5	; cGetFileName
+	450	[-]	LOADK    	5 -39	; "bgm"
+	451	[-]	LOADK    	6 -105	; "bgm_17_x"
+	452	[-]	CALL     	4 3 0
+	453	[-]	CALL     	3 0 1
+	454	[-]	GETGLOBAL	3 -106	; cPlayLoopSeWrap
+	455	[-]	GETGLOBAL	4 -5	; cGetFileName
+	456	[-]	LOADK    	5 -107	; "loop"
+	457	[-]	LOADK    	6 -108	; "loop_5"
+	458	[-]	CALL     	4 3 0
+	459	[-]	CALL     	3 0 1
+	460	[-]	GETGLOBAL	3 -20	; vms
+	461	[-]	LOADK    	4 -109	; 16785
+	462	[-]	LOADK    	5 -22	; "NONVOICE"
+	463	[-]	LOADK    	6 -110	; "\228\187\138\227\129\147\227\129\157\227\128\129\226\137\170\228\191\186\227\129\140\227\130\162\227\131\164\227\131\142\227\129\171\229\175\190\227\129\151\227\129\166\230\131\179\227\129\132\227\130\146\229\145\138\227\129\146\227\130\139\230\153\130\226\137\171\227\129\160\227\128\130"
+	464	[-]	CALL     	3 4 1
+	465	[-]	GETGLOBAL	3 -20	; vms
+	466	[-]	LOADK    	4 -111	; 16786
+	467	[-]	LOADK    	5 -22	; "NONVOICE"
+	468	[-]	LOADK    	6 -112	; "\229\131\149\227\129\175\230\129\175\227\130\146\229\144\184\227\129\132\232\190\188\227\129\191\226\128\149\226\128\149"
+	469	[-]	CALL     	3 4 1
+	470	[-]	GETGLOBAL	3 -13	; wait
+	471	[-]	LOADK    	4 -17	; 1
+	472	[-]	CALL     	3 2 1
+	473	[-]	GETGLOBAL	3 -18	; comEffectFadeOut
+	474	[-]	LOADK    	4 -19	; 30
+	475	[-]	CALL     	3 2 1
+	476	[-]	GETGLOBAL	3 -13	; wait
+	477	[-]	LOADK    	4 -17	; 1
+	478	[-]	CALL     	3 2 1
+	479	[-]	GETGLOBAL	3 -2	; layerLoad
+	480	[-]	GETGLOBAL	4 -3	; layerName
+	481	[-]	GETTABLE 	4 4 -4	; "event"
+	482	[-]	GETGLOBAL	5 -5	; cGetFileName
+	483	[-]	LOADK    	6 -4	; "event"
+	484	[-]	LOADK    	7 -113	; "eve_42_x"
+	485	[-]	CALL     	5 3 0
+	486	[-]	CALL     	3 0 1
+	487	[-]	GETGLOBAL	3 -42	; comEffectWhiteIn
+	488	[-]	LOADK    	4 -37	; 120
+	489	[-]	CALL     	3 2 1
+	490	[-]	GETGLOBAL	3 -13	; wait
+	491	[-]	LOADK    	4 -37	; 120
+	492	[-]	CALL     	3 2 1
+	493	[-]	GETGLOBAL	3 -20	; vms
+	494	[-]	LOADK    	4 -114	; 16788
+	495	[-]	LOADK    	5 -115	; "NAO16080"
+	496	[-]	LOADK    	6 -116	; "\227\128\144\227\131\166\227\130\166\227\130\164\227\131\129\227\128\145\227\128\140\227\130\162\227\131\164\227\131\142\227\129\174\228\186\139\227\129\140\229\165\189\227\129\141\227\129\160\227\128\130\232\170\176\227\130\136\227\130\138\227\130\130\227\128\141"
+	497	[-]	CALL     	3 4 1
+	498	[-]	GETGLOBAL	3 -13	; wait
+	499	[-]	LOADK    	4 -17	; 1
+	500	[-]	CALL     	3 2 1
+	501	[-]	GETGLOBAL	3 -18	; comEffectFadeOut
+	502	[-]	LOADK    	4 -28	; 60
+	503	[-]	CALL     	3 2 1
+	504	[-]	GETGLOBAL	3 -20	; vms
+	505	[-]	LOADK    	4 -117	; 16789
+	506	[-]	LOADK    	5 -22	; "NONVOICE"
+	507	[-]	LOADK    	6 -118	; "\227\130\162\227\131\164\227\131\142\227\129\171\229\145\138\231\153\189\227\129\151\227\129\159\227\128\130"
+	508	[-]	CALL     	3 4 1
+	509	[-]	GETGLOBAL	3 -2	; layerLoad
+	510	[-]	GETGLOBAL	4 -3	; layerName
+	511	[-]	GETTABLE 	4 4 -4	; "event"
+	512	[-]	GETGLOBAL	5 -5	; cGetFileName
+	513	[-]	LOADK    	6 -4	; "event"
+	514	[-]	LOADK    	7 -45	; "eve_46_a"
+	515	[-]	CALL     	5 3 0
+	516	[-]	CALL     	3 0 1
+	517	[-]	GETGLOBAL	3 -42	; comEffectWhiteIn
+	518	[-]	LOADK    	4 -28	; 60
+	519	[-]	CALL     	3 2 1
+	520	[-]	GETGLOBAL	3 -13	; wait
+	521	[-]	LOADK    	4 -28	; 60
+	522	[-]	CALL     	3 2 1
+	523	[-]	GETGLOBAL	3 -20	; vms
+	524	[-]	LOADK    	4 -119	; 16790
+	525	[-]	LOADK    	5 -120	; "NAO15220"
+	526	[-]	LOADK    	6 -121	; "\227\128\144\227\131\166\227\130\166\227\130\164\227\131\129\227\128\145\227\128\140\229\189\169\233\135\142\226\128\166\226\128\166\227\129\149\227\130\147\227\129\163\239\188\129\227\128\141"
+	527	[-]	CALL     	3 4 1
+	528	[-]	GETGLOBAL	3 -34	; cPlayOneshotMusic
+	529	[-]	GETGLOBAL	4 -5	; cGetFileName
+	530	[-]	LOADK    	5 -35	; "mus"
+	531	[-]	LOADK    	6 -122	; "mus_26"
+	532	[-]	CALL     	4 3 0
+	533	[-]	CALL     	3 0 1
+	534	[-]	GETGLOBAL	3 -27	; comEffectYellowIn
+	535	[-]	LOADK    	4 -28	; 60
+	536	[-]	CALL     	3 2 1
+	537	[-]	GETGLOBAL	3 -13	; wait
+	538	[-]	LOADK    	4 -28	; 60
+	539	[-]	CALL     	3 2 1
+	540	[-]	GETGLOBAL	3 -13	; wait
+	541	[-]	LOADK    	4 -17	; 1
+	542	[-]	CALL     	3 2 1
+	543	[-]	GETGLOBAL	3 -2	; layerLoad
+	544	[-]	GETGLOBAL	4 -3	; layerName
+	545	[-]	GETTABLE 	4 4 -7	; "pose1"
+	546	[-]	GETGLOBAL	5 -5	; cGetFileName
+	547	[-]	LOADK    	6 -4	; "event"
+	548	[-]	LOADK    	7 -44	; "eve_46_b"
+	549	[-]	CALL     	5 3 0
+	550	[-]	CALL     	3 0 1
+	551	[-]	GETGLOBAL	3 -123	; layerMoveAlpha
+	552	[-]	GETGLOBAL	4 -3	; layerName
+	553	[-]	GETTABLE 	4 4 -7	; "pose1"
+	554	[-]	LOADK    	5 -124	; 50
+	555	[-]	LOADK    	6 -28	; 60
+	556	[-]	CALL     	3 4 1
+	557	[-]	GETGLOBAL	3 -10	; switchScreen
+	558	[-]	LOADK    	4 -11	; 0
+	559	[-]	LOADK    	5 -8	; ""
+	560	[-]	LOADK    	6 -28	; 60
+	561	[-]	CALL     	3 4 1
+	562	[-]	GETGLOBAL	3 -13	; wait
+	563	[-]	LOADK    	4 -28	; 60
+	564	[-]	CALL     	3 2 1
+	565	[-]	GETGLOBAL	3 -13	; wait
+	566	[-]	LOADK    	4 -17	; 1
+	567	[-]	CALL     	3 2 1
+	568	[-]	GETGLOBAL	3 -2	; layerLoad
+	569	[-]	GETGLOBAL	4 -3	; layerName
+	570	[-]	GETTABLE 	4 4 -7	; "pose1"
+	571	[-]	GETGLOBAL	5 -5	; cGetFileName
+	572	[-]	LOADK    	6 -4	; "event"
+	573	[-]	LOADK    	7 -41	; "eve_46_d"
+	574	[-]	CALL     	5 3 0
+	575	[-]	CALL     	3 0 1
+	576	[-]	GETGLOBAL	3 -10	; switchScreen
+	577	[-]	LOADK    	4 -11	; 0
+	578	[-]	LOADK    	5 -8	; ""
+	579	[-]	LOADK    	6 -28	; 60
+	580	[-]	CALL     	3 4 1
+	581	[-]	GETGLOBAL	3 -13	; wait
+	582	[-]	LOADK    	4 -28	; 60
+	583	[-]	CALL     	3 2 1
+	584	[-]	GETGLOBAL	3 -106	; cPlayLoopSeWrap
+	585	[-]	GETGLOBAL	4 -5	; cGetFileName
+	586	[-]	LOADK    	5 -107	; "loop"
+	587	[-]	LOADK    	6 -108	; "loop_5"
+	588	[-]	CALL     	4 3 0
+	589	[-]	CALL     	3 0 1
+	590	[-]	GETGLOBAL	3 -20	; vms
+	591	[-]	LOADK    	4 -125	; 16791
+	592	[-]	LOADK    	5 -22	; "NONVOICE"
+	593	[-]	LOADK    	6 -126	; "\227\130\162\227\131\164\227\131\142\227\129\174\232\186\171\228\189\147\227\129\140\233\156\135\227\129\136\227\130\139\227\128\130\227\130\162\227\131\164\227\131\142\227\129\175\227\130\134\227\129\163\227\129\143\227\130\138\227\129\168\231\158\179\227\130\146\233\150\137\227\129\152\227\128\129\227\130\130\227\129\134\228\184\128\229\186\166\233\150\139\227\129\132\227\129\159\227\128\130"
+	594	[-]	CALL     	3 4 1
+	595	[-]	GETGLOBAL	3 -20	; vms
+	596	[-]	LOADK    	4 -127	; 16792
+	597	[-]	LOADK    	5 -128	; "AYA20150"
+	598	[-]	LOADK    	6 -129	; "\227\128\144\227\130\162\227\131\164\227\131\142\227\128\145\227\128\140\227\131\166\227\130\166\227\130\164\227\131\129\226\128\166\226\128\166\227\131\166\227\130\166\227\130\164\227\131\129\227\129\170\227\129\174\239\188\159 \227\129\157\227\129\147\227\129\171\227\129\132\227\130\139\227\129\174\227\129\175\226\128\149\226\128\149\227\128\141"
+	599	[-]	CALL     	3 4 1
+	600	[-]	GETGLOBAL	3 -20	; vms
+	601	[-]	LOADK    	4 -130	; 16793
+	602	[-]	LOADK    	5 -131	; "NAO16090"
+	603	[-]	LOADK    	6 -132	; "\227\128\144\227\131\166\227\130\166\227\130\164\227\131\129\227\128\145\227\128\140\227\129\157\227\129\134\227\129\160\227\130\136\227\128\129\227\130\162\227\131\164\227\131\142\227\128\141"
+	604	[-]	CALL     	3 4 1
+	605	[-]	GETGLOBAL	3 -20	; vms
+	606	[-]	LOADK    	4 -133	; 16794
+	607	[-]	LOADK    	5 -134	; "NAO16100"
+	608	[-]	LOADK    	6 -135	; "\227\128\144\227\131\166\227\130\166\227\130\164\227\131\129\227\128\145\227\128\140\230\136\187\227\130\141\227\129\134\227\128\130\229\144\145\227\129\147\227\129\134\229\129\180\227\129\184\227\128\130\227\128\142\227\131\149\227\130\167\227\131\179\227\130\185\227\129\174\229\144\145\227\129\147\227\129\134\229\129\180\227\128\143\227\129\184\227\128\141"
+	609	[-]	CALL     	3 4 1
+	610	[-]	GETGLOBAL	3 -20	; vms
+	611	[-]	LOADK    	4 -136	; 16795
+	612	[-]	LOADK    	5 -22	; "NONVOICE"
+	613	[-]	LOADK    	6 -137	; "\227\130\162\227\131\164\227\131\142\227\129\174\230\137\139\227\129\171\227\128\129\229\138\155\227\129\140\230\136\187\227\129\163\227\129\166\230\157\165\227\130\139\227\128\130"
+	614	[-]	CALL     	3 4 1
+	615	[-]	GETGLOBAL	3 -20	; vms
+	616	[-]	LOADK    	4 -138	; 16796
+	617	[-]	LOADK    	5 -22	; "NONVOICE"
+	618	[-]	LOADK    	6 -139	; "\227\130\162\227\131\164\227\131\142\227\129\175\227\130\134\227\129\163\227\129\143\227\130\138\227\129\168\226\128\149\226\128\149"
+	619	[-]	CALL     	3 4 1
+	620	[-]	GETGLOBAL	3 -20	; vms
+	621	[-]	LOADK    	4 -140	; 16797
+	622	[-]	LOADK    	5 -141	; "AYA20160"
+	623	[-]	LOADK    	6 -142	; "\227\128\144\227\130\162\227\131\164\227\131\142\227\128\145\227\128\140\226\128\149\226\128\149\227\129\134\227\130\147\227\128\141"
+	624	[-]	CALL     	3 4 1
+	625	[-]	GETGLOBAL	3 -20	; vms
+	626	[-]	LOADK    	4 -143	; 16798
+	627	[-]	LOADK    	5 -22	; "NONVOICE"
+	628	[-]	LOADK    	6 -144	; "\227\129\168\227\129\166\227\130\130\227\130\134\227\129\163\227\129\143\227\130\138\227\129\168\233\160\183\227\129\132\227\129\159\227\128\130"
+	629	[-]	CALL     	3 4 1
+	630	[-]	GETGLOBAL	3 -20	; vms
+	631	[-]	LOADK    	4 -145	; 16799
+	632	[-]	LOADK    	5 -22	; "NONVOICE"
+	633	[-]	LOADK    	6 -146	; "\228\191\186\227\129\175\227\130\162\227\131\164\227\131\142\227\129\174\230\137\139\227\130\146\227\129\151\227\129\163\227\129\139\227\130\138\227\129\168\230\143\161\227\130\138\227\129\151\227\130\129\227\130\139\227\129\168\227\128\129\230\184\190\232\186\171\227\129\174\229\138\155\227\130\146\230\140\175\227\130\138\231\181\158\227\129\163\227\129\166\227\128\129\227\130\162\227\131\164\227\131\142\227\130\146\226\137\170\227\129\147\227\129\161\227\130\137\229\129\180\226\137\171\227\129\184\227\129\168\229\188\149\227\129\141\228\184\138\227\129\146\227\129\159\227\128\130"
+	634	[-]	CALL     	3 4 1
+	635	[-]	GETGLOBAL	3 -1	; cStopBGMWrap
+	636	[-]	CALL     	3 1 1
+	637	[-]	GETGLOBAL	3 -147	; comEffectWhiteOut
+	638	[-]	LOADK    	4 -148	; 160
+	639	[-]	CALL     	3 2 1
+	640	[-]	GETGLOBAL	3 -13	; wait
+	641	[-]	LOADK    	4 -148	; 160
+	642	[-]	CALL     	3 2 1
+	643	[-]	GETGLOBAL	3 -24	; cLoadPlaySE
+	644	[-]	GETGLOBAL	4 -5	; cGetFileName
+	645	[-]	LOADK    	5 -25	; "se"
+	646	[-]	LOADK    	6 -31	; "se_82"
+	647	[-]	CALL     	4 3 2
+	648	[-]	LOADBOOL 	5 0 0
+	649	[-]	CALL     	3 3 1
+	650	[-]	GETGLOBAL	3 -18	; comEffectFadeOut
+	651	[-]	LOADK    	4 -19	; 30
+	652	[-]	CALL     	3 2 1
+	653	[-]	GETGLOBAL	3 -24	; cLoadPlaySE
+	654	[-]	GETGLOBAL	4 -5	; cGetFileName
+	655	[-]	LOADK    	5 -25	; "se"
+	656	[-]	LOADK    	6 -149	; "se_83"
+	657	[-]	CALL     	4 3 2
+	658	[-]	LOADBOOL 	5 0 0
+	659	[-]	CALL     	3 3 1
+	660	[-]	GETGLOBAL	3 -147	; comEffectWhiteOut
+	661	[-]	LOADK    	4 -37	; 120
+	662	[-]	CALL     	3 2 1
+	663	[-]	GETGLOBAL	3 -13	; wait
+	664	[-]	LOADK    	4 -37	; 120
+	665	[-]	CALL     	3 2 1
+	666	[-]	GETGLOBAL	3 -150	; cStopLoopSeWrap
+	667	[-]	CALL     	3 1 1
+	668	[-]	GETGLOBAL	3 -13	; wait
+	669	[-]	LOADK    	4 -17	; 1
+	670	[-]	CALL     	3 2 1
+	671	[-]	GETGLOBAL	3 -18	; comEffectFadeOut
+	672	[-]	LOADK    	4 -37	; 120
+	673	[-]	CALL     	3 2 1
+	674	[-]	MOVE     	3 2
+	675	[-]	CALL     	3 1 1
+	676	[-]	RETURN   	0 1
+constants (150) for 0x57fbe440:
+	1	"cStopBGMWrap"
+	2	"layerLoad"
+	3	"layerName"
+	4	"event"
+	5	"cGetFileName"
+	6	"eve_32_x"
+	7	"pose1"
+	8	""
+	9	"pose2"
+	10	"switchScreen"
+	11	0
+	12	5
+	13	"wait"
+	14	"comSectionStoryBegin"
+	15	"comDlgStorylineSkip"
+	16	true
+	17	1
+	18	"comEffectFadeOut"
+	19	30
+	20	"vms"
+	21	16760
+	22	"NONVOICE"
+	23	"\228\191\186\227\129\175\227\130\162\227\131\164\227\131\142\227\129\174\232\133\149\227\130\146\230\142\180\227\130\147\227\129\160\227\128\130"
+	24	"cLoadPlaySE"
+	25	"se"
+	26	"se_77"
+	27	"comEffectYellowIn"
+	28	60
+	29	16761
+	30	"\227\130\162\227\131\164\227\131\142\227\129\175\232\186\171\227\130\146\227\130\136\227\129\152\227\130\138\226\128\149\226\128\149_n\232\186\171\228\189\147\227\130\146\230\141\187\227\130\139\227\129\168\226\128\149\226\128\149"
+	31	"se_82"
+	32	"eve_32_b"
+	33	"cStopOneshotMusic"
+	34	"cPlayOneshotMusic"
+	35	"mus"
+	36	"mus_6"
+	37	120
+	38	"cPlayBGMWrap"
+	39	"bgm"
+	40	"bgm_9_x"
+	41	"eve_46_d"
+	42	"comEffectWhiteIn"
+	43	"eve_46_c"
+	44	"eve_46_b"
+	45	"eve_46_a"
+	46	16762
+	47	"\228\191\186\227\129\175\230\133\140\227\129\166\227\129\166\227\130\162\227\131\164\227\131\142\227\129\174\232\133\149\227\130\146\230\142\180\227\130\147\227\129\160\227\128\130"
+	48	16763
+	49	"NAO16050"
+	50	"\227\128\144\227\131\166\227\130\166\227\130\164\227\131\129\227\128\145\227\128\140\227\130\162\227\131\164\227\131\142\239\188\129\227\128\141"
+	51	16764
+	52	"\229\141\177\227\129\134\227\129\143\227\131\144\227\131\169\227\131\179\227\130\185\227\130\146\229\180\169\227\129\151\227\129\157\227\129\134\227\129\171\227\129\170\227\130\138\227\129\170\227\129\140\227\130\137\227\130\130\227\128\129\227\130\162\227\131\164\227\131\142\227\130\146\230\138\177\227\129\141\227\129\139\227\129\139\227\129\136\227\130\139\227\128\130"
+	53	"se_144"
+	54	16765
+	55	"NAO16060"
+	56	"\227\128\144\227\131\166\227\130\166\227\130\164\227\131\129\227\128\145\227\128\140\227\129\151\227\129\163\227\129\139\227\130\138\227\129\153\227\130\139\227\130\147\227\129\160\227\128\129\227\130\162\227\131\164\227\131\142\239\188\129\227\128\141"
+	57	16766
+	58	"AYA20130"
+	59	"\227\128\144\227\130\162\227\131\164\227\131\142\227\128\145\227\128\140\227\131\166\227\130\166\227\130\164\227\131\129\226\128\166\226\128\166\227\128\141"
+	60	16767
+	61	"\231\155\174\227\130\146\231\158\145\227\129\163\227\129\159\227\129\190\227\129\190\227\128\129\227\129\160\227\130\137\227\130\147\227\129\168\231\137\135\232\133\149\227\130\146\228\184\139\227\129\146\227\129\166\227\129\132\227\130\139\227\128\130"
+	62	16768
+	63	"\226\128\166\226\128\166\227\129\190\227\130\139\227\129\167\227\128\129\229\164\162\227\129\167\227\130\130\232\166\139\227\129\166\227\129\132\227\130\139\227\130\136\227\129\134\227\129\171\227\128\130"
+	64	16769
+	65	"\227\129\152\227\130\138\227\129\152\227\130\138\227\129\168\230\137\139\227\129\140\230\177\151\227\129\167\230\187\145\227\129\163\227\129\166\227\129\132\227\129\143\227\128\130"
+	66	"mus_43"
+	67	"comEffectBlackoutAndIn"
+	68	16770
+	69	"\228\184\139\227\129\139\227\130\137\229\144\185\227\129\141\228\184\138\227\129\146\227\130\139\233\162\168\227\129\174\227\129\155\227\129\132\227\129\167\227\131\155\227\130\179\227\131\170\227\129\140\231\155\174\227\129\171\229\133\165\227\130\138\227\128\129\230\128\157\227\130\143\227\129\154\228\191\186\227\129\175\231\155\174\227\130\146\231\180\176\227\130\129\227\129\159\227\128\130"
+	70	16771
+	71	"\227\129\190\227\129\159\227\129\151\227\129\166\227\130\130\227\130\162\227\131\164\227\131\142\227\129\174\232\186\171\228\189\147\227\129\140\233\162\168\227\129\171\231\133\189\227\130\137\227\130\140\227\128\129\230\160\161\232\136\142\227\129\171\229\143\169\227\129\141\227\129\164\227\129\145\227\130\137\227\130\140\227\130\139\227\128\130"
+	72	16772
+	73	"\227\130\162\227\131\164\227\131\142\227\129\175\232\139\166\227\129\151\227\129\146\227\129\171\231\156\137\227\130\146\229\175\132\227\129\155\227\130\139\227\128\130"
+	74	16773
+	75	"\227\128\144\227\130\162\227\131\164\227\131\142\227\128\145\227\128\140\226\128\166\226\128\166\226\128\166\226\128\166\227\128\141"
+	76	16774
+	77	"\227\129\160\227\129\140\227\128\129\231\155\174\227\130\146\232\166\154\227\129\190\227\129\153\230\167\152\229\173\144\227\129\140\227\129\170\227\129\132\227\128\130"
+	78	16775
+	79	"\227\129\157\227\129\151\227\129\166\227\129\190\227\129\159\227\128\129\229\144\141\229\137\141\227\130\146\226\128\149\226\128\149"
+	80	16776
+	81	"\228\189\149\229\186\166\227\130\130\227\128\129_n\229\144\141\229\137\141\227\130\146\227\128\129_n\229\145\188\227\129\182\227\128\130"
+	82	16777
+	83	"AYA20140"
+	84	16778
+	85	"\233\155\162\227\129\153\227\130\130\227\130\147\227\129\139\227\128\130"
+	86	"bg1"
+	87	"bg"
+	88	"bg_8_b_0"
+	89	16779
+	90	"AYA19910"
+	91	"\227\128\144\227\130\162\227\131\164\227\131\142\227\128\145\227\128\140\227\131\166\227\130\166\227\130\164\226\128\149\226\128\149\227\128\141"
+	92	16780
+	93	"\233\155\162\227\129\149\227\129\170\227\129\132\227\128\130"
+	94	"eve_33_b"
+	95	16781
+	96	"AYA19920"
+	97	"\227\128\144\227\130\162\227\131\164\227\131\142\227\128\145\227\128\140\227\131\166\227\130\166\226\128\166\226\128\166\227\130\164\227\131\129\226\128\166\226\128\166\227\128\141"
+	98	16782
+	99	"\231\181\182\229\175\190\227\129\171\227\128\129\228\189\149\227\129\140\227\129\130\227\130\141\227\129\134\227\129\168\233\155\162\227\129\153\227\130\130\227\129\174\227\129\139\227\128\130"
+	100	16783
+	101	"AYA19930"
+	102	"\227\128\144\227\130\162\227\131\164\227\131\142\227\128\145\227\128\140\227\131\166\227\130\166\227\130\164\227\131\129\226\128\149\226\128\149\227\128\141"
+	103	16784
+	104	"\228\187\138\227\129\147\227\129\157\226\128\149\226\128\149"
+	105	"bgm_17_x"
+	106	"cPlayLoopSeWrap"
+	107	"loop"
+	108	"loop_5"
+	109	16785
+	110	"\228\187\138\227\129\147\227\129\157\227\128\129\226\137\170\228\191\186\227\129\140\227\130\162\227\131\164\227\131\142\227\129\171\229\175\190\227\129\151\227\129\166\230\131\179\227\129\132\227\130\146\229\145\138\227\129\146\227\130\139\230\153\130\226\137\171\227\129\160\227\128\130"
+	111	16786
+	112	"\229\131\149\227\129\175\230\129\175\227\130\146\229\144\184\227\129\132\232\190\188\227\129\191\226\128\149\226\128\149"
+	113	"eve_42_x"
+	114	16788
+	115	"NAO16080"
+	116	"\227\128\144\227\131\166\227\130\166\227\130\164\227\131\129\227\128\145\227\128\140\227\130\162\227\131\164\227\131\142\227\129\174\228\186\139\227\129\140\229\165\189\227\129\141\227\129\160\227\128\130\232\170\176\227\130\136\227\130\138\227\130\130\227\128\141"
+	117	16789
+	118	"\227\130\162\227\131\164\227\131\142\227\129\171\229\145\138\231\153\189\227\129\151\227\129\159\227\128\130"
+	119	16790
+	120	"NAO15220"
+	121	"\227\128\144\227\131\166\227\130\166\227\130\164\227\131\129\227\128\145\227\128\140\229\189\169\233\135\142\226\128\166\226\128\166\227\129\149\227\130\147\227\129\163\239\188\129\227\128\141"
+	122	"mus_26"
+	123	"layerMoveAlpha"
+	124	50
+	125	16791
+	126	"\227\130\162\227\131\164\227\131\142\227\129\174\232\186\171\228\189\147\227\129\140\233\156\135\227\129\136\227\130\139\227\128\130\227\130\162\227\131\164\227\131\142\227\129\175\227\130\134\227\129\163\227\129\143\227\130\138\227\129\168\231\158\179\227\130\146\233\150\137\227\129\152\227\128\129\227\130\130\227\129\134\228\184\128\229\186\166\233\150\139\227\129\132\227\129\159\227\128\130"
+	127	16792
+	128	"AYA20150"
+	129	"\227\128\144\227\130\162\227\131\164\227\131\142\227\128\145\227\128\140\227\131\166\227\130\166\227\130\164\227\131\129\226\128\166\226\128\166\227\131\166\227\130\166\227\130\164\227\131\129\227\129\170\227\129\174\239\188\159 \227\129\157\227\129\147\227\129\171\227\129\132\227\130\139\227\129\174\227\129\175\226\128\149\226\128\149\227\128\141"
+	130	16793
+	131	"NAO16090"
+	132	"\227\128\144\227\131\166\227\130\166\227\130\164\227\131\129\227\128\145\227\128\140\227\129\157\227\129\134\227\129\160\227\130\136\227\128\129\227\130\162\227\131\164\227\131\142\227\128\141"
+	133	16794
+	134	"NAO16100"
+	135	"\227\128\144\227\131\166\227\130\166\227\130\164\227\131\129\227\128\145\227\128\140\230\136\187\227\130\141\227\129\134\227\128\130\229\144\145\227\129\147\227\129\134\229\129\180\227\129\184\227\128\130\227\128\142\227\131\149\227\130\167\227\131\179\227\130\185\227\129\174\229\144\145\227\129\147\227\129\134\229\129\180\227\128\143\227\129\184\227\128\141"
+	136	16795
+	137	"\227\130\162\227\131\164\227\131\142\227\129\174\230\137\139\227\129\171\227\128\129\229\138\155\227\129\140\230\136\187\227\129\163\227\129\166\230\157\165\227\130\139\227\128\130"
+	138	16796
+	139	"\227\130\162\227\131\164\227\131\142\227\129\175\227\130\134\227\129\163\227\129\143\227\130\138\227\129\168\226\128\149\226\128\149"
+	140	16797
+	141	"AYA20160"
+	142	"\227\128\144\227\130\162\227\131\164\227\131\142\227\128\145\227\128\140\226\128\149\226\128\149\227\129\134\227\130\147\227\128\141"
+	143	16798
+	144	"\227\129\168\227\129\166\227\130\130\227\130\134\227\129\163\227\129\143\227\130\138\227\129\168\233\160\183\227\129\132\227\129\159\227\128\130"
+	145	16799
+	146	"\228\191\186\227\129\175\227\130\162\227\131\164\227\131\142\227\129\174\230\137\139\227\130\146\227\129\151\227\129\163\227\129\139\227\130\138\227\129\168\230\143\161\227\130\138\227\129\151\227\130\129\227\130\139\227\129\168\227\128\129\230\184\190\232\186\171\227\129\174\229\138\155\227\130\146\230\140\175\227\130\138\231\181\158\227\129\163\227\129\166\227\128\129\227\130\162\227\131\164\227\131\142\227\130\146\226\137\170\227\129\147\227\129\161\227\130\137\229\129\180\226\137\171\227\129\184\227\129\168\229\188\149\227\129\141\228\184\138\227\129\146\227\129\159\227\128\130"
+	147	"comEffectWhiteOut"
+	148	160
+	149	"se_83"
+	150	"cStopLoopSeWrap"
+locals (0) for 0x57fbe440:
+upvalues (0) for 0x57fbe440:
+
+function <?:138,142> (9 instructions, 36 bytes at 0x57fc0be0)
+0 params, 5 slots, 0 upvalues, 0 locals, 5 constants, 0 functions
+	1	[-]	LOADK    	0 -1	; 25
+	2	[-]	GETGLOBAL	1 -2	; comSectionStoryEnd
+	3	[-]	GETGLOBAL	2 -3	; gameSave
+	4	[-]	GETTABLE 	2 2 -4	; "sceneId"
+	5	[-]	GETGLOBAL	3 -3	; gameSave
+	6	[-]	GETTABLE 	3 3 -5	; "sceneName"
+	7	[-]	MOVE     	4 0
+	8	[-]	CALL     	1 4 1
+	9	[-]	RETURN   	0 1
+constants (5) for 0x57fc0be0:
+	1	25
+	2	"comSectionStoryEnd"
+	3	"gameSave"
+	4	"sceneId"
+	5	"sceneName"
+locals (0) for 0x57fc0be0:
+upvalues (0) for 0x57fc0be0:
+
+function <?:405,482> (164 instructions, 656 bytes at 0x57fc0ca0)
+2 params, 8 slots, 0 upvalues, 0 locals, 66 constants, 1 function
+	1	[-]	CLOSURE  	2 0	; 0x57fc18b0
+	2	[-]	GETGLOBAL	3 -1	; cStopBGMWrap
+	3	[-]	CALL     	3 1 1
+	4	[-]	GETGLOBAL	3 -2	; layerLoad
+	5	[-]	GETGLOBAL	4 -3	; layerName
+	6	[-]	GETTABLE 	4 4 -4	; "event"
+	7	[-]	GETGLOBAL	5 -5	; cGetFileName
+	8	[-]	LOADK    	6 -4	; "event"
+	9	[-]	LOADK    	7 -6	; "eve_0_b"
+	10	[-]	CALL     	5 3 0
+	11	[-]	CALL     	3 0 1
+	12	[-]	GETGLOBAL	3 -2	; layerLoad
+	13	[-]	GETGLOBAL	4 -3	; layerName
+	14	[-]	GETTABLE 	4 4 -7	; "pose1"
+	15	[-]	LOADK    	5 -8	; ""
+	16	[-]	CALL     	3 3 1
+	17	[-]	GETGLOBAL	3 -2	; layerLoad
+	18	[-]	GETGLOBAL	4 -3	; layerName
+	19	[-]	GETTABLE 	4 4 -9	; "pose2"
+	20	[-]	LOADK    	5 -8	; ""
+	21	[-]	CALL     	3 3 1
+	22	[-]	GETGLOBAL	3 -10	; switchScreen
+	23	[-]	LOADK    	4 -11	; 0
+	24	[-]	LOADK    	5 -8	; ""
+	25	[-]	LOADK    	6 -12	; 5
+	26	[-]	CALL     	3 4 1
+	27	[-]	GETGLOBAL	3 -13	; wait
+	28	[-]	LOADK    	4 -12	; 5
+	29	[-]	CALL     	3 2 1
+	30	[-]	GETGLOBAL	3 -14	; comSectionStoryBegin
+	31	[-]	MOVE     	4 0
+	32	[-]	MOVE     	5 1
+	33	[-]	CALL     	3 3 1
+	34	[-]	GETGLOBAL	3 -15	; comDlgStorylineSkip
+	35	[-]	MOVE     	4 0
+	36	[-]	CALL     	3 2 2
+	37	[-]	EQ       	0 3 -16	; - true
+	38	[-]	JMP      	3	; to 42
+	39	[-]	MOVE     	3 2
+	40	[-]	CALL     	3 1 1
+	41	[-]	RETURN   	0 1
+	42	[-]	GETGLOBAL	3 -13	; wait
+	43	[-]	LOADK    	4 -17	; 1
+	44	[-]	CALL     	3 2 1
+	45	[-]	GETGLOBAL	3 -2	; layerLoad
+	46	[-]	GETGLOBAL	4 -3	; layerName
+	47	[-]	GETTABLE 	4 4 -18	; "bg1"
+	48	[-]	GETGLOBAL	5 -5	; cGetFileName
+	49	[-]	LOADK    	6 -19	; "bg"
+	50	[-]	LOADK    	7 -20	; "bg_7_b_0"
+	51	[-]	CALL     	5 3 0
+	52	[-]	CALL     	3 0 1
+	53	[-]	GETGLOBAL	3 -10	; switchScreen
+	54	[-]	LOADK    	4 -11	; 0
+	55	[-]	LOADK    	5 -8	; ""
+	56	[-]	LOADK    	6 -21	; 120
+	57	[-]	CALL     	3 4 1
+	58	[-]	GETGLOBAL	3 -2	; layerLoad
+	59	[-]	GETGLOBAL	4 -3	; layerName
+	60	[-]	GETTABLE 	4 4 -18	; "bg1"
+	61	[-]	GETGLOBAL	5 -5	; cGetFileName
+	62	[-]	LOADK    	6 -19	; "bg"
+	63	[-]	LOADK    	7 -22	; "bg_7_c_0"
+	64	[-]	CALL     	5 3 0
+	65	[-]	CALL     	3 0 1
+	66	[-]	GETGLOBAL	3 -10	; switchScreen
+	67	[-]	LOADK    	4 -11	; 0
+	68	[-]	LOADK    	5 -8	; ""
+	69	[-]	LOADK    	6 -21	; 120
+	70	[-]	CALL     	3 4 1
+	71	[-]	GETGLOBAL	3 -13	; wait
+	72	[-]	LOADK    	4 -23	; 60
+	73	[-]	CALL     	3 2 1
+	74	[-]	GETGLOBAL	3 -24	; vms
+	75	[-]	LOADK    	4 -25	; 16800
+	76	[-]	LOADK    	5 -26	; "NONVOICE"
+	77	[-]	LOADK    	6 -27	; "\230\151\165\227\129\175\230\151\162\227\129\171\232\144\189\227\129\161\227\128\129\229\177\139\228\184\138\227\129\140\232\146\188\231\153\189\227\129\143\230\159\147\227\129\190\227\129\163\227\129\166\227\129\132\227\129\159\227\128\130"
+	78	[-]	CALL     	3 4 1
+	79	[-]	GETGLOBAL	3 -24	; vms
+	80	[-]	LOADK    	4 -28	; 16801
+	81	[-]	LOADK    	5 -26	; "NONVOICE"
+	82	[-]	LOADK    	6 -29	; "\230\156\136\230\152\142\227\129\139\227\130\138\227\129\140\228\186\140\228\186\186\227\130\146\231\133\167\227\130\137\227\129\151\227\129\166\227\129\132\227\130\139\227\128\130"
+	83	[-]	CALL     	3 4 1
+	84	[-]	GETGLOBAL	3 -24	; vms
+	85	[-]	LOADK    	4 -30	; 16802
+	86	[-]	LOADK    	5 -31	; "AYA20170"
+	87	[-]	LOADK    	6 -32	; "\227\128\144\229\165\179\229\173\144\231\148\159\229\190\146\227\128\145\227\128\140\227\129\173\226\128\166\226\128\166\227\128\141"
+	88	[-]	CALL     	3 4 1
+	89	[-]	GETGLOBAL	3 -24	; vms
+	90	[-]	LOADK    	4 -33	; 16803
+	91	[-]	LOADK    	5 -34	; "NAO16110"
+	92	[-]	LOADK    	6 -35	; "\227\128\144\231\148\183\229\173\144\231\148\159\229\190\146\227\128\145\227\128\140\227\130\147\227\128\141"
+	93	[-]	CALL     	3 4 1
+	94	[-]	GETGLOBAL	3 -24	; vms
+	95	[-]	LOADK    	4 -36	; 16804
+	96	[-]	LOADK    	5 -37	; "AYA20180"
+	97	[-]	LOADK    	6 -38	; "\227\128\144\229\165\179\229\173\144\231\148\159\229\190\146\227\128\145\227\128\140\232\170\176\227\130\130\232\166\139\227\129\159\227\129\147\227\129\168\227\129\174\227\129\170\227\129\132\229\164\149\231\132\188\227\129\145\227\129\163\227\129\166\227\128\129\228\189\149\227\129\160\227\129\163\227\129\159\227\129\174\227\129\139\227\129\170\239\188\159\227\128\141"
+	98	[-]	CALL     	3 4 1
+	99	[-]	GETGLOBAL	3 -24	; vms
+	100	[-]	LOADK    	4 -39	; 16805
+	101	[-]	LOADK    	5 -40	; "NAO16120"
+	102	[-]	LOADK    	6 -41	; "\227\128\144\231\148\183\229\173\144\231\148\159\229\190\146\227\128\145\227\128\140\227\130\147\227\131\188\227\128\141"
+	103	[-]	CALL     	3 4 1
+	104	[-]	GETGLOBAL	3 -24	; vms
+	105	[-]	LOADK    	4 -42	; 16806
+	106	[-]	LOADK    	5 -26	; "NONVOICE"
+	107	[-]	LOADK    	6 -43	; "\228\191\186\227\129\175\232\128\131\227\129\136\227\130\139\227\128\130"
+	108	[-]	CALL     	3 4 1
+	109	[-]	GETGLOBAL	3 -24	; vms
+	110	[-]	LOADK    	4 -44	; 16807
+	111	[-]	LOADK    	5 -26	; "NONVOICE"
+	112	[-]	LOADK    	6 -45	; "\229\189\188\229\165\179\227\129\174\232\168\128\232\145\137\227\129\174\230\132\143\229\145\179\227\130\146\227\128\130"
+	113	[-]	CALL     	3 4 1
+	114	[-]	GETGLOBAL	3 -24	; vms
+	115	[-]	LOADK    	4 -46	; 16808
+	116	[-]	LOADK    	5 -47	; "AYA20190"
+	117	[-]	LOADK    	6 -48	; "\227\128\144\229\165\179\229\173\144\231\148\159\229\190\146\227\128\145\227\128\140\227\129\173\227\128\141"
+	118	[-]	CALL     	3 4 1
+	119	[-]	GETGLOBAL	3 -24	; vms
+	120	[-]	LOADK    	4 -49	; 16809
+	121	[-]	LOADK    	5 -50	; "NAO16130"
+	122	[-]	LOADK    	6 -35	; "\227\128\144\231\148\183\229\173\144\231\148\159\229\190\146\227\128\145\227\128\140\227\130\147\227\128\141"
+	123	[-]	CALL     	3 4 1
+	124	[-]	GETGLOBAL	3 -24	; vms
+	125	[-]	LOADK    	4 -51	; 16810
+	126	[-]	LOADK    	5 -52	; "AYA20200"
+	127	[-]	LOADK    	6 -53	; "\227\128\144\229\165\179\229\173\144\231\148\159\229\190\146\227\128\145\227\128\140\227\129\161\227\130\135\227\129\163\227\129\168\226\128\166\226\128\166\231\156\160\227\129\143\227\129\170\227\129\163\227\129\166\227\129\141\227\129\159\227\128\130\227\129\167\227\130\130\227\129\173\227\128\129\227\129\190\227\129\160\227\129\173\227\128\129\229\174\182\227\129\171\229\184\176\227\130\138\227\129\159\227\129\143\227\129\170\227\129\132\227\128\141"
+	128	[-]	CALL     	3 4 1
+	129	[-]	GETGLOBAL	3 -24	; vms
+	130	[-]	LOADK    	4 -54	; 16811
+	131	[-]	LOADK    	5 -55	; "NAO16140"
+	132	[-]	LOADK    	6 -56	; "\227\128\144\231\148\183\229\173\144\231\148\159\229\190\146\227\128\145\227\128\140\229\176\145\227\129\151\227\128\129\228\188\145\227\130\147\227\129\167\227\129\132\227\130\140\227\129\176\227\129\132\227\129\132\227\128\130\229\164\167\228\184\136\229\164\171\227\128\129\232\166\139\227\129\166\227\129\132\227\129\166\227\129\130\227\129\146\227\130\139\227\129\139\227\130\137\227\128\141"
+	133	[-]	CALL     	3 4 1
+	134	[-]	GETGLOBAL	3 -24	; vms
+	135	[-]	LOADK    	4 -57	; 16812
+	136	[-]	LOADK    	5 -58	; "AYA20210"
+	137	[-]	LOADK    	6 -59	; "\227\128\144\229\165\179\229\173\144\231\148\159\229\190\146\227\128\145\227\128\140\227\129\134\227\130\147\227\128\141"
+	138	[-]	CALL     	3 4 1
+	139	[-]	GETGLOBAL	3 -24	; vms
+	140	[-]	LOADK    	4 -60	; 16813
+	141	[-]	LOADK    	5 -26	; "NONVOICE"
+	142	[-]	LOADK    	6 -61	; "\229\189\188\229\165\179\227\129\175\227\129\157\227\129\134\227\129\132\227\129\134\227\129\168\231\155\174\227\130\146\227\129\164\227\130\128\227\129\163\227\129\159\227\128\130"
+	143	[-]	CALL     	3 4 1
+	144	[-]	GETGLOBAL	3 -24	; vms
+	145	[-]	LOADK    	4 -62	; 16814
+	146	[-]	LOADK    	5 -26	; "NONVOICE"
+	147	[-]	LOADK    	6 -63	; "\227\129\151\227\129\176\227\130\137\227\129\143\231\181\140\227\129\164\227\129\168\227\128\129\227\129\153\227\130\132\227\129\153\227\130\132\227\129\168\229\175\157\230\129\175\227\130\146\227\129\159\227\129\166\229\167\139\227\130\129\227\130\139\227\128\130"
+	148	[-]	CALL     	3 4 1
+	149	[-]	GETGLOBAL	3 -24	; vms
+	150	[-]	LOADK    	4 -64	; 16815
+	151	[-]	LOADK    	5 -26	; "NONVOICE"
+	152	[-]	LOADK    	6 -65	; "\228\191\186\227\129\175\229\189\188\229\165\179\227\129\174\229\175\157\233\161\148\227\130\146\231\156\186\227\130\129\227\129\170\227\129\140\227\130\137\227\128\129\230\156\157\230\151\165\227\129\140\230\152\135\227\130\139\227\129\174\227\130\146\229\190\133\227\129\163\227\129\166\227\129\132\227\129\159\227\128\130"
+	153	[-]	CALL     	3 4 1
+	154	[-]	GETGLOBAL	3 -1	; cStopBGMWrap
+	155	[-]	CALL     	3 1 1
+	156	[-]	GETGLOBAL	3 -13	; wait
+	157	[-]	LOADK    	4 -17	; 1
+	158	[-]	CALL     	3 2 1
+	159	[-]	GETGLOBAL	3 -66	; comEffectFadeOut
+	160	[-]	LOADK    	4 -21	; 120
+	161	[-]	CALL     	3 2 1
+	162	[-]	MOVE     	3 2
+	163	[-]	CALL     	3 1 1
+	164	[-]	RETURN   	0 1
+constants (66) for 0x57fc0ca0:
+	1	"cStopBGMWrap"
+	2	"layerLoad"
+	3	"layerName"
+	4	"event"
+	5	"cGetFileName"
+	6	"eve_0_b"
+	7	"pose1"
+	8	""
+	9	"pose2"
+	10	"switchScreen"
+	11	0
+	12	5
+	13	"wait"
+	14	"comSectionStoryBegin"
+	15	"comDlgStorylineSkip"
+	16	true
+	17	1
+	18	"bg1"
+	19	"bg"
+	20	"bg_7_b_0"
+	21	120
+	22	"bg_7_c_0"
+	23	60
+	24	"vms"
+	25	16800
+	26	"NONVOICE"
+	27	"\230\151\165\227\129\175\230\151\162\227\129\171\232\144\189\227\129\161\227\128\129\229\177\139\228\184\138\227\129\140\232\146\188\231\153\189\227\129\143\230\159\147\227\129\190\227\129\163\227\129\166\227\129\132\227\129\159\227\128\130"
+	28	16801
+	29	"\230\156\136\230\152\142\227\129\139\227\130\138\227\129\140\228\186\140\228\186\186\227\130\146\231\133\167\227\130\137\227\129\151\227\129\166\227\129\132\227\130\139\227\128\130"
+	30	16802
+	31	"AYA20170"
+	32	"\227\128\144\229\165\179\229\173\144\231\148\159\229\190\146\227\128\145\227\128\140\227\129\173\226\128\166\226\128\166\227\128\141"
+	33	16803
+	34	"NAO16110"
+	35	"\227\128\144\231\148\183\229\173\144\231\148\159\229\190\146\227\128\145\227\128\140\227\130\147\227\128\141"
+	36	16804
+	37	"AYA20180"
+	38	"\227\128\144\229\165\179\229\173\144\231\148\159\229\190\146\227\128\145\227\128\140\232\170\176\227\130\130\232\166\139\227\129\159\227\129\147\227\129\168\227\129\174\227\129\170\227\129\132\229\164\149\231\132\188\227\129\145\227\129\163\227\129\166\227\128\129\228\189\149\227\129\160\227\129\163\227\129\159\227\129\174\227\129\139\227\129\170\239\188\159\227\128\141"
+	39	16805
+	40	"NAO16120"
+	41	"\227\128\144\231\148\183\229\173\144\231\148\159\229\190\146\227\128\145\227\128\140\227\130\147\227\131\188\227\128\141"
+	42	16806
+	43	"\228\191\186\227\129\175\232\128\131\227\129\136\227\130\139\227\128\130"
+	44	16807
+	45	"\229\189\188\229\165\179\227\129\174\232\168\128\232\145\137\227\129\174\230\132\143\229\145\179\227\130\146\227\128\130"
+	46	16808
+	47	"AYA20190"
+	48	"\227\128\144\229\165\179\229\173\144\231\148\159\229\190\146\227\128\145\227\128\140\227\129\173\227\128\141"
+	49	16809
+	50	"NAO16130"
+	51	16810
+	52	"AYA20200"
+	53	"\227\128\144\229\165\179\229\173\144\231\148\159\229\190\146\227\128\145\227\128\140\227\129\161\227\130\135\227\129\163\227\129\168\226\128\166\226\128\166\231\156\160\227\129\143\227\129\170\227\129\163\227\129\166\227\129\141\227\129\159\227\128\130\227\129\167\227\130\130\227\129\173\227\128\129\227\129\190\227\129\160\227\129\173\227\128\129\229\174\182\227\129\171\229\184\176\227\130\138\227\129\159\227\129\143\227\129\170\227\129\132\227\128\141"
+	54	16811
+	55	"NAO16140"
+	56	"\227\128\144\231\148\183\229\173\144\231\148\159\229\190\146\227\128\145\227\128\140\229\176\145\227\129\151\227\128\129\228\188\145\227\130\147\227\129\167\227\129\132\227\130\140\227\129\176\227\129\132\227\129\132\227\128\130\229\164\167\228\184\136\229\164\171\227\128\129\232\166\139\227\129\166\227\129\132\227\129\166\227\129\130\227\129\146\227\130\139\227\129\139\227\130\137\227\128\141"
+	57	16812
+	58	"AYA20210"
+	59	"\227\128\144\229\165\179\229\173\144\231\148\159\229\190\146\227\128\145\227\128\140\227\129\134\227\130\147\227\128\141"
+	60	16813
+	61	"\229\189\188\229\165\179\227\129\175\227\129\157\227\129\134\227\129\132\227\129\134\227\129\168\231\155\174\227\130\146\227\129\164\227\130\128\227\129\163\227\129\159\227\128\130"
+	62	16814
+	63	"\227\129\151\227\129\176\227\130\137\227\129\143\231\181\140\227\129\164\227\129\168\227\128\129\227\129\153\227\130\132\227\129\153\227\130\132\227\129\168\229\175\157\230\129\175\227\130\146\227\129\159\227\129\166\229\167\139\227\130\129\227\130\139\227\128\130"
+	64	16815
+	65	"\228\191\186\227\129\175\229\189\188\229\165\179\227\129\174\229\175\157\233\161\148\227\130\146\231\156\186\227\130\129\227\129\170\227\129\140\227\130\137\227\128\129\230\156\157\230\151\165\227\129\140\230\152\135\227\130\139\227\129\174\227\130\146\229\190\133\227\129\163\227\129\166\227\129\132\227\129\159\227\128\130"
+	66	"comEffectFadeOut"
+locals (0) for 0x57fc0ca0:
+upvalues (0) for 0x57fc0ca0:
+
+function <?:407,411> (9 instructions, 36 bytes at 0x57fc18b0)
+0 params, 5 slots, 0 upvalues, 0 locals, 5 constants, 0 functions
+	1	[-]	LOADK    	0 -1	; 0
+	2	[-]	GETGLOBAL	1 -2	; comSectionStoryEnd
+	3	[-]	GETGLOBAL	2 -3	; gameSave
+	4	[-]	GETTABLE 	2 2 -4	; "sceneId"
+	5	[-]	GETGLOBAL	3 -3	; gameSave
+	6	[-]	GETTABLE 	3 3 -5	; "sceneName"
+	7	[-]	MOVE     	4 0
+	8	[-]	CALL     	1 4 1
+	9	[-]	RETURN   	0 1
+constants (5) for 0x57fc18b0:
+	1	0
+	2	"comSectionStoryEnd"
+	3	"gameSave"
+	4	"sceneId"
+	5	"sceneName"
+locals (0) for 0x57fc18b0:
+upvalues (0) for 0x57fc18b0:
+
+function <?:488,531> (110 instructions, 440 bytes at 0x57fc1970)
+2 params, 9 slots, 0 upvalues, 0 locals, 36 constants, 1 function
+	1	[-]	CLOSURE  	2 0	; 0x57fc1ed0
+	2	[-]	GETGLOBAL	3 -1	; comSectionNonLabelBegin
+	3	[-]	MOVE     	4 0
+	4	[-]	MOVE     	5 1
+	5	[-]	CALL     	3 3 1
+	6	[-]	GETGLOBAL	3 -2	; cPlayOneshotMusic
+	7	[-]	GETGLOBAL	4 -3	; cGetFileName
+	8	[-]	LOADK    	5 -4	; "mus"
+	9	[-]	LOADK    	6 -5	; "mus_7"
+	10	[-]	CALL     	4 3 0
+	11	[-]	CALL     	3 0 1
+	12	[-]	GETGLOBAL	3 -6	; layerLoad
+	13	[-]	GETGLOBAL	4 -7	; layerName
+	14	[-]	GETTABLE 	4 4 -8	; "pose1"
+	15	[-]	GETGLOBAL	5 -3	; cGetFileName
+	16	[-]	LOADK    	6 -9	; "cutin"
+	17	[-]	LOADK    	7 -10	; "cut_e_s8"
+	18	[-]	CALL     	5 3 0
+	19	[-]	CALL     	3 0 1
+	20	[-]	GETGLOBAL	3 -6	; layerLoad
+	21	[-]	GETGLOBAL	4 -7	; layerName
+	22	[-]	GETTABLE 	4 4 -11	; "scene"
+	23	[-]	LOADK    	5 -12	; ""
+	24	[-]	CALL     	3 3 1
+	25	[-]	GETGLOBAL	3 -6	; layerLoad
+	26	[-]	GETGLOBAL	4 -7	; layerName
+	27	[-]	GETTABLE 	4 4 -13	; "hour1"
+	28	[-]	LOADK    	5 -12	; ""
+	29	[-]	CALL     	3 3 1
+	30	[-]	GETGLOBAL	3 -14	; layerAlpha
+	31	[-]	GETGLOBAL	4 -7	; layerName
+	32	[-]	GETTABLE 	4 4 -8	; "pose1"
+	33	[-]	LOADK    	5 -15	; 0
+	34	[-]	CALL     	3 3 1
+	35	[-]	GETGLOBAL	3 -16	; layerPosition
+	36	[-]	GETGLOBAL	4 -7	; layerName
+	37	[-]	GETTABLE 	4 4 -8	; "pose1"
+	38	[-]	LOADK    	5 -17	; 270
+	39	[-]	LOADK    	6 -18	; 10
+	40	[-]	LOADK    	7 -19	; 60
+	41	[-]	CALL     	3 5 1
+	42	[-]	GETGLOBAL	3 -20	; layerRotate
+	43	[-]	GETGLOBAL	4 -7	; layerName
+	44	[-]	GETTABLE 	4 4 -8	; "pose1"
+	45	[-]	LOADK    	5 -18	; 10
+	46	[-]	LOADK    	6 -18	; 10
+	47	[-]	LOADK    	7 -18	; 10
+	48	[-]	CALL     	3 5 1
+	49	[-]	GETGLOBAL	3 -21	; layerMoveAlpha
+	50	[-]	GETGLOBAL	4 -7	; layerName
+	51	[-]	GETTABLE 	4 4 -8	; "pose1"
+	52	[-]	LOADK    	5 -22	; 100
+	53	[-]	LOADK    	6 -23	; 120
+	54	[-]	CALL     	3 4 1
+	55	[-]	GETGLOBAL	3 -24	; layerMoveRotate
+	56	[-]	GETGLOBAL	4 -7	; layerName
+	57	[-]	GETTABLE 	4 4 -8	; "pose1"
+	58	[-]	LOADK    	5 -15	; 0
+	59	[-]	LOADK    	6 -15	; 0
+	60	[-]	LOADK    	7 -15	; 0
+	61	[-]	LOADK    	8 -25	; 30
+	62	[-]	CALL     	3 6 1
+	63	[-]	GETGLOBAL	3 -26	; wait
+	64	[-]	LOADK    	4 -23	; 120
+	65	[-]	CALL     	3 2 1
+	66	[-]	GETGLOBAL	3 -26	; wait
+	67	[-]	LOADK    	4 -23	; 120
+	68	[-]	CALL     	3 2 1
+	69	[-]	GETGLOBAL	3 -27	; vms
+	70	[-]	LOADK    	4 -28	; 17038
+	71	[-]	LOADK    	5 -29	; "NONVOICE"
+	72	[-]	LOADK    	6 -30	; "\227\130\185\227\131\136\227\131\188\227\131\170\227\131\188\227\131\162\227\131\188\227\131\137\239\188\154\227\130\187\227\130\175\227\130\183\227\131\167\227\131\179\239\188\152\227\129\140\229\174\140\231\181\144\227\129\151\227\129\190\227\129\151\227\129\159\227\128\130"
+	73	[-]	CALL     	3 4 1
+	74	[-]	GETGLOBAL	3 -31	; cLoadPlaySE
+	75	[-]	GETGLOBAL	4 -3	; cGetFileName
+	76	[-]	LOADK    	5 -32	; "se"
+	77	[-]	LOADK    	6 -33	; "se_28"
+	78	[-]	CALL     	4 3 2
+	79	[-]	LOADBOOL 	5 0 0
+	80	[-]	CALL     	3 3 1
+	81	[-]	GETGLOBAL	3 -34	; layerMoveScale
+	82	[-]	GETGLOBAL	4 -7	; layerName
+	83	[-]	GETTABLE 	4 4 -8	; "pose1"
+	84	[-]	LOADK    	5 -22	; 100
+	85	[-]	LOADK    	6 -15	; 0
+	86	[-]	LOADK    	7 -19	; 60
+	87	[-]	CALL     	3 5 1
+	88	[-]	GETGLOBAL	3 -21	; layerMoveAlpha
+	89	[-]	GETGLOBAL	4 -7	; layerName
+	90	[-]	GETTABLE 	4 4 -8	; "pose1"
+	91	[-]	LOADK    	5 -35	; 4278190335
+	92	[-]	LOADK    	6 -19	; 60
+	93	[-]	CALL     	3 4 1
+	94	[-]	GETGLOBAL	3 -24	; layerMoveRotate
+	95	[-]	GETGLOBAL	4 -7	; layerName
+	96	[-]	GETTABLE 	4 4 -8	; "pose1"
+	97	[-]	LOADK    	5 -15	; 0
+	98	[-]	LOADK    	6 -15	; 0
+	99	[-]	LOADK    	7 -22	; 100
+	100	[-]	LOADK    	8 -19	; 60
+	101	[-]	CALL     	3 6 1
+	102	[-]	GETGLOBAL	3 -26	; wait
+	103	[-]	LOADK    	4 -19	; 60
+	104	[-]	CALL     	3 2 1
+	105	[-]	GETGLOBAL	3 -36	; comEffectFadeOut
+	106	[-]	LOADK    	4 -19	; 60
+	107	[-]	CALL     	3 2 1
+	108	[-]	MOVE     	3 2
+	109	[-]	CALL     	3 1 1
+	110	[-]	RETURN   	0 1
+constants (36) for 0x57fc1970:
+	1	"comSectionNonLabelBegin"
+	2	"cPlayOneshotMusic"
+	3	"cGetFileName"
+	4	"mus"
+	5	"mus_7"
+	6	"layerLoad"
+	7	"layerName"
+	8	"pose1"
+	9	"cutin"
+	10	"cut_e_s8"
+	11	"scene"
+	12	""
+	13	"hour1"
+	14	"layerAlpha"
+	15	0
+	16	"layerPosition"
+	17	270
+	18	10
+	19	60
+	20	"layerRotate"
+	21	"layerMoveAlpha"
+	22	100
+	23	120
+	24	"layerMoveRotate"
+	25	30
+	26	"wait"
+	27	"vms"
+	28	17038
+	29	"NONVOICE"
+	30	"\227\130\185\227\131\136\227\131\188\227\131\170\227\131\188\227\131\162\227\131\188\227\131\137\239\188\154\227\130\187\227\130\175\227\130\183\227\131\167\227\131\179\239\188\152\227\129\140\229\174\140\231\181\144\227\129\151\227\129\190\227\129\151\227\129\159\227\128\130"
+	31	"cLoadPlaySE"
+	32	"se"
+	33	"se_28"
+	34	"layerMoveScale"
+	35	4278190335
+	36	"comEffectFadeOut"
+locals (0) for 0x57fc1970:
+upvalues (0) for 0x57fc1970:
+
+function <?:490,493> (3 instructions, 12 bytes at 0x57fc1ed0)
+0 params, 2 slots, 0 upvalues, 0 locals, 1 constant, 0 functions
+	1	[-]	GETGLOBAL	0 -1	; comSectionComplete
+	2	[-]	CALL     	0 1 1
+	3	[-]	RETURN   	0 1
+constants (1) for 0x57fc1ed0:
+	1	"comSectionComplete"
+locals (0) for 0x57fc1ed0:
+upvalues (0) for 0x57fc1ed0:
+
+function <?:536,563> (72 instructions, 288 bytes at 0x57fc1f70)
+0 params, 5 slots, 5 upvalues, 0 locals, 24 constants, 0 functions
+	1	[-]	GETGLOBAL	0 -1	; gameSave
+	2	[-]	SETTABLE 	0 -2 -3	; "sectionName" "\239\188\152\239\188\154\239\188\179\239\189\148\239\189\143\239\189\146\239\189\153"
+	3	[-]	LOADK    	0 -4	; 0
+	4	[-]	EQ       	0 0 -4	; - 0
+	5	[-]	JMP      	58	; to 64
+	6	[-]	GETGLOBAL	1 -5	; doScriptScene
+	7	[-]	EQ       	0 1 -6	; - "end"
+	8	[-]	JMP      	2	; to 11
+	9	[-]	LOADK    	0 -7	; 1
+	10	[-]	JMP      	49	; to 60
+	11	[-]	GETGLOBAL	1 -5	; doScriptScene
+	12	[-]	EQ       	0 1 -8	; - "s8s_10"
+	13	[-]	JMP      	7	; to 21
+	14	[-]	GETUPVAL 	1 0	; -
+	15	[-]	GETGLOBAL	2 -5	; doScriptScene
+	16	[-]	LOADK    	3 -9	; "\229\131\149\227\129\174\232\168\128\232\145\137"
+	17	[-]	CALL     	1 3 1
+	18	[-]	LOADK    	1 -10	; "s8s_30"
+	19	[-]	SETGLOBAL	1 -5	; doScriptScene
+	20	[-]	JMP      	39	; to 60
+	21	[-]	GETGLOBAL	1 -5	; doScriptScene
+	22	[-]	EQ       	0 1 -10	; - "s8s_30"
+	23	[-]	JMP      	7	; to 31
+	24	[-]	GETUPVAL 	1 1	; -
+	25	[-]	GETGLOBAL	2 -5	; doScriptScene
+	26	[-]	LOADK    	3 -11	; "\227\130\187\227\130\175\227\130\183\227\131\167\227\131\179\239\188\152\239\188\154\227\131\166\227\130\166\227\130\164\227\131\129\227\128\129\231\155\180\229\147\137"
+	27	[-]	CALL     	1 3 1
+	28	[-]	LOADK    	1 -12	; "s8s_40"
+	29	[-]	SETGLOBAL	1 -5	; doScriptScene
+	30	[-]	JMP      	29	; to 60
+	31	[-]	GETGLOBAL	1 -5	; doScriptScene
+	32	[-]	EQ       	0 1 -12	; - "s8s_40"
+	33	[-]	JMP      	7	; to 41
+	34	[-]	GETUPVAL 	1 2	; -
+	35	[-]	GETGLOBAL	2 -5	; doScriptScene
+	36	[-]	LOADK    	3 -13	; "\227\131\149\227\130\167\227\131\179\227\130\185\227\129\174\229\144\145\227\129\147\227\129\134\229\129\180"
+	37	[-]	CALL     	1 3 1
+	38	[-]	LOADK    	1 -14	; "s8s_50"
+	39	[-]	SETGLOBAL	1 -5	; doScriptScene
+	40	[-]	JMP      	19	; to 60
+	41	[-]	GETGLOBAL	1 -5	; doScriptScene
+	42	[-]	EQ       	0 1 -14	; - "s8s_50"
+	43	[-]	JMP      	7	; to 51
+	44	[-]	GETUPVAL 	1 3	; -
+	45	[-]	GETGLOBAL	2 -5	; doScriptScene
+	46	[-]	LOADK    	3 -15	; "\232\170\176\227\130\130\232\166\139\227\129\159\227\129\147\227\129\168\227\129\174\227\129\170\227\129\132\229\164\149\231\132\188\227\129\145"
+	47	[-]	CALL     	1 3 1
+	48	[-]	LOADK    	1 -16	; "s8s_comp"
+	49	[-]	SETGLOBAL	1 -5	; doScriptScene
+	50	[-]	JMP      	9	; to 60
+	51	[-]	GETGLOBAL	1 -5	; doScriptScene
+	52	[-]	EQ       	0 1 -16	; - "s8s_comp"
+	53	[-]	JMP      	6	; to 60
+	54	[-]	GETUPVAL 	1 4	; -
+	55	[-]	GETGLOBAL	2 -5	; doScriptScene
+	56	[-]	LOADK    	3 -17	; "\227\130\187\227\130\175\227\130\183\227\131\167\227\131\179\239\188\152\229\174\140\228\186\134"
+	57	[-]	CALL     	1 3 1
+	58	[-]	LOADK    	1 -6	; "end"
+	59	[-]	SETGLOBAL	1 -5	; doScriptScene
+	60	[-]	GETGLOBAL	1 -18	; wait
+	61	[-]	LOADK    	2 -19	; 5
+	62	[-]	CALL     	1 2 1
+	63	[-]	JMP      	-60	; to 4
+	64	[-]	GETGLOBAL	1 -20	; run
+	65	[-]	GETGLOBAL	2 -21	; cGetFileName
+	66	[-]	LOADK    	3 -22	; "script"
+	67	[-]	LOADK    	4 -23	; "snr_mainmenu"
+	68	[-]	CALL     	2 3 0
+	69	[-]	CALL     	1 0 1
+	70	[-]	GETGLOBAL	1 -24	; quit
+	71	[-]	CALL     	1 1 1
+	72	[-]	RETURN   	0 1
+constants (24) for 0x57fc1f70:
+	1	"gameSave"
+	2	"sectionName"
+	3	"\239\188\152\239\188\154\239\188\179\239\189\148\239\189\143\239\189\146\239\189\153"
+	4	0
+	5	"doScriptScene"
+	6	"end"
+	7	1
+	8	"s8s_10"
+	9	"\229\131\149\227\129\174\232\168\128\232\145\137"
+	10	"s8s_30"
+	11	"\227\130\187\227\130\175\227\130\183\227\131\167\227\131\179\239\188\152\239\188\154\227\131\166\227\130\166\227\130\164\227\131\129\227\128\129\231\155\180\229\147\137"
+	12	"s8s_40"
+	13	"\227\131\149\227\130\167\227\131\179\227\130\185\227\129\174\229\144\145\227\129\147\227\129\134\229\129\180"
+	14	"s8s_50"
+	15	"\232\170\176\227\130\130\232\166\139\227\129\159\227\129\147\227\129\168\227\129\174\227\129\170\227\129\132\229\164\149\231\132\188\227\129\145"
+	16	"s8s_comp"
+	17	"\227\130\187\227\130\175\227\130\183\227\131\167\227\131\179\239\188\152\229\174\140\228\186\134"
+	18	"wait"
+	19	5
+	20	"run"
+	21	"cGetFileName"
+	22	"script"
+	23	"snr_mainmenu"
+	24	"quit"
+locals (0) for 0x57fc1f70:
+upvalues (0) for 0x57fc1f70:

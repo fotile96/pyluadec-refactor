@@ -1,0 +1,892 @@
+
+main <?:0,0> (99 instructions, 396 bytes at 0x56d41010)
+0+ params, 24 slots, 0 upvalues, 0 locals, 59 constants, 4 functions
+	1	[-]	NEWTABLE 	0 0 4
+	2	[-]	NEWTABLE 	1 0 4
+	3	[-]	SETTABLE 	1 -2 -3	; "bg" 0
+	4	[-]	SETTABLE 	1 -4 -5	; "music_select" 50
+	5	[-]	SETTABLE 	1 -6 -7	; "music_off" 51
+	6	[-]	SETTABLE 	1 -8 -9	; "music_on" 52
+	7	[-]	SETTABLE 	0 -1 1	; "layerName" -
+	8	[-]	NEWTABLE 	1 19 0
+	9	[-]	LOADK    	2 -11	; "music_01_a"
+	10	[-]	LOADK    	3 -12	; "music_02_a"
+	11	[-]	LOADK    	4 -13	; "music_03_a"
+	12	[-]	LOADK    	5 -14	; "music_04_a"
+	13	[-]	LOADK    	6 -15	; "music_05_a"
+	14	[-]	LOADK    	7 -16	; "music_06_a"
+	15	[-]	LOADK    	8 -17	; "music_07_a"
+	16	[-]	LOADK    	9 -18	; "music_08_a"
+	17	[-]	LOADK    	10 -19	; "music_09_a"
+	18	[-]	LOADK    	11 -20	; "music_10_a"
+	19	[-]	LOADK    	12 -21	; "music_11_a"
+	20	[-]	LOADK    	13 -22	; "music_12_a"
+	21	[-]	LOADK    	14 -23	; "music_13_a"
+	22	[-]	LOADK    	15 -24	; "music_14_a"
+	23	[-]	LOADK    	16 -25	; "music_15_a"
+	24	[-]	LOADK    	17 -26	; "music_16_a"
+	25	[-]	LOADK    	18 -27	; "music_17_a"
+	26	[-]	LOADK    	19 -28	; "music_18_a"
+	27	[-]	LOADK    	20 -29	; "music_19_a"
+	28	[-]	LOADK    	21 -30	; "music_20_a"
+	29	[-]	LOADK    	22 -31	; "music_21_a"
+	30	[-]	LOADK    	23 -32	; "music_22_a"
+	31	[-]	SETLIST  	1 22 1	; 1
+	32	[-]	SETTABLE 	0 -10 1	; "musicTitle" -
+	33	[-]	NEWTABLE 	1 0 19
+	34	[-]	SETTABLE 	1 -11 -34	; "music_01_a" 1
+	35	[-]	SETTABLE 	1 -12 -3	; "music_02_a" 0
+	36	[-]	SETTABLE 	1 -13 -3	; "music_03_a" 0
+	37	[-]	SETTABLE 	1 -14 -3	; "music_04_a" 0
+	38	[-]	SETTABLE 	1 -15 -3	; "music_05_a" 0
+	39	[-]	SETTABLE 	1 -16 -3	; "music_06_a" 0
+	40	[-]	SETTABLE 	1 -17 -3	; "music_07_a" 0
+	41	[-]	SETTABLE 	1 -18 -3	; "music_08_a" 0
+	42	[-]	SETTABLE 	1 -19 -3	; "music_09_a" 0
+	43	[-]	SETTABLE 	1 -20 -3	; "music_10_a" 0
+	44	[-]	SETTABLE 	1 -21 -3	; "music_11_a" 0
+	45	[-]	SETTABLE 	1 -22 -3	; "music_12_a" 0
+	46	[-]	SETTABLE 	1 -23 -3	; "music_13_a" 0
+	47	[-]	SETTABLE 	1 -24 -3	; "music_14_a" 0
+	48	[-]	SETTABLE 	1 -25 -3	; "music_15_a" 0
+	49	[-]	SETTABLE 	1 -26 -3	; "music_16_a" 0
+	50	[-]	SETTABLE 	1 -27 -3	; "music_17_a" 0
+	51	[-]	SETTABLE 	1 -28 -3	; "music_18_a" 0
+	52	[-]	SETTABLE 	1 -29 -3	; "music_19_a" 0
+	53	[-]	SETTABLE 	1 -30 -3	; "music_20_a" 0
+	54	[-]	SETTABLE 	1 -31 -3	; "music_21_a" 0
+	55	[-]	SETTABLE 	1 -32 -3	; "music_22_a" 0
+	56	[-]	SETTABLE 	0 -33 1	; "selectFlag" -
+	57	[-]	NEWTABLE 	1 0 19
+	58	[-]	SETTABLE 	1 -11 -36	; "music_01_a" "bgm_1_x"
+	59	[-]	SETTABLE 	1 -12 -37	; "music_02_a" "bgm_2_x"
+	60	[-]	SETTABLE 	1 -13 -38	; "music_03_a" "bgm_3_x"
+	61	[-]	SETTABLE 	1 -14 -39	; "music_04_a" "bgm_4_x"
+	62	[-]	SETTABLE 	1 -15 -40	; "music_05_a" "bgm_5_x"
+	63	[-]	SETTABLE 	1 -16 -41	; "music_06_a" "bgm_6_x"
+	64	[-]	SETTABLE 	1 -17 -42	; "music_07_a" "bgm_7_x"
+	65	[-]	SETTABLE 	1 -18 -43	; "music_08_a" "bgm_8_x"
+	66	[-]	SETTABLE 	1 -19 -44	; "music_09_a" "bgm_9_x"
+	67	[-]	SETTABLE 	1 -20 -45	; "music_10_a" "bgm_10_x"
+	68	[-]	SETTABLE 	1 -21 -46	; "music_11_a" "bgm_11_x"
+	69	[-]	SETTABLE 	1 -22 -47	; "music_12_a" "bgm_12_x"
+	70	[-]	SETTABLE 	1 -23 -48	; "music_13_a" "bgm_13_x"
+	71	[-]	SETTABLE 	1 -24 -49	; "music_14_a" "bgm_14_x"
+	72	[-]	SETTABLE 	1 -25 -50	; "music_15_a" "bgm_15_x"
+	73	[-]	SETTABLE 	1 -26 -51	; "music_16_a" "bgm_16_x"
+	74	[-]	SETTABLE 	1 -27 -52	; "music_17_a" "bgm_17_x"
+	75	[-]	SETTABLE 	1 -28 -53	; "music_18_a" "bgm_18_x"
+	76	[-]	SETTABLE 	1 -29 -54	; "music_19_a" "bgm_19_x"
+	77	[-]	SETTABLE 	1 -30 -55	; "music_20_a" "bgm_20_a"
+	78	[-]	SETTABLE 	1 -31 -56	; "music_21_a" "op_zansho_short"
+	79	[-]	SETTABLE 	1 -32 -57	; "music_22_a" "ed_bl_short"
+	80	[-]	SETTABLE 	0 -35 1	; "musicName" -
+	81	[-]	LOADBOOL 	1 0 0
+	82	[-]	LOADK    	2 -34	; 1
+	83	[-]	LOADK    	3 -58	; ""
+	84	[-]	CLOSURE  	4 0	; 0x56d41de0
+	85	[-]	MOVE     	0 0
+	86	[-]	CLOSURE  	5 1	; 0x56d42210
+	87	[-]	MOVE     	0 0
+	88	[-]	MOVE     	0 4
+	89	[-]	CLOSURE  	6 2	; 0x56d427b0
+	90	[-]	CLOSURE  	7 3	; 0x56d42890
+	91	[-]	MOVE     	0 5
+	92	[-]	MOVE     	0 1
+	93	[-]	MOVE     	0 0
+	94	[-]	MOVE     	0 2
+	95	[-]	MOVE     	0 3
+	96	[-]	MOVE     	0 4
+	97	[-]	MOVE     	0 6
+	98	[-]	SETGLOBAL	7 -59	; main
+	99	[-]	RETURN   	0 1
+constants (59) for 0x56d41010:
+	1	"layerName"
+	2	"bg"
+	3	0
+	4	"music_select"
+	5	50
+	6	"music_off"
+	7	51
+	8	"music_on"
+	9	52
+	10	"musicTitle"
+	11	"music_01_a"
+	12	"music_02_a"
+	13	"music_03_a"
+	14	"music_04_a"
+	15	"music_05_a"
+	16	"music_06_a"
+	17	"music_07_a"
+	18	"music_08_a"
+	19	"music_09_a"
+	20	"music_10_a"
+	21	"music_11_a"
+	22	"music_12_a"
+	23	"music_13_a"
+	24	"music_14_a"
+	25	"music_15_a"
+	26	"music_16_a"
+	27	"music_17_a"
+	28	"music_18_a"
+	29	"music_19_a"
+	30	"music_20_a"
+	31	"music_21_a"
+	32	"music_22_a"
+	33	"selectFlag"
+	34	1
+	35	"musicName"
+	36	"bgm_1_x"
+	37	"bgm_2_x"
+	38	"bgm_3_x"
+	39	"bgm_4_x"
+	40	"bgm_5_x"
+	41	"bgm_6_x"
+	42	"bgm_7_x"
+	43	"bgm_8_x"
+	44	"bgm_9_x"
+	45	"bgm_10_x"
+	46	"bgm_11_x"
+	47	"bgm_12_x"
+	48	"bgm_13_x"
+	49	"bgm_14_x"
+	50	"bgm_15_x"
+	51	"bgm_16_x"
+	52	"bgm_17_x"
+	53	"bgm_18_x"
+	54	"bgm_19_x"
+	55	"bgm_20_a"
+	56	"op_zansho_short"
+	57	"ed_bl_short"
+	58	""
+	59	"main"
+locals (0) for 0x56d41010:
+upvalues (0) for 0x56d41010:
+
+function <?:96,123> (145 instructions, 580 bytes at 0x56d41de0)
+0 params, 12 slots, 1 upvalue, 0 locals, 23 constants, 0 functions
+	1	[-]	LOADK    	0 -1	; 0
+	2	[-]	LOADK    	1 -2	; 1
+	3	[-]	LOADK    	2 -2	; 1
+	4	[-]	GETUPVAL 	3 0	; -
+	5	[-]	GETTABLE 	3 3 -3	; "musicTitle"
+	6	[-]	LEN      	3 3
+	7	[-]	LOADK    	4 -2	; 1
+	8	[-]	FORPREP  	2 135	; to 144
+	9	[-]	GETUPVAL 	6 0	; -
+	10	[-]	GETTABLE 	6 6 -4	; "selectFlag"
+	11	[-]	GETUPVAL 	7 0	; -
+	12	[-]	GETTABLE 	7 7 -3	; "musicTitle"
+	13	[-]	GETTABLE 	7 7 5
+	14	[-]	GETTABLE 	6 6 7
+	15	[-]	EQ       	0 6 -1	; - 0
+	16	[-]	JMP      	11	; to 28
+	17	[-]	GETGLOBAL	6 -5	; layerCopy
+	18	[-]	GETUPVAL 	7 0	; -
+	19	[-]	GETTABLE 	7 7 -6	; "layerName"
+	20	[-]	GETTABLE 	7 7 -7	; "bg"
+	21	[-]	ADD      	7 7 -2	; - 1
+	22	[-]	ADD      	7 7 5
+	23	[-]	GETUPVAL 	8 0	; -
+	24	[-]	GETTABLE 	8 8 -6	; "layerName"
+	25	[-]	GETTABLE 	8 8 -8	; "music_off"
+	26	[-]	CALL     	6 3 1
+	27	[-]	JMP      	37	; to 65
+	28	[-]	GETUPVAL 	6 0	; -
+	29	[-]	GETTABLE 	6 6 -4	; "selectFlag"
+	30	[-]	GETUPVAL 	7 0	; -
+	31	[-]	GETTABLE 	7 7 -3	; "musicTitle"
+	32	[-]	GETTABLE 	7 7 5
+	33	[-]	GETTABLE 	6 6 7
+	34	[-]	EQ       	0 6 -2	; - 1
+	35	[-]	JMP      	11	; to 47
+	36	[-]	GETGLOBAL	6 -5	; layerCopy
+	37	[-]	GETUPVAL 	7 0	; -
+	38	[-]	GETTABLE 	7 7 -6	; "layerName"
+	39	[-]	GETTABLE 	7 7 -7	; "bg"
+	40	[-]	ADD      	7 7 -2	; - 1
+	41	[-]	ADD      	7 7 5
+	42	[-]	GETUPVAL 	8 0	; -
+	43	[-]	GETTABLE 	8 8 -6	; "layerName"
+	44	[-]	GETTABLE 	8 8 -9	; "music_select"
+	45	[-]	CALL     	6 3 1
+	46	[-]	JMP      	18	; to 65
+	47	[-]	GETUPVAL 	6 0	; -
+	48	[-]	GETTABLE 	6 6 -4	; "selectFlag"
+	49	[-]	GETUPVAL 	7 0	; -
+	50	[-]	GETTABLE 	7 7 -3	; "musicTitle"
+	51	[-]	GETTABLE 	7 7 5
+	52	[-]	GETTABLE 	6 6 7
+	53	[-]	EQ       	0 6 -10	; - 2
+	54	[-]	JMP      	10	; to 65
+	55	[-]	GETGLOBAL	6 -5	; layerCopy
+	56	[-]	GETUPVAL 	7 0	; -
+	57	[-]	GETTABLE 	7 7 -6	; "layerName"
+	58	[-]	GETTABLE 	7 7 -7	; "bg"
+	59	[-]	ADD      	7 7 -2	; - 1
+	60	[-]	ADD      	7 7 5
+	61	[-]	GETUPVAL 	8 0	; -
+	62	[-]	GETTABLE 	8 8 -6	; "layerName"
+	63	[-]	GETTABLE 	8 8 -11	; "music_on"
+	64	[-]	CALL     	6 3 1
+	65	[-]	LE       	0 5 -12	; - 10
+	66	[-]	JMP      	23	; to 90
+	67	[-]	GETGLOBAL	6 -13	; layerClip
+	68	[-]	GETUPVAL 	7 0	; -
+	69	[-]	GETTABLE 	7 7 -6	; "layerName"
+	70	[-]	GETTABLE 	7 7 -7	; "bg"
+	71	[-]	ADD      	7 7 -2	; - 1
+	72	[-]	ADD      	7 7 5
+	73	[-]	LOADK    	8 -1	; 0
+	74	[-]	SUB      	9 5 -2	; - 1
+	75	[-]	MUL      	9 9 -14	; - 20
+	76	[-]	LOADK    	10 -15	; 120
+	77	[-]	MUL      	11 5 -14	; - 20
+	78	[-]	CALL     	6 6 1
+	79	[-]	GETGLOBAL	6 -16	; layerPosition
+	80	[-]	GETUPVAL 	7 0	; -
+	81	[-]	GETTABLE 	7 7 -6	; "layerName"
+	82	[-]	GETTABLE 	7 7 -7	; "bg"
+	83	[-]	ADD      	7 7 -2	; - 1
+	84	[-]	ADD      	7 7 5
+	85	[-]	LOADK    	8 -17	; 5
+	86	[-]	MUL      	9 1 -14	; - 20
+	87	[-]	ADD      	9 9 -18	; - 25
+	88	[-]	CALL     	6 4 1
+	89	[-]	JMP      	49	; to 139
+	90	[-]	LE       	0 5 -14	; - 20
+	91	[-]	JMP      	24	; to 116
+	92	[-]	GETGLOBAL	6 -13	; layerClip
+	93	[-]	GETUPVAL 	7 0	; -
+	94	[-]	GETTABLE 	7 7 -6	; "layerName"
+	95	[-]	GETTABLE 	7 7 -7	; "bg"
+	96	[-]	ADD      	7 7 -2	; - 1
+	97	[-]	ADD      	7 7 5
+	98	[-]	LOADK    	8 -19	; 128
+	99	[-]	SUB      	9 5 -20	; - 11
+	100	[-]	MUL      	9 9 -14	; - 20
+	101	[-]	LOADK    	10 -21	; 350
+	102	[-]	SUB      	11 5 -12	; - 10
+	103	[-]	MUL      	11 11 -14	; - 20
+	104	[-]	CALL     	6 6 1
+	105	[-]	GETGLOBAL	6 -16	; layerPosition
+	106	[-]	GETUPVAL 	7 0	; -
+	107	[-]	GETTABLE 	7 7 -6	; "layerName"
+	108	[-]	GETTABLE 	7 7 -7	; "bg"
+	109	[-]	ADD      	7 7 -2	; - 1
+	110	[-]	ADD      	7 7 5
+	111	[-]	LOADK    	8 -19	; 128
+	112	[-]	MUL      	9 1 -14	; - 20
+	113	[-]	ADD      	9 9 -18	; - 25
+	114	[-]	CALL     	6 4 1
+	115	[-]	JMP      	23	; to 139
+	116	[-]	GETGLOBAL	6 -13	; layerClip
+	117	[-]	GETUPVAL 	7 0	; -
+	118	[-]	GETTABLE 	7 7 -6	; "layerName"
+	119	[-]	GETTABLE 	7 7 -7	; "bg"
+	120	[-]	ADD      	7 7 -2	; - 1
+	121	[-]	ADD      	7 7 5
+	122	[-]	LOADK    	8 -21	; 350
+	123	[-]	SUB      	9 5 -22	; - 21
+	124	[-]	MUL      	9 9 -14	; - 20
+	125	[-]	LOADK    	10 -23	; 480
+	126	[-]	SUB      	11 5 -14	; - 20
+	127	[-]	MUL      	11 11 -14	; - 20
+	128	[-]	CALL     	6 6 1
+	129	[-]	GETGLOBAL	6 -16	; layerPosition
+	130	[-]	GETUPVAL 	7 0	; -
+	131	[-]	GETTABLE 	7 7 -6	; "layerName"
+	132	[-]	GETTABLE 	7 7 -7	; "bg"
+	133	[-]	ADD      	7 7 -2	; - 1
+	134	[-]	ADD      	7 7 5
+	135	[-]	LOADK    	8 -21	; 350
+	136	[-]	MUL      	9 1 -14	; - 20
+	137	[-]	ADD      	9 9 -18	; - 25
+	138	[-]	CALL     	6 4 1
+	139	[-]	ADD      	1 1 -2	; - 1
+	140	[-]	LT       	0 -12 1	; 10 -
+	141	[-]	JMP      	2	; to 144
+	142	[-]	LOADK    	1 -2	; 1
+	143	[-]	ADD      	0 0 -2	; - 1
+	144	[-]	FORLOOP  	2 -136	; to 9
+	145	[-]	RETURN   	0 1
+constants (23) for 0x56d41de0:
+	1	0
+	2	1
+	3	"musicTitle"
+	4	"selectFlag"
+	5	"layerCopy"
+	6	"layerName"
+	7	"bg"
+	8	"music_off"
+	9	"music_select"
+	10	2
+	11	"music_on"
+	12	10
+	13	"layerClip"
+	14	20
+	15	120
+	16	"layerPosition"
+	17	5
+	18	25
+	19	128
+	20	11
+	21	350
+	22	21
+	23	480
+locals (0) for 0x56d41de0:
+upvalues (0) for 0x56d41de0:
+
+function <?:125,145> (82 instructions, 328 bytes at 0x56d42210)
+0 params, 6 slots, 2 upvalues, 0 locals, 29 constants, 0 functions
+	1	[-]	GETGLOBAL	0 -1	; startLoading
+	2	[-]	CALL     	0 1 1
+	3	[-]	GETGLOBAL	0 -2	; comLayerLoadFalse
+	4	[-]	GETUPVAL 	1 0	; -
+	5	[-]	GETTABLE 	1 1 -3	; "layerName"
+	6	[-]	GETTABLE 	1 1 -4	; "music_select"
+	7	[-]	LOADK    	2 -5	; "music/music_02_a.gim"
+	8	[-]	CALL     	0 3 1
+	9	[-]	GETGLOBAL	0 -2	; comLayerLoadFalse
+	10	[-]	GETUPVAL 	1 0	; -
+	11	[-]	GETTABLE 	1 1 -3	; "layerName"
+	12	[-]	GETTABLE 	1 1 -6	; "music_off"
+	13	[-]	LOADK    	2 -7	; "music/music_03_a.gim"
+	14	[-]	CALL     	0 3 1
+	15	[-]	GETGLOBAL	0 -2	; comLayerLoadFalse
+	16	[-]	GETUPVAL 	1 0	; -
+	17	[-]	GETTABLE 	1 1 -3	; "layerName"
+	18	[-]	GETTABLE 	1 1 -8	; "music_on"
+	19	[-]	LOADK    	2 -9	; "music/music_04_a.gim"
+	20	[-]	CALL     	0 3 1
+	21	[-]	GETGLOBAL	0 -10	; waitLoading
+	22	[-]	CALL     	0 1 1
+	23	[-]	GETGLOBAL	0 -11	; wait
+	24	[-]	LOADK    	1 -12	; 30
+	25	[-]	CALL     	0 2 1
+	26	[-]	GETGLOBAL	0 -13	; math
+	27	[-]	GETTABLE 	0 0 -14	; "random"
+	28	[-]	LOADK    	1 -15	; 1
+	29	[-]	LOADK    	2 -16	; 3
+	30	[-]	CALL     	0 3 2
+	31	[-]	EQ       	0 0 -15	; - 1
+	32	[-]	JMP      	10	; to 43
+	33	[-]	GETGLOBAL	1 -17	; layerLoad
+	34	[-]	GETUPVAL 	2 0	; -
+	35	[-]	GETTABLE 	2 2 -3	; "layerName"
+	36	[-]	GETTABLE 	2 2 -18	; "bg"
+	37	[-]	GETGLOBAL	3 -19	; cGetFileName
+	38	[-]	LOADK    	4 -18	; "bg"
+	39	[-]	LOADK    	5 -20	; "bg_3_b_0"
+	40	[-]	CALL     	3 3 0
+	41	[-]	CALL     	1 0 1
+	42	[-]	JMP      	23	; to 66
+	43	[-]	EQ       	0 0 -21	; - 2
+	44	[-]	JMP      	10	; to 55
+	45	[-]	GETGLOBAL	1 -17	; layerLoad
+	46	[-]	GETUPVAL 	2 0	; -
+	47	[-]	GETTABLE 	2 2 -3	; "layerName"
+	48	[-]	GETTABLE 	2 2 -18	; "bg"
+	49	[-]	GETGLOBAL	3 -19	; cGetFileName
+	50	[-]	LOADK    	4 -18	; "bg"
+	51	[-]	LOADK    	5 -22	; "bg_7_b_0"
+	52	[-]	CALL     	3 3 0
+	53	[-]	CALL     	1 0 1
+	54	[-]	JMP      	11	; to 66
+	55	[-]	EQ       	0 0 -16	; - 3
+	56	[-]	JMP      	9	; to 66
+	57	[-]	GETGLOBAL	1 -17	; layerLoad
+	58	[-]	GETUPVAL 	2 0	; -
+	59	[-]	GETTABLE 	2 2 -3	; "layerName"
+	60	[-]	GETTABLE 	2 2 -18	; "bg"
+	61	[-]	GETGLOBAL	3 -19	; cGetFileName
+	62	[-]	LOADK    	4 -18	; "bg"
+	63	[-]	LOADK    	5 -23	; "bg_8_a_0"
+	64	[-]	CALL     	3 3 0
+	65	[-]	CALL     	1 0 1
+	66	[-]	GETGLOBAL	1 -17	; layerLoad
+	67	[-]	GETUPVAL 	2 0	; -
+	68	[-]	GETTABLE 	2 2 -3	; "layerName"
+	69	[-]	GETTABLE 	2 2 -18	; "bg"
+	70	[-]	ADD      	2 2 -15	; - 1
+	71	[-]	LOADK    	3 -24	; "music/music_01_a.gim"
+	72	[-]	CALL     	1 3 1
+	73	[-]	GETGLOBAL	1 -25	; endLoading
+	74	[-]	CALL     	1 1 1
+	75	[-]	GETUPVAL 	1 1	; -
+	76	[-]	CALL     	1 1 1
+	77	[-]	GETGLOBAL	1 -26	; switchScreen
+	78	[-]	LOADK    	2 -27	; 0
+	79	[-]	LOADK    	3 -28	; ""
+	80	[-]	LOADK    	4 -29	; 60
+	81	[-]	CALL     	1 4 1
+	82	[-]	RETURN   	0 1
+constants (29) for 0x56d42210:
+	1	"startLoading"
+	2	"comLayerLoadFalse"
+	3	"layerName"
+	4	"music_select"
+	5	"music/music_02_a.gim"
+	6	"music_off"
+	7	"music/music_03_a.gim"
+	8	"music_on"
+	9	"music/music_04_a.gim"
+	10	"waitLoading"
+	11	"wait"
+	12	30
+	13	"math"
+	14	"random"
+	15	1
+	16	3
+	17	"layerLoad"
+	18	"bg"
+	19	"cGetFileName"
+	20	"bg_3_b_0"
+	21	2
+	22	"bg_7_b_0"
+	23	"bg_8_a_0"
+	24	"music/music_01_a.gim"
+	25	"endLoading"
+	26	"switchScreen"
+	27	0
+	28	""
+	29	60
+locals (0) for 0x56d42210:
+upvalues (0) for 0x56d42210:
+
+function <?:147,150> (8 instructions, 32 bytes at 0x56d427b0)
+0 params, 4 slots, 0 upvalues, 0 locals, 5 constants, 0 functions
+	1	[-]	GETGLOBAL	0 -1	; cInitGame
+	2	[-]	CALL     	0 1 1
+	3	[-]	GETGLOBAL	0 -2	; switchScreen
+	4	[-]	LOADK    	1 -3	; 0
+	5	[-]	LOADK    	2 -4	; ""
+	6	[-]	LOADK    	3 -5	; 60
+	7	[-]	CALL     	0 4 1
+	8	[-]	RETURN   	0 1
+constants (5) for 0x56d427b0:
+	1	"cInitGame"
+	2	"switchScreen"
+	3	0
+	4	""
+	5	60
+locals (0) for 0x56d427b0:
+upvalues (0) for 0x56d427b0:
+
+function <?:155,243> (377 instructions, 1508 bytes at 0x56d42890)
+0 params, 7 slots, 7 upvalues, 0 locals, 35 constants, 0 functions
+	1	[-]	GETGLOBAL	0 -1	; systemConfig
+	2	[-]	GETTABLE 	0 0 -2	; "unsetConfigButton"
+	3	[-]	CALL     	0 1 1
+	4	[-]	GETGLOBAL	0 -3	; logEnable
+	5	[-]	LOADBOOL 	1 0 0
+	6	[-]	CALL     	0 2 1
+	7	[-]	GETGLOBAL	0 -4	; advPart
+	8	[-]	LOADBOOL 	1 0 0
+	9	[-]	CALL     	0 2 1
+	10	[-]	GETUPVAL 	0 0	; -
+	11	[-]	CALL     	0 1 1
+	12	[-]	GETGLOBAL	0 -5	; pressButton
+	13	[-]	LOADK    	1 -6	; "UP"
+	14	[-]	CALL     	0 2 2
+	15	[-]	EQ       	0 0 -7	; - true
+	16	[-]	JMP      	47	; to 64
+	17	[-]	GETUPVAL 	0 1	; -
+	18	[-]	EQ       	0 0 -8	; - false
+	19	[-]	JMP      	44	; to 64
+	20	[-]	GETUPVAL 	0 2	; -
+	21	[-]	GETTABLE 	0 0 -9	; "selectFlag"
+	22	[-]	GETUPVAL 	1 2	; -
+	23	[-]	GETTABLE 	1 1 -10	; "musicTitle"
+	24	[-]	GETUPVAL 	2 3	; -
+	25	[-]	GETTABLE 	1 1 2
+	26	[-]	GETTABLE 	0 0 1
+	27	[-]	EQ       	1 0 -11	; - 2
+	28	[-]	JMP      	7	; to 36
+	29	[-]	GETUPVAL 	0 2	; -
+	30	[-]	GETTABLE 	0 0 -9	; "selectFlag"
+	31	[-]	GETUPVAL 	1 2	; -
+	32	[-]	GETTABLE 	1 1 -10	; "musicTitle"
+	33	[-]	GETUPVAL 	2 3	; -
+	34	[-]	GETTABLE 	1 1 2
+	35	[-]	SETTABLE 	0 1 -12	; - 0
+	36	[-]	GETUPVAL 	0 3	; -
+	37	[-]	SUB      	0 0 -13	; - 1
+	38	[-]	LT       	0 0 -13	; - 1
+	39	[-]	JMP      	3	; to 43
+	40	[-]	LOADK    	0 -14	; 22
+	41	[-]	TEST     	0 0 1
+	42	[-]	JMP      	2	; to 45
+	43	[-]	GETUPVAL 	0 3	; -
+	44	[-]	SUB      	0 0 -13	; - 1
+	45	[-]	SETUPVAL 	0 3	; -
+	46	[-]	GETUPVAL 	0 2	; -
+	47	[-]	GETTABLE 	0 0 -9	; "selectFlag"
+	48	[-]	GETUPVAL 	1 2	; -
+	49	[-]	GETTABLE 	1 1 -10	; "musicTitle"
+	50	[-]	GETUPVAL 	2 3	; -
+	51	[-]	GETTABLE 	1 1 2
+	52	[-]	GETTABLE 	0 0 1
+	53	[-]	EQ       	1 0 -11	; - 2
+	54	[-]	JMP      	7	; to 62
+	55	[-]	GETUPVAL 	0 2	; -
+	56	[-]	GETTABLE 	0 0 -9	; "selectFlag"
+	57	[-]	GETUPVAL 	1 2	; -
+	58	[-]	GETTABLE 	1 1 -10	; "musicTitle"
+	59	[-]	GETUPVAL 	2 3	; -
+	60	[-]	GETTABLE 	1 1 2
+	61	[-]	SETTABLE 	0 1 -13	; - 1
+	62	[-]	LOADBOOL 	0 1 0
+	63	[-]	SETUPVAL 	0 1	; -
+	64	[-]	GETGLOBAL	0 -5	; pressButton
+	65	[-]	LOADK    	1 -15	; "DOWN"
+	66	[-]	CALL     	0 2 2
+	67	[-]	EQ       	0 0 -7	; - true
+	68	[-]	JMP      	47	; to 116
+	69	[-]	GETUPVAL 	0 1	; -
+	70	[-]	EQ       	0 0 -8	; - false
+	71	[-]	JMP      	44	; to 116
+	72	[-]	GETUPVAL 	0 2	; -
+	73	[-]	GETTABLE 	0 0 -9	; "selectFlag"
+	74	[-]	GETUPVAL 	1 2	; -
+	75	[-]	GETTABLE 	1 1 -10	; "musicTitle"
+	76	[-]	GETUPVAL 	2 3	; -
+	77	[-]	GETTABLE 	1 1 2
+	78	[-]	GETTABLE 	0 0 1
+	79	[-]	EQ       	1 0 -11	; - 2
+	80	[-]	JMP      	7	; to 88
+	81	[-]	GETUPVAL 	0 2	; -
+	82	[-]	GETTABLE 	0 0 -9	; "selectFlag"
+	83	[-]	GETUPVAL 	1 2	; -
+	84	[-]	GETTABLE 	1 1 -10	; "musicTitle"
+	85	[-]	GETUPVAL 	2 3	; -
+	86	[-]	GETTABLE 	1 1 2
+	87	[-]	SETTABLE 	0 1 -12	; - 0
+	88	[-]	GETUPVAL 	0 3	; -
+	89	[-]	ADD      	0 0 -13	; - 1
+	90	[-]	LT       	0 -14 0	; 22 -
+	91	[-]	JMP      	3	; to 95
+	92	[-]	LOADK    	0 -13	; 1
+	93	[-]	TEST     	0 0 1
+	94	[-]	JMP      	2	; to 97
+	95	[-]	GETUPVAL 	0 3	; -
+	96	[-]	ADD      	0 0 -13	; - 1
+	97	[-]	SETUPVAL 	0 3	; -
+	98	[-]	GETUPVAL 	0 2	; -
+	99	[-]	GETTABLE 	0 0 -9	; "selectFlag"
+	100	[-]	GETUPVAL 	1 2	; -
+	101	[-]	GETTABLE 	1 1 -10	; "musicTitle"
+	102	[-]	GETUPVAL 	2 3	; -
+	103	[-]	GETTABLE 	1 1 2
+	104	[-]	GETTABLE 	0 0 1
+	105	[-]	EQ       	1 0 -11	; - 2
+	106	[-]	JMP      	7	; to 114
+	107	[-]	GETUPVAL 	0 2	; -
+	108	[-]	GETTABLE 	0 0 -9	; "selectFlag"
+	109	[-]	GETUPVAL 	1 2	; -
+	110	[-]	GETTABLE 	1 1 -10	; "musicTitle"
+	111	[-]	GETUPVAL 	2 3	; -
+	112	[-]	GETTABLE 	1 1 2
+	113	[-]	SETTABLE 	0 1 -13	; - 1
+	114	[-]	LOADBOOL 	0 1 0
+	115	[-]	SETUPVAL 	0 1	; -
+	116	[-]	GETGLOBAL	0 -5	; pressButton
+	117	[-]	LOADK    	1 -16	; "RIGHT"
+	118	[-]	CALL     	0 2 2
+	119	[-]	EQ       	0 0 -7	; - true
+	120	[-]	JMP      	58	; to 179
+	121	[-]	GETUPVAL 	0 1	; -
+	122	[-]	EQ       	0 0 -8	; - false
+	123	[-]	JMP      	55	; to 179
+	124	[-]	GETUPVAL 	0 2	; -
+	125	[-]	GETTABLE 	0 0 -9	; "selectFlag"
+	126	[-]	GETUPVAL 	1 2	; -
+	127	[-]	GETTABLE 	1 1 -10	; "musicTitle"
+	128	[-]	GETUPVAL 	2 3	; -
+	129	[-]	GETTABLE 	1 1 2
+	130	[-]	GETTABLE 	0 0 1
+	131	[-]	EQ       	1 0 -11	; - 2
+	132	[-]	JMP      	7	; to 140
+	133	[-]	GETUPVAL 	0 2	; -
+	134	[-]	GETTABLE 	0 0 -9	; "selectFlag"
+	135	[-]	GETUPVAL 	1 2	; -
+	136	[-]	GETTABLE 	1 1 -10	; "musicTitle"
+	137	[-]	GETUPVAL 	2 3	; -
+	138	[-]	GETTABLE 	1 1 2
+	139	[-]	SETTABLE 	0 1 -12	; - 0
+	140	[-]	GETUPVAL 	0 3	; -
+	141	[-]	EQ       	1 0 -17	; - 21
+	142	[-]	JMP      	3	; to 146
+	143	[-]	GETUPVAL 	0 3	; -
+	144	[-]	EQ       	0 0 -14	; - 22
+	145	[-]	JMP      	4	; to 150
+	146	[-]	GETUPVAL 	0 3	; -
+	147	[-]	SUB      	0 0 -18	; - 20
+	148	[-]	SETUPVAL 	0 3	; -
+	149	[-]	JMP      	11	; to 161
+	150	[-]	GETUPVAL 	0 3	; -
+	151	[-]	ADD      	0 0 -19	; - 10
+	152	[-]	LT       	0 -14 0	; 22 -
+	153	[-]	JMP      	4	; to 158
+	154	[-]	GETUPVAL 	0 3	; -
+	155	[-]	SUB      	0 0 -19	; - 10
+	156	[-]	TEST     	0 0 1
+	157	[-]	JMP      	2	; to 160
+	158	[-]	GETUPVAL 	0 3	; -
+	159	[-]	ADD      	0 0 -19	; - 10
+	160	[-]	SETUPVAL 	0 3	; -
+	161	[-]	GETUPVAL 	0 2	; -
+	162	[-]	GETTABLE 	0 0 -9	; "selectFlag"
+	163	[-]	GETUPVAL 	1 2	; -
+	164	[-]	GETTABLE 	1 1 -10	; "musicTitle"
+	165	[-]	GETUPVAL 	2 3	; -
+	166	[-]	GETTABLE 	1 1 2
+	167	[-]	GETTABLE 	0 0 1
+	168	[-]	EQ       	1 0 -11	; - 2
+	169	[-]	JMP      	7	; to 177
+	170	[-]	GETUPVAL 	0 2	; -
+	171	[-]	GETTABLE 	0 0 -9	; "selectFlag"
+	172	[-]	GETUPVAL 	1 2	; -
+	173	[-]	GETTABLE 	1 1 -10	; "musicTitle"
+	174	[-]	GETUPVAL 	2 3	; -
+	175	[-]	GETTABLE 	1 1 2
+	176	[-]	SETTABLE 	0 1 -13	; - 1
+	177	[-]	LOADBOOL 	0 1 0
+	178	[-]	SETUPVAL 	0 1	; -
+	179	[-]	GETGLOBAL	0 -5	; pressButton
+	180	[-]	LOADK    	1 -20	; "LEFT"
+	181	[-]	CALL     	0 2 2
+	182	[-]	EQ       	0 0 -7	; - true
+	183	[-]	JMP      	58	; to 242
+	184	[-]	GETUPVAL 	0 1	; -
+	185	[-]	EQ       	0 0 -8	; - false
+	186	[-]	JMP      	55	; to 242
+	187	[-]	GETUPVAL 	0 2	; -
+	188	[-]	GETTABLE 	0 0 -9	; "selectFlag"
+	189	[-]	GETUPVAL 	1 2	; -
+	190	[-]	GETTABLE 	1 1 -10	; "musicTitle"
+	191	[-]	GETUPVAL 	2 3	; -
+	192	[-]	GETTABLE 	1 1 2
+	193	[-]	GETTABLE 	0 0 1
+	194	[-]	EQ       	1 0 -11	; - 2
+	195	[-]	JMP      	7	; to 203
+	196	[-]	GETUPVAL 	0 2	; -
+	197	[-]	GETTABLE 	0 0 -9	; "selectFlag"
+	198	[-]	GETUPVAL 	1 2	; -
+	199	[-]	GETTABLE 	1 1 -10	; "musicTitle"
+	200	[-]	GETUPVAL 	2 3	; -
+	201	[-]	GETTABLE 	1 1 2
+	202	[-]	SETTABLE 	0 1 -12	; - 0
+	203	[-]	GETUPVAL 	0 3	; -
+	204	[-]	EQ       	1 0 -13	; - 1
+	205	[-]	JMP      	3	; to 209
+	206	[-]	GETUPVAL 	0 3	; -
+	207	[-]	EQ       	0 0 -11	; - 2
+	208	[-]	JMP      	4	; to 213
+	209	[-]	GETUPVAL 	0 3	; -
+	210	[-]	ADD      	0 0 -18	; - 20
+	211	[-]	SETUPVAL 	0 3	; -
+	212	[-]	JMP      	11	; to 224
+	213	[-]	GETUPVAL 	0 3	; -
+	214	[-]	SUB      	0 0 -19	; - 10
+	215	[-]	LT       	0 0 -13	; - 1
+	216	[-]	JMP      	4	; to 221
+	217	[-]	GETUPVAL 	0 3	; -
+	218	[-]	ADD      	0 0 -19	; - 10
+	219	[-]	TEST     	0 0 1
+	220	[-]	JMP      	2	; to 223
+	221	[-]	GETUPVAL 	0 3	; -
+	222	[-]	SUB      	0 0 -19	; - 10
+	223	[-]	SETUPVAL 	0 3	; -
+	224	[-]	GETUPVAL 	0 2	; -
+	225	[-]	GETTABLE 	0 0 -9	; "selectFlag"
+	226	[-]	GETUPVAL 	1 2	; -
+	227	[-]	GETTABLE 	1 1 -10	; "musicTitle"
+	228	[-]	GETUPVAL 	2 3	; -
+	229	[-]	GETTABLE 	1 1 2
+	230	[-]	GETTABLE 	0 0 1
+	231	[-]	EQ       	1 0 -11	; - 2
+	232	[-]	JMP      	7	; to 240
+	233	[-]	GETUPVAL 	0 2	; -
+	234	[-]	GETTABLE 	0 0 -9	; "selectFlag"
+	235	[-]	GETUPVAL 	1 2	; -
+	236	[-]	GETTABLE 	1 1 -10	; "musicTitle"
+	237	[-]	GETUPVAL 	2 3	; -
+	238	[-]	GETTABLE 	1 1 2
+	239	[-]	SETTABLE 	0 1 -13	; - 1
+	240	[-]	LOADBOOL 	0 1 0
+	241	[-]	SETUPVAL 	0 1	; -
+	242	[-]	GETGLOBAL	0 -5	; pressButton
+	243	[-]	LOADK    	1 -21	; "CIRCLE"
+	244	[-]	CALL     	0 2 2
+	245	[-]	EQ       	0 0 -7	; - true
+	246	[-]	JMP      	63	; to 310
+	247	[-]	GETUPVAL 	0 1	; -
+	248	[-]	EQ       	0 0 -8	; - false
+	249	[-]	JMP      	60	; to 310
+	250	[-]	GETUPVAL 	0 3	; -
+	251	[-]	GETUPVAL 	1 4	; -
+	252	[-]	EQ       	1 0 1
+	253	[-]	JMP      	38	; to 292
+	254	[-]	GETGLOBAL	0 -22	; stopBGM
+	255	[-]	LOADK    	1 -12	; 0
+	256	[-]	LOADK    	2 -12	; 0
+	257	[-]	CALL     	0 3 1
+	258	[-]	GETUPVAL 	0 4	; -
+	259	[-]	EQ       	1 0 -23	; - ""
+	260	[-]	JMP      	7	; to 268
+	261	[-]	GETUPVAL 	0 2	; -
+	262	[-]	GETTABLE 	0 0 -9	; "selectFlag"
+	263	[-]	GETUPVAL 	1 2	; -
+	264	[-]	GETTABLE 	1 1 -10	; "musicTitle"
+	265	[-]	GETUPVAL 	2 4	; -
+	266	[-]	GETTABLE 	1 1 2
+	267	[-]	SETTABLE 	0 1 -12	; - 0
+	268	[-]	GETGLOBAL	0 -24	; playBGM
+	269	[-]	LOADK    	1 -12	; 0
+	270	[-]	GETGLOBAL	2 -25	; cGetFileName
+	271	[-]	LOADK    	3 -26	; "bgm"
+	272	[-]	GETUPVAL 	4 2	; -
+	273	[-]	GETTABLE 	4 4 -27	; "musicName"
+	274	[-]	GETUPVAL 	5 2	; -
+	275	[-]	GETTABLE 	5 5 -10	; "musicTitle"
+	276	[-]	GETUPVAL 	6 3	; -
+	277	[-]	GETTABLE 	5 5 6
+	278	[-]	GETTABLE 	4 4 5
+	279	[-]	CALL     	2 3 2
+	280	[-]	LOADBOOL 	3 1 0
+	281	[-]	CALL     	0 4 1
+	282	[-]	GETUPVAL 	0 3	; -
+	283	[-]	SETUPVAL 	0 4	; -
+	284	[-]	GETUPVAL 	0 2	; -
+	285	[-]	GETTABLE 	0 0 -9	; "selectFlag"
+	286	[-]	GETUPVAL 	1 2	; -
+	287	[-]	GETTABLE 	1 1 -10	; "musicTitle"
+	288	[-]	GETUPVAL 	2 3	; -
+	289	[-]	GETTABLE 	1 1 2
+	290	[-]	SETTABLE 	0 1 -11	; - 2
+	291	[-]	JMP      	13	; to 305
+	292	[-]	GETGLOBAL	0 -22	; stopBGM
+	293	[-]	LOADK    	1 -12	; 0
+	294	[-]	LOADK    	2 -28	; 30
+	295	[-]	CALL     	0 3 1
+	296	[-]	GETUPVAL 	0 2	; -
+	297	[-]	GETTABLE 	0 0 -9	; "selectFlag"
+	298	[-]	GETUPVAL 	1 2	; -
+	299	[-]	GETTABLE 	1 1 -10	; "musicTitle"
+	300	[-]	GETUPVAL 	2 3	; -
+	301	[-]	GETTABLE 	1 1 2
+	302	[-]	SETTABLE 	0 1 -13	; - 1
+	303	[-]	LOADK    	0 -23	; ""
+	304	[-]	SETUPVAL 	0 4	; -
+	305	[-]	LOADBOOL 	0 1 0
+	306	[-]	SETUPVAL 	0 1	; -
+	307	[-]	GETGLOBAL	0 -29	; wait
+	308	[-]	LOADK    	1 -30	; 3
+	309	[-]	CALL     	0 2 1
+	310	[-]	GETGLOBAL	0 -5	; pressButton
+	311	[-]	LOADK    	1 -31	; "CROSS"
+	312	[-]	CALL     	0 2 2
+	313	[-]	EQ       	0 0 -7	; - true
+	314	[-]	JMP      	40	; to 355
+	315	[-]	GETUPVAL 	0 1	; -
+	316	[-]	EQ       	0 0 -8	; - false
+	317	[-]	JMP      	37	; to 355
+	318	[-]	LOADK    	0 -23	; ""
+	319	[-]	GETGLOBAL	1 -32	; pairs
+	320	[-]	GETUPVAL 	2 2	; -
+	321	[-]	GETTABLE 	2 2 -9	; "selectFlag"
+	322	[-]	CALL     	1 2 4
+	323	[-]	JMP      	4	; to 328
+	324	[-]	EQ       	0 5 -11	; - 2
+	325	[-]	JMP      	2	; to 328
+	326	[-]	MOVE     	0 4
+	327	[-]	JMP      	2	; to 330
+	328	[-]	TFORLOOP 	1 2
+	329	[-]	JMP      	-6	; to 324
+	330	[-]	EQ       	1 0 -23	; - ""
+	331	[-]	JMP      	37	; to 369
+	332	[-]	GETGLOBAL	1 -22	; stopBGM
+	333	[-]	LOADK    	2 -12	; 0
+	334	[-]	LOADK    	3 -28	; 30
+	335	[-]	CALL     	1 3 1
+	336	[-]	GETUPVAL 	1 2	; -
+	337	[-]	GETTABLE 	1 1 -10	; "musicTitle"
+	338	[-]	GETUPVAL 	2 3	; -
+	339	[-]	GETTABLE 	1 1 2
+	340	[-]	EQ       	0 1 0
+	341	[-]	JMP      	4	; to 346
+	342	[-]	GETUPVAL 	1 2	; -
+	343	[-]	GETTABLE 	1 1 -9	; "selectFlag"
+	344	[-]	SETTABLE 	1 0 -13	; - 1
+	345	[-]	JMP      	3	; to 349
+	346	[-]	GETUPVAL 	1 2	; -
+	347	[-]	GETTABLE 	1 1 -9	; "selectFlag"
+	348	[-]	SETTABLE 	1 0 -12	; - 0
+	349	[-]	LOADK    	1 -23	; ""
+	350	[-]	SETUPVAL 	1 4	; -
+	351	[-]	LOADBOOL 	1 1 0
+	352	[-]	SETUPVAL 	1 1	; -
+	353	[-]	JMP      	1	; to 355
+	354	[-]	JMP      	14	; to 369
+	355	[-]	GETUPVAL 	0 1	; -
+	356	[-]	EQ       	0 0 -7	; - true
+	357	[-]	JMP      	7	; to 365
+	358	[-]	GETUPVAL 	0 5	; -
+	359	[-]	CALL     	0 1 1
+	360	[-]	LOADBOOL 	0 0 0
+	361	[-]	SETUPVAL 	0 1	; -
+	362	[-]	GETGLOBAL	0 -29	; wait
+	363	[-]	LOADK    	1 -30	; 3
+	364	[-]	CALL     	0 2 1
+	365	[-]	GETGLOBAL	0 -29	; wait
+	366	[-]	LOADK    	1 -11	; 2
+	367	[-]	CALL     	0 2 1
+	368	[-]	JMP      	-357	; to 12
+	369	[-]	GETUPVAL 	0 6	; -
+	370	[-]	CALL     	0 1 1
+	371	[-]	GETGLOBAL	0 -33	; run
+	372	[-]	GETGLOBAL	1 -25	; cGetFileName
+	373	[-]	LOADK    	2 -34	; "script"
+	374	[-]	LOADK    	3 -35	; "snr_mainmenu"
+	375	[-]	CALL     	1 3 0
+	376	[-]	CALL     	0 0 1
+	377	[-]	RETURN   	0 1
+constants (35) for 0x56d42890:
+	1	"systemConfig"
+	2	"unsetConfigButton"
+	3	"logEnable"
+	4	"advPart"
+	5	"pressButton"
+	6	"UP"
+	7	true
+	8	false
+	9	"selectFlag"
+	10	"musicTitle"
+	11	2
+	12	0
+	13	1
+	14	22
+	15	"DOWN"
+	16	"RIGHT"
+	17	21
+	18	20
+	19	10
+	20	"LEFT"
+	21	"CIRCLE"
+	22	"stopBGM"
+	23	""
+	24	"playBGM"
+	25	"cGetFileName"
+	26	"bgm"
+	27	"musicName"
+	28	30
+	29	"wait"
+	30	3
+	31	"CROSS"
+	32	"pairs"
+	33	"run"
+	34	"script"
+	35	"snr_mainmenu"
+locals (0) for 0x56d42890:
+upvalues (0) for 0x56d42890:

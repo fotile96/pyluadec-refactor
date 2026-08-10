@@ -1,0 +1,226 @@
+
+main <?:0,0> (7 instructions, 28 bytes at 0x571dc010)
+0+ params, 3 slots, 0 upvalues, 0 locals, 1 constant, 3 functions
+	1	[-]	CLOSURE  	0 0	; 0x571dc0f0
+	2	[-]	CLOSURE  	1 1	; 0x571dc290
+	3	[-]	CLOSURE  	2 2	; 0x571dc1e0
+	4	[-]	MOVE     	0 0
+	5	[-]	MOVE     	0 1
+	6	[-]	SETGLOBAL	2 -1	; main
+	7	[-]	RETURN   	0 1
+constants (1) for 0x571dc010:
+	1	"main"
+locals (0) for 0x571dc010:
+upvalues (0) for 0x571dc010:
+
+function <?:8,15> (6 instructions, 24 bytes at 0x571dc0f0)
+0 params, 4 slots, 0 upvalues, 0 locals, 4 constants, 0 functions
+	1	[-]	GETGLOBAL	0 -1	; vms
+	2	[-]	LOADK    	1 -2	; 3868
+	3	[-]	LOADK    	2 -3	; "NONVOICE"
+	4	[-]	LOADK    	3 -4	; "\226\151\139\227\130\187\227\130\175\227\130\183\227\131\167\227\131\179\239\188\151\227\129\174\227\129\130\227\130\137\227\129\153\227\129\152\227\130\146\233\129\184\230\138\158\227\129\151\227\129\166\227\129\143\227\129\160\227\129\149\227\129\132\227\128\130"
+	5	[-]	CALL     	0 4 1
+	6	[-]	RETURN   	0 1
+constants (4) for 0x571dc0f0:
+	1	"vms"
+	2	3868
+	3	"NONVOICE"
+	4	"\226\151\139\227\130\187\227\130\175\227\130\183\227\131\167\227\131\179\239\188\151\227\129\174\227\129\130\227\130\137\227\129\153\227\129\152\227\130\146\233\129\184\230\138\158\227\129\151\227\129\166\227\129\143\227\129\160\227\129\149\227\129\132\227\128\130"
+locals (0) for 0x571dc0f0:
+upvalues (0) for 0x571dc0f0:
+
+function <?:19,36> (45 instructions, 180 bytes at 0x571dc290)
+0 params, 6 slots, 0 upvalues, 0 locals, 26 constants, 0 functions
+	1	[-]	GETGLOBAL	0 -1	; wait
+	2	[-]	LOADK    	1 -2	; 60
+	3	[-]	CALL     	0 2 1
+	4	[-]	GETGLOBAL	0 -3	; keyPlaySE
+	5	[-]	GETGLOBAL	1 -4	; seName
+	6	[-]	GETTABLE 	1 1 -5	; "getCard"
+	7	[-]	CALL     	0 2 1
+	8	[-]	GETGLOBAL	0 -6	; comEffectYellowIn
+	9	[-]	LOADK    	1 -2	; 60
+	10	[-]	CALL     	0 2 1
+	11	[-]	GETGLOBAL	0 -1	; wait
+	12	[-]	LOADK    	1 -7	; 200
+	13	[-]	CALL     	0 2 1
+	14	[-]	GETGLOBAL	0 -8	; cLoadPlaySE
+	15	[-]	GETGLOBAL	1 -9	; cGetFileName
+	16	[-]	LOADK    	2 -10	; "se"
+	17	[-]	LOADK    	3 -11	; "se_30"
+	18	[-]	CALL     	1 3 2
+	19	[-]	LOADBOOL 	2 0 0
+	20	[-]	CALL     	0 3 1
+	21	[-]	GETGLOBAL	0 -12	; oCard
+	22	[-]	GETTABLE 	0 0 -13	; "show"
+	23	[-]	GETGLOBAL	1 -9	; cGetFileName
+	24	[-]	LOADK    	2 -14	; "card"
+	25	[-]	LOADK    	3 -15	; "crd_"
+	26	[-]	GETGLOBAL	4 -16	; gameSave
+	27	[-]	GETTABLE 	4 4 -17	; "fragmentDoCardId"
+	28	[-]	LOADK    	5 -18	; "_a"
+	29	[-]	CONCAT   	3 3 5
+	30	[-]	CALL     	1 3 2
+	31	[-]	LOADK    	2 -19	; "\227\128\142\232\170\176\227\130\130\232\166\139\227\129\159\227\129\147\227\129\168\227\129\174\227\129\170\227\129\132\229\164\149\231\132\188\227\129\145\227\128\143\227\129\174\227\129\130\227\130\137\227\129\153\227\129\152\227\130\146\228\189\156\230\136\144\227\129\151\227\129\190\227\129\151\227\129\159\227\128\130"
+	32	[-]	CALL     	0 3 1
+	33	[-]	GETGLOBAL	0 -20	; comSectionCardEndSection
+	34	[-]	CALL     	0 1 1
+	35	[-]	LOADK    	0 -22	; "s8f-10"
+	36	[-]	SETGLOBAL	0 -21	; doScriptScene
+	37	[-]	GETGLOBAL	0 -23	; run
+	38	[-]	GETGLOBAL	1 -9	; cGetFileName
+	39	[-]	LOADK    	2 -24	; "script"
+	40	[-]	LOADK    	3 -25	; "snr_s8_10_f"
+	41	[-]	CALL     	1 3 0
+	42	[-]	CALL     	0 0 1
+	43	[-]	GETGLOBAL	0 -26	; quit
+	44	[-]	CALL     	0 1 1
+	45	[-]	RETURN   	0 1
+constants (26) for 0x571dc290:
+	1	"wait"
+	2	60
+	3	"keyPlaySE"
+	4	"seName"
+	5	"getCard"
+	6	"comEffectYellowIn"
+	7	200
+	8	"cLoadPlaySE"
+	9	"cGetFileName"
+	10	"se"
+	11	"se_30"
+	12	"oCard"
+	13	"show"
+	14	"card"
+	15	"crd_"
+	16	"gameSave"
+	17	"fragmentDoCardId"
+	18	"_a"
+	19	"\227\128\142\232\170\176\227\130\130\232\166\139\227\129\159\227\129\147\227\129\168\227\129\174\227\129\170\227\129\132\229\164\149\231\132\188\227\129\145\227\128\143\227\129\174\227\129\130\227\130\137\227\129\153\227\129\152\227\130\146\228\189\156\230\136\144\227\129\151\227\129\190\227\129\151\227\129\159\227\128\130"
+	20	"comSectionCardEndSection"
+	21	"doScriptScene"
+	22	"s8f-10"
+	23	"run"
+	24	"script"
+	25	"snr_s8_10_f"
+	26	"quit"
+locals (0) for 0x571dc290:
+upvalues (0) for 0x571dc290:
+
+function <?:43,92> (87 instructions, 348 bytes at 0x571dc1e0)
+0 params, 8 slots, 2 upvalues, 0 locals, 26 constants, 0 functions
+	1	[-]	GETGLOBAL	0 -1	; comSectionCardStart
+	2	[-]	GETGLOBAL	1 -2	; gameSave
+	3	[-]	GETTABLE 	1 1 -3	; "fragmentDoSceneId"
+	4	[-]	GETGLOBAL	2 -2	; gameSave
+	5	[-]	GETTABLE 	2 2 -4	; "fragmentDoCardId"
+	6	[-]	CALL     	0 3 1
+	7	[-]	GETGLOBAL	0 -2	; gameSave
+	8	[-]	GETTABLE 	0 0 -5	; "myCard"
+	9	[-]	GETTABLE 	0 0 -6	; 141
+	10	[-]	GETTABLE 	0 0 -7	; "hold"
+	11	[-]	EQ       	0 0 -8	; - -1
+	12	[-]	JMP      	17	; to 30
+	13	[-]	GETGLOBAL	0 -9	; oCard
+	14	[-]	GETTABLE 	0 0 -10	; "mesNot"
+	15	[-]	CALL     	0 1 1
+	16	[-]	GETGLOBAL	0 -11	; comSectionCardEnd
+	17	[-]	GETGLOBAL	1 -2	; gameSave
+	18	[-]	GETTABLE 	1 1 -3	; "fragmentDoSceneId"
+	19	[-]	GETGLOBAL	2 -2	; gameSave
+	20	[-]	GETTABLE 	2 2 -4	; "fragmentDoCardId"
+	21	[-]	CALL     	0 3 1
+	22	[-]	GETGLOBAL	0 -12	; run
+	23	[-]	GETGLOBAL	1 -13	; cGetFileName
+	24	[-]	LOADK    	2 -14	; "script"
+	25	[-]	LOADK    	3 -15	; "snr_fragment_main"
+	26	[-]	CALL     	1 3 0
+	27	[-]	CALL     	0 0 1
+	28	[-]	GETGLOBAL	0 -16	; quit
+	29	[-]	CALL     	0 1 1
+	30	[-]	GETUPVAL 	0 0	; -
+	31	[-]	CALL     	0 1 1
+	32	[-]	LOADK    	0 -17	; 0
+	33	[-]	LOADK    	1 -17	; 0
+	34	[-]	LOADK    	2 -8	; -1
+	35	[-]	LT       	0 0 -18	; - 1
+	36	[-]	JMP      	34	; to 71
+	37	[-]	GETGLOBAL	3 -9	; oCard
+	38	[-]	GETTABLE 	3 3 -19	; "selectCardObj"
+	39	[-]	CALL     	3 1 2
+	40	[-]	EQ       	0 3 -6	; - 141
+	41	[-]	JMP      	1	; to 43
+	42	[-]	JMP      	28	; to 71
+	43	[-]	EQ       	0 3 -8	; - -1
+	44	[-]	JMP      	17	; to 62
+	45	[-]	GETGLOBAL	4 -9	; oCard
+	46	[-]	GETTABLE 	4 4 -20	; "cancelCard"
+	47	[-]	CALL     	4 1 1
+	48	[-]	GETGLOBAL	4 -11	; comSectionCardEnd
+	49	[-]	GETGLOBAL	5 -2	; gameSave
+	50	[-]	GETTABLE 	5 5 -3	; "fragmentDoSceneId"
+	51	[-]	GETGLOBAL	6 -2	; gameSave
+	52	[-]	GETTABLE 	6 6 -4	; "fragmentDoCardId"
+	53	[-]	CALL     	4 3 1
+	54	[-]	GETGLOBAL	4 -12	; run
+	55	[-]	GETGLOBAL	5 -13	; cGetFileName
+	56	[-]	LOADK    	6 -14	; "script"
+	57	[-]	LOADK    	7 -15	; "snr_fragment_main"
+	58	[-]	CALL     	5 3 0
+	59	[-]	CALL     	4 0 1
+	60	[-]	GETGLOBAL	4 -16	; quit
+	61	[-]	CALL     	4 1 1
+	62	[-]	GETGLOBAL	4 -21	; vms
+	63	[-]	LOADK    	5 -22	; 3869
+	64	[-]	LOADK    	6 -23	; "NONVOICE"
+	65	[-]	LOADK    	7 -24	; "\226\151\139\227\130\187\227\130\175\227\130\183\227\131\167\227\131\179\239\188\151\227\129\174\227\129\130\227\130\137\227\129\153\227\129\152\227\130\146\233\129\184\230\138\158\227\129\151\227\129\166\227\129\143\227\129\160\227\129\149\227\129\132\227\128\130"
+	66	[-]	CALL     	4 4 1
+	67	[-]	GETGLOBAL	4 -25	; wait
+	68	[-]	LOADK    	5 -26	; 30
+	69	[-]	CALL     	4 2 1
+	70	[-]	JMP      	-36	; to 35
+	71	[-]	GETUPVAL 	3 1	; -
+	72	[-]	CALL     	3 1 1
+	73	[-]	GETGLOBAL	3 -11	; comSectionCardEnd
+	74	[-]	GETGLOBAL	4 -2	; gameSave
+	75	[-]	GETTABLE 	4 4 -3	; "fragmentDoSceneId"
+	76	[-]	GETGLOBAL	5 -2	; gameSave
+	77	[-]	GETTABLE 	5 5 -4	; "fragmentDoCardId"
+	78	[-]	CALL     	3 3 1
+	79	[-]	GETGLOBAL	3 -12	; run
+	80	[-]	GETGLOBAL	4 -13	; cGetFileName
+	81	[-]	LOADK    	5 -14	; "script"
+	82	[-]	LOADK    	6 -15	; "snr_fragment_main"
+	83	[-]	CALL     	4 3 0
+	84	[-]	CALL     	3 0 1
+	85	[-]	GETGLOBAL	3 -16	; quit
+	86	[-]	CALL     	3 1 1
+	87	[-]	RETURN   	0 1
+constants (26) for 0x571dc1e0:
+	1	"comSectionCardStart"
+	2	"gameSave"
+	3	"fragmentDoSceneId"
+	4	"fragmentDoCardId"
+	5	"myCard"
+	6	141
+	7	"hold"
+	8	-1
+	9	"oCard"
+	10	"mesNot"
+	11	"comSectionCardEnd"
+	12	"run"
+	13	"cGetFileName"
+	14	"script"
+	15	"snr_fragment_main"
+	16	"quit"
+	17	0
+	18	1
+	19	"selectCardObj"
+	20	"cancelCard"
+	21	"vms"
+	22	3869
+	23	"NONVOICE"
+	24	"\226\151\139\227\130\187\227\130\175\227\130\183\227\131\167\227\131\179\239\188\151\227\129\174\227\129\130\227\130\137\227\129\153\227\129\152\227\130\146\233\129\184\230\138\158\227\129\151\227\129\166\227\129\143\227\129\160\227\129\149\227\129\132\227\128\130"
+	25	"wait"
+	26	30
+locals (0) for 0x571dc1e0:
+upvalues (0) for 0x571dc1e0:

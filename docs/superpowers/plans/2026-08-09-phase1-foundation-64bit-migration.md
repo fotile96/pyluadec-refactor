@@ -946,7 +946,35 @@ git add -A && git commit -m "feat: golden baseline captured from old bridge and 
 - `numparams` 直等；`is_vararg`：旧 bool == `bool(新 & 1)`（旧只导出 HASARG 位）。
 - `upvalues`：旧 str|None == 新 bytes 解码。
 - `subprotos` 递归，树形状必须一致。
-- `lineinfo`：旧 bridge 不导出 → 与 listing 交叉验证：解析 listing 中每条指令行 `\t<n>\t[<line>]\t<OPNAME>` 的 line 序列 == 新 `Proto.lineinfo`；同时 listing 各函数头的 `(<N> instructions` == `len(code)`。
+- **旧 bridge 不导出的字段（`maxstacksize`/`nups`/`linedefined`/`lastlinedefined`）→ 与 listing 的函数头交叉验证。** 这是这些字段**唯一**的独立佐证来源，务必做实。
+
+  > **计划修订（2026-08-10，Task 7 之后）**：原计划此处比对 listing 每条指令行 `\t<n>\t[<line>]\t<OPNAME>` 的行号序列与 `Proto.lineinfo`。**实测语料是 strip 过的**——1944 个 proto 的 lineinfo/locvars/upvalue 名称全为空，listing 每条指令都打印 `[-]`，该比对两边恒为空、永真、零信息量，故删除。改为解析每个函数的两行头部，验证 6 个此前无人核对的字段。注意 `linedefined`/`lastlinedefined` **不属于 debug 段**，strip 后仍然保留（1715/1944 非零，为零的 229 个正是各文件的 main chunk），因此可以且应当比对。
+
+  listing 中每个函数的头部固定两行，例如：
+
+  ```
+  main <?:0,0> (3 instructions, 12 bytes at 0x57809010)
+  0+ params, 2 slots, 0 upvalues, 0 locals, 1 constant, 1 function
+  ```
+  ```
+  function <?:9,22> (26 instructions, 104 bytes at 0x578090e0)
+  0 params, 4 slots, 0 upvalues, 0 locals, 14 constants, 0 functions
+  ```
+
+  逐函数比对（按 listing 顺序与 `_flatten` 前序对齐）：
+
+  | listing 字段 | 新 `Proto` 字段 |
+  |---|---|
+  | `<?:L1,L2>` | `linedefined` / `lastlinedefined` |
+  | `(<N> instructions` | `len(code)` |
+  | `<P> params`，尾随 `+` 表示 vararg | `numparams`；`+` 存在 ⟺ `is_vararg & 2`（VARARG_ISVARARG） |
+  | `<S> slots` | `maxstacksize` |
+  | `<U> upvalues` | `nups` |
+  | `<L> locals` | `len(locvars)`（本语料恒为 0） |
+  | `<K> constant(s)` | `len(constants)` |
+  | `<F> function(s)` | `len(subprotos)` |
+
+  解析注意：数量为 1 时 luac 用单数形式（`1 constant`、`1 function`），正则须同时接受单复数；地址 `0x...` 是 ASLR 值，每次运行都不同，**绝不可**参与比对（golden listing 只能解析，不能字节 diff）。
 
 - [ ] **Step 1: 写失败测试**
 
@@ -981,7 +1009,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 GOLDEN = ROOT / "corpus" / "golden"
-LISTING_INSTR_RE = re.compile(r"^\t\d+\t\[(\d+)\]\t")
+LISTING_HEAD_RE = re.compile(
+    r"^(?:main|function) <[^>]*:(\d+),(\d+)> \((\d+) instructions?, \d+ bytes at 0x[0-9a-f]+\)$")
+LISTING_META_RE = re.compile(
+    r"^(\d+)(\+?) params?, (\d+) slots?, (\d+) upvalues?, "
+    r"(\d+) locals?, (\d+) constants?, (\d+) functions?$")
 
 def _diff(path, field, old, new, verdict="unexpected"):
     return {"proto_path": path, "field": field,
@@ -1022,18 +1054,55 @@ def _cmp_proto(old: dict, new, path: str, out: list):
         for i, (os_, ns) in enumerate(zip(old["subprotos"], new.subprotos)):
             _cmp_proto(os_, ns, f"{path}/{i}", out)
 
-def _listing_lineinfo(listing: str) -> list[list[int]]:
-    """Per-function instruction line numbers, in listing order (main first)."""
-    funcs, cur = [], None
-    for line in listing.splitlines():
-        if line.startswith(("main <", "function <")):
-            cur = []
-            funcs.append(cur)
-        else:
-            m = LISTING_INSTR_RE.match(line)
-            if m and cur is not None:
-                cur.append(int(m.group(1)))
+def _listing_headers(listing: str) -> list[dict]:
+    """Per-function header metadata, in listing order (main first).
+
+    Each function's header is exactly two consecutive lines; the metadata line
+    immediately follows the `main <...>` / `function <...>` line.
+    """
+    lines = listing.splitlines()
+    funcs = []
+    for i, line in enumerate(lines):
+        m = LISTING_HEAD_RE.match(line)
+        if not m:
+            continue
+        if i + 1 >= len(lines):
+            raise ValueError(f"header line {i} has no metadata line following it")
+        m2 = LISTING_META_RE.match(lines[i + 1])
+        if not m2:
+            raise ValueError(f"unparsable metadata line after header: {lines[i + 1]!r}")
+        funcs.append({
+            "linedefined": int(m.group(1)),
+            "lastlinedefined": int(m.group(2)),
+            "n_instructions": int(m.group(3)),
+            "numparams": int(m2.group(1)),
+            "is_vararg_marker": m2.group(2) == "+",
+            "maxstacksize": int(m2.group(3)),
+            "nups": int(m2.group(4)),
+            "n_locals": int(m2.group(5)),
+            "n_constants": int(m2.group(6)),
+            "n_functions": int(m2.group(7)),
+        })
     return funcs
+
+def _cmp_listing_header(h: dict, p, path: str, out: list):
+    checks = [
+        ("linedefined", h["linedefined"], p.linedefined),
+        ("lastlinedefined", h["lastlinedefined"], p.lastlinedefined),
+        ("n_instructions", h["n_instructions"], len(p.code)),
+        ("numparams", h["numparams"], p.numparams),
+        ("maxstacksize", h["maxstacksize"], p.maxstacksize),
+        ("nups", h["nups"], p.nups),
+        ("n_locals", h["n_locals"], len(p.locvars)),
+        ("n_constants", h["n_constants"], len(p.constants)),
+        ("n_functions", h["n_functions"], len(p.subprotos)),
+    ]
+    for field, want, got in checks:
+        if want != got:
+            out.append(_diff(path, f"listing.{field}", want, got))
+    # luac prints a trailing '+' on the param count iff VARARG_ISVARARG is set
+    if h["is_vararg_marker"] != bool(p.is_vararg & 2):
+        out.append(_diff(path, "listing.is_vararg", h["is_vararg_marker"], p.is_vararg))
 
 def _flatten(p):
     yield p
@@ -1048,14 +1117,13 @@ def compare_file(name: str, corpus_dir: Path) -> list:
     out: list = []
     _cmp_proto(old, new, name, out)
     listing = (GOLDEN / "listing" / (name + ".txt")).read_text(encoding="utf-8")
-    listed = _listing_lineinfo(listing)
+    listed = _listing_headers(listing)
     protos = list(_flatten(new))
     if len(listed) != len(protos):
         out.append(_diff(name, "listing.func_count", len(listed), len(protos)))
     else:
-        for i, (lines, proto) in enumerate(zip(listed, protos)):
-            if lines != list(proto.lineinfo):
-                out.append(_diff(f"{name}#func{i}", "lineinfo", lines[:8], list(proto.lineinfo)[:8]))
+        for i, (h, proto) in enumerate(zip(listed, protos)):
+            _cmp_listing_header(h, proto, f"{name}#func{i}", out)
     return out
 
 def compare_corpus(corpus_dir: Path) -> list:
@@ -1076,7 +1144,9 @@ if __name__ == "__main__":
     sys.exit(1 if unexpected else 0)
 ```
 
-**注意**：listing 遍历顺序（旧 luac 打印顺序为 main 后接各嵌套函数的深度优先前序）与 `_flatten` 的前序一致；若首跑发现顺序不匹配（表现为大量 `lineinfo` 差异但 `code` 全对），先人工核对一个小文件的 listing 结构再修正 `_flatten` 或 `_listing_lineinfo`，不要放宽比较。
+**注意**：listing 遍历顺序（旧 luac 打印顺序为 main 后接各嵌套函数的深度优先前序）与 `_flatten` 的前序一致；若首跑发现顺序不匹配（典型表现是 `listing.n_instructions`/`listing.n_constants` 大面积不等但 `code` 逐字全对），先人工核对一个小文件的 listing 结构再修正 `_flatten` 或 `_listing_headers`，**不要放宽比较**。
+
+`corpus/golden/` 是只读档案：本 Task 只读取 listing 与 proto_dump，`discrepancies.json` 写在 golden 目录下属于对该目录的新增（允许，因为它是本 Task 的产物而非对已固化档案的改写）；若嫌混淆，可改写到 `corpus/` 根下——两者皆可，实施时二选一并在 report 说明。
 
 - [ ] **Step 3: 运行测试与全语料比对**
 

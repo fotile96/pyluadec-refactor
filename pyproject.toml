@@ -1,0 +1,24 @@
+[project]
+name = "pyluadec"
+version = "0.1.0"
+description = "Width-parameterized Lua 5.1 bytecode ingest layer and decompiler toolchain"
+authors = [
+    { name = "fotile96", email = "fotile13@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "pybind11>=3.1.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.16,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]

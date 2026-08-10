@@ -1,0 +1,2308 @@
+
+main <?:0,0> (145 instructions, 580 bytes at 0x56baf010)
+0+ params, 17 slots, 0 upvalues, 0 locals, 104 constants, 14 functions
+	1	[-]	NEWTABLE 	0 0 7
+	2	[-]	NEWTABLE 	1 0 23
+	3	[-]	SETTABLE 	1 -2 -3	; "novel_1_a" 50
+	4	[-]	SETTABLE 	1 -4 -5	; "novel_1_b" 51
+	5	[-]	SETTABLE 	1 -6 -7	; "novel_2_a" 52
+	6	[-]	SETTABLE 	1 -8 -9	; "novel_2_b" 53
+	7	[-]	SETTABLE 	1 -10 -11	; "novel_2_c" 54
+	8	[-]	SETTABLE 	1 -12 -13	; "novel_3_aa" 55
+	9	[-]	SETTABLE 	1 -14 -15	; "novel_3_ab" 56
+	10	[-]	SETTABLE 	1 -16 -17	; "novel_3_ac" 57
+	11	[-]	SETTABLE 	1 -18 -19	; "novel_3_ad" 58
+	12	[-]	SETTABLE 	1 -20 -21	; "novel_3_ba" 59
+	13	[-]	SETTABLE 	1 -22 -23	; "novel_3_bb" 60
+	14	[-]	SETTABLE 	1 -24 -25	; "novel_3_bc" 61
+	15	[-]	SETTABLE 	1 -26 -27	; "novel_3_bd" 62
+	16	[-]	SETTABLE 	1 -28 -29	; "novel_3_ca" 63
+	17	[-]	SETTABLE 	1 -30 -31	; "novel_3_cb" 64
+	18	[-]	SETTABLE 	1 -32 -33	; "novel_3_cc" 65
+	19	[-]	SETTABLE 	1 -34 -35	; "novel_3_cd" 66
+	20	[-]	SETTABLE 	1 -36 -37	; "novel_3_da" 67
+	21	[-]	SETTABLE 	1 -38 -39	; "novel_3_db" 68
+	22	[-]	SETTABLE 	1 -40 -41	; "novel_3_dc" 69
+	23	[-]	SETTABLE 	1 -42 -43	; "novel_3_dd" 70
+	24	[-]	SETTABLE 	1 -44 -45	; "novel_3_ea" 71
+	25	[-]	SETTABLE 	1 -46 -47	; "novel_3_eb" 72
+	26	[-]	SETTABLE 	1 -48 -49	; "novel_3_ec" 73
+	27	[-]	SETTABLE 	1 -50 -51	; "novel_3_ed" 74
+	28	[-]	SETTABLE 	1 -52 -53	; "novel_4_a" 75
+	29	[-]	SETTABLE 	1 -54 -55	; "novel_4_b" 76
+	30	[-]	SETTABLE 	1 -56 -57	; "novel_4_c" 77
+	31	[-]	SETTABLE 	1 -58 -59	; "novel_4_d" 78
+	32	[-]	SETTABLE 	0 -1 1	; "layerNumber" -
+	33	[-]	NEWTABLE 	1 0 10
+	34	[-]	SETTABLE 	1 -61 -62	; "hardCover" 0
+	35	[-]	SETTABLE 	1 -63 -64	; "bar" 2
+	36	[-]	SETTABLE 	1 -65 -66	; "icon" 3
+	37	[-]	SETTABLE 	1 -67 -68	; "mask" 7
+	38	[-]	SETTABLE 	1 -69 -70	; "key" 8
+	39	[-]	SETTABLE 	1 -71 -62	; "novelBg" 0
+	40	[-]	SETTABLE 	1 -72 -73	; "sentence" 1
+	41	[-]	SETTABLE 	1 -74 -75	; "novelBar" 11
+	42	[-]	SETTABLE 	1 -76 -77	; "title" 12
+	43	[-]	SETTABLE 	1 -78 -79	; "bookMark" 13
+	44	[-]	SETTABLE 	0 -60 1	; "indexNumber" -
+	45	[-]	NEWTABLE 	1 5 0
+	46	[-]	LOADK    	2 -81	; "novel03"
+	47	[-]	LOADK    	3 -82	; "novel01"
+	48	[-]	LOADK    	4 -83	; "novel04"
+	49	[-]	LOADK    	5 -84	; "novel02"
+	50	[-]	LOADK    	6 -85	; "novel05"
+	51	[-]	SETLIST  	1 5 1	; 1
+	52	[-]	SETTABLE 	0 -80 1	; "novelTitle" -
+	53	[-]	NEWTABLE 	1 0 5
+	54	[-]	SETTABLE 	1 -82 -73	; "novel01" 1
+	55	[-]	SETTABLE 	1 -84 -64	; "novel02" 2
+	56	[-]	SETTABLE 	1 -81 -66	; "novel03" 3
+	57	[-]	SETTABLE 	1 -83 -87	; "novel04" 4
+	58	[-]	SETTABLE 	1 -85 -88	; "novel05" 5
+	59	[-]	SETTABLE 	0 -86 1	; "novelKey" -
+	60	[-]	NEWTABLE 	1 0 5
+	61	[-]	SETTABLE 	1 -82 -90	; "novel01" "novel_3_a"
+	62	[-]	SETTABLE 	1 -84 -91	; "novel02" "novel_3_b"
+	63	[-]	SETTABLE 	1 -81 -92	; "novel03" "novel_3_c"
+	64	[-]	SETTABLE 	1 -83 -93	; "novel04" "novel_3_d"
+	65	[-]	SETTABLE 	1 -85 -94	; "novel05" "novel_3_e"
+	66	[-]	SETTABLE 	0 -89 1	; "layerName" -
+	67	[-]	NEWTABLE 	1 0 5
+	68	[-]	SETTABLE 	1 -82 -96	; "novel01" 112
+	69	[-]	SETTABLE 	1 -84 -97	; "novel02" 159
+	70	[-]	SETTABLE 	1 -81 -98	; "novel03" 119
+	71	[-]	SETTABLE 	1 -83 -98	; "novel04" 119
+	72	[-]	SETTABLE 	1 -85 -99	; "novel05" 452
+	73	[-]	SETTABLE 	0 -95 1	; "novelPageMax" -
+	74	[-]	NEWTABLE 	1 0 0
+	75	[-]	SETTABLE 	0 -100 1	; "t_novelFlag" -
+	76	[-]	LOADK    	1 -62	; 0
+	77	[-]	LOADK    	2 -73	; 1
+	78	[-]	LOADK    	3 -73	; 1
+	79	[-]	LOADK    	4 -88	; 5
+	80	[-]	LOADK    	5 -73	; 1
+	81	[-]	FORPREP  	3 12	; to 94
+	82	[-]	GETGLOBAL	7 -101	; systemSave
+	83	[-]	GETTABLE 	7 7 -102	; "novelGetFlag"
+	84	[-]	GETTABLE 	8 0 -80	; "novelTitle"
+	85	[-]	GETTABLE 	8 8 6
+	86	[-]	GETTABLE 	7 7 8
+	87	[-]	EQ       	0 7 -103	; - true
+	88	[-]	JMP      	5	; to 94
+	89	[-]	GETTABLE 	7 0 -100	; "t_novelFlag"
+	90	[-]	GETTABLE 	8 0 -80	; "novelTitle"
+	91	[-]	GETTABLE 	8 8 6
+	92	[-]	SETTABLE 	7 2 8
+	93	[-]	ADD      	2 2 -73	; - 1
+	94	[-]	FORLOOP  	3 -13	; to 82
+	95	[-]	CLOSURE  	3 0	; 0x56bb01a0
+	96	[-]	MOVE     	0 0
+	97	[-]	CLOSURE  	4 1	; 0x56bb0360
+	98	[-]	MOVE     	0 0
+	99	[-]	CLOSURE  	5 2	; 0x56bb0580
+	100	[-]	MOVE     	0 0
+	101	[-]	CLOSURE  	6 3	; 0x56bb0820
+	102	[-]	MOVE     	0 0
+	103	[-]	CLOSURE  	7 4	; 0x56bb1050
+	104	[-]	MOVE     	0 0
+	105	[-]	MOVE     	0 6
+	106	[-]	MOVE     	0 4
+	107	[-]	CLOSURE  	8 5	; 0x56bb14f0
+	108	[-]	MOVE     	0 0
+	109	[-]	MOVE     	0 5
+	110	[-]	MOVE     	0 3
+	111	[-]	MOVE     	0 4
+	112	[-]	CLOSURE  	9 6	; 0x56bb1930
+	113	[-]	CLOSURE  	10 7	; 0x56bb1a20
+	114	[-]	MOVE     	0 8
+	115	[-]	MOVE     	0 0
+	116	[-]	MOVE     	0 1
+	117	[-]	MOVE     	0 7
+	118	[-]	MOVE     	0 9
+	119	[-]	CLOSURE  	11 8	; 0x56bb2240
+	120	[-]	MOVE     	0 0
+	121	[-]	CLOSURE  	12 9	; 0x56bb2540
+	122	[-]	MOVE     	0 0
+	123	[-]	MOVE     	0 4
+	124	[-]	MOVE     	0 3
+	125	[-]	MOVE     	0 11
+	126	[-]	CLOSURE  	13 10	; 0x56bb2b40
+	127	[-]	CLOSURE  	14 11	; 0x56bb2c70
+	128	[-]	MOVE     	0 0
+	129	[-]	MOVE     	0 4
+	130	[-]	CLOSURE  	15 12	; 0x56bb2e90
+	131	[-]	MOVE     	0 0
+	132	[-]	MOVE     	0 12
+	133	[-]	MOVE     	0 1
+	134	[-]	MOVE     	0 14
+	135	[-]	MOVE     	0 11
+	136	[-]	MOVE     	0 3
+	137	[-]	MOVE     	0 13
+	138	[-]	CLOSURE  	16 13	; 0x56bb35f0
+	139	[-]	MOVE     	0 2
+	140	[-]	MOVE     	0 0
+	141	[-]	MOVE     	0 1
+	142	[-]	MOVE     	0 10
+	143	[-]	MOVE     	0 15
+	144	[-]	SETGLOBAL	16 -104	; main
+	145	[-]	RETURN   	0 1
+constants (104) for 0x56baf010:
+	1	"layerNumber"
+	2	"novel_1_a"
+	3	50
+	4	"novel_1_b"
+	5	51
+	6	"novel_2_a"
+	7	52
+	8	"novel_2_b"
+	9	53
+	10	"novel_2_c"
+	11	54
+	12	"novel_3_aa"
+	13	55
+	14	"novel_3_ab"
+	15	56
+	16	"novel_3_ac"
+	17	57
+	18	"novel_3_ad"
+	19	58
+	20	"novel_3_ba"
+	21	59
+	22	"novel_3_bb"
+	23	60
+	24	"novel_3_bc"
+	25	61
+	26	"novel_3_bd"
+	27	62
+	28	"novel_3_ca"
+	29	63
+	30	"novel_3_cb"
+	31	64
+	32	"novel_3_cc"
+	33	65
+	34	"novel_3_cd"
+	35	66
+	36	"novel_3_da"
+	37	67
+	38	"novel_3_db"
+	39	68
+	40	"novel_3_dc"
+	41	69
+	42	"novel_3_dd"
+	43	70
+	44	"novel_3_ea"
+	45	71
+	46	"novel_3_eb"
+	47	72
+	48	"novel_3_ec"
+	49	73
+	50	"novel_3_ed"
+	51	74
+	52	"novel_4_a"
+	53	75
+	54	"novel_4_b"
+	55	76
+	56	"novel_4_c"
+	57	77
+	58	"novel_4_d"
+	59	78
+	60	"indexNumber"
+	61	"hardCover"
+	62	0
+	63	"bar"
+	64	2
+	65	"icon"
+	66	3
+	67	"mask"
+	68	7
+	69	"key"
+	70	8
+	71	"novelBg"
+	72	"sentence"
+	73	1
+	74	"novelBar"
+	75	11
+	76	"title"
+	77	12
+	78	"bookMark"
+	79	13
+	80	"novelTitle"
+	81	"novel03"
+	82	"novel01"
+	83	"novel04"
+	84	"novel02"
+	85	"novel05"
+	86	"novelKey"
+	87	4
+	88	5
+	89	"layerName"
+	90	"novel_3_a"
+	91	"novel_3_b"
+	92	"novel_3_c"
+	93	"novel_3_d"
+	94	"novel_3_e"
+	95	"novelPageMax"
+	96	112
+	97	159
+	98	119
+	99	452
+	100	"t_novelFlag"
+	101	"systemSave"
+	102	"novelGetFlag"
+	103	true
+	104	"main"
+locals (0) for 0x56baf010:
+upvalues (0) for 0x56baf010:
+
+function <?:103,110> (39 instructions, 156 bytes at 0x56bb01a0)
+4 params, 15 slots, 1 upvalue, 0 locals, 11 constants, 0 functions
+	1	[-]	LOADK    	4 -1	; 1
+	2	[-]	GETGLOBAL	5 -2	; string
+	3	[-]	GETTABLE 	5 5 -3	; "len"
+	4	[-]	MOVE     	6 3
+	5	[-]	CALL     	5 2 2
+	6	[-]	LOADK    	6 -1	; 1
+	7	[-]	FORPREP  	4 30	; to 38
+	8	[-]	GETGLOBAL	8 -2	; string
+	9	[-]	GETTABLE 	8 8 -4	; "sub"
+	10	[-]	MOVE     	9 3
+	11	[-]	MOVE     	10 7
+	12	[-]	MOVE     	11 7
+	13	[-]	CALL     	8 4 2
+	14	[-]	GETGLOBAL	9 -5	; layerCopy
+	15	[-]	ADD      	10 0 7
+	16	[-]	SUB      	10 10 -1	; - 1
+	17	[-]	GETUPVAL 	11 0	; -
+	18	[-]	GETTABLE 	11 11 -6	; "layerNumber"
+	19	[-]	GETTABLE 	11 11 -7	; "novel_4_c"
+	20	[-]	CALL     	9 3 1
+	21	[-]	GETGLOBAL	9 -8	; layerPosition
+	22	[-]	ADD      	10 0 7
+	23	[-]	SUB      	10 10 -1	; - 1
+	24	[-]	MOVE     	11 1
+	25	[-]	SUB      	12 7 -1	; - 1
+	26	[-]	MUL      	12 -9 12	; 7 -
+	27	[-]	ADD      	12 2 12
+	28	[-]	CALL     	9 4 1
+	29	[-]	GETGLOBAL	9 -10	; layerClip
+	30	[-]	ADD      	10 0 7
+	31	[-]	SUB      	10 10 -1	; - 1
+	32	[-]	MUL      	11 8 -9	; - 7
+	33	[-]	LOADK    	12 -11	; 0
+	34	[-]	ADD      	13 8 -1	; - 1
+	35	[-]	MUL      	13 13 -9	; - 7
+	36	[-]	LOADK    	14 -9	; 7
+	37	[-]	CALL     	9 6 1
+	38	[-]	FORLOOP  	4 -31	; to 8
+	39	[-]	RETURN   	0 1
+constants (11) for 0x56bb01a0:
+	1	1
+	2	"string"
+	3	"len"
+	4	"sub"
+	5	"layerCopy"
+	6	"layerNumber"
+	7	"novel_4_c"
+	8	"layerPosition"
+	9	7
+	10	"layerClip"
+	11	0
+locals (0) for 0x56bb01a0:
+upvalues (0) for 0x56bb01a0:
+
+function <?:111,123> (50 instructions, 200 bytes at 0x56bb0360)
+4 params, 15 slots, 1 upvalue, 0 locals, 15 constants, 0 functions
+	1	[-]	LT       	0 3 -1	; - 10
+	2	[-]	JMP      	4	; to 7
+	3	[-]	LOADK    	4 -2	; "00"
+	4	[-]	MOVE     	5 3
+	5	[-]	CONCAT   	3 4 5
+	6	[-]	JMP      	5	; to 12
+	7	[-]	LT       	0 3 -3	; - 100
+	8	[-]	JMP      	3	; to 12
+	9	[-]	LOADK    	4 -4	; "0"
+	10	[-]	MOVE     	5 3
+	11	[-]	CONCAT   	3 4 5
+	12	[-]	LOADK    	4 -5	; 1
+	13	[-]	GETGLOBAL	5 -6	; string
+	14	[-]	GETTABLE 	5 5 -7	; "len"
+	15	[-]	MOVE     	6 3
+	16	[-]	CALL     	5 2 2
+	17	[-]	LOADK    	6 -5	; 1
+	18	[-]	FORPREP  	4 30	; to 49
+	19	[-]	GETGLOBAL	8 -6	; string
+	20	[-]	GETTABLE 	8 8 -8	; "sub"
+	21	[-]	MOVE     	9 3
+	22	[-]	MOVE     	10 7
+	23	[-]	MOVE     	11 7
+	24	[-]	CALL     	8 4 2
+	25	[-]	GETGLOBAL	9 -9	; layerCopy
+	26	[-]	ADD      	10 0 7
+	27	[-]	SUB      	10 10 -5	; - 1
+	28	[-]	GETUPVAL 	11 0	; -
+	29	[-]	GETTABLE 	11 11 -10	; "layerNumber"
+	30	[-]	GETTABLE 	11 11 -11	; "novel_4_d"
+	31	[-]	CALL     	9 3 1
+	32	[-]	GETGLOBAL	9 -12	; layerPosition
+	33	[-]	ADD      	10 0 7
+	34	[-]	SUB      	10 10 -5	; - 1
+	35	[-]	MOVE     	11 1
+	36	[-]	SUB      	12 7 -5	; - 1
+	37	[-]	MUL      	12 -13 12	; 7 -
+	38	[-]	ADD      	12 2 12
+	39	[-]	CALL     	9 4 1
+	40	[-]	GETGLOBAL	9 -14	; layerClip
+	41	[-]	ADD      	10 0 7
+	42	[-]	SUB      	10 10 -5	; - 1
+	43	[-]	MUL      	11 8 -13	; - 7
+	44	[-]	LOADK    	12 -15	; 0
+	45	[-]	ADD      	13 8 -5	; - 1
+	46	[-]	MUL      	13 13 -13	; - 7
+	47	[-]	LOADK    	14 -13	; 7
+	48	[-]	CALL     	9 6 1
+	49	[-]	FORLOOP  	4 -31	; to 19
+	50	[-]	RETURN   	0 1
+constants (15) for 0x56bb0360:
+	1	10
+	2	"00"
+	3	100
+	4	"0"
+	5	1
+	6	"string"
+	7	"len"
+	8	"sub"
+	9	"layerCopy"
+	10	"layerNumber"
+	11	"novel_4_d"
+	12	"layerPosition"
+	13	7
+	14	"layerClip"
+	15	0
+locals (0) for 0x56bb0360:
+upvalues (0) for 0x56bb0360:
+
+function <?:128,135> (93 instructions, 372 bytes at 0x56bb0580)
+1 param, 8 slots, 1 upvalue, 0 locals, 14 constants, 0 functions
+	1	[-]	GETGLOBAL	1 -1	; layerCopy
+	2	[-]	GETUPVAL 	2 0	; -
+	3	[-]	GETTABLE 	2 2 -2	; "indexNumber"
+	4	[-]	GETTABLE 	2 2 -3	; "icon"
+	5	[-]	GETUPVAL 	3 0	; -
+	6	[-]	GETTABLE 	3 3 -4	; "layerNumber"
+	7	[-]	GETUPVAL 	4 0	; -
+	8	[-]	GETTABLE 	4 4 -5	; "layerName"
+	9	[-]	GETUPVAL 	5 0	; -
+	10	[-]	GETTABLE 	5 5 -6	; "t_novelFlag"
+	11	[-]	GETTABLE 	5 5 0
+	12	[-]	GETTABLE 	4 4 5
+	13	[-]	LOADK    	5 -7	; "b"
+	14	[-]	CONCAT   	4 4 5
+	15	[-]	GETTABLE 	3 3 4
+	16	[-]	CALL     	1 3 1
+	17	[-]	GETGLOBAL	1 -8	; layerPosition
+	18	[-]	GETUPVAL 	2 0	; -
+	19	[-]	GETTABLE 	2 2 -2	; "indexNumber"
+	20	[-]	GETTABLE 	2 2 -3	; "icon"
+	21	[-]	LOADK    	3 -9	; 52
+	22	[-]	LOADK    	4 -10	; 189
+	23	[-]	CALL     	1 4 1
+	24	[-]	GETGLOBAL	1 -1	; layerCopy
+	25	[-]	GETUPVAL 	2 0	; -
+	26	[-]	GETTABLE 	2 2 -2	; "indexNumber"
+	27	[-]	GETTABLE 	2 2 -3	; "icon"
+	28	[-]	ADD      	2 2 -11	; - 2
+	29	[-]	GETUPVAL 	3 0	; -
+	30	[-]	GETTABLE 	3 3 -4	; "layerNumber"
+	31	[-]	GETUPVAL 	4 0	; -
+	32	[-]	GETTABLE 	4 4 -5	; "layerName"
+	33	[-]	GETUPVAL 	5 0	; -
+	34	[-]	GETTABLE 	5 5 -6	; "t_novelFlag"
+	35	[-]	SUB      	6 0 -12	; - 1
+	36	[-]	LT       	0 6 -12	; - 1
+	37	[-]	JMP      	5	; to 43
+	38	[-]	GETUPVAL 	6 0	; -
+	39	[-]	GETTABLE 	6 6 -6	; "t_novelFlag"
+	40	[-]	LEN      	6 6
+	41	[-]	TEST     	6 0 1
+	42	[-]	JMP      	1	; to 44
+	43	[-]	SUB      	6 0 -12	; - 1
+	44	[-]	GETTABLE 	5 5 6
+	45	[-]	GETTABLE 	4 4 5
+	46	[-]	LOADK    	5 -7	; "b"
+	47	[-]	CONCAT   	4 4 5
+	48	[-]	GETTABLE 	3 3 4
+	49	[-]	CALL     	1 3 1
+	50	[-]	GETGLOBAL	1 -8	; layerPosition
+	51	[-]	GETUPVAL 	2 0	; -
+	52	[-]	GETTABLE 	2 2 -2	; "indexNumber"
+	53	[-]	GETTABLE 	2 2 -3	; "icon"
+	54	[-]	ADD      	2 2 -11	; - 2
+	55	[-]	LOADK    	3 -9	; 52
+	56	[-]	LOADK    	4 -13	; 222
+	57	[-]	CALL     	1 4 1
+	58	[-]	GETGLOBAL	1 -1	; layerCopy
+	59	[-]	GETUPVAL 	2 0	; -
+	60	[-]	GETTABLE 	2 2 -2	; "indexNumber"
+	61	[-]	GETTABLE 	2 2 -3	; "icon"
+	62	[-]	ADD      	2 2 -12	; - 1
+	63	[-]	GETUPVAL 	3 0	; -
+	64	[-]	GETTABLE 	3 3 -4	; "layerNumber"
+	65	[-]	GETUPVAL 	4 0	; -
+	66	[-]	GETTABLE 	4 4 -5	; "layerName"
+	67	[-]	GETUPVAL 	5 0	; -
+	68	[-]	GETTABLE 	5 5 -6	; "t_novelFlag"
+	69	[-]	ADD      	6 0 -12	; - 1
+	70	[-]	GETUPVAL 	7 0	; -
+	71	[-]	GETTABLE 	7 7 -6	; "t_novelFlag"
+	72	[-]	LEN      	7 7
+	73	[-]	LT       	0 7 6
+	74	[-]	JMP      	3	; to 78
+	75	[-]	LOADK    	6 -12	; 1
+	76	[-]	TEST     	6 0 1
+	77	[-]	JMP      	1	; to 79
+	78	[-]	ADD      	6 0 -12	; - 1
+	79	[-]	GETTABLE 	5 5 6
+	80	[-]	GETTABLE 	4 4 5
+	81	[-]	LOADK    	5 -7	; "b"
+	82	[-]	CONCAT   	4 4 5
+	83	[-]	GETTABLE 	3 3 4
+	84	[-]	CALL     	1 3 1
+	85	[-]	GETGLOBAL	1 -8	; layerPosition
+	86	[-]	GETUPVAL 	2 0	; -
+	87	[-]	GETTABLE 	2 2 -2	; "indexNumber"
+	88	[-]	GETTABLE 	2 2 -3	; "icon"
+	89	[-]	ADD      	2 2 -12	; - 1
+	90	[-]	LOADK    	3 -9	; 52
+	91	[-]	LOADK    	4 -14	; 158
+	92	[-]	CALL     	1 4 1
+	93	[-]	RETURN   	0 1
+constants (14) for 0x56bb0580:
+	1	"layerCopy"
+	2	"indexNumber"
+	3	"icon"
+	4	"layerNumber"
+	5	"layerName"
+	6	"t_novelFlag"
+	7	"b"
+	8	"layerPosition"
+	9	52
+	10	189
+	11	2
+	12	1
+	13	222
+	14	158
+locals (0) for 0x56bb0580:
+upvalues (0) for 0x56bb0580:
+
+function <?:137,177> (348 instructions, 1392 bytes at 0x56bb0820)
+3 params, 11 slots, 1 upvalue, 0 locals, 30 constants, 0 functions
+	1	[-]	GETUPVAL 	3 0	; -
+	2	[-]	GETTABLE 	3 3 -1	; "indexNumber"
+	3	[-]	GETTABLE 	3 3 -2	; "icon"
+	4	[-]	ADD      	3 3 -3	; - 3
+	5	[-]	EQ       	0 2 -4	; - "down"
+	6	[-]	JMP      	176	; to 183
+	7	[-]	GETGLOBAL	4 -5	; layerCopy
+	8	[-]	MOVE     	5 3
+	9	[-]	GETUPVAL 	6 0	; -
+	10	[-]	GETTABLE 	6 6 -1	; "indexNumber"
+	11	[-]	GETTABLE 	6 6 -2	; "icon"
+	12	[-]	ADD      	6 6 -6	; - 1
+	13	[-]	CALL     	4 3 1
+	14	[-]	GETGLOBAL	4 -7	; layerPosition
+	15	[-]	MOVE     	5 3
+	16	[-]	LOADK    	6 -8	; 52
+	17	[-]	LOADK    	7 -9	; 158
+	18	[-]	CALL     	4 4 1
+	19	[-]	GETGLOBAL	4 -10	; layerScale
+	20	[-]	MOVE     	5 3
+	21	[-]	LOADK    	6 -11	; 100
+	22	[-]	LOADK    	7 -11	; 100
+	23	[-]	CALL     	4 4 1
+	24	[-]	GETGLOBAL	4 -12	; layerMoveScale
+	25	[-]	MOVE     	5 3
+	26	[-]	LOADK    	6 -11	; 100
+	27	[-]	LOADK    	7 -13	; 0
+	28	[-]	LOADK    	8 -14	; 30
+	29	[-]	CALL     	4 5 1
+	30	[-]	GETGLOBAL	4 -15	; layerMovePosition
+	31	[-]	MOVE     	5 3
+	32	[-]	LOADK    	6 -8	; 52
+	33	[-]	LOADK    	7 -16	; 142
+	34	[-]	LOADK    	8 -14	; 30
+	35	[-]	CALL     	4 5 1
+	36	[-]	GETGLOBAL	4 -5	; layerCopy
+	37	[-]	GETUPVAL 	5 0	; -
+	38	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	39	[-]	GETTABLE 	5 5 -2	; "icon"
+	40	[-]	GETUPVAL 	6 0	; -
+	41	[-]	GETTABLE 	6 6 -17	; "layerNumber"
+	42	[-]	GETUPVAL 	7 0	; -
+	43	[-]	GETTABLE 	7 7 -18	; "layerName"
+	44	[-]	GETUPVAL 	8 0	; -
+	45	[-]	GETTABLE 	8 8 -19	; "t_novelFlag"
+	46	[-]	GETTABLE 	8 8 0
+	47	[-]	GETTABLE 	7 7 8
+	48	[-]	LOADK    	8 -20	; "b"
+	49	[-]	CONCAT   	7 7 8
+	50	[-]	GETTABLE 	6 6 7
+	51	[-]	CALL     	4 3 1
+	52	[-]	GETGLOBAL	4 -7	; layerPosition
+	53	[-]	GETUPVAL 	5 0	; -
+	54	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	55	[-]	GETTABLE 	5 5 -2	; "icon"
+	56	[-]	LOADK    	6 -8	; 52
+	57	[-]	LOADK    	7 -21	; 222
+	58	[-]	CALL     	4 4 1
+	59	[-]	GETGLOBAL	4 -15	; layerMovePosition
+	60	[-]	GETUPVAL 	5 0	; -
+	61	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	62	[-]	GETTABLE 	5 5 -2	; "icon"
+	63	[-]	LOADK    	6 -8	; 52
+	64	[-]	LOADK    	7 -22	; 189
+	65	[-]	LOADK    	8 -14	; 30
+	66	[-]	CALL     	4 5 1
+	67	[-]	GETGLOBAL	4 -5	; layerCopy
+	68	[-]	GETUPVAL 	5 0	; -
+	69	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	70	[-]	GETTABLE 	5 5 -2	; "icon"
+	71	[-]	ADD      	5 5 -6	; - 1
+	72	[-]	GETUPVAL 	6 0	; -
+	73	[-]	GETTABLE 	6 6 -17	; "layerNumber"
+	74	[-]	GETUPVAL 	7 0	; -
+	75	[-]	GETTABLE 	7 7 -18	; "layerName"
+	76	[-]	GETUPVAL 	8 0	; -
+	77	[-]	GETTABLE 	8 8 -19	; "t_novelFlag"
+	78	[-]	GETTABLE 	8 8 1
+	79	[-]	GETTABLE 	7 7 8
+	80	[-]	LOADK    	8 -20	; "b"
+	81	[-]	CONCAT   	7 7 8
+	82	[-]	GETTABLE 	6 6 7
+	83	[-]	CALL     	4 3 1
+	84	[-]	GETGLOBAL	4 -7	; layerPosition
+	85	[-]	GETUPVAL 	5 0	; -
+	86	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	87	[-]	GETTABLE 	5 5 -2	; "icon"
+	88	[-]	ADD      	5 5 -6	; - 1
+	89	[-]	LOADK    	6 -8	; 52
+	90	[-]	LOADK    	7 -22	; 189
+	91	[-]	CALL     	4 4 1
+	92	[-]	GETGLOBAL	4 -15	; layerMovePosition
+	93	[-]	GETUPVAL 	5 0	; -
+	94	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	95	[-]	GETTABLE 	5 5 -2	; "icon"
+	96	[-]	ADD      	5 5 -6	; - 1
+	97	[-]	LOADK    	6 -8	; 52
+	98	[-]	LOADK    	7 -9	; 158
+	99	[-]	LOADK    	8 -14	; 30
+	100	[-]	CALL     	4 5 1
+	101	[-]	GETGLOBAL	4 -5	; layerCopy
+	102	[-]	GETUPVAL 	5 0	; -
+	103	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	104	[-]	GETTABLE 	5 5 -2	; "icon"
+	105	[-]	ADD      	5 5 -23	; - 2
+	106	[-]	GETUPVAL 	6 0	; -
+	107	[-]	GETTABLE 	6 6 -17	; "layerNumber"
+	108	[-]	GETUPVAL 	7 0	; -
+	109	[-]	GETTABLE 	7 7 -18	; "layerName"
+	110	[-]	GETUPVAL 	8 0	; -
+	111	[-]	GETTABLE 	8 8 -19	; "t_novelFlag"
+	112	[-]	SUB      	9 0 -6	; - 1
+	113	[-]	LT       	0 9 -6	; - 1
+	114	[-]	JMP      	5	; to 120
+	115	[-]	GETUPVAL 	9 0	; -
+	116	[-]	GETTABLE 	9 9 -19	; "t_novelFlag"
+	117	[-]	LEN      	9 9
+	118	[-]	TEST     	9 0 1
+	119	[-]	JMP      	1	; to 121
+	120	[-]	SUB      	9 0 -6	; - 1
+	121	[-]	GETTABLE 	8 8 9
+	122	[-]	GETTABLE 	7 7 8
+	123	[-]	LOADK    	8 -20	; "b"
+	124	[-]	CONCAT   	7 7 8
+	125	[-]	GETTABLE 	6 6 7
+	126	[-]	CALL     	4 3 1
+	127	[-]	GETGLOBAL	4 -7	; layerPosition
+	128	[-]	GETUPVAL 	5 0	; -
+	129	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	130	[-]	GETTABLE 	5 5 -2	; "icon"
+	131	[-]	ADD      	5 5 -23	; - 2
+	132	[-]	LOADK    	6 -8	; 52
+	133	[-]	LOADK    	7 -24	; 235
+	134	[-]	CALL     	4 4 1
+	135	[-]	GETGLOBAL	4 -10	; layerScale
+	136	[-]	GETUPVAL 	5 0	; -
+	137	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	138	[-]	GETTABLE 	5 5 -2	; "icon"
+	139	[-]	ADD      	5 5 -23	; - 2
+	140	[-]	LOADK    	6 -11	; 100
+	141	[-]	LOADK    	7 -13	; 0
+	142	[-]	CALL     	4 4 1
+	143	[-]	GETGLOBAL	4 -25	; layerClip
+	144	[-]	GETUPVAL 	5 0	; -
+	145	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	146	[-]	GETTABLE 	5 5 -2	; "icon"
+	147	[-]	ADD      	5 5 -23	; - 2
+	148	[-]	LOADK    	6 -13	; 0
+	149	[-]	LOADK    	7 -13	; 0
+	150	[-]	LOADK    	8 -26	; 55
+	151	[-]	LOADK    	9 -27	; 26
+	152	[-]	CALL     	4 6 1
+	153	[-]	GETGLOBAL	4 -28	; layerMoveClip
+	154	[-]	GETUPVAL 	5 0	; -
+	155	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	156	[-]	GETTABLE 	5 5 -2	; "icon"
+	157	[-]	ADD      	5 5 -23	; - 2
+	158	[-]	LOADK    	6 -13	; 0
+	159	[-]	LOADK    	7 -13	; 0
+	160	[-]	LOADK    	8 -26	; 55
+	161	[-]	LOADK    	9 -29	; 33
+	162	[-]	LOADK    	10 -14	; 30
+	163	[-]	CALL     	4 7 1
+	164	[-]	GETGLOBAL	4 -12	; layerMoveScale
+	165	[-]	GETUPVAL 	5 0	; -
+	166	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	167	[-]	GETTABLE 	5 5 -2	; "icon"
+	168	[-]	ADD      	5 5 -23	; - 2
+	169	[-]	LOADK    	6 -11	; 100
+	170	[-]	LOADK    	7 -11	; 100
+	171	[-]	LOADK    	8 -14	; 30
+	172	[-]	CALL     	4 5 1
+	173	[-]	GETGLOBAL	4 -15	; layerMovePosition
+	174	[-]	GETUPVAL 	5 0	; -
+	175	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	176	[-]	GETTABLE 	5 5 -2	; "icon"
+	177	[-]	ADD      	5 5 -23	; - 2
+	178	[-]	LOADK    	6 -8	; 52
+	179	[-]	LOADK    	7 -21	; 222
+	180	[-]	LOADK    	8 -14	; 30
+	181	[-]	CALL     	4 5 1
+	182	[-]	JMP      	165	; to 348
+	183	[-]	EQ       	0 2 -30	; - "up"
+	184	[-]	JMP      	163	; to 348
+	185	[-]	GETGLOBAL	4 -5	; layerCopy
+	186	[-]	MOVE     	5 3
+	187	[-]	GETUPVAL 	6 0	; -
+	188	[-]	GETTABLE 	6 6 -1	; "indexNumber"
+	189	[-]	GETTABLE 	6 6 -2	; "icon"
+	190	[-]	ADD      	6 6 -23	; - 2
+	191	[-]	CALL     	4 3 1
+	192	[-]	GETGLOBAL	4 -7	; layerPosition
+	193	[-]	MOVE     	5 3
+	194	[-]	LOADK    	6 -8	; 52
+	195	[-]	LOADK    	7 -21	; 222
+	196	[-]	CALL     	4 4 1
+	197	[-]	GETGLOBAL	4 -10	; layerScale
+	198	[-]	MOVE     	5 3
+	199	[-]	LOADK    	6 -11	; 100
+	200	[-]	LOADK    	7 -11	; 100
+	201	[-]	CALL     	4 4 1
+	202	[-]	GETGLOBAL	4 -28	; layerMoveClip
+	203	[-]	MOVE     	5 3
+	204	[-]	LOADK    	6 -13	; 0
+	205	[-]	LOADK    	7 -13	; 0
+	206	[-]	LOADK    	8 -26	; 55
+	207	[-]	LOADK    	9 -27	; 26
+	208	[-]	LOADK    	10 -14	; 30
+	209	[-]	CALL     	4 7 1
+	210	[-]	GETGLOBAL	4 -12	; layerMoveScale
+	211	[-]	MOVE     	5 3
+	212	[-]	LOADK    	6 -11	; 100
+	213	[-]	LOADK    	7 -13	; 0
+	214	[-]	LOADK    	8 -14	; 30
+	215	[-]	CALL     	4 5 1
+	216	[-]	GETGLOBAL	4 -15	; layerMovePosition
+	217	[-]	MOVE     	5 3
+	218	[-]	LOADK    	6 -8	; 52
+	219	[-]	LOADK    	7 -24	; 235
+	220	[-]	LOADK    	8 -14	; 30
+	221	[-]	CALL     	4 5 1
+	222	[-]	GETGLOBAL	4 -5	; layerCopy
+	223	[-]	GETUPVAL 	5 0	; -
+	224	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	225	[-]	GETTABLE 	5 5 -2	; "icon"
+	226	[-]	GETUPVAL 	6 0	; -
+	227	[-]	GETTABLE 	6 6 -17	; "layerNumber"
+	228	[-]	GETUPVAL 	7 0	; -
+	229	[-]	GETTABLE 	7 7 -18	; "layerName"
+	230	[-]	GETUPVAL 	8 0	; -
+	231	[-]	GETTABLE 	8 8 -19	; "t_novelFlag"
+	232	[-]	GETTABLE 	8 8 0
+	233	[-]	GETTABLE 	7 7 8
+	234	[-]	LOADK    	8 -20	; "b"
+	235	[-]	CONCAT   	7 7 8
+	236	[-]	GETTABLE 	6 6 7
+	237	[-]	CALL     	4 3 1
+	238	[-]	GETGLOBAL	4 -7	; layerPosition
+	239	[-]	GETUPVAL 	5 0	; -
+	240	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	241	[-]	GETTABLE 	5 5 -2	; "icon"
+	242	[-]	LOADK    	6 -8	; 52
+	243	[-]	LOADK    	7 -9	; 158
+	244	[-]	CALL     	4 4 1
+	245	[-]	GETGLOBAL	4 -15	; layerMovePosition
+	246	[-]	GETUPVAL 	5 0	; -
+	247	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	248	[-]	GETTABLE 	5 5 -2	; "icon"
+	249	[-]	LOADK    	6 -8	; 52
+	250	[-]	LOADK    	7 -22	; 189
+	251	[-]	LOADK    	8 -14	; 30
+	252	[-]	CALL     	4 5 1
+	253	[-]	GETGLOBAL	4 -5	; layerCopy
+	254	[-]	GETUPVAL 	5 0	; -
+	255	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	256	[-]	GETTABLE 	5 5 -2	; "icon"
+	257	[-]	ADD      	5 5 -6	; - 1
+	258	[-]	GETUPVAL 	6 0	; -
+	259	[-]	GETTABLE 	6 6 -17	; "layerNumber"
+	260	[-]	GETUPVAL 	7 0	; -
+	261	[-]	GETTABLE 	7 7 -18	; "layerName"
+	262	[-]	GETUPVAL 	8 0	; -
+	263	[-]	GETTABLE 	8 8 -19	; "t_novelFlag"
+	264	[-]	ADD      	9 0 -6	; - 1
+	265	[-]	GETUPVAL 	10 0	; -
+	266	[-]	GETTABLE 	10 10 -19	; "t_novelFlag"
+	267	[-]	LEN      	10 10
+	268	[-]	LT       	0 10 9
+	269	[-]	JMP      	3	; to 273
+	270	[-]	LOADK    	9 -6	; 1
+	271	[-]	TEST     	9 0 1
+	272	[-]	JMP      	1	; to 274
+	273	[-]	ADD      	9 0 -6	; - 1
+	274	[-]	GETTABLE 	8 8 9
+	275	[-]	GETTABLE 	7 7 8
+	276	[-]	LOADK    	8 -20	; "b"
+	277	[-]	CONCAT   	7 7 8
+	278	[-]	GETTABLE 	6 6 7
+	279	[-]	CALL     	4 3 1
+	280	[-]	GETGLOBAL	4 -7	; layerPosition
+	281	[-]	GETUPVAL 	5 0	; -
+	282	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	283	[-]	GETTABLE 	5 5 -2	; "icon"
+	284	[-]	ADD      	5 5 -6	; - 1
+	285	[-]	LOADK    	6 -8	; 52
+	286	[-]	LOADK    	7 -16	; 142
+	287	[-]	CALL     	4 4 1
+	288	[-]	GETGLOBAL	4 -10	; layerScale
+	289	[-]	GETUPVAL 	5 0	; -
+	290	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	291	[-]	GETTABLE 	5 5 -2	; "icon"
+	292	[-]	ADD      	5 5 -6	; - 1
+	293	[-]	LOADK    	6 -11	; 100
+	294	[-]	LOADK    	7 -13	; 0
+	295	[-]	CALL     	4 4 1
+	296	[-]	GETGLOBAL	4 -12	; layerMoveScale
+	297	[-]	GETUPVAL 	5 0	; -
+	298	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	299	[-]	GETTABLE 	5 5 -2	; "icon"
+	300	[-]	ADD      	5 5 -6	; - 1
+	301	[-]	LOADK    	6 -11	; 100
+	302	[-]	LOADK    	7 -11	; 100
+	303	[-]	LOADK    	8 -14	; 30
+	304	[-]	CALL     	4 5 1
+	305	[-]	GETGLOBAL	4 -15	; layerMovePosition
+	306	[-]	GETUPVAL 	5 0	; -
+	307	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	308	[-]	GETTABLE 	5 5 -2	; "icon"
+	309	[-]	ADD      	5 5 -6	; - 1
+	310	[-]	LOADK    	6 -8	; 52
+	311	[-]	LOADK    	7 -9	; 158
+	312	[-]	LOADK    	8 -14	; 30
+	313	[-]	CALL     	4 5 1
+	314	[-]	GETGLOBAL	4 -5	; layerCopy
+	315	[-]	GETUPVAL 	5 0	; -
+	316	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	317	[-]	GETTABLE 	5 5 -2	; "icon"
+	318	[-]	ADD      	5 5 -23	; - 2
+	319	[-]	GETUPVAL 	6 0	; -
+	320	[-]	GETTABLE 	6 6 -17	; "layerNumber"
+	321	[-]	GETUPVAL 	7 0	; -
+	322	[-]	GETTABLE 	7 7 -18	; "layerName"
+	323	[-]	GETUPVAL 	8 0	; -
+	324	[-]	GETTABLE 	8 8 -19	; "t_novelFlag"
+	325	[-]	GETTABLE 	8 8 1
+	326	[-]	GETTABLE 	7 7 8
+	327	[-]	LOADK    	8 -20	; "b"
+	328	[-]	CONCAT   	7 7 8
+	329	[-]	GETTABLE 	6 6 7
+	330	[-]	CALL     	4 3 1
+	331	[-]	GETGLOBAL	4 -7	; layerPosition
+	332	[-]	GETUPVAL 	5 0	; -
+	333	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	334	[-]	GETTABLE 	5 5 -2	; "icon"
+	335	[-]	ADD      	5 5 -23	; - 2
+	336	[-]	LOADK    	6 -8	; 52
+	337	[-]	LOADK    	7 -22	; 189
+	338	[-]	CALL     	4 4 1
+	339	[-]	GETGLOBAL	4 -15	; layerMovePosition
+	340	[-]	GETUPVAL 	5 0	; -
+	341	[-]	GETTABLE 	5 5 -1	; "indexNumber"
+	342	[-]	GETTABLE 	5 5 -2	; "icon"
+	343	[-]	ADD      	5 5 -23	; - 2
+	344	[-]	LOADK    	6 -8	; 52
+	345	[-]	LOADK    	7 -21	; 222
+	346	[-]	LOADK    	8 -14	; 30
+	347	[-]	CALL     	4 5 1
+	348	[-]	RETURN   	0 1
+constants (30) for 0x56bb0820:
+	1	"indexNumber"
+	2	"icon"
+	3	3
+	4	"down"
+	5	"layerCopy"
+	6	1
+	7	"layerPosition"
+	8	52
+	9	158
+	10	"layerScale"
+	11	100
+	12	"layerMoveScale"
+	13	0
+	14	30
+	15	"layerMovePosition"
+	16	142
+	17	"layerNumber"
+	18	"layerName"
+	19	"t_novelFlag"
+	20	"b"
+	21	222
+	22	189
+	23	2
+	24	235
+	25	"layerClip"
+	26	55
+	27	26
+	28	"layerMoveClip"
+	29	33
+	30	"up"
+locals (0) for 0x56bb0820:
+upvalues (0) for 0x56bb0820:
+
+function <?:179,204> (151 instructions, 604 bytes at 0x56bb1050)
+3 params, 9 slots, 3 upvalues, 0 locals, 33 constants, 0 functions
+	1	[-]	GETGLOBAL	3 -1	; layerCopy
+	2	[-]	GETUPVAL 	4 0	; -
+	3	[-]	GETTABLE 	4 4 -2	; "indexNumber"
+	4	[-]	GETTABLE 	4 4 -3	; "hardCover"
+	5	[-]	ADD      	4 4 -4	; - 1
+	6	[-]	GETUPVAL 	5 0	; -
+	7	[-]	GETTABLE 	5 5 -5	; "layerNumber"
+	8	[-]	GETUPVAL 	6 0	; -
+	9	[-]	GETTABLE 	6 6 -6	; "layerName"
+	10	[-]	GETUPVAL 	7 0	; -
+	11	[-]	GETTABLE 	7 7 -7	; "t_novelFlag"
+	12	[-]	GETTABLE 	7 7 1
+	13	[-]	GETTABLE 	6 6 7
+	14	[-]	LOADK    	7 -8	; "a"
+	15	[-]	CONCAT   	6 6 7
+	16	[-]	GETTABLE 	5 5 6
+	17	[-]	CALL     	3 3 1
+	18	[-]	GETGLOBAL	3 -1	; layerCopy
+	19	[-]	GETUPVAL 	4 0	; -
+	20	[-]	GETTABLE 	4 4 -2	; "indexNumber"
+	21	[-]	GETTABLE 	4 4 -3	; "hardCover"
+	22	[-]	GETUPVAL 	5 0	; -
+	23	[-]	GETTABLE 	5 5 -5	; "layerNumber"
+	24	[-]	GETUPVAL 	6 0	; -
+	25	[-]	GETTABLE 	6 6 -6	; "layerName"
+	26	[-]	GETUPVAL 	7 0	; -
+	27	[-]	GETTABLE 	7 7 -7	; "t_novelFlag"
+	28	[-]	GETTABLE 	7 7 0
+	29	[-]	GETTABLE 	6 6 7
+	30	[-]	LOADK    	7 -8	; "a"
+	31	[-]	CONCAT   	6 6 7
+	32	[-]	GETTABLE 	5 5 6
+	33	[-]	CALL     	3 3 1
+	34	[-]	EQ       	0 2 -9	; - "down"
+	35	[-]	JMP      	17	; to 53
+	36	[-]	GETGLOBAL	3 -10	; layerPosition
+	37	[-]	GETUPVAL 	4 0	; -
+	38	[-]	GETTABLE 	4 4 -2	; "indexNumber"
+	39	[-]	GETTABLE 	4 4 -3	; "hardCover"
+	40	[-]	LOADK    	5 -11	; 0
+	41	[-]	LOADK    	6 -12	; 270
+	42	[-]	CALL     	3 4 1
+	43	[-]	GETGLOBAL	3 -13	; layerMovePosition
+	44	[-]	GETUPVAL 	4 0	; -
+	45	[-]	GETTABLE 	4 4 -2	; "indexNumber"
+	46	[-]	GETTABLE 	4 4 -3	; "hardCover"
+	47	[-]	ADD      	4 4 -4	; - 1
+	48	[-]	LOADK    	5 -11	; 0
+	49	[-]	LOADK    	6 -14	; -270
+	50	[-]	LOADK    	7 -15	; 30
+	51	[-]	CALL     	3 5 1
+	52	[-]	JMP      	18	; to 71
+	53	[-]	EQ       	0 2 -16	; - "up"
+	54	[-]	JMP      	16	; to 71
+	55	[-]	GETGLOBAL	3 -10	; layerPosition
+	56	[-]	GETUPVAL 	4 0	; -
+	57	[-]	GETTABLE 	4 4 -2	; "indexNumber"
+	58	[-]	GETTABLE 	4 4 -3	; "hardCover"
+	59	[-]	LOADK    	5 -11	; 0
+	60	[-]	LOADK    	6 -14	; -270
+	61	[-]	CALL     	3 4 1
+	62	[-]	GETGLOBAL	3 -13	; layerMovePosition
+	63	[-]	GETUPVAL 	4 0	; -
+	64	[-]	GETTABLE 	4 4 -2	; "indexNumber"
+	65	[-]	GETTABLE 	4 4 -3	; "hardCover"
+	66	[-]	ADD      	4 4 -4	; - 1
+	67	[-]	LOADK    	5 -11	; 0
+	68	[-]	LOADK    	6 -12	; 270
+	69	[-]	LOADK    	7 -15	; 30
+	70	[-]	CALL     	3 5 1
+	71	[-]	GETGLOBAL	3 -13	; layerMovePosition
+	72	[-]	GETUPVAL 	4 0	; -
+	73	[-]	GETTABLE 	4 4 -2	; "indexNumber"
+	74	[-]	GETTABLE 	4 4 -3	; "hardCover"
+	75	[-]	LOADK    	5 -11	; 0
+	76	[-]	LOADK    	6 -11	; 0
+	77	[-]	LOADK    	7 -15	; 30
+	78	[-]	CALL     	3 5 1
+	79	[-]	GETUPVAL 	3 1	; -
+	80	[-]	MOVE     	4 0
+	81	[-]	MOVE     	5 1
+	82	[-]	MOVE     	6 2
+	83	[-]	CALL     	3 4 1
+	84	[-]	GETGLOBAL	3 -1	; layerCopy
+	85	[-]	LOADK    	4 -17	; 10
+	86	[-]	GETUPVAL 	5 0	; -
+	87	[-]	GETTABLE 	5 5 -5	; "layerNumber"
+	88	[-]	GETTABLE 	5 5 -18	; "novel_4_b"
+	89	[-]	CALL     	3 3 1
+	90	[-]	GETGLOBAL	3 -19	; layerClip
+	91	[-]	LOADK    	4 -17	; 10
+	92	[-]	LOADK    	5 -11	; 0
+	93	[-]	LOADK    	6 -11	; 0
+	94	[-]	LOADK    	7 -20	; 7
+	95	[-]	LOADK    	8 -21	; 61
+	96	[-]	CALL     	3 6 1
+	97	[-]	GETGLOBAL	3 -10	; layerPosition
+	98	[-]	LOADK    	4 -17	; 10
+	99	[-]	LOADK    	5 -22	; 115
+	100	[-]	LOADK    	6 -23	; 205
+	101	[-]	CALL     	3 4 1
+	102	[-]	GETGLOBAL	3 -24	; systemSave
+	103	[-]	GETTABLE 	3 3 -25	; "bookMark"
+	104	[-]	GETUPVAL 	4 0	; -
+	105	[-]	GETTABLE 	4 4 -7	; "t_novelFlag"
+	106	[-]	GETTABLE 	4 4 0
+	107	[-]	GETTABLE 	3 3 4
+	108	[-]	EQ       	1 3 -11	; - 0
+	109	[-]	JMP      	12	; to 122
+	110	[-]	GETUPVAL 	3 2	; -
+	111	[-]	LOADK    	4 -26	; 11
+	112	[-]	LOADK    	5 -22	; 115
+	113	[-]	LOADK    	6 -27	; 250
+	114	[-]	GETGLOBAL	7 -24	; systemSave
+	115	[-]	GETTABLE 	7 7 -25	; "bookMark"
+	116	[-]	GETUPVAL 	8 0	; -
+	117	[-]	GETTABLE 	8 8 -7	; "t_novelFlag"
+	118	[-]	GETTABLE 	8 8 0
+	119	[-]	GETTABLE 	7 7 8
+	120	[-]	CALL     	3 5 1
+	121	[-]	JMP      	19	; to 141
+	122	[-]	GETGLOBAL	3 -28	; layerLoad
+	123	[-]	LOADK    	4 -26	; 11
+	124	[-]	LOADK    	5 -29	; ""
+	125	[-]	CALL     	3 3 1
+	126	[-]	GETGLOBAL	3 -28	; layerLoad
+	127	[-]	LOADK    	4 -30	; 12
+	128	[-]	LOADK    	5 -29	; ""
+	129	[-]	CALL     	3 3 1
+	130	[-]	GETGLOBAL	3 -28	; layerLoad
+	131	[-]	LOADK    	4 -31	; 13
+	132	[-]	LOADK    	5 -29	; ""
+	133	[-]	CALL     	3 3 1
+	134	[-]	GETGLOBAL	3 -19	; layerClip
+	135	[-]	LOADK    	4 -17	; 10
+	136	[-]	LOADK    	5 -20	; 7
+	137	[-]	LOADK    	6 -11	; 0
+	138	[-]	LOADK    	7 -32	; 14
+	139	[-]	LOADK    	8 -21	; 61
+	140	[-]	CALL     	3 6 1
+	141	[-]	GETGLOBAL	3 -33	; wait
+	142	[-]	LOADK    	4 -15	; 30
+	143	[-]	CALL     	3 2 1
+	144	[-]	GETGLOBAL	3 -28	; layerLoad
+	145	[-]	GETUPVAL 	4 0	; -
+	146	[-]	GETTABLE 	4 4 -2	; "indexNumber"
+	147	[-]	GETTABLE 	4 4 -3	; "hardCover"
+	148	[-]	ADD      	4 4 -4	; - 1
+	149	[-]	LOADK    	5 -29	; ""
+	150	[-]	CALL     	3 3 1
+	151	[-]	RETURN   	0 1
+constants (33) for 0x56bb1050:
+	1	"layerCopy"
+	2	"indexNumber"
+	3	"hardCover"
+	4	1
+	5	"layerNumber"
+	6	"layerName"
+	7	"t_novelFlag"
+	8	"a"
+	9	"down"
+	10	"layerPosition"
+	11	0
+	12	270
+	13	"layerMovePosition"
+	14	-270
+	15	30
+	16	"up"
+	17	10
+	18	"novel_4_b"
+	19	"layerClip"
+	20	7
+	21	61
+	22	115
+	23	205
+	24	"systemSave"
+	25	"bookMark"
+	26	11
+	27	250
+	28	"layerLoad"
+	29	""
+	30	12
+	31	13
+	32	14
+	33	"wait"
+locals (0) for 0x56bb1050:
+upvalues (0) for 0x56bb1050:
+
+function <?:206,225> (116 instructions, 464 bytes at 0x56bb14f0)
+1 param, 7 slots, 4 upvalues, 0 locals, 36 constants, 0 functions
+	1	[-]	GETGLOBAL	1 -1	; layerCopy
+	2	[-]	GETUPVAL 	2 0	; -
+	3	[-]	GETTABLE 	2 2 -2	; "indexNumber"
+	4	[-]	GETTABLE 	2 2 -3	; "hardCover"
+	5	[-]	GETUPVAL 	3 0	; -
+	6	[-]	GETTABLE 	3 3 -4	; "layerNumber"
+	7	[-]	GETUPVAL 	4 0	; -
+	8	[-]	GETTABLE 	4 4 -5	; "layerName"
+	9	[-]	GETUPVAL 	5 0	; -
+	10	[-]	GETTABLE 	5 5 -6	; "t_novelFlag"
+	11	[-]	GETTABLE 	5 5 0
+	12	[-]	GETTABLE 	4 4 5
+	13	[-]	LOADK    	5 -7	; "a"
+	14	[-]	CONCAT   	4 4 5
+	15	[-]	GETTABLE 	3 3 4
+	16	[-]	CALL     	1 3 1
+	17	[-]	GETUPVAL 	1 1	; -
+	18	[-]	MOVE     	2 0
+	19	[-]	CALL     	1 2 1
+	20	[-]	GETGLOBAL	1 -1	; layerCopy
+	21	[-]	GETUPVAL 	2 0	; -
+	22	[-]	GETTABLE 	2 2 -2	; "indexNumber"
+	23	[-]	GETTABLE 	2 2 -8	; "bar"
+	24	[-]	GETUPVAL 	3 0	; -
+	25	[-]	GETTABLE 	3 3 -4	; "layerNumber"
+	26	[-]	GETTABLE 	3 3 -9	; "novel_1_a"
+	27	[-]	CALL     	1 3 1
+	28	[-]	GETGLOBAL	1 -10	; layerPosition
+	29	[-]	GETUPVAL 	2 0	; -
+	30	[-]	GETTABLE 	2 2 -2	; "indexNumber"
+	31	[-]	GETTABLE 	2 2 -8	; "bar"
+	32	[-]	LOADK    	3 -11	; 15
+	33	[-]	LOADK    	4 -12	; 0
+	34	[-]	CALL     	1 4 1
+	35	[-]	GETGLOBAL	1 -1	; layerCopy
+	36	[-]	GETUPVAL 	2 0	; -
+	37	[-]	GETTABLE 	2 2 -2	; "indexNumber"
+	38	[-]	GETTABLE 	2 2 -13	; "mask"
+	39	[-]	GETUPVAL 	3 0	; -
+	40	[-]	GETTABLE 	3 3 -4	; "layerNumber"
+	41	[-]	GETTABLE 	3 3 -14	; "novel_1_b"
+	42	[-]	CALL     	1 3 1
+	43	[-]	GETGLOBAL	1 -10	; layerPosition
+	44	[-]	GETUPVAL 	2 0	; -
+	45	[-]	GETTABLE 	2 2 -2	; "indexNumber"
+	46	[-]	GETTABLE 	2 2 -13	; "mask"
+	47	[-]	LOADK    	3 -15	; 59
+	48	[-]	LOADK    	4 -16	; 158
+	49	[-]	CALL     	1 4 1
+	50	[-]	GETUPVAL 	1 2	; -
+	51	[-]	LOADK    	2 -17	; 14
+	52	[-]	LOADK    	3 -18	; 91
+	53	[-]	LOADK    	4 -19	; 10
+	54	[-]	LOADK    	5 -20	; "0"
+	55	[-]	GETUPVAL 	6 0	; -
+	56	[-]	GETTABLE 	6 6 -6	; "t_novelFlag"
+	57	[-]	LEN      	6 6
+	58	[-]	CONCAT   	5 5 6
+	59	[-]	CALL     	1 5 1
+	60	[-]	GETUPVAL 	1 2	; -
+	61	[-]	LOADK    	2 -21	; 16
+	62	[-]	LOADK    	3 -18	; 91
+	63	[-]	LOADK    	4 -22	; 40
+	64	[-]	LOADK    	5 -23	; "05"
+	65	[-]	CALL     	1 5 1
+	66	[-]	GETGLOBAL	1 -1	; layerCopy
+	67	[-]	LOADK    	2 -19	; 10
+	68	[-]	GETUPVAL 	3 0	; -
+	69	[-]	GETTABLE 	3 3 -4	; "layerNumber"
+	70	[-]	GETTABLE 	3 3 -24	; "novel_4_b"
+	71	[-]	CALL     	1 3 1
+	72	[-]	GETGLOBAL	1 -25	; layerClip
+	73	[-]	LOADK    	2 -19	; 10
+	74	[-]	LOADK    	3 -12	; 0
+	75	[-]	LOADK    	4 -12	; 0
+	76	[-]	LOADK    	5 -26	; 7
+	77	[-]	LOADK    	6 -27	; 61
+	78	[-]	CALL     	1 6 1
+	79	[-]	GETGLOBAL	1 -10	; layerPosition
+	80	[-]	LOADK    	2 -19	; 10
+	81	[-]	LOADK    	3 -28	; 115
+	82	[-]	LOADK    	4 -29	; 205
+	83	[-]	CALL     	1 4 1
+	84	[-]	GETGLOBAL	1 -30	; systemSave
+	85	[-]	GETTABLE 	1 1 -31	; "bookMark"
+	86	[-]	GETUPVAL 	2 0	; -
+	87	[-]	GETTABLE 	2 2 -6	; "t_novelFlag"
+	88	[-]	GETTABLE 	2 2 0
+	89	[-]	GETTABLE 	1 1 2
+	90	[-]	EQ       	1 1 -12	; - 0
+	91	[-]	JMP      	12	; to 104
+	92	[-]	GETUPVAL 	1 3	; -
+	93	[-]	LOADK    	2 -32	; 11
+	94	[-]	LOADK    	3 -28	; 115
+	95	[-]	LOADK    	4 -33	; 250
+	96	[-]	GETGLOBAL	5 -30	; systemSave
+	97	[-]	GETTABLE 	5 5 -31	; "bookMark"
+	98	[-]	GETUPVAL 	6 0	; -
+	99	[-]	GETTABLE 	6 6 -6	; "t_novelFlag"
+	100	[-]	GETTABLE 	6 6 0
+	101	[-]	GETTABLE 	5 5 6
+	102	[-]	CALL     	1 5 1
+	103	[-]	JMP      	7	; to 111
+	104	[-]	GETGLOBAL	1 -25	; layerClip
+	105	[-]	LOADK    	2 -19	; 10
+	106	[-]	LOADK    	3 -26	; 7
+	107	[-]	LOADK    	4 -12	; 0
+	108	[-]	LOADK    	5 -17	; 14
+	109	[-]	LOADK    	6 -27	; 61
+	110	[-]	CALL     	1 6 1
+	111	[-]	GETGLOBAL	1 -34	; switchScreen
+	112	[-]	LOADK    	2 -12	; 0
+	113	[-]	LOADK    	3 -35	; ""
+	114	[-]	LOADK    	4 -36	; 60
+	115	[-]	CALL     	1 4 1
+	116	[-]	RETURN   	0 1
+constants (36) for 0x56bb14f0:
+	1	"layerCopy"
+	2	"indexNumber"
+	3	"hardCover"
+	4	"layerNumber"
+	5	"layerName"
+	6	"t_novelFlag"
+	7	"a"
+	8	"bar"
+	9	"novel_1_a"
+	10	"layerPosition"
+	11	15
+	12	0
+	13	"mask"
+	14	"novel_1_b"
+	15	59
+	16	158
+	17	14
+	18	91
+	19	10
+	20	"0"
+	21	16
+	22	40
+	23	"05"
+	24	"novel_4_b"
+	25	"layerClip"
+	26	7
+	27	61
+	28	115
+	29	205
+	30	"systemSave"
+	31	"bookMark"
+	32	11
+	33	250
+	34	"switchScreen"
+	35	""
+	36	60
+locals (0) for 0x56bb14f0:
+upvalues (0) for 0x56bb14f0:
+
+function <?:227,232> (15 instructions, 60 bytes at 0x56bb1930)
+0 params, 7 slots, 0 upvalues, 0 locals, 7 constants, 0 functions
+	1	[-]	LOADK    	0 -1	; 0
+	2	[-]	LOADK    	1 -2	; 20
+	3	[-]	LOADK    	2 -3	; 1
+	4	[-]	FORPREP  	0 4	; to 9
+	5	[-]	GETGLOBAL	4 -4	; layerLoad
+	6	[-]	MOVE     	5 3
+	7	[-]	LOADK    	6 -5	; ""
+	8	[-]	CALL     	4 3 1
+	9	[-]	FORLOOP  	0 -5	; to 5
+	10	[-]	GETGLOBAL	0 -6	; switchScreen
+	11	[-]	LOADK    	1 -1	; 0
+	12	[-]	LOADK    	2 -5	; ""
+	13	[-]	LOADK    	3 -7	; 60
+	14	[-]	CALL     	0 4 1
+	15	[-]	RETURN   	0 1
+constants (7) for 0x56bb1930:
+	1	0
+	2	20
+	3	1
+	4	"layerLoad"
+	5	""
+	6	"switchScreen"
+	7	60
+locals (0) for 0x56bb1930:
+upvalues (0) for 0x56bb1930:
+
+function <?:234,276> (96 instructions, 384 bytes at 0x56bb1a20)
+1 param, 9 slots, 5 upvalues, 0 locals, 19 constants, 0 functions
+	1	[-]	TESTSET  	1 0 1
+	2	[-]	JMP      	1	; to 4
+	3	[-]	LOADK    	1 -1	; 1
+	4	[-]	GETUPVAL 	2 0	; -
+	5	[-]	MOVE     	3 1
+	6	[-]	CALL     	2 2 1
+	7	[-]	LOADK    	2 -1	; 1
+	8	[-]	LOADBOOL 	3 0 0
+	9	[-]	LOADK    	4 -2	; ""
+	10	[-]	GETGLOBAL	5 -3	; pressButton
+	11	[-]	LOADK    	6 -4	; "UP"
+	12	[-]	CALL     	5 2 2
+	13	[-]	EQ       	0 5 -5	; - true
+	14	[-]	JMP      	15	; to 30
+	15	[-]	EQ       	0 3 -6	; - false
+	16	[-]	JMP      	13	; to 30
+	17	[-]	MOVE     	2 1
+	18	[-]	ADD      	5 1 -1	; - 1
+	19	[-]	GETUPVAL 	6 1	; -
+	20	[-]	GETTABLE 	6 6 -7	; "t_novelFlag"
+	21	[-]	LEN      	6 6
+	22	[-]	LT       	0 6 5
+	23	[-]	JMP      	3	; to 27
+	24	[-]	LOADK    	5 -1	; 1
+	25	[-]	TESTSET  	1 5 1
+	26	[-]	JMP      	1	; to 28
+	27	[-]	ADD      	1 1 -1	; - 1
+	28	[-]	LOADBOOL 	3 1 0
+	29	[-]	LOADK    	4 -8	; "up"
+	30	[-]	GETGLOBAL	5 -3	; pressButton
+	31	[-]	LOADK    	6 -9	; "DOWN"
+	32	[-]	CALL     	5 2 2
+	33	[-]	EQ       	0 5 -5	; - true
+	34	[-]	JMP      	14	; to 49
+	35	[-]	EQ       	0 3 -6	; - false
+	36	[-]	JMP      	12	; to 49
+	37	[-]	MOVE     	2 1
+	38	[-]	SUB      	5 1 -1	; - 1
+	39	[-]	LT       	0 5 -1	; - 1
+	40	[-]	JMP      	5	; to 46
+	41	[-]	GETUPVAL 	5 1	; -
+	42	[-]	GETTABLE 	5 5 -7	; "t_novelFlag"
+	43	[-]	LEN      	5 5
+	44	[-]	TESTSET  	1 5 1
+	45	[-]	JMP      	1	; to 47
+	46	[-]	SUB      	1 1 -1	; - 1
+	47	[-]	LOADBOOL 	3 1 0
+	48	[-]	LOADK    	4 -10	; "down"
+	49	[-]	GETGLOBAL	5 -3	; pressButton
+	50	[-]	LOADK    	6 -11	; "RIGHT"
+	51	[-]	CALL     	5 2 2
+	52	[-]	EQ       	0 5 -5	; - true
+	53	[-]	JMP      	9	; to 63
+	54	[-]	EQ       	0 3 -6	; - false
+	55	[-]	JMP      	7	; to 63
+	56	[-]	LOADK    	5 -12	; 2
+	57	[-]	SETUPVAL 	5 2	; -
+	58	[-]	GETGLOBAL	5 -13	; keyPlaySE
+	59	[-]	GETGLOBAL	6 -14	; seName
+	60	[-]	GETTABLE 	6 6 -15	; "cross"
+	61	[-]	CALL     	5 2 1
+	62	[-]	JMP      	30	; to 93
+	63	[-]	GETGLOBAL	5 -3	; pressButton
+	64	[-]	LOADK    	6 -16	; "LEFT"
+	65	[-]	CALL     	5 2 2
+	66	[-]	EQ       	0 5 -5	; - true
+	67	[-]	JMP      	9	; to 77
+	68	[-]	EQ       	0 3 -6	; - false
+	69	[-]	JMP      	7	; to 77
+	70	[-]	GETGLOBAL	5 -13	; keyPlaySE
+	71	[-]	GETGLOBAL	6 -14	; seName
+	72	[-]	GETTABLE 	6 6 -17	; "circle"
+	73	[-]	CALL     	5 2 1
+	74	[-]	LOADK    	5 -1	; 1
+	75	[-]	SETUPVAL 	5 2	; -
+	76	[-]	JMP      	16	; to 93
+	77	[-]	EQ       	0 3 -5	; - true
+	78	[-]	JMP      	10	; to 89
+	79	[-]	GETGLOBAL	5 -13	; keyPlaySE
+	80	[-]	GETGLOBAL	6 -14	; seName
+	81	[-]	GETTABLE 	6 6 -18	; "arrowKey"
+	82	[-]	CALL     	5 2 1
+	83	[-]	GETUPVAL 	5 3	; -
+	84	[-]	MOVE     	6 1
+	85	[-]	MOVE     	7 2
+	86	[-]	MOVE     	8 4
+	87	[-]	CALL     	5 4 1
+	88	[-]	LOADBOOL 	3 0 0
+	89	[-]	GETGLOBAL	5 -19	; wait
+	90	[-]	LOADK    	6 -12	; 2
+	91	[-]	CALL     	5 2 1
+	92	[-]	JMP      	-83	; to 10
+	93	[-]	GETUPVAL 	5 4	; -
+	94	[-]	CALL     	5 1 1
+	95	[-]	RETURN   	1 2
+	96	[-]	RETURN   	0 1
+constants (19) for 0x56bb1a20:
+	1	1
+	2	""
+	3	"pressButton"
+	4	"UP"
+	5	true
+	6	false
+	7	"t_novelFlag"
+	8	"up"
+	9	"DOWN"
+	10	"down"
+	11	"RIGHT"
+	12	2
+	13	"keyPlaySE"
+	14	"seName"
+	15	"cross"
+	16	"LEFT"
+	17	"circle"
+	18	"arrowKey"
+	19	"wait"
+locals (0) for 0x56bb1a20:
+upvalues (0) for 0x56bb1a20:
+
+function <?:281,292> (92 instructions, 368 bytes at 0x56bb2240)
+3 params, 10 slots, 1 upvalue, 0 locals, 12 constants, 0 functions
+	1	[-]	EQ       	0 2 -1	; - 1
+	2	[-]	JMP      	29	; to 32
+	3	[-]	GETGLOBAL	3 -2	; comLayerLoadFalse
+	4	[-]	GETUPVAL 	4 0	; -
+	5	[-]	GETTABLE 	4 4 -3	; "indexNumber"
+	6	[-]	GETTABLE 	4 4 -4	; "sentence"
+	7	[-]	ADD      	4 4 -5	; - 4
+	8	[-]	LOADK    	5 -6	; "novel/"
+	9	[-]	GETUPVAL 	6 0	; -
+	10	[-]	GETTABLE 	6 6 -7	; "t_novelFlag"
+	11	[-]	GETTABLE 	6 6 0
+	12	[-]	LOADK    	7 -8	; "_"
+	13	[-]	SUB      	8 1 -9	; - 2
+	14	[-]	LOADK    	9 -10	; ".gim"
+	15	[-]	CONCAT   	5 5 9
+	16	[-]	CALL     	3 3 1
+	17	[-]	GETGLOBAL	3 -2	; comLayerLoadFalse
+	18	[-]	GETUPVAL 	4 0	; -
+	19	[-]	GETTABLE 	4 4 -3	; "indexNumber"
+	20	[-]	GETTABLE 	4 4 -4	; "sentence"
+	21	[-]	ADD      	4 4 -11	; - 5
+	22	[-]	LOADK    	5 -6	; "novel/"
+	23	[-]	GETUPVAL 	6 0	; -
+	24	[-]	GETTABLE 	6 6 -7	; "t_novelFlag"
+	25	[-]	GETTABLE 	6 6 0
+	26	[-]	LOADK    	7 -8	; "_"
+	27	[-]	ADD      	8 1 -9	; - 2
+	28	[-]	LOADK    	9 -10	; ".gim"
+	29	[-]	CONCAT   	5 5 9
+	30	[-]	CALL     	3 3 1
+	31	[-]	JMP      	60	; to 92
+	32	[-]	EQ       	0 2 -9	; - 2
+	33	[-]	JMP      	28	; to 62
+	34	[-]	GETGLOBAL	3 -2	; comLayerLoadFalse
+	35	[-]	GETUPVAL 	4 0	; -
+	36	[-]	GETTABLE 	4 4 -3	; "indexNumber"
+	37	[-]	GETTABLE 	4 4 -4	; "sentence"
+	38	[-]	LOADK    	5 -6	; "novel/"
+	39	[-]	GETUPVAL 	6 0	; -
+	40	[-]	GETTABLE 	6 6 -7	; "t_novelFlag"
+	41	[-]	GETTABLE 	6 6 0
+	42	[-]	LOADK    	7 -8	; "_"
+	43	[-]	SUB      	8 1 -9	; - 2
+	44	[-]	LOADK    	9 -10	; ".gim"
+	45	[-]	CONCAT   	5 5 9
+	46	[-]	CALL     	3 3 1
+	47	[-]	GETGLOBAL	3 -2	; comLayerLoadFalse
+	48	[-]	GETUPVAL 	4 0	; -
+	49	[-]	GETTABLE 	4 4 -3	; "indexNumber"
+	50	[-]	GETTABLE 	4 4 -4	; "sentence"
+	51	[-]	ADD      	4 4 -1	; - 1
+	52	[-]	LOADK    	5 -6	; "novel/"
+	53	[-]	GETUPVAL 	6 0	; -
+	54	[-]	GETTABLE 	6 6 -7	; "t_novelFlag"
+	55	[-]	GETTABLE 	6 6 0
+	56	[-]	LOADK    	7 -8	; "_"
+	57	[-]	ADD      	8 1 -9	; - 2
+	58	[-]	LOADK    	9 -10	; ".gim"
+	59	[-]	CONCAT   	5 5 9
+	60	[-]	CALL     	3 3 1
+	61	[-]	JMP      	30	; to 92
+	62	[-]	EQ       	0 2 -12	; - 3
+	63	[-]	JMP      	28	; to 92
+	64	[-]	GETGLOBAL	3 -2	; comLayerLoadFalse
+	65	[-]	GETUPVAL 	4 0	; -
+	66	[-]	GETTABLE 	4 4 -3	; "indexNumber"
+	67	[-]	GETTABLE 	4 4 -4	; "sentence"
+	68	[-]	ADD      	4 4 -9	; - 2
+	69	[-]	LOADK    	5 -6	; "novel/"
+	70	[-]	GETUPVAL 	6 0	; -
+	71	[-]	GETTABLE 	6 6 -7	; "t_novelFlag"
+	72	[-]	GETTABLE 	6 6 0
+	73	[-]	LOADK    	7 -8	; "_"
+	74	[-]	SUB      	8 1 -9	; - 2
+	75	[-]	LOADK    	9 -10	; ".gim"
+	76	[-]	CONCAT   	5 5 9
+	77	[-]	CALL     	3 3 1
+	78	[-]	GETGLOBAL	3 -2	; comLayerLoadFalse
+	79	[-]	GETUPVAL 	4 0	; -
+	80	[-]	GETTABLE 	4 4 -3	; "indexNumber"
+	81	[-]	GETTABLE 	4 4 -4	; "sentence"
+	82	[-]	ADD      	4 4 -12	; - 3
+	83	[-]	LOADK    	5 -6	; "novel/"
+	84	[-]	GETUPVAL 	6 0	; -
+	85	[-]	GETTABLE 	6 6 -7	; "t_novelFlag"
+	86	[-]	GETTABLE 	6 6 0
+	87	[-]	LOADK    	7 -8	; "_"
+	88	[-]	ADD      	8 1 -9	; - 2
+	89	[-]	LOADK    	9 -10	; ".gim"
+	90	[-]	CONCAT   	5 5 9
+	91	[-]	CALL     	3 3 1
+	92	[-]	RETURN   	0 1
+constants (12) for 0x56bb2240:
+	1	1
+	2	"comLayerLoadFalse"
+	3	"indexNumber"
+	4	"sentence"
+	5	4
+	6	"novel/"
+	7	"t_novelFlag"
+	8	"_"
+	9	2
+	10	".gim"
+	11	5
+	12	3
+locals (0) for 0x56bb2240:
+upvalues (0) for 0x56bb2240:
+
+function <?:294,321> (198 instructions, 792 bytes at 0x56bb2540)
+3 params, 10 slots, 4 upvalues, 0 locals, 49 constants, 0 functions
+	1	[-]	GETGLOBAL	3 -1	; layerCopy
+	2	[-]	GETUPVAL 	4 0	; -
+	3	[-]	GETTABLE 	4 4 -2	; "indexNumber"
+	4	[-]	GETTABLE 	4 4 -3	; "novelBg"
+	5	[-]	GETUPVAL 	5 0	; -
+	6	[-]	GETTABLE 	5 5 -4	; "layerNumber"
+	7	[-]	GETUPVAL 	6 0	; -
+	8	[-]	GETTABLE 	6 6 -5	; "layerName"
+	9	[-]	GETUPVAL 	7 0	; -
+	10	[-]	GETTABLE 	7 7 -6	; "t_novelFlag"
+	11	[-]	GETTABLE 	7 7 0
+	12	[-]	GETTABLE 	6 6 7
+	13	[-]	LOADK    	7 -7	; "d"
+	14	[-]	CONCAT   	6 6 7
+	15	[-]	GETTABLE 	5 5 6
+	16	[-]	CALL     	3 3 1
+	17	[-]	GETGLOBAL	3 -1	; layerCopy
+	18	[-]	GETUPVAL 	4 0	; -
+	19	[-]	GETTABLE 	4 4 -2	; "indexNumber"
+	20	[-]	GETTABLE 	4 4 -8	; "novelBar"
+	21	[-]	GETUPVAL 	5 0	; -
+	22	[-]	GETTABLE 	5 5 -4	; "layerNumber"
+	23	[-]	GETTABLE 	5 5 -9	; "novel_4_a"
+	24	[-]	CALL     	3 3 1
+	25	[-]	GETGLOBAL	3 -1	; layerCopy
+	26	[-]	GETUPVAL 	4 0	; -
+	27	[-]	GETTABLE 	4 4 -2	; "indexNumber"
+	28	[-]	GETTABLE 	4 4 -10	; "title"
+	29	[-]	GETUPVAL 	5 0	; -
+	30	[-]	GETTABLE 	5 5 -4	; "layerNumber"
+	31	[-]	GETUPVAL 	6 0	; -
+	32	[-]	GETTABLE 	6 6 -5	; "layerName"
+	33	[-]	GETUPVAL 	7 0	; -
+	34	[-]	GETTABLE 	7 7 -6	; "t_novelFlag"
+	35	[-]	GETTABLE 	7 7 0
+	36	[-]	GETTABLE 	6 6 7
+	37	[-]	LOADK    	7 -11	; "c"
+	38	[-]	CONCAT   	6 6 7
+	39	[-]	GETTABLE 	5 5 6
+	40	[-]	CALL     	3 3 1
+	41	[-]	GETGLOBAL	3 -12	; layerPosition
+	42	[-]	GETUPVAL 	4 0	; -
+	43	[-]	GETTABLE 	4 4 -2	; "indexNumber"
+	44	[-]	GETTABLE 	4 4 -10	; "title"
+	45	[-]	LOADK    	5 -13	; 462
+	46	[-]	LOADK    	6 -14	; 5
+	47	[-]	CALL     	3 4 1
+	48	[-]	GETGLOBAL	3 -1	; layerCopy
+	49	[-]	GETUPVAL 	4 0	; -
+	50	[-]	GETTABLE 	4 4 -2	; "indexNumber"
+	51	[-]	GETTABLE 	4 4 -15	; "bookMark"
+	52	[-]	GETUPVAL 	5 0	; -
+	53	[-]	GETTABLE 	5 5 -4	; "layerNumber"
+	54	[-]	GETTABLE 	5 5 -16	; "novel_4_b"
+	55	[-]	CALL     	3 3 1
+	56	[-]	GETGLOBAL	3 -17	; systemSave
+	57	[-]	GETTABLE 	3 3 -15	; "bookMark"
+	58	[-]	GETUPVAL 	4 0	; -
+	59	[-]	GETTABLE 	4 4 -18	; "novelTitle"
+	60	[-]	GETTABLE 	4 4 0
+	61	[-]	GETTABLE 	3 3 4
+	62	[-]	EQ       	0 3 -19	; - 0
+	63	[-]	JMP      	10	; to 74
+	64	[-]	GETGLOBAL	3 -20	; layerClip
+	65	[-]	GETUPVAL 	4 0	; -
+	66	[-]	GETTABLE 	4 4 -2	; "indexNumber"
+	67	[-]	GETTABLE 	4 4 -15	; "bookMark"
+	68	[-]	LOADK    	5 -21	; 7
+	69	[-]	LOADK    	6 -19	; 0
+	70	[-]	LOADK    	7 -22	; 14
+	71	[-]	LOADK    	8 -23	; 61
+	72	[-]	CALL     	3 6 1
+	73	[-]	JMP      	20	; to 94
+	74	[-]	GETGLOBAL	3 -20	; layerClip
+	75	[-]	GETUPVAL 	4 0	; -
+	76	[-]	GETTABLE 	4 4 -2	; "indexNumber"
+	77	[-]	GETTABLE 	4 4 -15	; "bookMark"
+	78	[-]	LOADK    	5 -19	; 0
+	79	[-]	LOADK    	6 -19	; 0
+	80	[-]	LOADK    	7 -21	; 7
+	81	[-]	LOADK    	8 -23	; 61
+	82	[-]	CALL     	3 6 1
+	83	[-]	GETUPVAL 	3 1	; -
+	84	[-]	LOADK    	4 -24	; 28
+	85	[-]	LOADK    	5 -25	; 457
+	86	[-]	LOADK    	6 -26	; 245
+	87	[-]	GETGLOBAL	7 -17	; systemSave
+	88	[-]	GETTABLE 	7 7 -15	; "bookMark"
+	89	[-]	GETUPVAL 	8 0	; -
+	90	[-]	GETTABLE 	8 8 -6	; "t_novelFlag"
+	91	[-]	GETTABLE 	8 8 0
+	92	[-]	GETTABLE 	7 7 8
+	93	[-]	CALL     	3 5 1
+	94	[-]	GETGLOBAL	3 -12	; layerPosition
+	95	[-]	GETUPVAL 	4 0	; -
+	96	[-]	GETTABLE 	4 4 -2	; "indexNumber"
+	97	[-]	GETTABLE 	4 4 -15	; "bookMark"
+	98	[-]	LOADK    	5 -25	; 457
+	99	[-]	LOADK    	6 -27	; 200
+	100	[-]	CALL     	3 4 1
+	101	[-]	LT       	0 1 -28	; - 10
+	102	[-]	JMP      	9	; to 112
+	103	[-]	GETUPVAL 	3 2	; -
+	104	[-]	LOADK    	4 -22	; 14
+	105	[-]	LOADK    	5 -29	; 470
+	106	[-]	LOADK    	6 -30	; 205
+	107	[-]	LOADK    	7 -31	; "00"
+	108	[-]	MOVE     	8 1
+	109	[-]	CONCAT   	7 7 8
+	110	[-]	CALL     	3 5 1
+	111	[-]	JMP      	17	; to 129
+	112	[-]	LT       	0 1 -32	; - 100
+	113	[-]	JMP      	9	; to 123
+	114	[-]	GETUPVAL 	3 2	; -
+	115	[-]	LOADK    	4 -22	; 14
+	116	[-]	LOADK    	5 -29	; 470
+	117	[-]	LOADK    	6 -30	; 205
+	118	[-]	LOADK    	7 -33	; "0"
+	119	[-]	MOVE     	8 1
+	120	[-]	CONCAT   	7 7 8
+	121	[-]	CALL     	3 5 1
+	122	[-]	JMP      	6	; to 129
+	123	[-]	GETUPVAL 	3 2	; -
+	124	[-]	LOADK    	4 -22	; 14
+	125	[-]	LOADK    	5 -29	; 470
+	126	[-]	LOADK    	6 -30	; 205
+	127	[-]	MOVE     	7 1
+	128	[-]	CALL     	3 5 1
+	129	[-]	GETUPVAL 	3 2	; -
+	130	[-]	LOADK    	4 -34	; 17
+	131	[-]	LOADK    	5 -29	; 470
+	132	[-]	LOADK    	6 -35	; 243
+	133	[-]	GETUPVAL 	7 0	; -
+	134	[-]	GETTABLE 	7 7 -36	; "novelPageMax"
+	135	[-]	GETUPVAL 	8 0	; -
+	136	[-]	GETTABLE 	8 8 -6	; "t_novelFlag"
+	137	[-]	GETTABLE 	8 8 0
+	138	[-]	GETTABLE 	7 7 8
+	139	[-]	CALL     	3 5 1
+	140	[-]	GETGLOBAL	3 -37	; layerLoad
+	141	[-]	GETUPVAL 	4 0	; -
+	142	[-]	GETTABLE 	4 4 -2	; "indexNumber"
+	143	[-]	GETTABLE 	4 4 -38	; "sentence"
+	144	[-]	LOADK    	5 -39	; "novel/"
+	145	[-]	GETUPVAL 	6 0	; -
+	146	[-]	GETTABLE 	6 6 -6	; "t_novelFlag"
+	147	[-]	GETTABLE 	6 6 0
+	148	[-]	LOADK    	7 -40	; "_"
+	149	[-]	MOVE     	8 1
+	150	[-]	LOADK    	9 -41	; ".gim"
+	151	[-]	CONCAT   	5 5 9
+	152	[-]	CALL     	3 3 1
+	153	[-]	GETGLOBAL	3 -42	; comLayerLoadFalse
+	154	[-]	GETUPVAL 	4 0	; -
+	155	[-]	GETTABLE 	4 4 -2	; "indexNumber"
+	156	[-]	GETTABLE 	4 4 -38	; "sentence"
+	157	[-]	ADD      	4 4 -43	; - 2
+	158	[-]	LOADK    	5 -39	; "novel/"
+	159	[-]	GETUPVAL 	6 0	; -
+	160	[-]	GETTABLE 	6 6 -6	; "t_novelFlag"
+	161	[-]	GETTABLE 	6 6 0
+	162	[-]	LOADK    	7 -40	; "_"
+	163	[-]	SUB      	8 1 -44	; - 1
+	164	[-]	LOADK    	9 -41	; ".gim"
+	165	[-]	CONCAT   	5 5 9
+	166	[-]	CALL     	3 3 1
+	167	[-]	GETGLOBAL	3 -42	; comLayerLoadFalse
+	168	[-]	GETUPVAL 	4 0	; -
+	169	[-]	GETTABLE 	4 4 -2	; "indexNumber"
+	170	[-]	GETTABLE 	4 4 -38	; "sentence"
+	171	[-]	ADD      	4 4 -45	; - 3
+	172	[-]	LOADK    	5 -39	; "novel/"
+	173	[-]	GETUPVAL 	6 0	; -
+	174	[-]	GETTABLE 	6 6 -6	; "t_novelFlag"
+	175	[-]	GETTABLE 	6 6 0
+	176	[-]	LOADK    	7 -40	; "_"
+	177	[-]	ADD      	8 1 -44	; - 1
+	178	[-]	LOADK    	9 -41	; ".gim"
+	179	[-]	CONCAT   	5 5 9
+	180	[-]	CALL     	3 3 1
+	181	[-]	GETGLOBAL	3 -12	; layerPosition
+	182	[-]	GETUPVAL 	4 0	; -
+	183	[-]	GETTABLE 	4 4 -2	; "indexNumber"
+	184	[-]	GETTABLE 	4 4 -38	; "sentence"
+	185	[-]	LOADK    	5 -46	; 20
+	186	[-]	LOADK    	6 -19	; 0
+	187	[-]	CALL     	3 4 1
+	188	[-]	GETUPVAL 	3 3	; -
+	189	[-]	MOVE     	4 0
+	190	[-]	MOVE     	5 1
+	191	[-]	MOVE     	6 2
+	192	[-]	CALL     	3 4 1
+	193	[-]	GETGLOBAL	3 -47	; switchScreen
+	194	[-]	LOADK    	4 -19	; 0
+	195	[-]	LOADK    	5 -48	; ""
+	196	[-]	LOADK    	6 -49	; 60
+	197	[-]	CALL     	3 4 1
+	198	[-]	RETURN   	0 1
+constants (49) for 0x56bb2540:
+	1	"layerCopy"
+	2	"indexNumber"
+	3	"novelBg"
+	4	"layerNumber"
+	5	"layerName"
+	6	"t_novelFlag"
+	7	"d"
+	8	"novelBar"
+	9	"novel_4_a"
+	10	"title"
+	11	"c"
+	12	"layerPosition"
+	13	462
+	14	5
+	15	"bookMark"
+	16	"novel_4_b"
+	17	"systemSave"
+	18	"novelTitle"
+	19	0
+	20	"layerClip"
+	21	7
+	22	14
+	23	61
+	24	28
+	25	457
+	26	245
+	27	200
+	28	10
+	29	470
+	30	205
+	31	"00"
+	32	100
+	33	"0"
+	34	17
+	35	243
+	36	"novelPageMax"
+	37	"layerLoad"
+	38	"sentence"
+	39	"novel/"
+	40	"_"
+	41	".gim"
+	42	"comLayerLoadFalse"
+	43	2
+	44	1
+	45	3
+	46	20
+	47	"switchScreen"
+	48	""
+	49	60
+locals (0) for 0x56bb2540:
+upvalues (0) for 0x56bb2540:
+
+function <?:323,329> (17 instructions, 68 bytes at 0x56bb2b40)
+0 params, 7 slots, 0 upvalues, 0 locals, 8 constants, 0 functions
+	1	[-]	LOADK    	0 -1	; 0
+	2	[-]	LOADK    	1 -2	; 40
+	3	[-]	LOADK    	2 -3	; 1
+	4	[-]	FORPREP  	0 4	; to 9
+	5	[-]	GETGLOBAL	4 -4	; layerLoad
+	6	[-]	MOVE     	5 3
+	7	[-]	LOADK    	6 -5	; ""
+	8	[-]	CALL     	4 3 1
+	9	[-]	FORLOOP  	0 -5	; to 5
+	10	[-]	GETGLOBAL	0 -6	; fontClear
+	11	[-]	CALL     	0 1 1
+	12	[-]	GETGLOBAL	0 -7	; switchScreen
+	13	[-]	LOADK    	1 -1	; 0
+	14	[-]	LOADK    	2 -5	; ""
+	15	[-]	LOADK    	3 -8	; 60
+	16	[-]	CALL     	0 4 1
+	17	[-]	RETURN   	0 1
+constants (8) for 0x56bb2b40:
+	1	0
+	2	40
+	3	1
+	4	"layerLoad"
+	5	""
+	6	"fontClear"
+	7	"switchScreen"
+	8	60
+locals (0) for 0x56bb2b40:
+upvalues (0) for 0x56bb2b40:
+
+function <?:331,343> (63 instructions, 252 bytes at 0x56bb2c70)
+2 params, 8 slots, 2 upvalues, 0 locals, 16 constants, 0 functions
+	1	[-]	GETGLOBAL	2 -1	; systemSave
+	2	[-]	GETTABLE 	2 2 -2	; "bookMark"
+	3	[-]	GETUPVAL 	3 0	; -
+	4	[-]	GETTABLE 	3 3 -3	; "t_novelFlag"
+	5	[-]	GETTABLE 	3 3 0
+	6	[-]	GETTABLE 	2 2 3
+	7	[-]	EQ       	0 2 1
+	8	[-]	JMP      	28	; to 37
+	9	[-]	GETGLOBAL	2 -4	; layerLoad
+	10	[-]	LOADK    	3 -5	; 28
+	11	[-]	LOADK    	4 -6	; ""
+	12	[-]	CALL     	2 3 1
+	13	[-]	GETGLOBAL	2 -4	; layerLoad
+	14	[-]	LOADK    	3 -7	; 29
+	15	[-]	LOADK    	4 -6	; ""
+	16	[-]	CALL     	2 3 1
+	17	[-]	GETGLOBAL	2 -4	; layerLoad
+	18	[-]	LOADK    	3 -8	; 30
+	19	[-]	LOADK    	4 -6	; ""
+	20	[-]	CALL     	2 3 1
+	21	[-]	GETGLOBAL	2 -1	; systemSave
+	22	[-]	GETTABLE 	2 2 -2	; "bookMark"
+	23	[-]	GETUPVAL 	3 0	; -
+	24	[-]	GETTABLE 	3 3 -3	; "t_novelFlag"
+	25	[-]	GETTABLE 	3 3 0
+	26	[-]	SETTABLE 	2 3 -9	; - 0
+	27	[-]	GETGLOBAL	2 -10	; layerClip
+	28	[-]	GETUPVAL 	3 0	; -
+	29	[-]	GETTABLE 	3 3 -11	; "indexNumber"
+	30	[-]	GETTABLE 	3 3 -2	; "bookMark"
+	31	[-]	LOADK    	4 -12	; 7
+	32	[-]	LOADK    	5 -9	; 0
+	33	[-]	LOADK    	6 -13	; 14
+	34	[-]	LOADK    	7 -14	; 61
+	35	[-]	CALL     	2 6 1
+	36	[-]	JMP      	26	; to 63
+	37	[-]	GETGLOBAL	2 -1	; systemSave
+	38	[-]	GETTABLE 	2 2 -2	; "bookMark"
+	39	[-]	GETUPVAL 	3 0	; -
+	40	[-]	GETTABLE 	3 3 -3	; "t_novelFlag"
+	41	[-]	GETTABLE 	3 3 0
+	42	[-]	SETTABLE 	2 3 1
+	43	[-]	GETGLOBAL	2 -10	; layerClip
+	44	[-]	GETUPVAL 	3 0	; -
+	45	[-]	GETTABLE 	3 3 -11	; "indexNumber"
+	46	[-]	GETTABLE 	3 3 -2	; "bookMark"
+	47	[-]	LOADK    	4 -9	; 0
+	48	[-]	LOADK    	5 -9	; 0
+	49	[-]	LOADK    	6 -12	; 7
+	50	[-]	LOADK    	7 -14	; 61
+	51	[-]	CALL     	2 6 1
+	52	[-]	GETUPVAL 	2 1	; -
+	53	[-]	LOADK    	3 -5	; 28
+	54	[-]	LOADK    	4 -15	; 457
+	55	[-]	LOADK    	5 -16	; 245
+	56	[-]	GETGLOBAL	6 -1	; systemSave
+	57	[-]	GETTABLE 	6 6 -2	; "bookMark"
+	58	[-]	GETUPVAL 	7 0	; -
+	59	[-]	GETTABLE 	7 7 -3	; "t_novelFlag"
+	60	[-]	GETTABLE 	7 7 0
+	61	[-]	GETTABLE 	6 6 7
+	62	[-]	CALL     	2 5 1
+	63	[-]	RETURN   	0 1
+constants (16) for 0x56bb2c70:
+	1	"systemSave"
+	2	"bookMark"
+	3	"t_novelFlag"
+	4	"layerLoad"
+	5	28
+	6	""
+	7	29
+	8	30
+	9	0
+	10	"layerClip"
+	11	"indexNumber"
+	12	7
+	13	14
+	14	61
+	15	457
+	16	245
+locals (0) for 0x56bb2c70:
+upvalues (0) for 0x56bb2c70:
+
+function <?:345,445> (300 instructions, 1200 bytes at 0x56bb2e90)
+1 param, 16 slots, 7 upvalues, 0 locals, 42 constants, 0 functions
+	1	[-]	GETGLOBAL	1 -1	; systemSave
+	2	[-]	GETTABLE 	1 1 -2	; "bookMark"
+	3	[-]	GETUPVAL 	2 0	; -
+	4	[-]	GETTABLE 	2 2 -3	; "t_novelFlag"
+	5	[-]	GETTABLE 	2 2 0
+	6	[-]	GETTABLE 	1 1 2
+	7	[-]	LT       	0 -4 1	; 0 -
+	8	[-]	JMP      	8	; to 17
+	9	[-]	GETGLOBAL	1 -1	; systemSave
+	10	[-]	GETTABLE 	1 1 -2	; "bookMark"
+	11	[-]	GETUPVAL 	2 0	; -
+	12	[-]	GETTABLE 	2 2 -3	; "t_novelFlag"
+	13	[-]	GETTABLE 	2 2 0
+	14	[-]	GETTABLE 	1 1 2
+	15	[-]	TEST     	1 0 1
+	16	[-]	JMP      	1	; to 18
+	17	[-]	LOADK    	1 -5	; 1
+	18	[-]	LOADK    	2 -5	; 1
+	19	[-]	LOADBOOL 	3 0 0
+	20	[-]	GETUPVAL 	4 0	; -
+	21	[-]	GETTABLE 	4 4 -6	; "novelPageMax"
+	22	[-]	GETUPVAL 	5 0	; -
+	23	[-]	GETTABLE 	5 5 -3	; "t_novelFlag"
+	24	[-]	GETTABLE 	5 5 0
+	25	[-]	GETTABLE 	4 4 5
+	26	[-]	LOADK    	5 -5	; 1
+	27	[-]	LOADK    	6 -5	; 1
+	28	[-]	LOADK    	7 -5	; 1
+	29	[-]	LOADK    	8 -5	; 1
+	30	[-]	GETUPVAL 	9 1	; -
+	31	[-]	MOVE     	10 0
+	32	[-]	MOVE     	11 1
+	33	[-]	MOVE     	12 8
+	34	[-]	CALL     	9 4 1
+	35	[-]	GETGLOBAL	9 -7	; pressButton
+	36	[-]	LOADK    	10 -8	; "UP"
+	37	[-]	CALL     	9 2 2
+	38	[-]	EQ       	0 9 -9	; - true
+	39	[-]	JMP      	10	; to 50
+	40	[-]	EQ       	0 3 -10	; - false
+	41	[-]	JMP      	8	; to 50
+	42	[-]	MOVE     	2 1
+	43	[-]	ADD      	9 1 -5	; - 1
+	44	[-]	LT       	0 4 9
+	45	[-]	JMP      	2	; to 48
+	46	[-]	TESTSET  	1 4 1
+	47	[-]	JMP      	1	; to 49
+	48	[-]	ADD      	1 1 -5	; - 1
+	49	[-]	LOADBOOL 	3 1 0
+	50	[-]	GETGLOBAL	9 -7	; pressButton
+	51	[-]	LOADK    	10 -11	; "DOWN"
+	52	[-]	CALL     	9 2 2
+	53	[-]	EQ       	0 9 -9	; - true
+	54	[-]	JMP      	11	; to 66
+	55	[-]	EQ       	0 3 -10	; - false
+	56	[-]	JMP      	9	; to 66
+	57	[-]	MOVE     	2 1
+	58	[-]	SUB      	9 1 -5	; - 1
+	59	[-]	LT       	0 9 -5	; - 1
+	60	[-]	JMP      	3	; to 64
+	61	[-]	LOADK    	9 -5	; 1
+	62	[-]	TESTSET  	1 9 1
+	63	[-]	JMP      	1	; to 65
+	64	[-]	SUB      	1 1 -5	; - 1
+	65	[-]	LOADBOOL 	3 1 0
+	66	[-]	GETGLOBAL	9 -7	; pressButton
+	67	[-]	LOADK    	10 -12	; "RIGHT"
+	68	[-]	CALL     	9 2 2
+	69	[-]	EQ       	0 9 -9	; - true
+	70	[-]	JMP      	9	; to 80
+	71	[-]	EQ       	0 3 -10	; - false
+	72	[-]	JMP      	7	; to 80
+	73	[-]	GETGLOBAL	9 -13	; keyPlaySE
+	74	[-]	GETGLOBAL	10 -14	; seName
+	75	[-]	GETTABLE 	10 10 -15	; "cross"
+	76	[-]	CALL     	9 2 1
+	77	[-]	LOADK    	9 -4	; 0
+	78	[-]	SETUPVAL 	9 2	; -
+	79	[-]	JMP      	218	; to 298
+	80	[-]	GETGLOBAL	9 -7	; pressButton
+	81	[-]	LOADK    	10 -16	; "LEFT"
+	82	[-]	CALL     	9 2 2
+	83	[-]	EQ       	0 9 -9	; - true
+	84	[-]	JMP      	9	; to 94
+	85	[-]	EQ       	0 3 -10	; - false
+	86	[-]	JMP      	7	; to 94
+	87	[-]	GETUPVAL 	9 3	; -
+	88	[-]	MOVE     	10 0
+	89	[-]	MOVE     	11 1
+	90	[-]	CALL     	9 3 1
+	91	[-]	GETGLOBAL	9 -17	; wait
+	92	[-]	LOADK    	10 -18	; 10
+	93	[-]	CALL     	9 2 1
+	94	[-]	EQ       	0 3 -9	; - true
+	95	[-]	JMP      	198	; to 294
+	96	[-]	GETGLOBAL	9 -19	; fontClear
+	97	[-]	CALL     	9 1 1
+	98	[-]	EQ       	1 1 2
+	99	[-]	JMP      	165	; to 265
+	100	[-]	MOVE     	7 6
+	101	[-]	SUB      	9 1 2
+	102	[-]	LT       	0 -4 9	; 0 -
+	103	[-]	JMP      	16	; to 120
+	104	[-]	LOADK    	6 -5	; 1
+	105	[-]	EQ       	0 8 -5	; - 1
+	106	[-]	JMP      	3	; to 110
+	107	[-]	LOADK    	5 -20	; 3
+	108	[-]	LOADK    	8 -21	; 2
+	109	[-]	JMP      	25	; to 135
+	110	[-]	EQ       	0 8 -21	; - 2
+	111	[-]	JMP      	3	; to 115
+	112	[-]	LOADK    	5 -22	; 5
+	113	[-]	LOADK    	8 -20	; 3
+	114	[-]	JMP      	20	; to 135
+	115	[-]	EQ       	0 8 -20	; - 3
+	116	[-]	JMP      	18	; to 135
+	117	[-]	LOADK    	5 -5	; 1
+	118	[-]	LOADK    	8 -5	; 1
+	119	[-]	JMP      	15	; to 135
+	120	[-]	LOADK    	6 -23	; -1
+	121	[-]	EQ       	0 8 -5	; - 1
+	122	[-]	JMP      	3	; to 126
+	123	[-]	LOADK    	5 -21	; 2
+	124	[-]	LOADK    	8 -21	; 2
+	125	[-]	JMP      	9	; to 135
+	126	[-]	EQ       	0 8 -21	; - 2
+	127	[-]	JMP      	3	; to 131
+	128	[-]	LOADK    	5 -24	; 4
+	129	[-]	LOADK    	8 -20	; 3
+	130	[-]	JMP      	4	; to 135
+	131	[-]	EQ       	0 8 -20	; - 3
+	132	[-]	JMP      	2	; to 135
+	133	[-]	LOADK    	5 -4	; 0
+	134	[-]	LOADK    	8 -5	; 1
+	135	[-]	GETGLOBAL	9 -17	; wait
+	136	[-]	LOADK    	10 -22	; 5
+	137	[-]	CALL     	9 2 1
+	138	[-]	EQ       	1 6 7
+	139	[-]	JMP      	92	; to 232
+	140	[-]	LOADK    	8 -5	; 1
+	141	[-]	LOADK    	5 -4	; 0
+	142	[-]	GETGLOBAL	9 -25	; layerLoad
+	143	[-]	GETUPVAL 	10 0	; -
+	144	[-]	GETTABLE 	10 10 -26	; "indexNumber"
+	145	[-]	GETTABLE 	10 10 -27	; "sentence"
+	146	[-]	ADD      	10 10 -5	; - 1
+	147	[-]	LOADK    	11 -28	; ""
+	148	[-]	CALL     	9 3 1
+	149	[-]	GETGLOBAL	9 -25	; layerLoad
+	150	[-]	GETUPVAL 	10 0	; -
+	151	[-]	GETTABLE 	10 10 -26	; "indexNumber"
+	152	[-]	GETTABLE 	10 10 -27	; "sentence"
+	153	[-]	ADD      	10 10 -21	; - 2
+	154	[-]	LOADK    	11 -28	; ""
+	155	[-]	CALL     	9 3 1
+	156	[-]	GETGLOBAL	9 -25	; layerLoad
+	157	[-]	GETUPVAL 	10 0	; -
+	158	[-]	GETTABLE 	10 10 -26	; "indexNumber"
+	159	[-]	GETTABLE 	10 10 -27	; "sentence"
+	160	[-]	ADD      	10 10 -20	; - 3
+	161	[-]	LOADK    	11 -28	; ""
+	162	[-]	CALL     	9 3 1
+	163	[-]	GETGLOBAL	9 -25	; layerLoad
+	164	[-]	GETUPVAL 	10 0	; -
+	165	[-]	GETTABLE 	10 10 -26	; "indexNumber"
+	166	[-]	GETTABLE 	10 10 -27	; "sentence"
+	167	[-]	ADD      	10 10 -24	; - 4
+	168	[-]	LOADK    	11 -28	; ""
+	169	[-]	CALL     	9 3 1
+	170	[-]	GETGLOBAL	9 -25	; layerLoad
+	171	[-]	GETUPVAL 	10 0	; -
+	172	[-]	GETTABLE 	10 10 -26	; "indexNumber"
+	173	[-]	GETTABLE 	10 10 -27	; "sentence"
+	174	[-]	ADD      	10 10 -22	; - 5
+	175	[-]	LOADK    	11 -28	; ""
+	176	[-]	CALL     	9 3 1
+	177	[-]	GETGLOBAL	9 -25	; layerLoad
+	178	[-]	GETUPVAL 	10 0	; -
+	179	[-]	GETTABLE 	10 10 -26	; "indexNumber"
+	180	[-]	GETTABLE 	10 10 -27	; "sentence"
+	181	[-]	LOADK    	11 -29	; "novel/"
+	182	[-]	GETUPVAL 	12 0	; -
+	183	[-]	GETTABLE 	12 12 -3	; "t_novelFlag"
+	184	[-]	GETTABLE 	12 12 0
+	185	[-]	LOADK    	13 -30	; "_"
+	186	[-]	MOVE     	14 1
+	187	[-]	LOADK    	15 -31	; ".gim"
+	188	[-]	CONCAT   	11 11 15
+	189	[-]	CALL     	9 3 1
+	190	[-]	GETGLOBAL	9 -32	; layerPosition
+	191	[-]	GETUPVAL 	10 0	; -
+	192	[-]	GETTABLE 	10 10 -26	; "indexNumber"
+	193	[-]	GETTABLE 	10 10 -27	; "sentence"
+	194	[-]	ADD      	10 10 5
+	195	[-]	LOADK    	11 -33	; 20
+	196	[-]	LOADK    	12 -4	; 0
+	197	[-]	CALL     	9 4 1
+	198	[-]	GETGLOBAL	9 -34	; comLayerLoadFalse
+	199	[-]	GETUPVAL 	10 0	; -
+	200	[-]	GETTABLE 	10 10 -26	; "indexNumber"
+	201	[-]	GETTABLE 	10 10 -27	; "sentence"
+	202	[-]	ADD      	10 10 -21	; - 2
+	203	[-]	LOADK    	11 -29	; "novel/"
+	204	[-]	GETUPVAL 	12 0	; -
+	205	[-]	GETTABLE 	12 12 -3	; "t_novelFlag"
+	206	[-]	GETTABLE 	12 12 0
+	207	[-]	LOADK    	13 -30	; "_"
+	208	[-]	SUB      	14 1 -5	; - 1
+	209	[-]	LOADK    	15 -31	; ".gim"
+	210	[-]	CONCAT   	11 11 15
+	211	[-]	CALL     	9 3 1
+	212	[-]	GETGLOBAL	9 -34	; comLayerLoadFalse
+	213	[-]	GETUPVAL 	10 0	; -
+	214	[-]	GETTABLE 	10 10 -26	; "indexNumber"
+	215	[-]	GETTABLE 	10 10 -27	; "sentence"
+	216	[-]	ADD      	10 10 -20	; - 3
+	217	[-]	LOADK    	11 -29	; "novel/"
+	218	[-]	GETUPVAL 	12 0	; -
+	219	[-]	GETTABLE 	12 12 -3	; "t_novelFlag"
+	220	[-]	GETTABLE 	12 12 0
+	221	[-]	LOADK    	13 -30	; "_"
+	222	[-]	ADD      	14 1 -5	; - 1
+	223	[-]	LOADK    	15 -31	; ".gim"
+	224	[-]	CONCAT   	11 11 15
+	225	[-]	CALL     	9 3 1
+	226	[-]	GETUPVAL 	9 4	; -
+	227	[-]	MOVE     	10 0
+	228	[-]	MOVE     	11 1
+	229	[-]	MOVE     	12 8
+	230	[-]	CALL     	9 4 1
+	231	[-]	JMP      	33	; to 265
+	232	[-]	GETGLOBAL	9 -35	; layerIsLoad
+	233	[-]	GETUPVAL 	10 0	; -
+	234	[-]	GETTABLE 	10 10 -26	; "indexNumber"
+	235	[-]	GETTABLE 	10 10 -27	; "sentence"
+	236	[-]	ADD      	10 10 5
+	237	[-]	CALL     	9 2 2
+	238	[-]	EQ       	0 9 -9	; - true
+	239	[-]	JMP      	21	; to 261
+	240	[-]	GETGLOBAL	9 -36	; layerVisible
+	241	[-]	GETUPVAL 	10 0	; -
+	242	[-]	GETTABLE 	10 10 -26	; "indexNumber"
+	243	[-]	GETTABLE 	10 10 -27	; "sentence"
+	244	[-]	ADD      	10 10 5
+	245	[-]	LOADBOOL 	11 1 0
+	246	[-]	CALL     	9 3 1
+	247	[-]	GETGLOBAL	9 -32	; layerPosition
+	248	[-]	GETUPVAL 	10 0	; -
+	249	[-]	GETTABLE 	10 10 -26	; "indexNumber"
+	250	[-]	GETTABLE 	10 10 -27	; "sentence"
+	251	[-]	ADD      	10 10 5
+	252	[-]	LOADK    	11 -33	; 20
+	253	[-]	LOADK    	12 -4	; 0
+	254	[-]	CALL     	9 4 1
+	255	[-]	GETUPVAL 	9 4	; -
+	256	[-]	MOVE     	10 0
+	257	[-]	MOVE     	11 1
+	258	[-]	MOVE     	12 8
+	259	[-]	CALL     	9 4 1
+	260	[-]	JMP      	4	; to 265
+	261	[-]	GETGLOBAL	9 -17	; wait
+	262	[-]	LOADK    	10 -5	; 1
+	263	[-]	CALL     	9 2 1
+	264	[-]	JMP      	-33	; to 232
+	265	[-]	LT       	0 1 -18	; - 10
+	266	[-]	JMP      	9	; to 276
+	267	[-]	GETUPVAL 	9 5	; -
+	268	[-]	LOADK    	10 -37	; 14
+	269	[-]	LOADK    	11 -38	; 470
+	270	[-]	LOADK    	12 -39	; 205
+	271	[-]	LOADK    	13 -40	; "00"
+	272	[-]	MOVE     	14 1
+	273	[-]	CONCAT   	13 13 14
+	274	[-]	CALL     	9 5 1
+	275	[-]	JMP      	17	; to 293
+	276	[-]	LT       	0 1 -41	; - 100
+	277	[-]	JMP      	9	; to 287
+	278	[-]	GETUPVAL 	9 5	; -
+	279	[-]	LOADK    	10 -37	; 14
+	280	[-]	LOADK    	11 -38	; 470
+	281	[-]	LOADK    	12 -39	; 205
+	282	[-]	LOADK    	13 -42	; "0"
+	283	[-]	MOVE     	14 1
+	284	[-]	CONCAT   	13 13 14
+	285	[-]	CALL     	9 5 1
+	286	[-]	JMP      	6	; to 293
+	287	[-]	GETUPVAL 	9 5	; -
+	288	[-]	LOADK    	10 -37	; 14
+	289	[-]	LOADK    	11 -38	; 470
+	290	[-]	LOADK    	12 -39	; 205
+	291	[-]	MOVE     	13 1
+	292	[-]	CALL     	9 5 1
+	293	[-]	LOADBOOL 	3 0 0
+	294	[-]	GETGLOBAL	9 -17	; wait
+	295	[-]	LOADK    	10 -21	; 2
+	296	[-]	CALL     	9 2 1
+	297	[-]	JMP      	-263	; to 35
+	298	[-]	GETUPVAL 	9 6	; -
+	299	[-]	CALL     	9 1 1
+	300	[-]	RETURN   	0 1
+constants (42) for 0x56bb2e90:
+	1	"systemSave"
+	2	"bookMark"
+	3	"t_novelFlag"
+	4	0
+	5	1
+	6	"novelPageMax"
+	7	"pressButton"
+	8	"UP"
+	9	true
+	10	false
+	11	"DOWN"
+	12	"RIGHT"
+	13	"keyPlaySE"
+	14	"seName"
+	15	"cross"
+	16	"LEFT"
+	17	"wait"
+	18	10
+	19	"fontClear"
+	20	3
+	21	2
+	22	5
+	23	-1
+	24	4
+	25	"layerLoad"
+	26	"indexNumber"
+	27	"sentence"
+	28	""
+	29	"novel/"
+	30	"_"
+	31	".gim"
+	32	"layerPosition"
+	33	20
+	34	"comLayerLoadFalse"
+	35	"layerIsLoad"
+	36	"layerVisible"
+	37	14
+	38	470
+	39	205
+	40	"00"
+	41	100
+	42	"0"
+locals (0) for 0x56bb2e90:
+upvalues (0) for 0x56bb2e90:
+
+function <?:449,482> (75 instructions, 300 bytes at 0x56bb35f0)
+0 params, 10 slots, 5 upvalues, 0 locals, 24 constants, 0 functions
+	1	[-]	GETUPVAL 	0 0	; -
+	2	[-]	EQ       	0 0 -1	; - 1
+	3	[-]	JMP      	9	; to 13
+	4	[-]	GETGLOBAL	0 -2	; msg
+	5	[-]	LOADK    	1 -3	; "\227\129\190\227\129\160\228\184\128\229\134\138\227\130\130\229\143\150\229\190\151\227\129\151\227\129\166\227\129\132\227\129\190\227\129\155\227\130\147\227\128\130"
+	6	[-]	CALL     	0 2 1
+	7	[-]	GETGLOBAL	0 -4	; run
+	8	[-]	GETGLOBAL	1 -5	; cGetFileName
+	9	[-]	LOADK    	2 -6	; "script"
+	10	[-]	LOADK    	3 -7	; "snr_mainmenu"
+	11	[-]	CALL     	1 3 0
+	12	[-]	CALL     	0 0 1
+	13	[-]	GETGLOBAL	0 -8	; systemConfig
+	14	[-]	GETTABLE 	0 0 -9	; "unsetConfigButton"
+	15	[-]	CALL     	0 1 1
+	16	[-]	GETGLOBAL	0 -10	; logEnable
+	17	[-]	LOADBOOL 	1 0 0
+	18	[-]	CALL     	0 2 1
+	19	[-]	GETGLOBAL	0 -11	; advPart
+	20	[-]	LOADBOOL 	1 0 0
+	21	[-]	CALL     	0 2 1
+	22	[-]	GETGLOBAL	0 -12	; startLoading
+	23	[-]	CALL     	0 1 1
+	24	[-]	GETGLOBAL	0 -13	; pairs
+	25	[-]	GETUPVAL 	1 1	; -
+	26	[-]	GETTABLE 	1 1 -14	; "layerNumber"
+	27	[-]	CALL     	0 2 4
+	28	[-]	JMP      	7	; to 36
+	29	[-]	GETGLOBAL	5 -15	; comLayerLoadFalse
+	30	[-]	MOVE     	6 4
+	31	[-]	LOADK    	7 -16	; "novel/"
+	32	[-]	MOVE     	8 3
+	33	[-]	LOADK    	9 -17	; ".gim"
+	34	[-]	CONCAT   	7 7 9
+	35	[-]	CALL     	5 3 1
+	36	[-]	TFORLOOP 	0 2
+	37	[-]	JMP      	-9	; to 29
+	38	[-]	GETGLOBAL	0 -18	; waitLoading
+	39	[-]	CALL     	0 1 1
+	40	[-]	GETGLOBAL	0 -19	; endLoading
+	41	[-]	CALL     	0 1 1
+	42	[-]	LOADK    	0 -1	; 1
+	43	[-]	GETUPVAL 	1 2	; -
+	44	[-]	LT       	0 1 -20	; - 2
+	45	[-]	JMP      	18	; to 64
+	46	[-]	GETUPVAL 	1 2	; -
+	47	[-]	EQ       	0 1 -21	; - 0
+	48	[-]	JMP      	5	; to 54
+	49	[-]	GETUPVAL 	1 3	; -
+	50	[-]	MOVE     	2 0
+	51	[-]	CALL     	1 2 2
+	52	[-]	MOVE     	0 1
+	53	[-]	JMP      	6	; to 60
+	54	[-]	GETUPVAL 	1 2	; -
+	55	[-]	EQ       	0 1 -1	; - 1
+	56	[-]	JMP      	3	; to 60
+	57	[-]	GETUPVAL 	1 4	; -
+	58	[-]	MOVE     	2 0
+	59	[-]	CALL     	1 2 1
+	60	[-]	GETGLOBAL	1 -22	; wait
+	61	[-]	LOADK    	2 -20	; 2
+	62	[-]	CALL     	1 2 1
+	63	[-]	JMP      	-21	; to 43
+	64	[-]	GETGLOBAL	1 -23	; autoSystemSave
+	65	[-]	LOADK    	2 -21	; 0
+	66	[-]	CALL     	1 2 1
+	67	[-]	GETGLOBAL	1 -24	; cInitGame
+	68	[-]	CALL     	1 1 1
+	69	[-]	GETGLOBAL	1 -4	; run
+	70	[-]	GETGLOBAL	2 -5	; cGetFileName
+	71	[-]	LOADK    	3 -6	; "script"
+	72	[-]	LOADK    	4 -7	; "snr_mainmenu"
+	73	[-]	CALL     	2 3 0
+	74	[-]	CALL     	1 0 1
+	75	[-]	RETURN   	0 1
+constants (24) for 0x56bb35f0:
+	1	1
+	2	"msg"
+	3	"\227\129\190\227\129\160\228\184\128\229\134\138\227\130\130\229\143\150\229\190\151\227\129\151\227\129\166\227\129\132\227\129\190\227\129\155\227\130\147\227\128\130"
+	4	"run"
+	5	"cGetFileName"
+	6	"script"
+	7	"snr_mainmenu"
+	8	"systemConfig"
+	9	"unsetConfigButton"
+	10	"logEnable"
+	11	"advPart"
+	12	"startLoading"
+	13	"pairs"
+	14	"layerNumber"
+	15	"comLayerLoadFalse"
+	16	"novel/"
+	17	".gim"
+	18	"waitLoading"
+	19	"endLoading"
+	20	2
+	21	0
+	22	"wait"
+	23	"autoSystemSave"
+	24	"cInitGame"
+locals (0) for 0x56bb35f0:
+upvalues (0) for 0x56bb35f0:

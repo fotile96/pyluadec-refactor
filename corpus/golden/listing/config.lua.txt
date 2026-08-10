@@ -1,0 +1,82 @@
+
+main <?:0,0> (57 instructions, 228 bytes at 0x576bb010)
+0+ params, 2 slots, 0 upvalues, 0 locals, 19 constants, 0 functions
+	1	[-]	NEWTABLE 	0 0 12
+	2	[-]	GETGLOBAL	1 -2	; run
+	3	[-]	SETTABLE 	0 1 -2	; - "run"
+	4	[-]	GETGLOBAL	1 -3	; wait
+	5	[-]	SETTABLE 	0 1 -3	; - "wait"
+	6	[-]	GETGLOBAL	1 -4	; waitLoading
+	7	[-]	SETTABLE 	0 1 -4	; - "waitLoading"
+	8	[-]	GETGLOBAL	1 -5	; msg
+	9	[-]	SETTABLE 	0 1 -5	; - "msg"
+	10	[-]	GETGLOBAL	1 -6	; msgQuit
+	11	[-]	SETTABLE 	0 1 -6	; - "msgQuit"
+	12	[-]	GETGLOBAL	1 -7	; pageScreen
+	13	[-]	SETTABLE 	0 1 -7	; - "pageScreen"
+	14	[-]	GETGLOBAL	1 -8	; switchScreen
+	15	[-]	SETTABLE 	0 1 -8	; - "switchScreen"
+	16	[-]	GETGLOBAL	1 -9	; runListLoad
+	17	[-]	SETTABLE 	0 1 -9	; - "runListLoad"
+	18	[-]	GETGLOBAL	1 -10	; runListSave
+	19	[-]	SETTABLE 	0 1 -10	; - "runListSave"
+	20	[-]	GETGLOBAL	1 -11	; runAutoLoad
+	21	[-]	SETTABLE 	0 1 -11	; - "runAutoLoad"
+	22	[-]	GETGLOBAL	1 -12	; runAutoSave
+	23	[-]	SETTABLE 	0 1 -12	; - "runAutoSave"
+	24	[-]	GETGLOBAL	1 -13	; playMovie
+	25	[-]	SETTABLE 	0 1 -13	; - "playMovie"
+	26	[-]	SETGLOBAL	0 -1	; permsPersist
+	27	[-]	NEWTABLE 	0 0 12
+	28	[-]	GETGLOBAL	1 -2	; run
+	29	[-]	SETTABLE 	0 -2 1	; "run" -
+	30	[-]	GETGLOBAL	1 -3	; wait
+	31	[-]	SETTABLE 	0 -3 1	; "wait" -
+	32	[-]	GETGLOBAL	1 -4	; waitLoading
+	33	[-]	SETTABLE 	0 -4 1	; "waitLoading" -
+	34	[-]	GETGLOBAL	1 -5	; msg
+	35	[-]	SETTABLE 	0 -5 1	; "msg" -
+	36	[-]	GETGLOBAL	1 -6	; msgQuit
+	37	[-]	SETTABLE 	0 -6 1	; "msgQuit" -
+	38	[-]	GETGLOBAL	1 -7	; pageScreen
+	39	[-]	SETTABLE 	0 -7 1	; "pageScreen" -
+	40	[-]	GETGLOBAL	1 -8	; switchScreen
+	41	[-]	SETTABLE 	0 -8 1	; "switchScreen" -
+	42	[-]	GETGLOBAL	1 -9	; runListLoad
+	43	[-]	SETTABLE 	0 -9 1	; "runListLoad" -
+	44	[-]	GETGLOBAL	1 -10	; runListSave
+	45	[-]	SETTABLE 	0 -10 1	; "runListSave" -
+	46	[-]	GETGLOBAL	1 -11	; runAutoLoad
+	47	[-]	SETTABLE 	0 -11 1	; "runAutoLoad" -
+	48	[-]	GETGLOBAL	1 -12	; runAutoSave
+	49	[-]	SETTABLE 	0 -12 1	; "runAutoSave" -
+	50	[-]	GETGLOBAL	1 -13	; playMovie
+	51	[-]	SETTABLE 	0 -13 1	; "playMovie" -
+	52	[-]	SETGLOBAL	0 -14	; permsUnpersist
+	53	[-]	NEWTABLE 	0 0 2
+	54	[-]	SETTABLE 	0 -16 -17	; "libfontModule" "disc0:/PSP_GAME/USRDIR/module/libfont.prx"
+	55	[-]	SETTABLE 	0 -18 -19	; "bootScript" "script/snr_common.lua"
+	56	[-]	SETGLOBAL	0 -15	; config
+	57	[-]	RETURN   	0 1
+constants (19) for 0x576bb010:
+	1	"permsPersist"
+	2	"run"
+	3	"wait"
+	4	"waitLoading"
+	5	"msg"
+	6	"msgQuit"
+	7	"pageScreen"
+	8	"switchScreen"
+	9	"runListLoad"
+	10	"runListSave"
+	11	"runAutoLoad"
+	12	"runAutoSave"
+	13	"playMovie"
+	14	"permsUnpersist"
+	15	"config"
+	16	"libfontModule"
+	17	"disc0:/PSP_GAME/USRDIR/module/libfont.prx"
+	18	"bootScript"
+	19	"script/snr_common.lua"
+locals (0) for 0x576bb010:
+upvalues (0) for 0x576bb010:
