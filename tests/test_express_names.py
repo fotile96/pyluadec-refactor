@@ -399,6 +399,55 @@ def test_corpus_no_open_region_in_pre_fix_temp_window(corpus_dir):
     assert hits == [], f"open-region instruction inside a pre-fix temp window: {hits[:5]}"
 
 
+def test_adjacent_pure_window_excludes_the_def_pc_itself():
+    """Pins _adjacent_pure's window at the BOTTOM: (dp, up] is exclusive at
+    dp, inclusive at up. The top boundary (inclusive at up) is already
+    covered by test_open_write_at_use_pc_forces_local; nothing in this
+    module's existing tests pins the bottom.
+
+    Mutating the scan from `dp < pc <= up` to `dp <= pc <= up` (i.e.
+    including the def instruction's own pc in the barrier scan) makes a
+    register's *own* def-time effect/may_error block its *own* eligibility
+    -- nonsensical, since _adjacent_pure's barriers are about what happens
+    *between* computing a value and consuming it, not about the computation
+    itself. On the 229-file corpus this exact mutation flips 49 registers
+    temp->local for no soundness reason (a computed-once value that was
+    never touched by anything else is still safe to inline at its single
+    use site, regardless of whether computing it could itself raise/mutate
+    the heap -- that risk exists identically whether the value is inlined
+    or stored to a local first).
+
+    Register 5's def (pc 1) is deliberately given effect=ARBITRARY,
+    may_error=True -- exactly what a realistic risky def instruction (e.g.
+    GETGLOBAL or ADD under EffectMode.STRICT) looks like -- with its single
+    use immediately adjacent (pc 2, nothing between). Under the correct
+    exclusive-at-dp window, dp itself is never scanned, so this passes
+    unaffected -> temp. Under the `[dp, up]` mutation, dp enters the scan
+    and its own effect/may_error immediately fails the barrier -> local.
+    """
+    from pyluadec.express.names import classify_registers
+    from pyluadec.lift import Effect, InstrEffects, LirFunction, LirInstr, Op
+    from tests.synth import mk_instr, mk_proto
+
+    def_ri = mk_instr(Op.ADD, a=5, b=0, c=1, pc=1)
+    def_fx = InstrEffects(reads=frozenset(), writes=frozenset({5}),
+                           reads_open=False, writes_open=False,
+                           effect=Effect.ARBITRARY, may_error=True)
+    use_ri = mk_instr(Op.MOVE, a=6, b=5, pc=2)
+    use_fx = InstrEffects(reads=frozenset({5}), writes=frozenset({6}),
+                           reads_open=False, writes_open=False,
+                           effect=Effect.PURE, may_error=False)
+    instrs = {
+        1: LirInstr(ri=def_ri, effects=def_fx, successors=(2,), consumed=()),
+        2: LirInstr(ri=use_ri, effects=use_fx, successors=(), consumed=()),
+    }
+    proto = mk_proto((0, 0), numparams=0, maxstacksize=8)
+    fn = LirFunction(proto=proto, instrs=instrs, n_pcs=2,
+                      captured_regs=frozenset(), closure_pseudo={})
+    rc = classify_registers(fn)
+    assert 5 in rc.temps and 5 not in rc.locals
+
+
 def test_regclass_does_not_classify_registers_with_no_tracked_def_or_use():
     """RegClass only covers registers classify_registers actually saw a def
     or use for. A register that's neither written nor read (dead stack
