@@ -45,6 +45,25 @@ def test_dom_tree_children():
     assert tree[1] == (2, 3, 4) and tree.get(2, ()) == ()
 
 
+def test_irreducible_requires_fixpoint_iteration():
+    """一个必须迭代 >=2 轮才能收敛的不可归约图：1->2,3 ; 2->1,4 ; 3->2,4 ; 4->2,3。
+
+    到 4 有两条路径 1-2-4 与 1-3-4，交集只有 {1,4}，所以 idom(4) 必须是 1。手工推导：
+      Dom(2) = {1,2}（路径 1-2 与 1-3-2 的交集）        -> idom(2)=1
+      Dom(3) = {1,3}（路径 1-3 与 1-2-4-3 的交集）        -> idom(3)=1
+      Dom(4) = {1,4}（路径 1-2-4 与 1-3-4 的交集）        -> idom(4)=1
+    这份期望值是手推的，不是跑一遍实现再抄下来的。
+
+    单趟逆后序（不做不动点迭代）会在处理 4 时，因为此时 idom[3] 还没算出来、3 被
+    从候选前驱里滤掉，只用前驱 2 直接得到 idom(4)=2 ——这是错的，只有跑第二轮不动点
+    迭代、让 idom[3] 参与进来做 intersect(2,3)=1，才能纠正为 1。这个用例专门用来防止
+    `immediate_dominators` 退化成单趟遍历（丢掉 `while changed:` 不动点循环）的回归。
+    """
+    from pyluadec.cfg.dom import immediate_dominators
+    idoms = immediate_dominators(_mk_cfg({1: (2, 3), 2: (1, 4), 3: (2, 4), 4: (2, 3)}))
+    assert idoms == {1: 1, 2: 1, 3: 1, 4: 1}
+
+
 def _bfs_reachable(cfg) -> set[int]:
     """独立于 dom.py 的可达性计算：从 entry 沿 succs 做 BFS。"""
     seen = {cfg.entry}
