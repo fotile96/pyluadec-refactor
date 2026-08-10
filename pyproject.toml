@@ -17,8 +17,16 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
+    "pytest-timeout>=2.3.1",
 ]
 
 [tool.pytest.ini_options]
 addopts = "-ra"
 testpaths = ["tests"]
+# CI backstop, not a primary defense: a hang (e.g. a structuring recognizer
+# that fails to advance pc and spins forever) surfaces in CI as a job that
+# never returns -- no failure name, no diff, easy to mistake for flakiness
+# and re-run. 60s is generous relative to the full suite (~10s) and the
+# slowest individual corpus-gated tests (a few seconds each); it should never
+# fire on legitimate runs, only on genuine hangs.
+timeout = 60

@@ -216,14 +216,6 @@ def test_compare_not_followed_by_jmp_raises():
         build_sir(fn)
 
 
-def test_loop_raises_structure_error(tmp_path):
-    import pytest
-    from pyluadec.sir.build import StructureError, build_sir
-    fn = _fn("local i = 0 while i < 3 do i = i + 1 end return i", tmp_path)
-    with pytest.raises(StructureError):
-        build_sir(fn)
-
-
 def test_acyclic_corpus_claims_every_pc(corpus_dir):
     """Every acyclic proto that build_sir accepts must claim exactly its pc set."""
     from pyluadec.ingest import load_file

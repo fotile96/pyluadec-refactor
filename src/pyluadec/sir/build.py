@@ -100,7 +100,22 @@ def _structure_range(fn, cfg, idoms, pc2blk, lo: int, hi: int,
     """
     parts: list[Region] = []
     pc = lo
+    _last_pc: int | None = None
     while pc < hi:
+        # Every path through this loop body must strictly advance pc -- if one
+        # doesn't (a recognizer bug returns pc unchanged, or backwards), the
+        # loop would otherwise spin forever re-attempting the same pc. This is
+        # not just a test-hygiene concern: malformed or adversarial bytecode
+        # that trips a latent recognizer bug in the field would hang the
+        # decompiler rather than falling back, which the "recognize or
+        # refuse" discipline this module is built on explicitly rules out.
+        # Refuse instead of looping.
+        if _last_pc is not None and pc <= _last_pc:
+            raise StructureError(
+                f"pc {pc}: structuring made no forward progress past pc {_last_pc} "
+                f"(last op attempted: {fn.instrs[_last_pc].ri.op.name}); "
+                "internal recognizer bug, refusing rather than looping forever")
+        _last_pc = pc
         li = fn.instrs[pc]
         op = li.ri.op
         if op is Op.FORPREP:
