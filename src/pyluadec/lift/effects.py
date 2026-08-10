@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum, IntEnum
 
-from .opcodes import Op, RawInstr, indexk, isk
+from .opcodes import Op, RawInstr, isk
 
 
 class Effect(IntEnum):
@@ -98,6 +98,12 @@ def _row(ri: RawInstr):
     if op is Op.FORPREP:
         return F({a, a + 1, a + 2}), F({a, a + 1, a + 2}), 0, 0, P, P, P, True
     if op is Op.FORLOOP:
+        # may_error=True is a deliberate conservative over-approximation, not a claim
+        # that lvm.c can raise here: OP_FORLOOP has no Protect() and calls no luaG_*
+        # error function (FORPREP already validated the three slots are numbers, so
+        # the arithmetic here cannot fail in practice). Kept True per spec so that no
+        # downstream consumer (inlining gates, M4 effect-mode calibration) ever treats
+        # FORLOOP as *proven* error-free; flip only with a matching lvm.c citation.
         return F({a, a + 1, a + 2}), F({a, a + 3}), 0, 0, P, P, P, True
     if op is Op.TFORLOOP:
         return F({a, a + 1, a + 2}), F({a + 2}) | F(range(a + 3, a + 3 + c)), 0, 0, ARB, ARB, ARB, True
