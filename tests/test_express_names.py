@@ -563,9 +563,16 @@ def test_local_dropped_before_a_for_loop_reusing_its_register_is_local(tmp_path)
 
     The producer-chain slice asks which instruction produced the value the
     header reads instead, so it stops at the loop's own `LOADK 1` and never
-    reaches x's write. Note there is no call anywhere in this fixture: the
-    round-3 scan only appeared to work on shapes where a zero-result CALL
-    (empty `writes`) happened to sit between the two.
+    reaches x's write.
+
+    What makes this fixture prove that rather than an accident: nothing at
+    all stands between x's write and the loop's staging, and the only call
+    in the function (`print(i)`) is inside the loop body, textually *after*
+    FORPREP -- downstream of where any backward run from the header starts,
+    so it cannot terminate one. The round-3 scan only ever stopped at an
+    instruction whose `writes` missed the triple, in practice a zero-result
+    CALL; there is none available here. Verified directly: deleting
+    `print(i)` leaves both this test's verdict and round 3's unchanged.
     """
     from pyluadec.express.names import classify_registers
     fn = _fn("do local x = 5 end for i = 1, 3 do print(i) end", tmp_path)
@@ -585,10 +592,18 @@ def test_mutated_local_before_two_loops_reusing_its_register_is_local(tmp_path):
         for j = 1, 5 do print(j) end
 
     Register 0 is `z` (three writes, two reads), then the control base of
-    two consecutive loops. Round 3 classified it temp -- with no call to
-    terminate its backward run, the run swallowed both loops' staging AND
-    all three of z's statements, every one of which then disappeared from
-    the reconstructed output.
+    two consecutive loops. Round 3 classified it temp: its backward run from
+    either FORPREP passes over both loops' staging, the first loop's own
+    FORPREP/FORLOOP and all three of z's writes without ever meeting an
+    instruction whose `writes` miss {0,1,2}, so it ran to pc 0 and swallowed
+    every one of z's statements, which then disappeared from the
+    reconstructed output.
+
+    There is no call anywhere *before* the loops -- the only one,
+    `print(j)`, is inside the second loop's body, after both FORPREPs, so it
+    is downstream of where either backward run starts and cannot terminate
+    one. Verified directly: deleting it leaves both this test's verdict and
+    round 3's unchanged.
     """
     from pyluadec.express.names import classify_registers
     fn = _fn("do local z = 1  z = z + 1  z = z + 1 end "
@@ -606,9 +621,18 @@ def test_multi_instruction_generic_for_iterator_staging_stays_temp(tmp_path):
     'local t = {} for k, v in string.gmatch(t, t) do end' stages the
     iterator triple with GETGLOBAL -> GETTABLE -> MOVE -> MOVE -> CALL, five
     instructions, three of which write register 1 (the iterator slot) in
-    succession. The corpus has five instances of this GETGLOBAL/GETTABLE/
-    CALL shape. All of {1, 2, 3} must stay temp: every write and read of
+    succession. All of {1, 2, 3} must stay temp: every write and read of
     them belongs to the chain that produces what TFORLOOP reads.
+
+    Corpus relationship, stated precisely (round-5 review corrected an
+    earlier overclaim here): the corpus has 7 TFORLOOPs, whose stagings are
+    GETGLOBAL/GETUPVAL/GETTABLE/CALL (4), GETGLOBAL/GETGLOBAL/GETTABLE/CALL
+    (1), GETGLOBAL/GETGLOBAL/CALL (1) and GETGLOBAL/MOVE/CALL (1). So five
+    of them do contain a GETTABLE, but in every one it rewrites the *state*
+    slot (a+1), not the base -- no corpus GETTABLE writes the iterator base.
+    This fixture is the harder shape on purpose (the GETTABLE rewrites the
+    base, so the chain has to follow a producer's own read of a register it
+    also writes); it is not a transcription of a corpus instance.
     """
     from pyluadec.express.names import classify_registers
     fn = _fn("local t = {} for k, v in string.gmatch(t, t) do end", tmp_path)
@@ -676,3 +700,180 @@ def test_regclass_does_not_classify_registers_with_no_tracked_def_or_use():
     rc = classify_registers(fn)
     for r in (1, 2, 3, 4):
         assert r not in rc.locals and r not in rc.temps and r not in rc.loop_vars
+
+
+def _temp_write_violations(fn, rc):
+    """Per-*write* soundness oracle for RegClass.temps. Classification only:
+    no SIR walk, no Reconstructor, so it is an invariant of
+    classify_registers itself, not of any consumer.
+
+    A temp register is reconstructed by staging its defining expression and
+    splicing it into its single consumer, popping it on the way. That is
+    sound for one value of one register exactly when the value has EXACTLY
+    ONE reader before it is overwritten:
+
+      - zero readers  -> nothing ever splices it in, so the statement that
+                         produced it vanishes from the output entirely, with
+                         no error raised. This is the failure mode that
+                         rounds 1-3 shipped three times.
+      - two or more   -> the first read pops it and the second finds nothing
+                         staged (a ReconstructError at best, a wrong tree at
+                         worst).
+
+    So: for every r in rc.temps, every write of r that is not the loop
+    header's own FORPREP/FORLOOP/TFORLOOP must have exactly one read of r in
+    `(write_pc, next_write_pc]`.
+
+    The window is open at the bottom and CLOSED AT THE TOP on purpose. An
+    instruction that reads a register and also writes it -- `ADD r, r, k`,
+    or FORPREP/FORLOOP reading their control triple before rewriting it --
+    consumes the old value, so its read belongs to the previous write's
+    window. Excluding it reports false violations on every genuine for-loop
+    control slot in existence (the same half-open-window subtlety as
+    _adjacent_pure's `(dp, up]`).
+
+    Returns a list of (register, write_pc, reader_count) for each violation.
+    """
+    from pyluadec.lift.opcodes import Op
+
+    control = (Op.FORPREP, Op.FORLOOP, Op.TFORLOOP)
+    writes: dict[int, list[int]] = {}
+    reads: dict[int, list[int]] = {}
+    for pc in sorted(fn.instrs):
+        li = fn.instrs[pc]
+        for r in li.effects.writes:
+            writes.setdefault(r, []).append(pc)
+        for r in li.effects.reads:
+            reads.setdefault(r, []).append(pc)
+    bad = []
+    for r in sorted(rc.temps):
+        ws = writes.get(r, [])
+        for i, pc in enumerate(ws):
+            if fn.instrs[pc].ri.op in control:
+                continue
+            nxt = ws[i + 1] if i + 1 < len(ws) else None
+            n = sum(1 for u in reads.get(r, [])
+                    if u > pc and (nxt is None or u <= nxt))
+            if n != 1:
+                bad.append((r, pc, n))
+    return bad
+
+
+def test_corpus_every_temp_write_has_exactly_one_consumer(corpus_dir):
+    """Standing corpus gate for RegClass.temps (M3 task-5 round-5 review).
+
+    Runs _temp_write_violations over every proto of all 229 corpus files.
+    This is the instrument that would have caught rounds 1, 2 and 3
+    immediately -- each of them classified registers temp whose writes had
+    zero readers, which deletes statements silently. Costs well under a
+    second corpus-wide.
+
+    Note what this gate does and does not prove. It is sound in the
+    direction that matters (a temp that fails it WILL lose or duplicate
+    something), but the corpus itself is nearly inert for the control-slot
+    rule: this corpus is dense with calls, which is exactly what let round
+    3's backward scan terminate in the right place by accident, so round 3
+    also scores zero here. The teeth are demonstrated by the injection test
+    below and by the case-A/case-C tests above; this gate is the standing
+    guard against the next regression, not the evidence for the last one.
+    """
+    from pyluadec.express.names import classify_registers
+    from pyluadec.ingest import load_file
+    from pyluadec.lift import lift_proto
+
+    hits = []
+    n = 0
+
+    def walk(proto, path):
+        nonlocal n
+        n += 1
+        fn = lift_proto(proto)
+        bad = _temp_write_violations(fn, classify_registers(fn))
+        if bad:
+            hits.append((path, bad))
+        for i, sp in enumerate(proto.subprotos):
+            walk(sp, path + (i,))
+
+    for f in sorted(corpus_dir.glob("*.lua")):
+        walk(load_file(f), (f.name,))
+
+    assert n > 1900, f"corpus looks truncated: only {n} protos"
+    assert hits == [], f"temp register whose write has != 1 consumer: {hits[:5]}"
+
+
+def test_temp_write_oracle_fires_on_an_injected_misclassification(tmp_path):
+    """The gate above has teeth: inject the exact mistake rounds 1-3 made
+    and confirm it is reported.
+
+    `do local x = 5 end for i = 1, 3 do print(i) end` -- register 0 is `x`
+    and then the loop's init slot. classify_registers correctly calls it
+    local; forcing it into `temps` (which is literally what round 3's
+    `controls` override did) gives its first write, `LOADK 5`, zero readers
+    before the loop's own `LOADK 1` overwrites it, so the oracle reports
+    (register 0, that pc, 0 readers).
+
+    Also asserts the un-injected classification is clean, so the test cannot
+    pass by the oracle simply flagging everything.
+    """
+    from pyluadec.express.names import RegClass, classify_registers
+
+    fn = _fn("do local x = 5 end for i = 1, 3 do print(i) end", tmp_path)
+    rc = classify_registers(fn)
+    assert _temp_write_violations(fn, rc) == []
+
+    injected = RegClass(locals=rc.locals - {0}, temps=rc.temps | {0},
+                        loop_vars=rc.loop_vars)
+    bad = _temp_write_violations(fn, injected)
+    assert [(r, n) for r, _pc, n in bad] == [(0, 0)], bad
+
+
+def test_parameters_and_captured_registers_win_over_the_controls_override():
+    """The `controls` branch runs after -- not before -- the parameter and
+    captured-register guards (M3 task-5 round-5 review).
+
+    Both guards exist to be unconditional: a parameter and an
+    upvalue-captured register are named, live locals whose slot the loop
+    header must never be allowed to claim as an inlinable staging temp.
+    Ordered the other way, `controls` reached them first and a for-loop
+    based at register 0 of a 3-parameter function classified all three
+    declared parameters temp.
+
+    luac never emits this (a live parameter's slot is not reused as a loop
+    header's base), so it is hand-built -- but the module refuses cleanly on
+    every other malformed shape it can see, and an unconditional temp
+    override sitting in front of two unconditional guards is exactly the
+    kind of ordering the rest of this file has already been bitten by.
+    Corpus-neutral: 0 of 1944 protos change classification.
+    """
+    from pyluadec.express.names import classify_registers
+    from pyluadec.lift import Effect, InstrEffects, LirFunction, LirInstr, Op
+    from tests.synth import mk_instr, mk_proto
+
+    pure = dict(reads_open=False, writes_open=False, effect=Effect.PURE,
+                may_error=True)
+    prep = mk_instr(Op.FORPREP, a=0, sbx=0, pc=1)
+    loop = mk_instr(Op.FORLOOP, a=0, sbx=-1, pc=2)
+    triple = frozenset({0, 1, 2})
+    instrs = {
+        1: LirInstr(ri=prep, effects=InstrEffects(reads=triple, writes=triple, **pure),
+                    successors=(2,), consumed=()),
+        2: LirInstr(ri=loop, effects=InstrEffects(reads=triple,
+                                                  writes=frozenset({0, 3}), **pure),
+                    successors=(2, 3), consumed=()),
+    }
+    proto = mk_proto((0, 0), numparams=3, maxstacksize=8)
+
+    params = LirFunction(proto=proto, instrs=instrs, n_pcs=2,
+                         captured_regs=frozenset(), closure_pseudo={})
+    rc = classify_registers(params)
+    assert {0, 1, 2} <= rc.locals, "declared parameters classified temp"
+    assert not ({0, 1, 2} & rc.temps)
+
+    # Same shape with no parameters, but register 1 captured by a closure.
+    proto0 = mk_proto((0, 0), numparams=0, maxstacksize=8)
+    captured = LirFunction(proto=proto0, instrs=instrs, n_pcs=2,
+                           captured_regs=frozenset({1}), closure_pseudo={})
+    rc = classify_registers(captured)
+    assert 1 in rc.locals and 1 not in rc.temps
+    # the un-captured, non-parameter slots of the same triple are unaffected
+    assert {0, 2} <= rc.temps

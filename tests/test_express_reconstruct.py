@@ -612,3 +612,44 @@ def test_genuine_for_control_slots_still_inline_into_the_header(tmp_path):
     assert {0, 1, 2} <= rc.temps
     assert not any(isinstance(s, (LocalDecl, Assign)) for s in stmts)
     assert [type(s) for s in stmts] == [ExprStmt, ReturnStmt]
+
+
+def test_partially_demoted_generic_for_triple_reconstructs(tmp_path):
+    """M3 task-5 round-5 review: `_emit_multi` used to refuse a multi-result
+    write whose targets mix already-declared and fresh registers.
+
+    `local t = {} do local x = 5 end for k, v in pairs(t) do end`: `x` goes
+    out of scope, so luac reuses its register as the generic-for's iterator
+    base. classify_registers correctly calls that base a local (it is `x`
+    too) while the state/control slots stay temp -- and the staging
+    `CALL a 2 4` writes all three at once, so one Lua statement has to
+    assign to one existing local and two new ones.
+
+    Round 3 "handled" this shape by classifying the base temp, which
+    silently deleted `local x = 5`; round 4 classified it correctly and then
+    raised here, refusing the whole function. Neither is acceptable: the
+    mixed case is expressible as `local <fresh>` followed by a multi-assign
+    over all three, which is what this now emits. `local a, b, c = ...`
+    would NOT do -- a second `local` of an existing name shadows it rather
+    than assigning to it.
+    """
+    from pyluadec.express.reconstruct import Assign, LocalDecl, LocalTarget
+    from pyluadec.express.expr import ConstExpr
+    p, fn = _proto_and_fn(
+        "local t = {} do local x = 5 end for k, v in pairs(t) do end", tmp_path)
+    rc, stmts = _all_stmts(fn)
+    # the base is local, the other two control slots are still temp
+    assert 1 in rc.locals and {2, 3} <= rc.temps
+    # `local x = 5` survived
+    assert [s for s in stmts
+            if isinstance(s, LocalDecl)
+            and any(isinstance(e, ConstExpr) and e.value.value == 5.0
+                    for e in s.exprs)]
+    # ... and the mixed multi-result write became `local r2, r3` + one
+    # three-target assignment, not a refusal and not a shadowing redeclaration
+    assert LocalDecl((2, 3), ()) in stmts
+    multi = [s for s in stmts if isinstance(s, Assign) and len(s.targets) == 3]
+    assert len(multi) == 1
+    assert multi[0].targets == (LocalTarget(1), LocalTarget(2), LocalTarget(3))
+    assert not any(isinstance(s, LocalDecl) and 1 in s.regs and s.exprs
+                   and s.regs != (1,) for s in stmts)

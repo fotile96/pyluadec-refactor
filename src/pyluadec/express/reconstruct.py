@@ -265,9 +265,28 @@ class Reconstructor:
             self._out.append(LocalDecl(regs, (expr,)))
             self.declared.update(regs)
         else:
-            raise ReconstructError(
-                f"multi-result write to registers {regs} mixes already-declared "
-                "and fresh registers -- cannot express as one Lua statement")
+            # Mixed: some targets already exist as locals, some are fresh.
+            # `local a, b, c = f()` would *shadow* the ones that exist rather
+            # than assign to them (a second `local` of the same name is a new
+            # variable in Lua), so split it in two: bring the fresh registers
+            # into scope uninitialised, then assign the whole tuple at once.
+            #   local <fresh...>
+            #   <all regs...> = f()
+            # A LocalDecl with an empty `exprs` is `local a, b` with no
+            # initialiser -- the same "fewer exprs than regs" shape this
+            # method already emits for the all-fresh case, taken to zero.
+            #
+            # Reached when a generic-for's TFORLOOP triple is partially
+            # demoted: the staging `CALL a b 4` writes all three control
+            # slots at once, and classify_registers can legitimately call the
+            # base a reused local (round-4 review) while a+1/a+2 stay temp.
+            # This used to raise, which turned a round-3 silent statement
+            # deletion into a hard refusal for the whole function (M3 task-5
+            # round-5 review).
+            fresh = tuple(r for r in regs if r not in self.declared)
+            self._out.append(LocalDecl(fresh, ()))
+            self.declared.update(fresh)
+            self._out.append(Assign(tuple(LocalTarget(r) for r in regs), (expr,)))
         for r in regs:
             self.env[r] = LocalExpr(r)
 

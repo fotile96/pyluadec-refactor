@@ -263,6 +263,16 @@ def classify_registers(fn: LirFunction) -> RegClass:
     locals_: set[int] = set()
     temps: set[int] = set()
     for r in sorted(regs):
+        # Parameters and closure-captured registers are named, live locals by
+        # construction -- checked FIRST so that the `controls` branch cannot
+        # override them. luac never hands a live parameter's or an upvalue's
+        # slot to a loop header, so this is unreachable from real bytecode;
+        # it is ordered this way because leaving an unconditional temp
+        # override in front of two guards that exist to be unconditional is
+        # the kind of inconsistency this module has already been bitten by
+        # (M3 task-5 round-5 review).
+        if r < fn.proto.numparams or r in fn.captured_regs:
+            locals_.add(r); continue
         if r in controls:
             if _control_lifetime_ok(r):
                 temps.add(r)
@@ -270,8 +280,6 @@ def classify_registers(fn: LirFunction) -> RegClass:
                 locals_.add(r)
             continue
         if r in loop_vars:
-            locals_.add(r); continue
-        if r < fn.proto.numparams or r in fn.captured_regs:
             locals_.add(r); continue
         d, u = defs.get(r, []), uses.get(r, [])
         if len(d) != 1 or len(u) != 1:
