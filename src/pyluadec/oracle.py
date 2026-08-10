@@ -34,12 +34,20 @@ def lua_sz4() -> Path:
 
 
 def compile_source(source: bytes, *, strip: bool = False) -> bytes:
+    # luac embeds the input filename it is given as Proto.source at compile
+    # time (lundump.c LoadFunction reads it straight from the binary chunk,
+    # independent of any chunkname passed at load time). Running luac with
+    # cwd=td and a RELATIVE filename keeps that embedded name stable
+    # ("@in.lua") regardless of where the random tempdir lands -- otherwise
+    # two compiles of byte-identical source produce byte-DIFFERENT bytecode,
+    # which would silently defeat any byte/field-level comparison of two
+    # compilations (see verify.normalize's L3.0 comparator).
     with tempfile.TemporaryDirectory() as td:
         s = Path(td) / "in.lua"
         o = Path(td) / "out.luac"
         s.write_bytes(source)
-        cmd = [str(luac_sz4())] + (["-s"] if strip else []) + ["-o", str(o), str(s)]
-        r = subprocess.run(cmd, capture_output=True)
+        cmd = [str(luac_sz4())] + (["-s"] if strip else []) + ["-o", "out.luac", "in.lua"]
+        r = subprocess.run(cmd, capture_output=True, cwd=td)
         if r.returncode != 0:
             raise LuaCompileError(r.stderr.decode(errors="replace"))
         return o.read_bytes()
