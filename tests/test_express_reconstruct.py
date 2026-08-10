@@ -513,3 +513,102 @@ def test_loadbool_skip_next_form_refuses():
 # elsewhere in the same function -- is now pinned in test_express_names.py
 # (test_controls_register_reused_as_ordinary_local_classifies_local), closer
 # to where the fix actually lives.
+
+
+def _all_stmts(fn):
+    """Drive a single Reconstructor over the whole SIR region tree in program
+    order -- the way Task 6's printer will -- and return every statement it
+    produced. for-headers consume their control slots via take_expr, exactly
+    as the printer must, so a control slot that was wrongly classified temp
+    still gets popped here rather than quietly surviving in the environment.
+    """
+    from pyluadec import sir as S
+    from pyluadec.express.names import classify_registers
+    from pyluadec.express.reconstruct import Reconstructor
+    from pyluadec.sir import build_sir
+
+    rc = classify_registers(fn)
+    rec = Reconstructor(fn, rc, depth=0)
+    out = []
+
+    def walk(r):
+        t = type(r)
+        if t is S.Straight:
+            out.extend(rec.stmts_for(r.instrs))
+        elif t is S.Return:
+            out.extend(rec.stmts_for((r.instr,)))
+        elif t is S.Seq:
+            for child in r.body:
+                walk(child)
+        elif t is S.If:
+            walk(r.then_body)
+            if r.else_body is not None:
+                walk(r.else_body)
+        elif t is S.NumericFor:
+            for i in range(3):
+                rec.take_expr(r.prep.ri.a + i)
+            walk(r.body)
+        elif t is S.GenericFor:
+            for i in range(3):
+                rec.take_expr(r.call.ri.a + i)
+            walk(r.body)
+
+    walk(build_sir(fn))
+    return rc, tuple(out)
+
+
+def test_local_before_a_for_loop_reusing_its_register_is_not_deleted(tmp_path):
+    """Round-4 review, case A, at the level where the damage actually shows.
+
+    `do local x = 5 end for i = 1, 3 do print(i) end`: when register 0 is
+    misclassified temp (round 3 did), `local x = 5` is popped into the
+    for-header's init operand and the statement is simply gone -- no
+    exception, no warning, one fewer statement in the output. Assert the
+    constant 5 still reaches a statement.
+    """
+    from pyluadec.express.reconstruct import Assign, LocalDecl
+    from pyluadec.express.expr import ConstExpr
+    p, fn = _proto_and_fn("do local x = 5 end for i = 1, 3 do print(i) end", tmp_path)
+    rc, stmts = _all_stmts(fn)
+    fives = [s for s in stmts
+             if isinstance(s, (LocalDecl, Assign))
+             and any(isinstance(e, ConstExpr) and e.value.value == 5.0 for e in s.exprs)]
+    assert len(fives) == 1, f"`local x = 5` lost; statements were {stmts}"
+    assert 0 in rc.locals            # the classification that makes it so
+
+
+def test_mutated_local_before_two_loops_is_not_deleted(tmp_path):
+    """Round-4 review, case C. `do local z = 1 z = z + 1 z = z + 1 end`
+    followed by two register-0 loops: all three of z's statements must
+    appear. Round 3 emitted two statements total for the whole function.
+    """
+    from pyluadec.express.reconstruct import Assign, LocalDecl
+    from pyluadec.express.expr import BinExpr
+    p, fn = _proto_and_fn(
+        "do local z = 1  z = z + 1  z = z + 1 end "
+        "for i = 1, 3 do end for j = 1, 5 do print(j) end", tmp_path)
+    rc, stmts = _all_stmts(fn)
+    increments = [s for s in stmts
+                  if isinstance(s, (LocalDecl, Assign))
+                  and any(isinstance(e, BinExpr) and e.op == "+" for e in s.exprs)]
+    assert len(increments) == 2, f"`z = z + 1` lost; statements were {stmts}"
+    # z's initialiser too: four register-0 statements in all (z = 1, the two
+    # increments, and loop 2's own init write -- loop 1's init is the first
+    # write of register 0 in the function and so is z's own LocalDecl).
+    assert sum(isinstance(s, (LocalDecl, Assign)) for s in stmts) == 5
+    assert 0 in rc.locals            # the classification that makes it so
+
+
+def test_genuine_for_control_slots_still_inline_into_the_header(tmp_path):
+    """The counterweight: a for loop with no register reuse must still emit
+    NO statement for its control slots -- a fix that demoted them would
+    produce `local` declarations for init/limit/step and change register
+    allocation. `for i = 1, 3 do print(i) end` reconstructs to exactly the
+    body call plus the trailing return.
+    """
+    from pyluadec.express.reconstruct import Assign, ExprStmt, LocalDecl, ReturnStmt
+    p, fn = _proto_and_fn("for i = 1, 3 do print(i) end", tmp_path)
+    rc, stmts = _all_stmts(fn)
+    assert {0, 1, 2} <= rc.temps
+    assert not any(isinstance(s, (LocalDecl, Assign)) for s in stmts)
+    assert [type(s) for s in stmts] == [ExprStmt, ReturnStmt]

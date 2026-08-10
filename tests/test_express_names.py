@@ -462,26 +462,31 @@ def test_controls_register_reused_as_ordinary_local_classifies_local(tmp_path):
     unrelated reuse elsewhere in the function that the naive override
     ignored entirely.
 
-    'for i = 1, 3 do print(i) end local x = 1 x = x + 1 x = x + 1 print(x)'
-    reproduces this directly with real luac output: register 0 is the
-    for-loop's init/'a' control slot (FORPREP/FORLOOP both write and read
-    it), and after the loop ends luac reuses register 0 for the entirely
-    unrelated local `x`, written three more times and read twice more.
-    Fails against the pre-fix `controls`-only override (register 0 would be
-    forced temp, and reconstruct.py would then try to pop-once-inline a
-    value that's actually reassigned and read multiple times).
+    'for i = 1, 3 do end local x = 1 x = x + 1 x = x + 1' reproduces this
+    directly with real luac output: register 0 is the for-loop's init/'a'
+    control slot (FORPREP/FORLOOP both write and read it), and after the
+    loop ends luac reuses register 0 for the entirely unrelated local `x`,
+    written three more times and read twice more. Fails against the pre-fix
+    `controls`-only override (register 0 would be forced temp, and
+    reconstruct.py would then try to pop-once-inline a value that's actually
+    reassigned and read multiple times).
+
+    Deliberately call-free (round-4 review: the fixture used to be
+    'for i = 1, 3 do print(i) end local x = 1 ... print(x)'). A CALL with no
+    results has empty `writes`, which under the round-3 backward scan acted
+    as an accidental terminator for the staging window -- so a fixture with
+    an incidentally-placed call can pass without the property under test
+    actually holding. Every fixture in this family is now call-free so it
+    proves its claim on its own shape.
     """
     from pyluadec.express.names import classify_registers
-    fn = _fn("for i = 1, 3 do print(i) end local x = 1 x = x + 1 x = x + 1 print(x)",
-             tmp_path)
+    fn = _fn("for i = 1, 3 do end local x = 1 x = x + 1 x = x + 1", tmp_path)
     rc = classify_registers(fn)
     assert 0 in rc.locals and 0 not in rc.temps
     # the loop's own control machinery is otherwise unaffected by register
-    # 0's demotion: the loop variable is still local and recorded as such
-    # (registers 1/2, the limit/step slots, happen to *also* get reused for
-    # this exact source's trailing `print(x)` call -- correctly demoted for
-    # the same reason, not asserted here since that's incidental to this
-    # source rather than the property under test).
+    # 0's demotion: the limit/step slots stay temp and the loop variable is
+    # still local and recorded as such.
+    assert {1, 2} <= rc.temps
     assert 3 in rc.locals and 3 in rc.loop_vars
 
 
@@ -494,18 +499,28 @@ def test_register_reused_between_two_loops_sharing_it_as_control_base_classifies
     them (not staging for either) gets swept into "the gap before the
     second loop" and misclassified temp.
 
-    'for i=1,3 do print(i) end do local x=1 x=x+1 x=x+1 print(x) end for
-    j=1,5 do print(j) end': register 0 is loop 1's control base, then `x`
-    once that scope frees it, then loop 2's control base again. Removing
-    the second `for` loop makes register 0 correctly classify local under
-    round 2's code too -- it is specifically the *later* claim that used to
-    provide cover for x's activity to hide in the gap.
+    'for i=1,3 do end do local x=1 x=x+1 x=x+1 end for j=1,5 do end':
+    register 0 is loop 1's control base, then `x` once that scope frees it,
+    then loop 2's control base again. Removing the second `for` loop makes
+    register 0 correctly classify local under round 2's code too -- it is
+    specifically the *later* claim that used to provide cover for x's
+    activity to hide in the gap.
+
+    Round-4 review: this fixture used to carry a trailing `print(x)` inside
+    the `do ... end` block and `print` calls in both loop bodies, and it
+    passed against round 3's own backward scan *because of them* -- a
+    zero-result CALL has empty `writes`, which terminated that scan's run of
+    "instructions writing into the control triple" and so happened to keep
+    x's writes out of the window. Strip the calls and round 3 classifies
+    register 0 temp, silently deleting all three of x's statements from the
+    reconstructed output. The fixture is now call-free so nothing incidental
+    stands in for the property.
     """
     from pyluadec.express.names import classify_registers
     fn = _fn(
-        "for i=1,3 do print(i) end "
-        "do local x = 1  x = x + 1  x = x + 1  print(x) end "
-        "for j=1,5 do print(j) end",
+        "for i=1,3 do end "
+        "do local x = 1  x = x + 1  x = x + 1 end "
+        "for j=1,5 do end",
         tmp_path)
     rc = classify_registers(fn)
     assert 0 in rc.locals and 0 not in rc.temps
@@ -514,17 +529,130 @@ def test_register_reused_between_two_loops_sharing_it_as_control_base_classifies
 def test_two_loops_legitimately_sharing_a_control_base_both_stay_temp(tmp_path):
     """The other direction of the round-3 fix, pinned separately so the
     chain-coherence check can't be satisfied by simply always demoting a
-    register claimed by more than one loop: 'for i=1,3 do print(i) end for
-    j=1,5 do print(j) end' -- two numeric-for loops immediately adjacent,
-    genuinely sharing registers 0/1/2 as their control base with NO
-    unrelated activity in the gap between them -- must still classify all
-    three temp.
+    register claimed by more than one loop: 'for i=1,3 do end for j=1,5 do
+    end' -- two numeric-for loops immediately adjacent, genuinely sharing
+    registers 0/1/2 as their control base with NO unrelated activity in the
+    gap between them -- must still classify all three temp.
+
+    Call-free for the same reason as its sibling above (round-4 review): the
+    fixture must not lean on a `print` in either loop body.
     """
     from pyluadec.express.names import classify_registers
-    fn = _fn("for i=1,3 do print(i) end for j=1,5 do print(j) end", tmp_path)
+    fn = _fn("for i=1,3 do end for j=1,5 do end", tmp_path)
     rc = classify_registers(fn)
     assert {0, 1, 2} <= rc.temps
     assert not ({0, 1, 2} & rc.locals)
+
+
+def test_local_dropped_before_a_for_loop_reusing_its_register_is_local(tmp_path):
+    """M3 task-5 round-4 review pin (case A), the commonest shape of all:
+
+        do local x = 5 end
+        for i = 1, 3 do print(i) end
+
+    `x` goes out of scope, so luac hands register 0 straight to the loop's
+    init slot. Register 0 therefore has two writes -- x's `LOADK 5` and the
+    loop's own `LOADK 1` -- and only the second one is staging for the loop.
+
+    Round 3 classified register 0 temp here: it walked backward from FORPREP
+    over every *consecutive* instruction whose writes intersect {0,1,2},
+    which runs straight through the loop's three staging LOADKs and into
+    x's, because that one also writes register 0. Register 0 being temp
+    means `local x = 5` is inlined into the for-header and its statement
+    vanishes from the output with no error raised.
+
+    The producer-chain slice asks which instruction produced the value the
+    header reads instead, so it stops at the loop's own `LOADK 1` and never
+    reaches x's write. Note there is no call anywhere in this fixture: the
+    round-3 scan only appeared to work on shapes where a zero-result CALL
+    (empty `writes`) happened to sit between the two.
+    """
+    from pyluadec.express.names import classify_registers
+    fn = _fn("do local x = 5 end for i = 1, 3 do print(i) end", tmp_path)
+    rc = classify_registers(fn)
+    assert 0 in rc.locals and 0 not in rc.temps
+    # the loop's limit/step slots have no such double duty and stay temp --
+    # the fix must not demote the whole triple indiscriminately.
+    assert {1, 2} <= rc.temps
+    assert 3 in rc.locals and 3 in rc.loop_vars
+
+
+def test_mutated_local_before_two_loops_reusing_its_register_is_local(tmp_path):
+    """M3 task-5 round-4 review pin (case C):
+
+        do local z = 1  z = z + 1  z = z + 1 end
+        for i = 1, 3 do end
+        for j = 1, 5 do print(j) end
+
+    Register 0 is `z` (three writes, two reads), then the control base of
+    two consecutive loops. Round 3 classified it temp -- with no call to
+    terminate its backward run, the run swallowed both loops' staging AND
+    all three of z's statements, every one of which then disappeared from
+    the reconstructed output.
+    """
+    from pyluadec.express.names import classify_registers
+    fn = _fn("do local z = 1  z = z + 1  z = z + 1 end "
+             "for i = 1, 3 do end "
+             "for j = 1, 5 do print(j) end", tmp_path)
+    rc = classify_registers(fn)
+    assert 0 in rc.locals and 0 not in rc.temps
+    assert {1, 2} <= rc.temps
+
+
+def test_multi_instruction_generic_for_iterator_staging_stays_temp(tmp_path):
+    """The other direction for a multi-instruction staging chain, which a
+    fix that only accepted single-instruction staging would break.
+
+    'local t = {} for k, v in string.gmatch(t, t) do end' stages the
+    iterator triple with GETGLOBAL -> GETTABLE -> MOVE -> MOVE -> CALL, five
+    instructions, three of which write register 1 (the iterator slot) in
+    succession. The corpus has five instances of this GETGLOBAL/GETTABLE/
+    CALL shape. All of {1, 2, 3} must stay temp: every write and read of
+    them belongs to the chain that produces what TFORLOOP reads.
+    """
+    from pyluadec.express.names import classify_registers
+    fn = _fn("local t = {} for k, v in string.gmatch(t, t) do end", tmp_path)
+    rc = classify_registers(fn)
+    assert {1, 2, 3} <= rc.temps
+    assert not ({1, 2, 3} & rc.locals)
+    assert {4, 5} <= rc.loop_vars
+
+
+def test_numeric_for_limit_computed_by_a_call_stays_temp(tmp_path):
+    """Numeric-for staging is not always three LOADKs: 'for i = 1,
+    tonumber(x) do end' stages the limit with GETGLOBAL/MOVE/CALL, and the
+    CALL reads the step slot (as its own argument register) before the step
+    LOADK writes it. The chain has to follow that read back rather than
+    treat the slot as already resolved, or the triple gets demoted.
+    """
+    from pyluadec.express.names import classify_registers
+    fn = _fn("local x = 1 for i = 1, tonumber(x) do end", tmp_path)
+    rc = classify_registers(fn)
+    assert {1, 2, 3} <= rc.temps
+    assert 0 in rc.locals            # x itself, read by the staging MOVE
+    assert 4 in rc.loop_vars
+
+
+def test_control_lifetime_proof_does_not_scan_the_whole_preceding_function(tmp_path):
+    """The staging proof must be bounded by the length of the staging chain,
+    not by how much code precedes the loop.
+
+    A 400-statement call-free prefix that repeatedly rewrites register 0,
+    followed by two loops using register 0 as their control base: round 3
+    walked back through every one of those writes for every loop occurrence
+    (its run only ever stopped at an instruction whose writes missed the
+    triple, and there is none here), which is both wrong -- register 0 is
+    plainly double duty -- and quadratic. Asserting the verdict rather than
+    a wall-clock number; the 60s pytest timeout is the backstop for the
+    cost.
+    """
+    from pyluadec.express.names import classify_registers
+    prefix = " ".join("z = z + 1" for _ in range(400))
+    fn = _fn(f"do local z = 0 {prefix} end for i = 1, 3 do end for j = 1, 5 do end",
+             tmp_path)
+    rc = classify_registers(fn)
+    assert 0 in rc.locals and 0 not in rc.temps
+    assert {1, 2} <= rc.temps
 
 
 def test_regclass_does_not_classify_registers_with_no_tracked_def_or_use():
