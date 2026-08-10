@@ -295,7 +295,7 @@ git add -A && git commit -m "feat: L3.1 line-info normalization rung and certify
   - `regions.py`（全部 frozen dataclass，字段 `claimed_pcs: frozenset[int]` 是该区域**直接**认领的 pc；子区域的 pc 不重复计入父的 `claimed_pcs`，全树认领 = 各区域 `claimed_pcs` 的**不相交并集**）:
     - `Seq(body: tuple[Region, ...], claimed_pcs)` —— 顺序块；`claimed_pcs` 恒为空（认领委托给 body）
     - `Straight(instrs: tuple[LirInstr, ...], claimed_pcs)` —— 直线指令序列（叶子），`claimed_pcs` = 这些指令的 pc
-    - `If(cond_pcs: frozenset[int], cond: LirInstr, negated: bool, then_body: Region, else_body: Region | None, join_pc: int, claimed_pcs)` —— `cond` 是比较/测试指令，`claimed_pcs` = `cond_pcs`（比较指令 + 其后随 JMP）
+    - `If(cond: LirInstr, negated: bool, then_body: Region, else_body: Region | None, join_pc: int, claimed_pcs: frozenset[int])` —— `cond` 是比较/测试指令；`claimed_pcs` = 比较指令 + 其后随 JMP（+ then 体尾部跳过 else 的那条 JMP，若有 else）。**没有独立的 `cond_pcs` 字段**——它只是 `build.py` 里的局部变量名
     - `NumericFor(prep: LirInstr, loop: LirInstr, body: Region, claimed_pcs)` —— `claimed_pcs` = {FORPREP.pc, FORLOOP.pc}
     - `GenericFor(call: LirInstr, loop: LirInstr, body: Region, claimed_pcs)` —— `call`=TFORLOOP，`loop`=其后随 JMP；`claimed_pcs`={TFORLOOP.pc, JMP.pc}
     - `Break(claimed_pcs)` —— 单条 JMP 跳出循环，`claimed_pcs`={该 JMP.pc}
