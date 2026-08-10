@@ -34,6 +34,15 @@ def test_synth_mk_instr_roundtrips_fields():
     assert ri.op is Op.LOADK and ri.a == 2 and ri.bx == 5 and ri.pc == 7
     ri = mk_instr(Op.JMP, sbx=-3, pc=10)
     assert ri.op is Op.JMP and ri.sbx == -3
+    # iABC path (op/a/b/c, no bx/sbx): a plain small-value case plus the
+    # A=255/B=511/C=511 boundary (8-bit A, 9-bit B and C) that was previously
+    # only hand-verified, not regression-tested. A silently mis-encoding
+    # _encode would make every synthetic iABC-based test in M3 meaningless
+    # while still appearing to pass.
+    ri = mk_instr(Op.ADD, a=3, b=4, c=6, pc=2)
+    assert (ri.op, ri.a, ri.b, ri.c, ri.pc) == (Op.ADD, 3, 4, 6, 2)
+    ri = mk_instr(Op.ADD, a=255, b=511, c=511, pc=1)
+    assert (ri.op, ri.a, ri.b, ri.c) == (Op.ADD, 255, 511, 511)
 
 
 def test_if_region_claims_then_and_else_children():
