@@ -19,12 +19,12 @@ CONTROL_CASES = [
     'local s = 0 for i = 1, 100 do s = s + i end print(s)',
     # NOTE: the 7 CLOSURE-dependent cases originally here (local/anonymous function
     # forms exercising open CALL/VARARG/SETLIST/TAILCALL via a callee) were moved to
-    # Task 8's suite — CLOSURE is out of scope for this task (still raises EmitError,
-    # see test_closure_not_yet_supported below). They are reproduced verbatim in
-    # task-7-report.md so nothing is lost, in particular the TAILCALL-via-recursion
-    # case (TAILCALL has only 3 occurrences in the whole 229-file corpus). Replaced
-    # below with closure-free equivalents that exercise the identical opcodes, so
-    # Task 7 still self-verifies every "open" form it owns without needing CLOSURE.
+    # Task 8's suite, which now implements CLOSURE (test_fallback_closures.py's
+    # CLOSURE_CASES). They are reproduced verbatim in task-7-report.md so nothing
+    # is lost, in particular the TAILCALL-via-recursion case (TAILCALL has only 3
+    # occurrences in the whole 229-file corpus). Replaced below with closure-free
+    # equivalents that exercise the identical opcodes, so Task 7 still self-verifies
+    # every "open" form it owns without needing CLOSURE.
     'print(select(2, 10, 20, 30))',
     # open-arg CALL (B==0) into print; open-result CALL (C==0) from select
     'local t = {select(2, 10, 20, 30)} print(#t, t[1], t[2])',
@@ -74,14 +74,3 @@ def test_runtime_error_parity():
         r2 = oracle.run_bytes(dec, is_source=True)
         assert r1.returncode != 0, f"orig did not error: {src!r}"
         assert r2.returncode != 0, f"decompiled did not error: {src!r}"
-
-
-def test_closure_not_yet_supported():
-    """CLOSURE/GETUPVAL/SETUPVAL/CLOSE 仍在 Task 8 范围——本 Task 不应误吞。"""
-    import pytest
-    from pyluadec import oracle
-    from pyluadec.ingest import load_bytes
-    from pyluadec.structure.fallback import EmitError, emit_chunk
-    bc = oracle.compile_source(b"local function f() return 1 end print(f())")
-    with pytest.raises(EmitError, match="CLOSURE"):
-        emit_chunk(load_bytes(bc))

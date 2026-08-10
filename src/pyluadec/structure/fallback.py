@@ -209,6 +209,26 @@ class _FnEmitter:
                 L.append(f"do local __pld_n = __pld_top - {a} - 1")
                 L.append(f"for __pld_i = 1, __pld_n do {rd(a)}[{base} + __pld_i] = "
                          f"__pld_get(__pld_R, __pld_B, {a} + __pld_i) end end")
+        elif op is Op.GETUPVAL:
+            L.append(wr(a, f"__pld_U[{b}].v"))
+        elif op is Op.SETUPVAL:
+            L.append(f"__pld_U[{b}].v = {rd(a)}")
+        elif op is Op.CLOSE:
+            for i in sorted(self.boxed):
+                if i >= a:
+                    L.append(f"__pld_R[{i}] = {{v = __pld_R[{i}].v}}")
+        elif op is Op.CLOSURE:
+            caps = []
+            for idx, ps in enumerate(self.fn.closure_pseudo[ri.pc]):
+                if ps.op is Op.MOVE:
+                    if ps.b not in self.boxed:
+                        raise EmitError(
+                            f"pc {ri.pc}: captured register {ps.b} not boxed (lift bug)")
+                    caps.append(f"[{idx}]=__pld_R[{ps.b}]")      # 盒对象本身
+                else:                                            # GETUPVAL 伪指令
+                    caps.append(f"[{idx}]=__pld_U[{ps.b}]")
+            child = f"{self.path}_{bx}"
+            L.append(wr(a, f'__pld_F["{child}"]({{{", ".join(caps)}}})'))
         else:
             raise EmitError(f"pc {ri.pc}: opcode {op.name} not yet supported by fallback")
 
