@@ -120,41 +120,16 @@ class Reconstructor:
         self.depth = depth
         self.upval_names = upval_names
         self.env: dict[int, Expr] = {}
-        # rc.temps includes registers forced temp *by register number* for
-        # being a FORPREP/FORLOOP/TFORLOOP control slot *somewhere* in the
-        # function (express.names.classify_registers's `controls` override).
-        # That override is unconditional and per-register-number, not
-        # per-live-range, and it bypasses the single-def/single-use proof
-        # (_adjacent_pure) every other rc.temps member had to pass. luac
-        # freely reuses register numbers across disjoint lexical scopes, so
-        # the SAME register can, entirely unrelated to any loop, be written
-        # and read many separate times elsewhere in the function --
-        # classify_registers has no way to see that per-generation
-        # distinction (round-1 review of this task found this on the
-        # corpus: a table-constructor register and a self-incrementing loop
-        # accumulator, each also coincidentally a control slot for an
-        # unrelated for-loop elsewhere in the same giant function, each
-        # popped-before-staged because every one of their many separate
-        # writes was trusted as "just stage in env, single use will follow").
-        # A control-forced temp register with more than one static write or
-        # read anywhere in the function was never actually proven
-        # single-def/single-use -- replicate that half of
-        # classify_registers's own prerequisite (len(d)==1 and len(u)==1)
-        # here as a defensive check, and treat only the subset of rc.temps
-        # that still passes it as genuinely poppable. Every other write to
-        # such a register goes through force_materialize like an ordinary
-        # local (see _read_reg/write_reg), so a many-write-or-read register
-        # is never trusted to have "just one more read coming."
-        write_counts: dict[int, int] = {}
-        read_counts: dict[int, int] = {}
-        for li in fn.instrs.values():
-            for r in li.effects.writes:
-                write_counts[r] = write_counts.get(r, 0) + 1
-            for r in li.effects.reads:
-                read_counts[r] = read_counts.get(r, 0) + 1
-        self._reliable_temps = frozenset(
-            r for r in rc.temps
-            if write_counts.get(r, 0) == 1 and read_counts.get(r, 0) == 1)
+        # rc.temps is trusted directly: express.names.classify_registers now
+        # applies its own staging-window check before its `controls` override
+        # (FORPREP/FORLOOP/TFORLOOP force a register temp by register number)
+        # is allowed to win, so a register that's a control slot for one
+        # loop's range *and* an ordinary, multiply-written/read local
+        # elsewhere in the same function is already classified local by the
+        # time it reaches this Reconstructor (M3 task-5 round-2 review; a
+        # round-1 defensive census duplicating that check used to live here
+        # instead -- moved into names.py so RegClass.temps means what its
+        # docstring says for every reader, not just this module).
         # loop_vars are declared by the `for` statement itself (Task 6/7's
         # NumericFor/GenericFor printer), never by this module -- pre-seed
         # them into `declared` so that if the loop body ever writes back to
@@ -212,12 +187,13 @@ class Reconstructor:
         # `declared` wins over rc's static classification: once a register has
         # been force-materialized (a real `local`/reassignment statement was
         # emitted for it -- see force_materialize), it is a stable, reread-many
-        # -times reference forever after, regardless of what rc.temps originally
-        # said. See _reliable_temps (set in __init__) for why the temp check
-        # below is scoped to that corrected subset, not raw rc.temps.
+        # -times reference forever after, regardless of what rc.temps says.
+        # This matters for the few opcodes (SELF, the SETLIST degrade path)
+        # that deliberately force-materialize a register rc.temps still calls
+        # temp, so it can be safely referenced more than once.
         if reg in self.declared:
             return self.env.get(reg, LocalExpr(reg))
-        if reg in self._reliable_temps:
+        if reg in self.rc.temps:
             if reg not in self.env:
                 raise ReconstructError(f"temp register {reg} read before it was staged")
             return self.env.pop(reg)
@@ -233,12 +209,11 @@ class Reconstructor:
         The `reg not in self.declared` guard matters: once a register is
         declared, self.env[reg] already holds the placeholder LocalExpr(reg)
         (not a raw pending expression), so without this guard a
-        declared-but-still-rc.temps register (e.g. a for-loop control
-        register reused later for something else, see _read_reg's docstring)
-        would force_materialize(reg, LocalExpr(reg)) -- emitting a
-        do-nothing `vN = vN` self-reassignment statement.
+        declared-but-still-rc.temps register would
+        force_materialize(reg, LocalExpr(reg)) -- emitting a do-nothing
+        `vN = vN` self-reassignment statement.
         """
-        if reg not in self.declared and reg in self._reliable_temps and reg in self.env:
+        if reg not in self.declared and reg in self.rc.temps and reg in self.env:
             self.force_materialize(reg, self.env.pop(reg))
         return LocalExpr(reg)
 
@@ -246,8 +221,8 @@ class Reconstructor:
         # Symmetric with _read_reg: a register already `declared` is a stable
         # local from here on -- a fresh write to it is a reassignment
         # (force_materialize's Assign branch), never a re-inlinable temp
-        # binding, regardless of rc.temps/_reliable_temps.
-        if reg not in self.declared and reg in self._reliable_temps:
+        # binding, regardless of rc.temps.
+        if reg not in self.declared and reg in self.rc.temps:
             self.env[reg] = e
         else:
             self.force_materialize(reg, e)
@@ -320,17 +295,17 @@ class Reconstructor:
         """Pop and finalize the innermost pending table constructor.
 
         Goes through write_reg -- not a blanket force_materialize -- so a
-        genuinely single-read table register (write-count==1, read-count==1;
-        see _reliable_temps) still gets to pop-once-inline as a real nested
-        TableExpr (e.g. `{a=1, b={}, c=2}`'s inner `{}` folding straight into
-        the outer table's hash value) rather than being needlessly declared
-        as its own separate local. A table register that _reliable_temps
-        already knows will be read more than once elsewhere in the function
-        (the "table register that will be re-read across statements needs a
-        materialized, re-readable reference, not a pop-once temp binding"
-        case _standalone_setlist handles via _stable_ref) still gets a real
-        LocalDecl/Assign here, because write_reg defers to
-        force_materialize whenever the register isn't in _reliable_temps.
+        genuinely single-use table register (per rc.temps) still gets to
+        pop-once-inline as a real nested TableExpr (e.g. `{a=1, b={}, c=2}`'s
+        inner `{}` folding straight into the outer table's hash value)
+        rather than being needlessly declared as its own separate local. A
+        table register rc.temps doesn't (or no longer, once declared) trust
+        as single-use -- the "table register that will be re-read across
+        statements needs a materialized, re-readable reference, not a
+        pop-once temp binding" case _standalone_setlist handles via
+        _stable_ref -- still gets a real LocalDecl/Assign here, because
+        write_reg defers to force_materialize whenever the register isn't a
+        trustworthy rc.temps member.
         """
         if not self._table_ctx_stack:
             return

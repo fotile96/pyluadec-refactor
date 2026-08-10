@@ -448,6 +448,43 @@ def test_adjacent_pure_window_excludes_the_def_pc_itself():
     assert 5 in rc.temps and 5 not in rc.locals
 
 
+def test_controls_register_reused_as_ordinary_local_classifies_local(tmp_path):
+    """M3 task-5 round-2 review pin: a register that is a for-loop's control
+    slot in one range of the function, and an ordinary, multiply-written/
+    read local everywhere else, must classify LOCAL -- not temp.
+
+    `controls` (accumulated over every FORPREP/FORLOOP/TFORLOOP in the
+    function, purely by register number) used to force such a register temp
+    unconditionally, with no check for reuse outside its role as a control
+    slot. Measured on the 229-file corpus: 188 (proto, register) pairs were
+    ever forced temp this way; 105 of them (register 0 in snr_common.lua's
+    main chunk among them -- the coordinator's cited example) had real,
+    unrelated reuse elsewhere in the function that the naive override
+    ignored entirely.
+
+    'for i = 1, 3 do print(i) end local x = 1 x = x + 1 x = x + 1 print(x)'
+    reproduces this directly with real luac output: register 0 is the
+    for-loop's init/'a' control slot (FORPREP/FORLOOP both write and read
+    it), and after the loop ends luac reuses register 0 for the entirely
+    unrelated local `x`, written three more times and read twice more.
+    Fails against the pre-fix `controls`-only override (register 0 would be
+    forced temp, and reconstruct.py would then try to pop-once-inline a
+    value that's actually reassigned and read multiple times).
+    """
+    from pyluadec.express.names import classify_registers
+    fn = _fn("for i = 1, 3 do print(i) end local x = 1 x = x + 1 x = x + 1 print(x)",
+             tmp_path)
+    rc = classify_registers(fn)
+    assert 0 in rc.locals and 0 not in rc.temps
+    # the loop's own control machinery is otherwise unaffected by register
+    # 0's demotion: the loop variable is still local and recorded as such
+    # (registers 1/2, the limit/step slots, happen to *also* get reused for
+    # this exact source's trailing `print(x)` call -- correctly demoted for
+    # the same reason, not asserted here since that's incidental to this
+    # source rather than the property under test).
+    assert 3 in rc.locals and 3 in rc.loop_vars
+
+
 def test_regclass_does_not_classify_registers_with_no_tracked_def_or_use():
     """RegClass only covers registers classify_registers actually saw a def
     or use for. A register that's neither written nor read (dead stack
