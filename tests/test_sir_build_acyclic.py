@@ -132,6 +132,41 @@ def test_dead_code_inside_a_claimed_then_range_raises():
         build_sir(fn)
 
 
+def test_dead_code_inside_a_claimed_else_range_raises():
+    # Fix round 2 finding: the else-body _verify_single_entry call
+    # (build.py:162-163) had no test coverage in either direction -- deleting
+    # it left accepted/rejected corpus counts and the full suite completely
+    # unchanged. This mirrors test_dead_code_inside_a_claimed_then_range_raises
+    # exactly, but on the else side: an if-WITH-else where the else-range
+    # [5,13) starts reachably at pc5, but pc5->pc6 is a RETURN (terminal, no
+    # successors), so pc7..12 are never actually reachable from the else's own
+    # entry and are absent from the dominator tree. then-range [3,4) is a
+    # single ordinary instruction so only the else-side call can possibly be
+    # what catches this.
+    from tests.synth import mk_instr, mk_proto
+    from pyluadec.lift import lift_proto, Op
+    from pyluadec.sir.build import StructureError, build_sir
+    words = [
+        mk_instr(Op.EQ, a=0, b=0, c=1, pc=1).word,
+        mk_instr(Op.JMP, sbx=5 - 1 - 2, pc=2).word,     # jt=5, then=[3,4)
+        mk_instr(Op.MOVE, a=0, b=1, pc=3).word,          # then-body (ordinary, 1 instr)
+        mk_instr(Op.JMP, sbx=13 - 1 - 4, pc=4).word,     # then_last is JMP -> else assumed, join=13
+        mk_instr(Op.MOVE, a=0, b=1, pc=5).word,          # else-body entry (reachable)
+        mk_instr(Op.RETURN, a=0, b=1, pc=6).word,        # terminal: breaks the chain
+        mk_instr(Op.MOVE, a=0, b=1, pc=7).word,          # unreachable from pc5 onward
+        mk_instr(Op.MOVE, a=0, b=1, pc=8).word,
+        mk_instr(Op.MOVE, a=0, b=1, pc=9).word,
+        mk_instr(Op.MOVE, a=0, b=1, pc=10).word,
+        mk_instr(Op.MOVE, a=0, b=1, pc=11).word,
+        mk_instr(Op.MOVE, a=0, b=1, pc=12).word,
+        mk_instr(Op.RETURN, a=0, b=1, pc=13).word,       # join
+    ]
+    fn = lift_proto(mk_proto(words, maxstacksize=2))
+    import pytest
+    with pytest.raises(StructureError):
+        build_sir(fn)
+
+
 def test_verify_single_entry_catches_block_reachable_via_a_non_dominating_path():
     # Companion to the dead-code case above, but exercising the *other* half
     # of _verify_single_entry: a block that IS reachable (present in idoms),
