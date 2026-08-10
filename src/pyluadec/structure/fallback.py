@@ -30,6 +30,9 @@ local __pld_F = {}
 """
 
 
+_NEG_ZERO_PAYLOAD = struct.pack("<d", -0.0)
+
+
 def num_lit(k: LuaNumber) -> str:
     v = struct.unpack("<d", k.payload)[0]
     if v != v:
@@ -38,6 +41,16 @@ def num_lit(k: LuaNumber) -> str:
         return "(1/0)"
     if v == float("-inf"):
         return "(-1/0)"
+    if k.payload == _NEG_ZERO_PAYLOAD:
+        # luaH_get normalises integral number keys via lua_number2int when
+        # interning constants (lvm.c), so a plain `-0.0` numeral collides
+        # with `0.0` in luac's constant table -- whichever is added first
+        # wins, and the preamble's `0` numeral (fallback.py's boxed-register
+        # init) means +0.0 always wins that race. `lcode.c`'s constfolding
+        # refuses to fold division by zero, so this expression survives as
+        # a runtime computation and reliably evaluates to -0.0 instead of
+        # going through the constant table at all.
+        return "(-1/(1/0))"
     candidates = []
     if v == int(v) and abs(v) < 1e16:
         candidates.append("%d" % int(v))
@@ -111,6 +124,11 @@ class _FnEmitter:
     # ---- 函数级发射 -----------------------------------------------------
     def emit(self) -> str:
         p = self.proto
+        if p.is_vararg & 4:
+            raise EmitError(
+                f"{self.path}: VARARG_NEEDSARG set (is_vararg={p.is_vararg}) — "
+                "the Lua 5.0 compat 'arg' table that adjust_varargs materialises "
+                "into R[numparams] is not modelled by the fallback emitter")
         params = [f"__pld_p{i}" for i in range(p.numparams)]
         if p.is_vararg & 2:
             params.append("...")

@@ -93,3 +93,8 @@ def test_block_invariants_on_corpus(corpus_dir):
                 for s in b.succs:
                     assert s in cfg.blocks                     # 后继指向块首
                     assert b.start in cfg.preds[s]
+                # 交叉核对：块的 succs 必须与其终结指令的真值 li.successors 一致
+                # ——仅靠上面的自洽性检查（succs 指向已知块首、preds 对称）无法
+                # 抓住"succs 被截断成真值的子集但仍自洽"这类破坏（例如把
+                # succs 截到只剩第一个后继）。
+                assert b.succs == b.instrs[-1].successors
