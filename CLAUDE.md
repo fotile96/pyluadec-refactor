@@ -70,4 +70,13 @@ cmake --build cmake-build-debug --target lua luac lua51_proto_extractor
 
 ## 本仓库现状
 
-尚无代码与构建体系（空仓库，无 commit）。上述命令均指原项目；本仓库的构建/测试命令确立后应回填到此文件。
+Phase 1（M0）已完成：uv 骨架、vendored pristine Lua 5.1.5、序列化宽度补丁（`native/patches/0001-serial-sizet.patch`）、双宽度构建（sz4/sz8）、两条 pybind bridge、header-dispatched `pyluadec.ingest`、只读 golden baseline（`corpus/golden/`）、roundtrip 与 golden-parity 两道校验门，均已跑通并在当前 32 位环境全绿。常用命令：
+
+- 装依赖：`uv sync`
+- 构建原生产物（vendored lua/luac 的 sz4/sz8 变体 + 两个 pybind bridge `.so`，产出到 `build/` 与 `src/pyluadec/_native/`）：`./scripts/build_native.sh`
+- 跑全部测试：`uv run pytest`（或 `uv run pytest -v`）
+- 跑单个测试：`uv run pytest tests/test_x.py::test_y -v`
+- 一键迁移验证（三道门 + 全量测试，spec §6 Step 2；32 位与 64 位环境均可跑，64 位跑绿是 M1 出口）：`./scripts/verify_migration.sh`
+- 语料位置约定：语料从不硬编码进代码，一律经环境变量 `PYLUADEC_CORPUS_DIR` 获取（指向 229 个 `.lua` 字节码文件所在目录，参照原项目的 `/root/pyluadec/others/script_to_decompile/`）。未设置或目录不存在时，依赖语料的 pytest 用例会 `pytest.skip`（见 `tests/conftest.py` 的 `corpus_dir` fixture），不会报错中断其余测试。
+
+64 位新机开荒（Linux x86_64 / macOS arm64）的完整步骤、双平台验收要求、门失败时的排查方法，见 `docs/runbooks/64bit-migration.md`。
