@@ -19,10 +19,20 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC = REPO_ROOT / "src" / "pyluadec"
 TESTS_DIR = Path(__file__).resolve().parent
 
-# structure/ is deliberately excluded: its one regex (an identifier-validation
-# pattern in structure/fallback.py) predates this rule and is a legitimate,
-# narrowly-scoped exception, not text post-processing of emitted source.
-GUARDED_PACKAGES = ["ingest", "lift", "cfg", "sir", "express", "emit", "verify"]
+# structure/ is the package most analogous to the predecessor's 1448-line
+# structure.py and is where the fallback emitter lives -- the highest-risk
+# package for this rule, so it is guarded like everywhere else. The one
+# narrow exception: structure/fallback.py's `_IDENT_RE = re.compile(...)`,
+# a compiled-once pattern validating a short bytes identifier (never text
+# rewriting of emitted output), predates this rule and is legitimate. The
+# exception is scoped to exactly that construct (the `import re` line and
+# `re.compile(...)` calls) in exactly that file -- any other `re.*` call
+# there (re.sub, re.match, re.search, ...), or any regex at all in another
+# file under structure/, is still flagged.
+GUARDED_PACKAGES = ["ingest", "lift", "cfg", "sir", "express", "emit", "verify", "structure"]
+
+_ALLOWED_RE_FILE = SRC / "structure" / "fallback.py"
+_ALLOWED_RE_KINDS = {"import re", "re.compile"}   # exact constructs allowed in that one file
 
 
 def _iter_guarded_files() -> list[Path]:
@@ -35,29 +45,38 @@ def _iter_guarded_files() -> list[Path]:
 
 
 def _re_usages(path: Path) -> list[str]:
-    """Return 'path:line: detail' strings for any `import re` or `re.*` in path."""
+    """Return 'path:line: detail' strings for `import re` / `re.*` in path,
+    excluding the one narrowly-scoped allowed construct (see
+    _ALLOWED_RE_FILE/_ALLOWED_RE_KINDS above).
+    """
     tree = ast.parse(path.read_text(), filename=str(path))
     re_aliases = {"re"}
-    hits: list[str] = []
+    raw: list[tuple[int, str, str]] = []   # (lineno, kind, detail)
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
                 if alias.name == "re":
                     bound = alias.asname or alias.name
                     re_aliases.add(bound)
-                    hits.append(f"{path}:{node.lineno}: import re")
+                    raw.append((node.lineno, "import re", "import re"))
         elif isinstance(node, ast.ImportFrom) and node.module == "re":
             names = ", ".join(a.name for a in node.names)
-            hits.append(f"{path}:{node.lineno}: from re import {names}")
+            raw.append((node.lineno, "from re import", f"from re import {names}"))
     for node in ast.walk(tree):
         if (isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
                 and node.value.id in re_aliases):
-            hits.append(f"{path}:{node.lineno}: {node.value.id}.{node.attr}")
-    return hits
+            raw.append((node.lineno, f"re.{node.attr}", f"{node.value.id}.{node.attr}"))
+
+    def allowed(kind: str) -> bool:
+        return path == _ALLOWED_RE_FILE and kind in _ALLOWED_RE_KINDS
+
+    return [f"{path}:{lineno}: {detail}" for lineno, kind, detail in raw if not allowed(kind)]
 
 
 def test_no_regex_in_analysis_or_emission_layers():
-    """No module under ingest/lift/cfg/sir/express/emit/verify imports `re` or calls `re.*`.
+    """No module under ingest/lift/cfg/sir/express/emit/verify/structure imports `re`
+    or calls `re.*`, except structure/fallback.py's single compiled identifier-
+    validation pattern (`_IDENT_RE = re.compile(...)`, not text rewriting).
 
     Checked by parsing each file's AST (never importing/executing it), so a
     lazily-imported `re` hidden inside a function body is caught too, not just
@@ -70,15 +89,18 @@ def test_no_regex_in_analysis_or_emission_layers():
         "regex found in a structured analysis/emission package:\n"
         + "\n".join(offenders) + "\n\n"
         "This project's analysis and emission layers (ingest/lift/cfg/sir/express/"
-        "emit/verify) operate on structured data -- typed IR and frozen dataclasses "
-        "-- never text. Regex creeping in here is the specific failure mode that "
-        "sank the predecessor project: a 3712-line emitter that regex-rewrote its "
-        "own emitted output in two layers plus a fixed-point loop with a hardcoded "
-        "3x3 iteration count, re-parsing the text it had just emitted to find block "
-        "boundaries. If you need text post-processing here, stop and redesign as "
-        "structured data instead. (structure/ is intentionally excluded: its "
-        "identifier-validation regex predates this rule and is a narrow, legitimate "
-        "exception.)"
+        "emit/verify/structure) operate on structured data -- typed IR and frozen "
+        "dataclasses -- never text. Regex creeping in here is the specific failure "
+        "mode that sank the predecessor project: a 3712-line emitter that "
+        "regex-rewrote its own emitted output in two layers plus a fixed-point loop "
+        "with a hardcoded 3x3 iteration count, re-parsing the text it had just "
+        "emitted to find block boundaries. If you need text post-processing here, "
+        "stop and redesign as structured data instead. (The one exception: "
+        "structure/fallback.py's `import re` and `re.compile(...)` for its "
+        "identifier-validation pattern, which predates this rule, is compiled once, "
+        "and validates a short bytes identifier rather than rewriting emitted "
+        "output -- any other `re.*` call, there or anywhere else under structure/, "
+        "is still flagged.)"
     )
 
 
