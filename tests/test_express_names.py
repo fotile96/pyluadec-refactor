@@ -485,6 +485,48 @@ def test_controls_register_reused_as_ordinary_local_classifies_local(tmp_path):
     assert 3 in rc.locals and 3 in rc.loop_vars
 
 
+def test_register_reused_between_two_loops_sharing_it_as_control_base_classifies_local(tmp_path):
+    """M3 task-5 round-3 review pin: `_staging_window_ok` (round 2) checked
+    *membership* -- does this pc fall in some gap before some loop that
+    claims r -- but not *chain coherence*: do ALL of r's defs/uses belong to
+    exactly one loop's own control lifetime. When the same register is the
+    control base for TWO loops, ordinary code living in the gap BETWEEN
+    them (not staging for either) gets swept into "the gap before the
+    second loop" and misclassified temp.
+
+    'for i=1,3 do print(i) end do local x=1 x=x+1 x=x+1 print(x) end for
+    j=1,5 do print(j) end': register 0 is loop 1's control base, then `x`
+    once that scope frees it, then loop 2's control base again. Removing
+    the second `for` loop makes register 0 correctly classify local under
+    round 2's code too -- it is specifically the *later* claim that used to
+    provide cover for x's activity to hide in the gap.
+    """
+    from pyluadec.express.names import classify_registers
+    fn = _fn(
+        "for i=1,3 do print(i) end "
+        "do local x = 1  x = x + 1  x = x + 1  print(x) end "
+        "for j=1,5 do print(j) end",
+        tmp_path)
+    rc = classify_registers(fn)
+    assert 0 in rc.locals and 0 not in rc.temps
+
+
+def test_two_loops_legitimately_sharing_a_control_base_both_stay_temp(tmp_path):
+    """The other direction of the round-3 fix, pinned separately so the
+    chain-coherence check can't be satisfied by simply always demoting a
+    register claimed by more than one loop: 'for i=1,3 do print(i) end for
+    j=1,5 do print(j) end' -- two numeric-for loops immediately adjacent,
+    genuinely sharing registers 0/1/2 as their control base with NO
+    unrelated activity in the gap between them -- must still classify all
+    three temp.
+    """
+    from pyluadec.express.names import classify_registers
+    fn = _fn("for i=1,3 do print(i) end for j=1,5 do print(j) end", tmp_path)
+    rc = classify_registers(fn)
+    assert {0, 1, 2} <= rc.temps
+    assert not ({0, 1, 2} & rc.locals)
+
+
 def test_regclass_does_not_classify_registers_with_no_tracked_def_or_use():
     """RegClass only covers registers classify_registers actually saw a def
     or use for. A register that's neither written nor read (dead stack

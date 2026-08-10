@@ -219,6 +219,66 @@ def test_self_method_call_does_not_duplicate_receiver(tmp_path):
     assert calls and calls[0].is_method and calls[0].method == b"f"
 
 
+def test_self_dynamic_key_falls_back_to_index_expr_without_duplicating_receiver():
+    """SELF's method-key operand (C) as a plain register (not an RK
+    constant) -- real luac output never produces this (Lua's `:` syntax
+    always compiles the method name to a literal constant), but SELF's own
+    bytecode format permits it, and `_self`'s dynamic-key branch (the `else`
+    of the `isk(c) and isinstance(..., bytes)` check) had no dedicated
+    regression test -- the existing SELF test
+    (test_self_method_call_does_not_duplicate_receiver) only exercises the
+    constant-key, is_method=True fusion path. Verifies: (1) it falls back to
+    a plain IndexExpr (a dynamic key can't use `:` sugar), and (2) the
+    receiver is referenced via the materialized register (LocalExpr), never
+    re-embedding the raw (potentially effectful) object expression a second
+    time -- the same duplication hazard the constant-key test pins,
+    reproduced with a hand-built SELF/Reconstructor (real luac never emits
+    this exact shape, so it can't be driven from compiled source).
+    """
+    from pyluadec.express.names import RegClass
+    from pyluadec.express.reconstruct import Reconstructor, LocalDecl
+    from pyluadec.express.expr import CallExpr, GlobalExpr, IndexExpr, LocalExpr
+    from pyluadec.lift import Effect, InstrEffects, LirFunction, LirInstr, Op
+    from tests.synth import mk_instr, mk_proto
+
+    self_ri = mk_instr(Op.SELF, a=6, b=5, c=9, pc=1)   # c: plain register, K bit NOT set
+    self_fx = InstrEffects(reads=frozenset({5, 9}), writes=frozenset({6, 7}),
+                            reads_open=False, writes_open=False,
+                            effect=Effect.ARBITRARY, may_error=True)
+    instrs = {1: LirInstr(ri=self_ri, effects=self_fx, successors=(), consumed=())}
+    proto = mk_proto((0,), numparams=0, maxstacksize=10)
+    fn = LirFunction(proto=proto, instrs=instrs, n_pcs=1,
+                      captured_regs=frozenset(), closure_pseudo={})
+    rc = RegClass(locals=frozenset({9}), temps=frozenset({5, 6, 7}), loop_vars=frozenset())
+    rec = Reconstructor(fn, rc, depth=0)
+    receiver_call = CallExpr(GlobalExpr(b"getObj"), ())
+    rec.env[5] = receiver_call            # reg 5 already holds a staged (effectful) call
+
+    stmts = rec.stmts_for((instrs[1],))
+
+    # the receiver was materialized exactly once, as reg 7 (a+1)
+    decls = [s for s in stmts if isinstance(s, LocalDecl)]
+    assert len(decls) == 1
+    assert decls[0].regs == (7,) and decls[0].exprs == (receiver_call,)
+
+    def count(node, target) -> int:
+        n = 1 if node == target else 0
+        if hasattr(node, "__dataclass_fields__"):
+            for f in node.__dataclass_fields__:
+                n += count(getattr(node, f), target)
+        elif isinstance(node, (tuple, list)):
+            for item in node:
+                n += count(item, target)
+        return n
+
+    assert sum(count(s, receiver_call) for s in stmts) == 1
+
+    # reg 6 (the method-lookup result, temp, still pending) references the
+    # materialized reg 7 -- not the raw receiver_call -- and reg 9's key
+    # via plain register read (not treated as a constant).
+    assert rec.env.get(6) == IndexExpr(LocalExpr(7), LocalExpr(9))
+
+
 def test_loop_var_never_gets_a_localdecl(tmp_path):
     """FORPREP/FORLOOP's loop variable register (rc.loop_vars) must never be
     the target of a LocalDecl emitted by reconstruct_straight -- it is

@@ -62,37 +62,83 @@ def classify_registers(fn: LirFunction) -> RegClass:
     controls: set[int] = set()
     loop_vars: set[int] = set()
     control_pcs: set[int] = set()             # pcs of FORPREP/FORLOOP/TFORLOOP themselves
-    claims: dict[int, set[int]] = {}          # register -> control_pcs that claim it
+    # One entry per loop *occurrence* (not per register): its control triple
+    # {a,a+1,a+2}, the control_pcs belonging to it, and its "loop_start" --
+    # the pc where this specific occurrence's own textual footprint begins.
+    # For numeric-for that's FORPREP's own pc (staging is directly adjacent
+    # to it). For generic-for it's the *leading* JMP that skips straight to
+    # the TFORLOOP test on entry, not TFORLOOP's own pc -- TFORLOOP is
+    # separated from its staging by the entire loop body in program order
+    # (luac's layout is: [stage iterator triple] -> [leading JMP to test] ->
+    # [body] -> TFORLOOP -> [JMP back]), so anchoring on TFORLOOP itself
+    # would make the loop body's own instructions look like they sit between
+    # staging and "loop start", breaking the adjacency check below for every
+    # generic-for (round-3 review finding).
+    occurrences: list[dict] = []
+    jmp_targets: dict[int, int] = {}          # successor pc -> a JMP pc that targets it
     for pc in ordered:
         ri = fn.instrs[pc].ri
-        if ri.op in (Op.FORPREP, Op.FORLOOP):
-            for r in (ri.a, ri.a + 1, ri.a + 2):
-                claims.setdefault(r, set()).add(pc)
-            controls |= {ri.a, ri.a + 1, ri.a + 2}
+        if ri.op is Op.JMP:
+            jmp_targets.setdefault(fn.instrs[pc].successors[0], pc)
+    seen_forloop_pcs: set[int] = set()
+    for pc in ordered:
+        ri = fn.instrs[pc].ri
+        if ri.op is Op.FORPREP:
+            triple = {ri.a, ri.a + 1, ri.a + 2}
+            occ_pcs = {pc}
+            forloop_pc = fn.instrs[pc].successors[0]
+            if forloop_pc in fn.instrs and fn.instrs[forloop_pc].ri.op is Op.FORLOOP:
+                occ_pcs.add(forloop_pc)
+                seen_forloop_pcs.add(forloop_pc)
+            control_pcs |= occ_pcs
+            controls |= triple
             loop_vars.add(ri.a + 3)
+            occurrences.append({"triple": triple, "control_pcs": occ_pcs, "loop_start": pc})
+        elif ri.op is Op.FORLOOP and pc not in seen_forloop_pcs:
+            # A FORLOOP whose paired FORPREP wasn't found above (malformed/
+            # unexpected bytecode) -- still claim it defensively rather than
+            # silently drop it, treating it as its own (maximally
+            # conservative: loop_start == its own pc) occurrence.
+            triple = {ri.a, ri.a + 1, ri.a + 2}
             control_pcs.add(pc)
+            controls |= triple
+            loop_vars.add(ri.a + 3)
+            occurrences.append({"triple": triple, "control_pcs": {pc}, "loop_start": pc})
         elif ri.op is Op.TFORLOOP:
-            for r in (ri.a, ri.a + 1, ri.a + 2):
-                claims.setdefault(r, set()).add(pc)
-            controls |= {ri.a, ri.a + 1, ri.a + 2}
-            loop_vars |= set(range(ri.a + 3, ri.a + 3 + ri.c))
+            triple = {ri.a, ri.a + 1, ri.a + 2}
             control_pcs.add(pc)
-    control_pcs_sorted = sorted(control_pcs)
+            controls |= triple
+            loop_vars |= set(range(ri.a + 3, ri.a + 3 + ri.c))
+            loop_start = jmp_targets.get(pc, pc)
+            occurrences.append({"triple": triple, "control_pcs": {pc}, "loop_start": loop_start})
+    claims: dict[int, list[dict]] = {}        # register -> occurrences claiming it
+    for occ in occurrences:
+        for r in occ["triple"]:
+            claims.setdefault(r, []).append(occ)
 
-    def _window_start(cp: int) -> int:
-        """The pc of the control_pc immediately preceding cp in the whole
-        function (of any loop, not just ones sharing a register with cp),
-        or 0 if cp is the first. The open lower bound of cp's staging
-        window: nothing before the previous loop ended could plausibly be
-        staging for this one.
+    def _occurrence_window(occ: dict) -> tuple[int, int]:
+        """(boundary, loop_start): the open interval a def/use pc must fall
+        in to count as this occurrence's own staging. Found by walking
+        backward from loop_start through `ordered`, extending the window
+        past any instruction that writes into this occurrence's OWN control
+        triple (the loop's staging block, however many instructions -- one
+        LOADK each for numeric-for's init/limit/step; a GETGLOBAL-then-
+        CALL-with-self-overwrite pair for generic-for's iterator function
+        slot) and stopping at the first instruction that does not (an
+        unrelated instruction, or another loop's own control instruction
+        that happens not to share this triple).
         """
-        i = bisect.bisect_left(control_pcs_sorted, cp)
-        return control_pcs_sorted[i - 1] if i > 0 else 0
+        triple = occ["triple"]
+        i = bisect.bisect_left(ordered, occ["loop_start"]) - 1
+        while i >= 0 and fn.instrs[ordered[i]].effects.writes & triple:
+            i -= 1
+        boundary = ordered[i] if i >= 0 else 0
+        return boundary, occ["loop_start"]
 
     def _staging_window_ok(r: int) -> bool:
         """True iff every def/use of r *outside* the FORPREP/FORLOOP/TFORLOOP
-        instructions that claim it falls in the staging window immediately
-        before one of those claiming instructions.
+        instructions that claim it falls within some claiming occurrence's
+        own staging window (see _occurrence_window).
 
         `controls` is accumulated over EVERY FORPREP/FORLOOP/TFORLOOP in the
         function, purely by register number -- it says nothing about whether
@@ -104,38 +150,28 @@ def classify_registers(fn: LirFunction) -> RegClass:
         alone had hundreds of ordinary defs/uses spread across the whole
         function, entirely unrelated to any loop).
 
-        A plain "exactly one def, exactly one use" count (as used for
-        ordinary temps below) cannot be applied directly here: a genuinely
-        dedicated control register still has MULTIPLE tracked defs/uses of
-        its own even with control_pcs excluded. FORPREP and FORLOOP (for the
-        same loop) both claim their registers, but only FORPREP is a
-        control_pc that also *writes* a's/a+1's/a+2's staged values in one
-        step; the real complication is TFORLOOP's iterator/state registers,
-        whose staging CALL (e.g. `pairs(t)`) both reads its own base
-        register (the callee) and overwrites it with its own first result --
-        one non-control-pc instruction contributing to both an extra def
-        AND an extra use of the same register, entirely legitimately.
-
-        What actually distinguishes "legitimately staging for this loop"
-        from "reused for something else" is not a count but *where*: every
-        extra activity pc must land strictly between the previous
-        control_pc in the whole function (of any loop, 0 if none) and some
-        control_pc that claims r -- i.e. in the gap since the last loop
-        ended, leading directly into this one. Anything outside every such
-        window is provably unrelated reuse and must be local -- being wrong
-        toward local costs a certification failure; being wrong toward temp
-        risks inlining a popped or clobbered value.
+        Membership in *some* gap between two control instructions is not
+        enough on its own (round-2's first attempt): when the same register
+        is later reused as a second loop's control base, everything living
+        in the gap between the first loop's end and the second loop's start
+        -- including genuinely unrelated code with its own local variables
+        -- looks like it's "before some control_pc that claims r" (round-3
+        review: `for i=1,3 do end; do local x=1 x=x+1 x=x+1 end; for j=1,5
+        do end` reusing register 0 as x lets x's writes hide in the gap
+        between the two loops). What actually distinguishes genuine staging
+        is *chain coherence*: every def/use of r must belong to exactly one
+        loop occurrence's own control lifetime -- its own control
+        instructions plus the staging block immediately, contiguously
+        adjacent to that occurrence's start (_occurrence_window), not merely
+        somewhere in the wide gap since the previous loop ended.
         """
         extra = sorted(
             {pc for pc in defs.get(r, []) if pc not in control_pcs}
             | {pc for pc in uses.get(r, []) if pc not in control_pcs})
         if not extra:
             return True
-        for pc in extra:
-            if not any(_window_start(cp) < pc < cp
-                       for cp in claims.get(r, ()) if pc < cp):
-                return False
-        return True
+        windows = [_occurrence_window(occ) for occ in claims.get(r, ())]
+        return all(any(lo < pc < hi for lo, hi in windows) for pc in extra)
 
     regs = set(defs) | set(uses) | controls | loop_vars
     locals_: set[int] = set()
