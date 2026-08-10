@@ -90,12 +90,73 @@ def test_build_sir_audit_catches_unclaimed_pcs_from_a_buggy_recognizer(tmp_path,
     all_pcs = sorted(fn.instrs)
     short = frozenset(all_pcs[:-1])  # drop the last pc -- no overlap, just a gap
 
-    def _fake_structure_range(fn_, cfg, idoms, lo, hi):
+    def _fake_structure_range(fn_, cfg, idoms, pc2blk, lo, hi):
         return Straight(tuple(fn_.instrs[pc] for pc in sorted(short)), short)
 
     monkeypatch.setattr(build_mod, "_structure_range", _fake_structure_range)
     with pytest.raises(StructureError):
         build_sir(fn)
+
+
+def test_dead_code_inside_a_claimed_then_range_raises():
+    # Fix round 1 finding: cfg/idoms were computed and threaded through the
+    # recognizer but never queried -- the recognizer only did pc-interval
+    # arithmetic, which proves ranges are gap-free/disjoint but says nothing
+    # about whether a range is actually reachable *only* through its
+    # condition. This constructs the shape by hand (luac would never emit
+    # unreachable code): an outer if-without-else whose then-range [3,9) is
+    # entered legitimately at pc3, but pc4 is a RETURN (terminal -- no
+    # successors), so pc5..8 are never actually reachable from pc3's fallthrough
+    # chain and are absent from the CFG's dominator tree entirely. Pure
+    # pc-interval arithmetic doesn't notice: pc5..8 still fill the range with
+    # no gaps or overlaps, so it would previously fall through the pc-claim
+    # audit undetected. Confirmed both directions below: raises now, did not
+    # raise before the dominance check existed.
+    from tests.synth import mk_instr, mk_proto
+    from pyluadec.lift import lift_proto, Op
+    from pyluadec.sir.build import StructureError, build_sir
+    words = [
+        mk_instr(Op.EQ, a=0, b=0, c=1, pc=1).word,
+        mk_instr(Op.JMP, sbx=9 - 1 - 2, pc=2).word,   # jt=9, no else -> then=[3,9)
+        mk_instr(Op.MOVE, a=0, b=1, pc=3).word,        # then-body entry (reachable)
+        mk_instr(Op.RETURN, a=0, b=1, pc=4).word,      # terminal: breaks the chain
+        mk_instr(Op.MOVE, a=0, b=1, pc=5).word,        # unreachable from pc3 onward
+        mk_instr(Op.MOVE, a=0, b=1, pc=6).word,
+        mk_instr(Op.MOVE, a=0, b=1, pc=7).word,
+        mk_instr(Op.MOVE, a=0, b=1, pc=8).word,
+        mk_instr(Op.RETURN, a=0, b=1, pc=9).word,      # join
+    ]
+    fn = lift_proto(mk_proto(words, maxstacksize=2))
+    import pytest
+    with pytest.raises(StructureError):
+        build_sir(fn)
+
+
+def test_verify_single_entry_catches_block_reachable_via_a_non_dominating_path():
+    # Companion to the dead-code case above, but exercising the *other* half
+    # of _verify_single_entry: a block that IS reachable (present in idoms),
+    # just not solely through the branch condition -- the "wrongly dominated"
+    # case, as opposed to "not reachable at all". Built directly against
+    # _verify_single_entry with a hand-crafted CFG (tests/synth.py's mk_cfg)
+    # rather than through full bytecode encoding: pc-ordering/back-edge
+    # constraints on real acyclic bytecode make an end-to-end bytecode
+    # fixture for *this specific* sub-case impractical, but the helper's
+    # contract is exactly "every block in [lo, hi) is dominated by cond_pc's
+    # block" regardless of how the CFG was built. Block 4 here is reachable
+    # from both block 2 (the claimed condition) and block 3 (a sibling that
+    # bypasses it entirely) -- so idom(4) is their common ancestor (block 1),
+    # not block 2, and the branch is genuinely multi-entry.
+    import pytest
+    from tests.synth import mk_cfg
+    from pyluadec.cfg import immediate_dominators
+    from pyluadec.sir.build import StructureError, _verify_single_entry
+    edges = {1: (2, 3), 2: (4,), 3: (4,), 4: ()}
+    cfg = mk_cfg(edges, entry=1)
+    idoms = immediate_dominators(cfg)
+    assert idoms[4] == 1  # sanity: NOT dominated by 2, despite 2 being a predecessor
+    pc2blk = {s: s for s in edges}
+    with pytest.raises(StructureError):
+        _verify_single_entry(cfg, idoms, pc2blk, cond_pc=2, lo=4, hi=5)
 
 
 def test_compare_not_followed_by_jmp_raises():

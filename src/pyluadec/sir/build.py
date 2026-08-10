@@ -5,7 +5,7 @@ The pc-claim audit (all_claimed == fn pcs) is asserted at every build_sir exit.
 """
 from __future__ import annotations
 
-from pyluadec.cfg import build_cfg, immediate_dominators
+from pyluadec.cfg import build_cfg, dominates, immediate_dominators
 from pyluadec.lift.lift import LirFunction
 from pyluadec.lift.opcodes import Op
 
@@ -31,14 +31,52 @@ def has_back_edge(fn: LirFunction) -> bool:
     return False
 
 
+def _pc_block_map(cfg) -> dict[int, int]:
+    """Every instruction pc -> the start pc of the CFG block containing it."""
+    m: dict[int, int] = {}
+    for start, b in cfg.blocks.items():
+        for li in b.instrs:
+            m[li.ri.pc] = start
+    return m
+
+
+def _verify_single_entry(cfg, idoms, pc2blk, cond_pc: int, lo: int, hi: int) -> None:
+    """Refuse unless every CFG block starting in pc range [lo, hi) is dominated by
+    the block containing cond_pc.
+
+    This is the check the pc-interval arithmetic in _structure_range/_structure_if
+    cannot do on its own: two disjoint, gap-free pc ranges can still each be
+    reachable from outside the branch that "claims" them (e.g. a jump from
+    earlier code straight into the middle of what looks like a then-body). The
+    pc-claim audit at build_sir's exit only checks that pcs partition cleanly;
+    it does not check *how* a block became reachable. A block absent from
+    `idoms` is unreachable from the function entry per Cooper-Harvey-Kennedy's
+    definition (idoms is keyed by the reachable set) -- refuse rather than
+    assume that's harmless, since an unreachable block inside a claimed range
+    is itself a sign the interval doesn't mean what we think it does.
+    """
+    cond_block = pc2blk[cond_pc]
+    for start in cfg.blocks:
+        if not (lo <= start < hi):
+            continue
+        if start not in idoms:
+            raise StructureError(
+                f"pc {cond_pc}: branch body block at pc {start} is unreachable")
+        if not dominates(idoms, cond_block, start):
+            raise StructureError(
+                f"pc {cond_pc}: branch body block at pc {start} is not dominated by "
+                "the condition block (multi-entry branch)")
+
+
 def build_sir(fn: LirFunction) -> Region:
     if has_back_edge(fn):
         raise StructureError("loops not supported in acyclic builder")
     cfg = build_cfg(fn)
     idoms = immediate_dominators(cfg)
+    pc2blk = _pc_block_map(cfg)
     ordered = sorted(fn.instrs)
     try:
-        region = _structure_range(fn, cfg, idoms, ordered[0], ordered[-1] + 1)
+        region = _structure_range(fn, cfg, idoms, pc2blk, ordered[0], ordered[-1] + 1)
     except RegionOverlap as e:
         raise StructureError(str(e)) from e
     claimed = all_claimed(region)
@@ -48,7 +86,7 @@ def build_sir(fn: LirFunction) -> Region:
     return region
 
 
-def _structure_range(fn, cfg, idoms, lo: int, hi: int) -> Region:
+def _structure_range(fn, cfg, idoms, pc2blk, lo: int, hi: int) -> Region:
     """Structure the pc interval [lo, hi) into a Region. Assumes single-entry at lo."""
     parts: list[Region] = []
     pc = lo
@@ -60,7 +98,7 @@ def _structure_range(fn, cfg, idoms, lo: int, hi: int) -> Region:
             pc += 1 + len(li.consumed)
             continue
         if op in _COMPARE:
-            region, nxt = _structure_if(fn, cfg, idoms, pc, hi)
+            region, nxt = _structure_if(fn, cfg, idoms, pc2blk, pc, hi)
             parts.append(region)
             pc = nxt
             continue
@@ -85,7 +123,7 @@ def _structure_range(fn, cfg, idoms, lo: int, hi: int) -> Region:
     return Seq(tuple(parts), frozenset())
 
 
-def _structure_if(fn, cfg, idoms, pc: int, hi: int):
+def _structure_if(fn, cfg, idoms, pc2blk, pc: int, hi: int):
     """pc is a compare instruction; the next pc is its JMP. Returns (If region, next pc)."""
     li = fn.instrs[pc]
     jmp_pc = pc + 1
@@ -116,9 +154,17 @@ def _structure_if(fn, cfg, idoms, pc: int, hi: int):
         cond_pcs = frozenset({pc, jmp_pc, then_last})
     else:
         cond_pcs = frozenset({pc, jmp_pc})
-    then_body = _structure_range(fn, cfg, idoms, then_lo, then_hi) if then_lo < then_hi \
+    # The interval arithmetic above only proves the pc ranges are gap-free and
+    # non-overlapping -- it says nothing about whether either range is actually
+    # reachable *only* through this condition. Verify single-entry via the
+    # dominator tree before trusting the ranges as branch bodies.
+    _verify_single_entry(cfg, idoms, pc2blk, pc, then_lo, then_hi)
+    if then_hi != jt:
+        _verify_single_entry(cfg, idoms, pc2blk, pc, jt, join)
+    then_body = _structure_range(fn, cfg, idoms, pc2blk, then_lo, then_hi) if then_lo < then_hi \
         else Seq((), frozenset())
     if else_body is None and then_hi != jt:
-        else_body = _structure_range(fn, cfg, idoms, jt, join) if jt < join else Seq((), frozenset())
+        else_body = _structure_range(fn, cfg, idoms, pc2blk, jt, join) if jt < join \
+            else Seq((), frozenset())
     return (If(cond=li, negated=(li.ri.a == 0), then_body=then_body,
                else_body=else_body, join_pc=join, claimed_pcs=cond_pcs), join)
