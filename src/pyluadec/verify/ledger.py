@@ -39,12 +39,23 @@ def structural_hash(p: Proto) -> str:
 
 
 def oracle_version() -> str:
+    # Provenance of the in-repo lua/luac ORACLE BUILD, not of repo HEAD:
+    # `git rev-parse HEAD` moves the instant this ledger is committed (the
+    # commit containing the ledger becomes the new HEAD), making every
+    # regeneration rewrite all entries even when the oracle itself is
+    # unchanged. The last commit that touched the oracle's sources is stable
+    # across doc/test/ledger-only commits and only changes when the actual
+    # luac/lua build inputs change -- which is the event this field exists
+    # to invalidate results on. native/patches/ lives under native/, so the
+    # serialization-width patch is covered.
     try:
-        r = subprocess.run(["git", "rev-parse", "HEAD"],
-                           cwd=Path(__file__).resolve().parents[3],
-                           capture_output=True, text=True, timeout=10)
-        return r.stdout.strip() if r.returncode == 0 else "unknown"
-    except OSError:
+        r = subprocess.run(
+            ["git", "log", "-1", "--format=%H", "--", "vendor", "native"],
+            cwd=Path(__file__).resolve().parents[3],
+            capture_output=True, text=True, timeout=10)
+        out = r.stdout.strip()
+        return out if r.returncode == 0 and out else "unknown"
+    except (OSError, subprocess.SubprocessError):
         return "unknown"
 
 
