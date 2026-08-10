@@ -13,8 +13,13 @@ class Header:
     sizeof_number: int
     integral: bool
 
-class BadHeader(ValueError):
+class IngestError(Exception):
+    """Base class for all ingest-layer failures."""
+
+
+class BadHeader(IngestError, ValueError):
     pass
+
 
 def parse_header(blob: bytes) -> Header:
     if len(blob) < 12 or blob[:4] != SIGNATURE:
@@ -26,4 +31,18 @@ def parse_header(blob: bytes) -> Header:
     )
     if h.version != 0x51:
         raise BadHeader(f"unsupported version 0x{h.version:02x}")
+    if h.fmt != 0:
+        raise BadHeader(f"unsupported format {h.fmt} (expected 0 = official)")
+    if not h.little_endian:
+        raise BadHeader("big-endian bytecode not supported")
+    if h.sizeof_int != 4:
+        raise BadHeader(f"unsupported sizeof(int)={h.sizeof_int} (expected 4)")
+    if h.sizeof_sizet not in (4, 8):
+        raise BadHeader(f"unsupported serialized size_t width {h.sizeof_sizet}")
+    if h.sizeof_instr != 4:
+        raise BadHeader(f"unsupported sizeof(Instruction)={h.sizeof_instr} (expected 4)")
+    if h.sizeof_number != 8:
+        raise BadHeader(f"unsupported sizeof(lua_Number)={h.sizeof_number} (expected 8)")
+    if h.integral:
+        raise BadHeader("integral lua_Number not supported (corpus is IEEE double)")
     return h
