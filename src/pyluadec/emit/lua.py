@@ -88,6 +88,25 @@ _RIGHT_ASSOC = frozenset({"..", "^"})
 # precedence, so any Bin/UnExpr used there always gets wrapped: `(a+b)()`,
 # never `a+b()` (which would parse as `a + (b())`).
 _PRIMARY_PREC = _PREC["^"] + 1
+# Precedence assigned to every `simpleexp` node that is NOT also a
+# `prefixexp` per the Lua 5.1 grammar (§8): `prefixexp ::= var |
+# functioncall | '(' exp ')'`. A numeral/string/`nil`/`true`/`false`
+# constant, a table constructor, a function literal (ClosureExpr), and `...`
+# are all `simpleexp` but none of them is a `var`, a `functioncall`, or an
+# already-parenthesised `exp` -- so none can be used bare immediately before
+# `(`, `[`, `.`, or `:` (a position that grammatically requires a
+# `prefixexp`). `_SIMPLE_PREC` sits one below `_PRIMARY_PREC` so these nodes
+# print unparenthesised everywhere else (any ordinary operator/argument/
+# table-item/return-value position only needs an `exp`) but get wrapped
+# exactly when `parent_prec == _PRIMARY_PREC`, the same "prec < parent_prec"
+# rule BinExpr/UnExpr already use. LocalExpr/GlobalExpr/UpvalExpr (all
+# print as a bare `Name`, i.e. `var`) and IndexExpr/CallExpr (`var`/
+# `functioncall` themselves) are true prefixexp and never need this.
+_SIMPLE_PREC = _PRIMARY_PREC - 1
+
+
+def _wrap_if_primary(text: str, parent_prec: int) -> str:
+    return f"({text})" if _SIMPLE_PREC < parent_prec else text
 
 
 def _ident(name: bytes) -> str:
@@ -113,7 +132,7 @@ def _expr(e: Expr, depth: int, parent_prec: int, ctx: "Printer | None") -> str:
     upvalues and to print nested closures' bodies).
     """
     if isinstance(e, ConstExpr):
-        return const_lit(e.value)
+        return _wrap_if_primary(const_lit(e.value), parent_prec)
     if isinstance(e, LocalExpr):
         return name_for(e.reg, depth)
     if isinstance(e, GlobalExpr):
@@ -123,19 +142,19 @@ def _expr(e: Expr, depth: int, parent_prec: int, ctx: "Printer | None") -> str:
             raise ReconstructError("UpvalExpr needs Printer context; use print_function")
         return ctx.upval_name(e.idx)
     if isinstance(e, VarargExpr):
-        return "..."
+        return _wrap_if_primary("...", parent_prec)
     if isinstance(e, ClosureExpr):
         if ctx is None:
             raise ReconstructError("ClosureExpr needs Printer context; use print_function")
         params, body = ctx.closure_parts(e)
-        return f"function({params})\n{body}end"
+        return _wrap_if_primary(f"function({params})\n{body}end", parent_prec)
     if isinstance(e, IndexExpr):
         return f"{_expr(e.table, depth, _PRIMARY_PREC, ctx)}[{_expr(e.key, depth, 0, ctx)}]"
     if isinstance(e, TableExpr):
         items = [_expr(x, depth, 0, ctx) for x in e.array]
         items += [f"[{_expr(k, depth, 0, ctx)}] = {_expr(v, depth, 0, ctx)}"
                  for k, v in e.hash]
-        return "{" + ", ".join(items) + "}"
+        return _wrap_if_primary("{" + ", ".join(items) + "}", parent_prec)
     if isinstance(e, CallExpr):
         args = ", ".join(_expr(a, depth, 0, ctx) for a in e.args)
         fn_txt = _expr(e.fn, depth, _PRIMARY_PREC, ctx)

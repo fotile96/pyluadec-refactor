@@ -228,6 +228,70 @@ def test_closure_captures_outer_local_and_returns_it(tmp_path):
     assert _run(printed, tmp_path).strip() == "42"
 
 
+def test_closure_in_call_position_is_parenthesised(tmp_path):
+    """A `function() ... end` literal is a `simpleexp`, not a `prefixexp`,
+    in the Lua 5.1 grammar -- it cannot be written directly before `(` the
+    way a variable or another call can. This is reachable from unremarkable
+    source: whenever an anonymous closure is called exactly once,
+    immediately, and never bound to anything else afterward (e.g. an IIFE,
+    or -- as here -- a helper defined then invoked once right after,
+    register-classified single-use by classify_registers so reconstruct.py
+    inlines the CLOSURE straight into the CALL's own `fn` position), the
+    closure literal itself becomes `CallExpr.fn` and must print as
+    `(function() ... end)()`, not `function() ... end()` (which luac_sz4
+    rejects with "'end' expected ... near '('").
+    """
+    from pyluadec.emit.lua import print_chunk
+    src = ("local function f()\n"
+          "  return (function() return 42 end)()\n"
+          "end\n"
+          "print(f())\n")
+    printed = print_chunk(_proto(src, tmp_path))
+    assert printed is not None
+    assert _run(printed, tmp_path).strip() == "42"
+
+
+def test_two_level_nested_closure_resolves_grandchild_upvalue_correctly(tmp_path):
+    """A closure whose body is itself a closure whose body is a THIRD,
+    innermost closure that references a local from the OUTERMOST scope
+    (skipping the middle one, which never touches it directly) requires the
+    middle closure to also capture that local as its own upvalue purely to
+    hand it down (a GETUPVAL-sourced capture, not a MOVE-sourced one) --
+    Printer.closure_parts' upvalue-name threading has to get this right at
+    two levels of nesting, not just one. Every existing closure test before
+    this one materialises its closure to a named local before calling it
+    (never triggering the closure-in-call-position shape above), so this is
+    the first test that exercises depth-2 upvalue chaining through to an
+    actual compile-and-run.
+
+    Uses subtraction (`a - b`, not `a + b`) so that a scrambled/swapped
+    upvalue mapping between the two capture levels would produce a visibly
+    wrong (sign-flipped) number rather than an accidentally-correct one:
+    a=100, b=7 -> 93; if the two captures were swapped the result would
+    print -93 instead.
+    """
+    from pyluadec.emit.lua import print_chunk
+    src = ("local a = 100\n"
+          "local function outer()\n"
+          "  local b = 7\n"
+          "  local function middle()\n"
+          "    local function inner()\n"
+          "      return a - b\n"
+          "    end\n"
+          "    return inner()\n"
+          "  end\n"
+          "  return middle()\n"
+          "end\n"
+          "print(outer())\n")
+    printed = print_chunk(_proto(src, tmp_path))
+    assert printed is not None
+    # Confirms this genuinely exercises the closure-in-call-position shape
+    # at (at least) two nesting levels, not just "some closure somewhere".
+    assert printed.count("(function()") >= 2, \
+        f"expected >=2 inlined closure-call sites in:\n{printed}"
+    assert _run(printed, tmp_path).strip() == "93"
+
+
 def test_self_referential_local_function_prints_recursion_correctly(tmp_path):
     """`local function fact(n) ... fact(n-1) ... end` requires the
     `local function NAME(...) ... end` sugar (NAME visible to itself before
