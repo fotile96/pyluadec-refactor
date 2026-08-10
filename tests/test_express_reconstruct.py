@@ -18,6 +18,8 @@ that classify_registers actually agrees is a local.
 import subprocess
 from pathlib import Path
 
+import pytest
+
 BUILD = Path(__file__).resolve().parents[1] / "build"
 
 
@@ -248,3 +250,256 @@ def test_loop_var_never_gets_a_localdecl(tmp_path):
     assigned_regs = {t.reg for s in stmts if isinstance(s, Assign)
                      for t in s.targets if hasattr(t, "reg")}
     assert rc.loop_vars & assigned_regs
+
+
+# ---- M3 task-5 round-1 review fixes ---------------------------------------
+#
+# Findings 1-4 from the coordinator's first fix round (see
+# task-5-report.md's "Round 1" section for the full corpus investigation):
+#   1. Nested/interrupted table constructors crashed rather than degrading
+#      (an unconditional NEWTABLE-triggered close plus a pop-once write for
+#      a register that gets re-read later). Fixed via a table-context STACK
+#      (only a genuine register conflict forces a close) plus a
+#      write-count/read-count census (_reliable_temps) that stops trusting
+#      rc.temps for a register with more than one static write or read
+#      anywhere in the function -- rc.temps can be true for reasons
+#      (FORPREP/FORLOOP/TFORLOOP's per-register-number `controls` override)
+#      that have nothing to do with any *specific* def/use pair being
+#      single-use.
+#   2. SELF/method-call fusion re-embedded the raw (possibly effectful)
+#      receiver expression twice instead of referencing the one
+#      materialized local -- fixed by referencing LocalExpr(a+1)/LocalExpr(
+#      a1), never the raw `obj` tree, after force_materialize.
+#   3. SETLIST's batch index (C) was silently ignored; a second/later batch
+#      (>50 array elements) would silently write to the wrong indices.
+#      Fixed with an explicit refusal for C != 1.
+#   4. LOADBOOL's C!=0 skip-next form wasn't explicitly refused (only
+#      accidentally unreachable via an upstream SIR invariant). Fixed with
+#      an explicit refusal.
+
+def test_nested_table_constructor_reconstructs_without_crashing(tmp_path):
+    """Finding 1 regression pin: 'local t = {a=1, b={}, c=2} return t' --
+    a table literal with another table literal as one of its own values,
+    interrupting the outer NEWTABLE's SETLIST/SETTABLE fold with a nested
+    NEWTABLE -- must not raise, and the nested `{}` should fold straight
+    into the outer TableExpr's hash value (not degrade to a separately
+    declared local), since it is genuinely single-write/single-read.
+
+    This exact shape (empirically confirmed against the real corpus,
+    snr_common.lua's main chunk) used to raise
+    "temp register 0 read before it was staged" before the round-1 fix:
+    _close_table_ctx used to unconditionally close on any NEWTABLE and
+    write_reg (pop-once) the partial table into a temp register that then
+    got read a second time by the very next SETTABLE.
+    """
+    from pyluadec.express.names import classify_registers
+    from pyluadec.express.reconstruct import reconstruct_straight, LocalDecl
+    from pyluadec.express.expr import TableExpr
+    p, fn = _proto_and_fn("local t = {a=1, b={}, c=2} return t", tmp_path)
+    rc = classify_registers(fn)
+    stmts = reconstruct_straight(fn, tuple(fn.instrs[i] for i in sorted(fn.instrs)), rc, depth=0)
+    decls = [s for s in stmts if isinstance(s, LocalDecl)
+             and any(isinstance(e, TableExpr) for e in s.exprs)]
+    assert decls
+    outer = decls[0].exprs[0]
+    assert isinstance(outer, TableExpr)
+    nested_values = [v for _, v in outer.hash if isinstance(v, TableExpr)]
+    assert nested_values == [TableExpr(array=(), hash=())]
+    # and nothing else in the whole reconstruction separately declares a
+    # second local for the (fully-inlined) nested table
+    assert len(decls) == 1
+
+
+def test_self_receiver_not_duplicated_across_stmts_for_boundary():
+    """Finding 2 regression pin, reproduced exactly as the reviewer
+    described: drive a Reconstructor across TWO separate stmts_for() calls
+    with a SELF and its matching CALL split across that boundary -- the
+    shared-environment-across-regions usage documented on the Reconstructor
+    class. Register 5 (the receiver) is hand-staged as a *pending, unpopped*
+    effectful expression (a call to getObj()) rather than derived from real
+    luac output, because real luac output never actually produces this
+    exact split (SELF is always immediately followed by its own CALL in the
+    same straight run) -- this is the "IR luac never would produce, but the
+    code must still not silently mishandle" category test_express_names.py
+    already uses this pattern for (see e.g.
+    test_open_region_write_between_def_and_use_forces_local).
+
+    Before the round-1 fix, _self's dynamic-key branch and
+    _finalize_pending's unconsumed-SELF flush both re-embedded the raw
+    `obj` expression a second time (as the table of an IndexExpr) instead
+    of referencing the one force_materialize'd local -- so getObj() would
+    appear twice in the reconstructed tree, meaning Task 6's printer would
+    silently emit code that calls getObj() twice instead of once.
+    """
+    from pyluadec.express.names import RegClass
+    from pyluadec.express.reconstruct import Reconstructor
+    from pyluadec.express.expr import CallExpr, GlobalExpr
+    from pyluadec.lift import Effect, InstrEffects, LirFunction, LirInstr, Op
+    from tests.synth import mk_instr, mk_proto
+
+    self_ri = mk_instr(Op.SELF, a=6, b=5, c=0 | 256, pc=1)   # c: K bit set, const index 0 ("f")
+    self_fx = InstrEffects(reads=frozenset({5}), writes=frozenset({6, 7}),
+                            reads_open=False, writes_open=False,
+                            effect=Effect.ARBITRARY, may_error=True)
+    call_ri = mk_instr(Op.CALL, a=6, b=1, c=1, pc=2)         # obj:f() -- no extra args, no results
+    call_fx = InstrEffects(reads=frozenset({6}), writes=frozenset(),
+                            reads_open=False, writes_open=False,
+                            effect=Effect.ARBITRARY, may_error=True)
+    instrs = {
+        1: LirInstr(ri=self_ri, effects=self_fx, successors=(2,), consumed=()),
+        2: LirInstr(ri=call_ri, effects=call_fx, successors=(), consumed=()),
+    }
+    proto = mk_proto((0, 0), constants=(b"f",), numparams=0, maxstacksize=8)
+    fn = LirFunction(proto=proto, instrs=instrs, n_pcs=2,
+                      captured_regs=frozenset(), closure_pseudo={})
+    rc = RegClass(locals=frozenset(), temps=frozenset({5, 6, 7}), loop_vars=frozenset())
+    rec = Reconstructor(fn, rc, depth=0)
+    receiver_call = CallExpr(GlobalExpr(b"getObj"), ())
+    rec.env[5] = receiver_call                              # reg 5 already holds a staged call
+
+    chunk1 = rec.stmts_for((instrs[1],))                     # SELF only
+    chunk2 = rec.stmts_for((instrs[2],))                     # its CALL, a separate stmts_for() call
+
+    def count(node, target) -> int:
+        n = 1 if node == target else 0
+        if hasattr(node, "__dataclass_fields__"):
+            for f in node.__dataclass_fields__:
+                n += count(getattr(node, f), target)
+        elif isinstance(node, (tuple, list)):
+            for item in node:
+                n += count(item, target)
+        return n
+
+    total = sum(count(s, receiver_call) for s in chunk1 + chunk2)
+    assert total == 1, f"getObj() receiver embedded {total} times, expected exactly 1"
+
+
+def test_setlist_second_batch_refuses(tmp_path):
+    """Finding 3: SETLIST's C (batch index) selects which 50-element
+    LFIELDS_PER_FLUSH chunk the array elements land in; this reconstructor
+    only computes plain 1..b positions (batch 1). A synthetic C=2 SETLIST
+    (unreachable on the current corpus -- all 92 real SETLIST instructions
+    have C==1 -- but exactly what a >50-element array literal would compile
+    to) must raise rather than silently writing to the wrong indices.
+    """
+    from pyluadec.express.reconstruct import Reconstructor, ReconstructError
+    from pyluadec.express.names import RegClass
+    from pyluadec.lift import Effect, InstrEffects, LirFunction, LirInstr, Op
+    from tests.synth import mk_instr, mk_proto
+
+    newtable_ri = mk_instr(Op.NEWTABLE, a=0, b=0, c=0, pc=1)
+    newtable_fx = InstrEffects(reads=frozenset(), writes=frozenset({0}),
+                                reads_open=False, writes_open=False,
+                                effect=Effect.PURE, may_error=False)
+    loadk_ri = mk_instr(Op.LOADK, a=1, bx=0, pc=2)
+    loadk_fx = InstrEffects(reads=frozenset(), writes=frozenset({1}),
+                             reads_open=False, writes_open=False,
+                             effect=Effect.PURE, may_error=False)
+    setlist_ri = mk_instr(Op.SETLIST, a=0, b=1, c=2, pc=3)   # C=2: second batch
+    setlist_fx = InstrEffects(reads=frozenset({0, 1}), writes=frozenset(),
+                               reads_open=False, writes_open=False,
+                               effect=Effect.ARBITRARY, may_error=True)
+    instrs = {
+        1: LirInstr(ri=newtable_ri, effects=newtable_fx, successors=(2,), consumed=()),
+        2: LirInstr(ri=loadk_ri, effects=loadk_fx, successors=(3,), consumed=()),
+        3: LirInstr(ri=setlist_ri, effects=setlist_fx, successors=(), consumed=()),
+    }
+    proto = mk_proto((0, 0, 0), constants=(None,), numparams=0, maxstacksize=8)
+    fn = LirFunction(proto=proto, instrs=instrs, n_pcs=3,
+                      captured_regs=frozenset(), closure_pseudo={})
+    rc = RegClass(locals=frozenset(), temps=frozenset({1}), loop_vars=frozenset())
+    rec = Reconstructor(fn, rc, depth=0)
+    with pytest.raises(ReconstructError, match="batch"):
+        rec.stmts_for(tuple(instrs[i] for i in (1, 2, 3)))
+
+
+def test_loadbool_skip_next_form_refuses():
+    """Finding 4: LOADBOOL with C!=0 means "skip the next instruction"
+    (lvm.c's dojump) -- a control-flow effect reconstruct_straight cannot
+    represent. Real luac output never feeds this to reconstruct_straight
+    (a non-fallthrough LOADBOOL always forces the whole function to the SIR
+    fallback), but that must not be the only thing standing between this
+    module and silently dropping the skip -- refuse explicitly.
+    """
+    from pyluadec.express.reconstruct import Reconstructor, ReconstructError
+    from pyluadec.express.names import RegClass
+    from pyluadec.lift import Effect, InstrEffects, LirFunction, LirInstr, Op
+    from tests.synth import mk_instr, mk_proto
+
+    ri = mk_instr(Op.LOADBOOL, a=0, b=1, c=1, pc=1)          # C=1: skip-next form
+    fx = InstrEffects(reads=frozenset(), writes=frozenset({0}),
+                       reads_open=False, writes_open=False,
+                       effect=Effect.PURE, may_error=False)
+    instrs = {1: LirInstr(ri=ri, effects=fx, successors=(3,), consumed=())}
+    proto = mk_proto((0,), numparams=0, maxstacksize=4)
+    fn = LirFunction(proto=proto, instrs=instrs, n_pcs=1,
+                      captured_regs=frozenset(), closure_pseudo={})
+    rc = RegClass(locals=frozenset({0}), temps=frozenset(), loop_vars=frozenset())
+    rec = Reconstructor(fn, rc, depth=0)
+    with pytest.raises(ReconstructError, match="LOADBOOL"):
+        rec.stmts_for((instrs[1],))
+
+
+def test_reliable_temps_census_rescues_a_multiply_written_forced_temp():
+    """Direct unit pin for the _reliable_temps defensive census (part of the
+    Finding-1 fix, alongside the table-ctx stack -- see __init__'s comment
+    on _reliable_temps and the round-1 report section for the full corpus
+    trace this reproduces in miniature).
+
+    RegClass can mark a register temp *by register number* for the whole
+    function (FORPREP/FORLOOP/TFORLOOP's `controls` override in
+    express.names.classify_registers) regardless of how many times that
+    register is separately written/read elsewhere for entirely unrelated
+    purposes -- luac freely reuses register numbers across disjoint lexical
+    scopes. Register 3 here is marked temp (simulating that override) but
+    has two static writes (LOADK, then a self-referential ADD) and two
+    static reads spread across the whole function -- exactly the shape that
+    crashed snr_common.lua's main chunk ("temp register 2 read before it
+    was staged") before this round's fix: a first read correctly pops the
+    first def, and a *second*, later read of the same register (here: the
+    ADD's own use of its current value) finds nothing staged and used to
+    raise. With the fix, write-count-2 excludes register 3 from
+    _reliable_temps, so both its writes go through force_materialize
+    instead, and every read resolves through `declared`.
+    """
+    from pyluadec.express.names import RegClass
+    from pyluadec.express.reconstruct import Reconstructor, Assign, LocalDecl
+    from pyluadec.express.expr import BinExpr, LocalExpr
+    from pyluadec.lift import Effect, InstrEffects, LirFunction, LirInstr, Op
+    from tests.synth import mk_instr, mk_proto
+
+    def_ri = mk_instr(Op.LOADK, a=3, bx=0, pc=1)
+    def_fx = InstrEffects(reads=frozenset(), writes=frozenset({3}),
+                           reads_open=False, writes_open=False,
+                           effect=Effect.PURE, may_error=False)
+    move_ri = mk_instr(Op.MOVE, a=4, b=3, pc=2)
+    move_fx = InstrEffects(reads=frozenset({3}), writes=frozenset({4}),
+                            reads_open=False, writes_open=False,
+                            effect=Effect.PURE, may_error=False)
+    add_ri = mk_instr(Op.ADD, a=3, b=3, c=1 | 256, pc=3)     # r3 = r3 + k(1); K bit set on c
+    add_fx = InstrEffects(reads=frozenset({3}), writes=frozenset({3}),
+                           reads_open=False, writes_open=False,
+                           effect=Effect.ARBITRARY, may_error=True)
+    instrs = {
+        1: LirInstr(ri=def_ri, effects=def_fx, successors=(2,), consumed=()),
+        2: LirInstr(ri=move_ri, effects=move_fx, successors=(3,), consumed=()),
+        3: LirInstr(ri=add_ri, effects=add_fx, successors=(), consumed=()),
+    }
+    proto = mk_proto((0, 0, 0), constants=(None, None), numparams=0, maxstacksize=8)
+    fn = LirFunction(proto=proto, instrs=instrs, n_pcs=3,
+                      captured_regs=frozenset(), closure_pseudo={})
+    # rc.temps says 3 is temp (as classify_registers's controls override
+    # would, unconditionally) -- the census inside Reconstructor.__init__
+    # must independently notice the second write and refuse to trust it.
+    rc = RegClass(locals=frozenset({4}), temps=frozenset({3}), loop_vars=frozenset())
+    rec = Reconstructor(fn, rc, depth=0)
+
+    stmts = rec.stmts_for(tuple(instrs[i] for i in (1, 2, 3)))  # must not raise
+
+    decls = [s for s in stmts if isinstance(s, LocalDecl) and 3 in s.regs]
+    assigns = [s for s in stmts if isinstance(s, Assign)
+               and any(getattr(t, "reg", None) == 3 for t in s.targets)]
+    assert len(decls) == 1                     # LOADK's write: first declaration
+    assert len(assigns) == 1                    # ADD's write: reassignment, not a 2nd decl
+    add_expr = assigns[0].exprs[0]
+    assert isinstance(add_expr, BinExpr) and add_expr.lhs == LocalExpr(3)

@@ -120,6 +120,41 @@ class Reconstructor:
         self.depth = depth
         self.upval_names = upval_names
         self.env: dict[int, Expr] = {}
+        # rc.temps includes registers forced temp *by register number* for
+        # being a FORPREP/FORLOOP/TFORLOOP control slot *somewhere* in the
+        # function (express.names.classify_registers's `controls` override).
+        # That override is unconditional and per-register-number, not
+        # per-live-range, and it bypasses the single-def/single-use proof
+        # (_adjacent_pure) every other rc.temps member had to pass. luac
+        # freely reuses register numbers across disjoint lexical scopes, so
+        # the SAME register can, entirely unrelated to any loop, be written
+        # and read many separate times elsewhere in the function --
+        # classify_registers has no way to see that per-generation
+        # distinction (round-1 review of this task found this on the
+        # corpus: a table-constructor register and a self-incrementing loop
+        # accumulator, each also coincidentally a control slot for an
+        # unrelated for-loop elsewhere in the same giant function, each
+        # popped-before-staged because every one of their many separate
+        # writes was trusted as "just stage in env, single use will follow").
+        # A control-forced temp register with more than one static write or
+        # read anywhere in the function was never actually proven
+        # single-def/single-use -- replicate that half of
+        # classify_registers's own prerequisite (len(d)==1 and len(u)==1)
+        # here as a defensive check, and treat only the subset of rc.temps
+        # that still passes it as genuinely poppable. Every other write to
+        # such a register goes through force_materialize like an ordinary
+        # local (see _read_reg/write_reg), so a many-write-or-read register
+        # is never trusted to have "just one more read coming."
+        write_counts: dict[int, int] = {}
+        read_counts: dict[int, int] = {}
+        for li in fn.instrs.values():
+            for r in li.effects.writes:
+                write_counts[r] = write_counts.get(r, 0) + 1
+            for r in li.effects.reads:
+                read_counts[r] = read_counts.get(r, 0) + 1
+        self._reliable_temps = frozenset(
+            r for r in rc.temps
+            if write_counts.get(r, 0) == 1 and read_counts.get(r, 0) == 1)
         # loop_vars are declared by the `for` statement itself (Task 6/7's
         # NumericFor/GenericFor printer), never by this module -- pre-seed
         # them into `declared` so that if the loop body ever writes back to
@@ -134,9 +169,14 @@ class Reconstructor:
         # (fn_reg, self_reg, obj_expr, method_name) staged by a SELF whose
         # matching CALL/TAILCALL (same `a`) hasn't been seen yet.
         self._self_pending: tuple[int, int, Expr, bytes] | None = None
-        # {"reg": int, "array": list[Expr], "hash": list[tuple[Expr, Expr]]}
-        # for a NEWTABLE-started constructor still accepting SETLIST/SETTABLE.
-        self._table_ctx: dict | None = None
+        # Stack of {"reg": int, "array": list[Expr], "hash": list[tuple[Expr,
+        # Expr]]} for NEWTABLE-started constructors still accepting
+        # SETLIST/SETTABLE. A stack, not a single slot, so a table literal
+        # nested as another's *value* (`{a=1, b={2,3}, c=4}`) pushes its own
+        # context instead of forcing the outer one closed -- only a genuine
+        # register conflict (the new NEWTABLE reuses the top context's own
+        # register) closes anything (see _dispatch).
+        self._table_ctx_stack: list[dict] = []
         self._out: list[Stmt] = []
 
     # ---- public API (spec) --------------------------------------------
@@ -169,7 +209,15 @@ class Reconstructor:
         return self._read_reg(x)
 
     def _read_reg(self, reg: int) -> Expr:
-        if reg in self.rc.temps:
+        # `declared` wins over rc's static classification: once a register has
+        # been force-materialized (a real `local`/reassignment statement was
+        # emitted for it -- see force_materialize), it is a stable, reread-many
+        # -times reference forever after, regardless of what rc.temps originally
+        # said. See _reliable_temps (set in __init__) for why the temp check
+        # below is scoped to that corrected subset, not raw rc.temps.
+        if reg in self.declared:
+            return self.env.get(reg, LocalExpr(reg))
+        if reg in self._reliable_temps:
             if reg not in self.env:
                 raise ReconstructError(f"temp register {reg} read before it was staged")
             return self.env.pop(reg)
@@ -181,13 +229,25 @@ class Reconstructor:
         materialize as a real local first -- see the standalone-SETLIST
         degrade path, the one place this reconstructor needs to reference a
         register's value from more than one emitted statement.
+
+        The `reg not in self.declared` guard matters: once a register is
+        declared, self.env[reg] already holds the placeholder LocalExpr(reg)
+        (not a raw pending expression), so without this guard a
+        declared-but-still-rc.temps register (e.g. a for-loop control
+        register reused later for something else, see _read_reg's docstring)
+        would force_materialize(reg, LocalExpr(reg)) -- emitting a
+        do-nothing `vN = vN` self-reassignment statement.
         """
-        if reg in self.rc.temps and reg in self.env:
+        if reg not in self.declared and reg in self._reliable_temps and reg in self.env:
             self.force_materialize(reg, self.env.pop(reg))
         return LocalExpr(reg)
 
     def write_reg(self, reg: int, e: Expr) -> None:
-        if reg in self.rc.temps:
+        # Symmetric with _read_reg: a register already `declared` is a stable
+        # local from here on -- a fresh write to it is a reassignment
+        # (force_materialize's Assign branch), never a re-inlinable temp
+        # binding, regardless of rc.temps/_reliable_temps.
+        if reg not in self.declared and reg in self._reliable_temps:
             self.env[reg] = e
         else:
             self.force_materialize(reg, e)
@@ -257,25 +317,61 @@ class Reconstructor:
 
     # ---- table constructor folding ----------------------------------------
     def _close_table_ctx(self) -> None:
-        ctx = self._table_ctx
-        if ctx is None:
+        """Pop and finalize the innermost pending table constructor.
+
+        Goes through write_reg -- not a blanket force_materialize -- so a
+        genuinely single-read table register (write-count==1, read-count==1;
+        see _reliable_temps) still gets to pop-once-inline as a real nested
+        TableExpr (e.g. `{a=1, b={}, c=2}`'s inner `{}` folding straight into
+        the outer table's hash value) rather than being needlessly declared
+        as its own separate local. A table register that _reliable_temps
+        already knows will be read more than once elsewhere in the function
+        (the "table register that will be re-read across statements needs a
+        materialized, re-readable reference, not a pop-once temp binding"
+        case _standalone_setlist handles via _stable_ref) still gets a real
+        LocalDecl/Assign here, because write_reg defers to
+        force_materialize whenever the register isn't in _reliable_temps.
+        """
+        if not self._table_ctx_stack:
             return
-        self._table_ctx = None
+        ctx = self._table_ctx_stack.pop()
         table = TableExpr(array=tuple(ctx["array"]), hash=tuple(ctx["hash"]))
         self.write_reg(ctx["reg"], table)
 
+    def _setlist_batch_offset(self, li: LirInstr) -> int:
+        """The 1-based starting array index this SETLIST's b elements land
+        at. Only batch 1 (the common case: a table literal with <=50 array
+        elements, one SETLIST) is supported -- a second/later batch (C==2+,
+        LFIELDS_PER_FLUSH boundary at 50 elements) would need each element's
+        Lua-side index offset by (C-1)*50 (see fallback.py's `base` calc),
+        which this reconstructor does not compute. Refusing is correct and
+        cheap; silently writing 1..b instead of 51..50+b would overwrite the
+        first batch outright. Unreachable on the current 229-file corpus
+        (all 92 SETLIST instructions have C==1) but a >50-element array
+        literal would hit this, and guessing would be wrong, not just ugly.
+        """
+        ri = li.ri
+        eff_c = ri.c if ri.c != 0 else self.proto.code[li.consumed[0] - 1]
+        if eff_c != 1:
+            raise ReconstructError(
+                f"pc {ri.pc}: SETLIST batch C={eff_c} (only the first "
+                "LFIELDS_PER_FLUSH batch, C==1, is reconstructed)")
+        return 1
+
     def _fold_setlist(self, li: LirInstr) -> None:
+        self._setlist_batch_offset(li)
         ri = li.ri
         a, b = ri.a, ri.b
+        ctx = self._table_ctx_stack[-1]
         if b == 0:
-            self._table_ctx["array"].extend(self._consume_open(a + 1))
+            ctx["array"].extend(self._consume_open(a + 1))
         else:
-            self._table_ctx["array"].extend(self._read_reg(a + i) for i in range(1, b + 1))
+            ctx["array"].extend(self._read_reg(a + i) for i in range(1, b + 1))
 
     def _fold_settable(self, ri) -> None:
         key = ConstExpr(self.proto.constants[indexk(ri.b)])
         val = self.rk(ri.c)
-        self._table_ctx["hash"].append((key, val))
+        self._table_ctx_stack[-1]["hash"].append((key, val))
 
     def _standalone_setlist(self, li: LirInstr) -> None:
         """SETLIST with no active matching table-ctx (NEWTABLE and its
@@ -283,6 +379,7 @@ class Reconstructor:
         broke the fold, see _dispatch). Degrades to individual index
         assignments: correct, not pretty, per the brief's stated fallback.
         """
+        self._setlist_batch_offset(li)
         ri = li.ri
         a, b = ri.a, ri.b
         table = self._stable_ref(a)
@@ -312,18 +409,26 @@ class Reconstructor:
         else:
             # Dynamic (register) method key: cannot use `:` sugar -- fall
             # back to plain indexing, but still avoid embedding `obj` twice
-            # by materializing the receiver once.
+            # by materializing the receiver once and referencing it by its
+            # now-declared register (LocalExpr), never the raw `obj` tree
+            # again -- re-embedding `obj` itself here would print (and
+            # re-evaluate) it a second time if it were an effectful
+            # expression (e.g. a chained method call).
             self.force_materialize(a + 1, obj)
-            self.write_reg(a, IndexExpr(obj, self.rk(c)))
+            self.write_reg(a, IndexExpr(LocalExpr(a + 1), self.rk(c)))
 
     def _finalize_pending(self) -> None:
-        self._close_table_ctx()
+        while self._table_ctx_stack:
+            self._close_table_ctx()
         pending = self._self_pending
         if pending is not None:
             self._self_pending = None
             a, a1, obj, name = pending
             self.force_materialize(a1, obj)
-            self.write_reg(a, IndexExpr(obj, ConstExpr(name)))
+            # Reference the just-materialized register, not the raw `obj`
+            # tree -- same duplicate-evaluation hazard as the dynamic-key
+            # branch of _self above.
+            self.write_reg(a, IndexExpr(LocalExpr(a1), ConstExpr(name)))
 
     # ---- calls / returns / vararg ------------------------------------------
     def _call(self, li: LirInstr, tail: bool) -> None:
@@ -402,12 +507,19 @@ class Reconstructor:
         op, a = ri.op, ri.a
 
         if op is Op.NEWTABLE:
-            self._close_table_ctx()
-            self._table_ctx = {"reg": a, "array": [], "hash": []}
+            # Only a genuine register conflict (this NEWTABLE reuses the
+            # innermost active context's own register) forces a close --
+            # a table literal nested as another's *value* pushes its own
+            # context instead, so it can still fold into a real nested
+            # TableExpr rather than degrading the outer constructor too.
+            if self._table_ctx_stack and self._table_ctx_stack[-1]["reg"] == a:
+                self._close_table_ctx()
+            self._table_ctx_stack.append({"reg": a, "array": [], "hash": []})
             return
 
-        if self._table_ctx is not None:
-            reg = self._table_ctx["reg"]
+        if self._table_ctx_stack:
+            ctx = self._table_ctx_stack[-1]
+            reg = ctx["reg"]
             if op is Op.SETLIST and a == reg:
                 self._fold_setlist(li)
                 return
@@ -416,7 +528,18 @@ class Reconstructor:
                 return
             fx = li.effects
             if reg in fx.reads or reg in fx.writes or fx.reads_open or fx.writes_open:
+                # This instruction interacts with the innermost pending
+                # context's register (typically: it's about to read a nested
+                # table literal's register as its own value) -- close just
+                # that innermost context and re-evaluate the same
+                # instruction from scratch. It may now match the next-outer
+                # context (e.g. a SETTABLE folding the just-closed nested
+                # table in as a hash value), or bottom out at
+                # _dispatch_simple; either way the stack strictly shrinks on
+                # this branch, so this cannot recurse forever.
                 self._close_table_ctx()
+                self._dispatch(li)
+                return
 
         self._dispatch_simple(li)
 
@@ -430,6 +553,20 @@ class Reconstructor:
         elif op is Op.LOADK:
             self.write_reg(a, ConstExpr(k[bx]))
         elif op is Op.LOADBOOL:
+            if c != 0:
+                # C!=0 means "skip the next instruction" (lvm.c's
+                # dojump(L, pc, 1)) -- a control-flow effect this dispatch
+                # (straight-line-only) cannot represent. Currently
+                # unreachable: a LOADBOOL with C!=0 always has a
+                # non-fallthrough successor (successors() gives it (pc+2,)
+                # instead of (pc+1,)), which fails the SIR straight-run
+                # check and sends the whole function to the M2 fallback
+                # before reconstruct_straight ever sees it -- but that is an
+                # upstream invariant this module should not rely on
+                # silently. Refuse explicitly rather than dropping the skip.
+                raise ReconstructError(
+                    f"pc {ri.pc}: LOADBOOL C={c} (skip-next form) is a "
+                    "control-flow effect, not reconstructible as a plain write")
             self.write_reg(a, ConstExpr(bool(b)))
         elif op is Op.LOADNIL:
             for i in range(a, b + 1):
