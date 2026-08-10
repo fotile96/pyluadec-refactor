@@ -96,14 +96,24 @@ def test_children_dispatch_is_complete_for_region_kinds_with_child_fields():
     # `tuple[Region, ...]` must have a `_CHILDREN` entry, or a future region
     # kind (M4) added without wiring `_CHILDREN` would silently drop its
     # children from the audit the same way If.else_body / NumericFor.body /
-    # GenericFor.body did before this fix round. This test derives the
-    # expected set from the dataclass fields themselves rather than from a
-    # hand-maintained list, so it does not rot alongside regions.py.
+    # GenericFor.body did before an earlier fix round. The set of classes to
+    # check is read off `Region.__args__` (the `Region = A | B | ...` type
+    # alias's own members), not a hand-maintained list, so a ninth region
+    # kind added to the union in M4 is picked up automatically instead of
+    # requiring someone to remember to add it here too. The child-bearing
+    # *predicate* is likewise derived from each class's dataclass fields.
     import dataclasses
     from pyluadec.sir import regions
-    all_region_classes = [regions.Straight, regions.Seq, regions.If,
-                          regions.NumericFor, regions.GenericFor, regions.Break,
-                          regions.Return, regions.Fallback]
+    all_region_classes = list(regions.Region.__args__)
+    # Guard against Region.__args__ silently degrading to something with no
+    # members (e.g. Region reassigned to a single class, or a TypeAlias form
+    # that erases __args__) — that would make the loop below iterate zero
+    # times and pass vacuously, hiding the exact failure this test exists to
+    # catch. Fixed at today's 8 kinds so growing the union (M4) doesn't need
+    # this bound raised, but shrinking below it fails loudly.
+    assert len(all_region_classes) >= 8, (
+        f"expected at least 8 region kinds in Region.__args__, "
+        f"got {len(all_region_classes)}: {all_region_classes}")
     for cls in all_region_classes:
         has_child_field = any(
             "Region" in (f.type if isinstance(f.type, str) else str(f.type))
