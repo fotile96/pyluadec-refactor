@@ -3,6 +3,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 : "${PYLUADEC_CORPUS_DIR:?set PYLUADEC_CORPUS_DIR to the 229-file corpus}"
+if [ ! -d "$PYLUADEC_CORPUS_DIR" ] || [ -z "$(find "$PYLUADEC_CORPUS_DIR" -maxdepth 1 -name '*.lua' -print -quit)" ]; then
+  echo "PYLUADEC_CORPUS_DIR ('$PYLUADEC_CORPUS_DIR') does not exist or contains no *.lua files" >&2
+  exit 1
+fi
 
 echo "== gate 1: build all artifacts =="
 ./scripts/build_native.sh

@@ -183,9 +183,12 @@ and exits non-zero. For each failing file:
 
 1. Re-run the load→redump by hand and byte-diff:
 
+   `<file>` below is exactly what `roundtrip_sz4.py` printed (it already ends
+   in `.lua`, e.g. `snr_crd_1.lua` -- do not append another `.lua`):
+
    ```bash
-   build/luac_sz4 -s -o /tmp/rt.lua "$PYLUADEC_CORPUS_DIR/<file>.lua"
-   cmp -l "$PYLUADEC_CORPUS_DIR/<file>.lua" /tmp/rt.lua | head
+   build/luac_sz4 -s -o /tmp/rt.lua "$PYLUADEC_CORPUS_DIR/<file>"
+   cmp -l "$PYLUADEC_CORPUS_DIR/<file>" /tmp/rt.lua | head
    ```
 
    `cmp -l` prints, for every differing byte, its 1-based offset and the old
@@ -194,8 +197,10 @@ and exits non-zero. For each failing file:
    misalignment from that first divergence.
 
 2. Take that byte offset and cross-reference it against the corresponding
-   golden `luac -l -l` listing in `corpus/golden/listing/<file>.txt` (or
-   `.txt.gz`, check `corpus/golden/manifest.json` for the exact layout) to
+   golden `luac -l -l` listing in `corpus/golden/listing/<file>.txt` (again,
+   `<file>` already ends in `.lua`, so e.g. `snr_crd_1.lua.txt`; every file
+   under `corpus/golden/listing/` is a plain `.txt`, and `manifest.json`
+   holds only per-file `sha256`/`size`, no layout information) to
    identify which function/instruction lives at that offset in the dump
    format. The listing gives you `pc`, opcode, and (for the header/function
    boundary regions) sizes in bytes, which lets you map a raw offset back to
@@ -211,13 +216,15 @@ and exits non-zero. For each failing file:
 ### Gate ③ (golden parity) fails
 
 `scripts/compare_bridge_golden.py` writes every discrepancy (not just
-failures) to `corpus/golden/discrepancies.json` and prints a summary line
-`N discrepancies (M unexpected)`. The gate only fails on `M > 0`. To triage:
+failures) to `corpus/discrepancies.json` (deliberately outside
+`corpus/golden/`, which stays read-only -- see below) and prints a summary
+line `N discrepancies (M unexpected)`. The gate only fails on `M > 0`. To
+triage:
 
 ```bash
 uv run python -c "
 import json
-d = json.load(open('corpus/golden/discrepancies.json'))
+d = json.load(open('corpus/discrepancies.json'))
 unexpected = [x for x in d if x['verdict'] == 'unexpected']
 for x in unexpected:
     print(x)

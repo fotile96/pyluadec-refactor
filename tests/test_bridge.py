@@ -1,20 +1,11 @@
-import struct, subprocess
-from pathlib import Path
-
-BUILD = Path(__file__).resolve().parents[1] / "build"
-
-def _compile(luac, src, tmp):
-    s = tmp / "t.lua"; o = tmp / "t.out"
-    s.write_text(src, encoding="utf-8")
-    subprocess.run([str(BUILD / luac), "-o", str(o), str(s)], check=True)
-    return o.read_bytes()
+import struct
 
 SRC = 'local answer = 42.5\nlocal name = "ab\\255cd"\nprint(name, answer)\n'
 
-def test_sz4_bridge_full_fields(tmp_path):
+def test_sz4_bridge_full_fields(compile_lua):
     from pyluadec._native import _bridge_sz4 as b
     assert b.serial_sizet_width() == 4
-    p = b.load_bytecode(_compile("luac_sz4", SRC, tmp_path))
+    p = b.load_bytecode(compile_lua("luac_sz4", SRC).read_bytes())
     assert p["numparams"] == 0 and p["maxstacksize"] > 0
     assert p["lineinfo"] and p["locvars"]
     assert p["locvars"][0]["name"] == b"answer"
@@ -23,10 +14,10 @@ def test_sz4_bridge_full_fields(tmp_path):
     strs = [c for c in p["constants"] if isinstance(c, bytes)]
     assert b"ab\xffcd" in strs          # non-UTF-8 bytes survive losslessly
 
-def test_sz8_bridge_roundtrip_width(tmp_path):
+def test_sz8_bridge_roundtrip_width(compile_lua):
     from pyluadec._native import _bridge_sz8 as b
     assert b.serial_sizet_width() == 8
-    p = b.load_bytecode(_compile("luac_sz8", SRC, tmp_path))
+    p = b.load_bytecode(compile_lua("luac_sz8", SRC).read_bytes())
     assert len(p["code"]) > 0
 
 def test_sz4_bridge_loads_real_corpus_file(corpus_dir):
@@ -41,9 +32,9 @@ def test_sz4_bridge_loads_real_corpus_file(corpus_dir):
 # would silently report False/0 here even though the chunk *is* vararg.
 SRC_PLAIN_FN = 'local function plain(x)\n  return x\nend\nreturn plain\n'
 
-def test_sz4_bridge_is_vararg_raw_flags(tmp_path):
+def test_sz4_bridge_is_vararg_raw_flags(compile_lua):
     from pyluadec._native import _bridge_sz4 as b
-    p = b.load_bytecode(_compile("luac_sz4", SRC_PLAIN_FN, tmp_path))
+    p = b.load_bytecode(compile_lua("luac_sz4", SRC_PLAIN_FN).read_bytes())
     # main chunk: raw VARARG_ISVARARG flag (2), not masked to VARARG_HASARG (1),
     # and not coerced to a Python bool.
     assert p["is_vararg"] == 2
@@ -70,9 +61,9 @@ SRC_UPVAL = (
     "return outer\n"
 )
 
-def test_sz4_bridge_upvalues_nil_bool_and_locvar_ranges(tmp_path):
+def test_sz4_bridge_upvalues_nil_bool_and_locvar_ranges(compile_lua):
     from pyluadec._native import _bridge_sz4 as b
-    p = b.load_bytecode(_compile("luac_sz4", SRC_UPVAL, tmp_path))
+    p = b.load_bytecode(compile_lua("luac_sz4", SRC_UPVAL).read_bytes())
     outer = p["subprotos"][0]
     assert [lv["name"] for lv in outer["locvars"]] == [b"x", b"y", b"inner"]
     assert all(lv["endpc"] > lv["startpc"] for lv in outer["locvars"])

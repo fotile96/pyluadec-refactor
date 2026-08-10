@@ -3,19 +3,13 @@ from pathlib import Path
 
 BUILD = Path(__file__).resolve().parents[1] / "build"
 
-def _compile(luac: Path, src: str, tmp: Path) -> bytes:
-    s = tmp / "t.lua"; o = tmp / "t.out"
-    s.write_text(src)
-    subprocess.run([str(luac), "-o", str(o), str(s)], check=True)
-    return o.read_bytes()
-
-def test_sz4_header_byte(tmp_path):
-    blob = _compile(BUILD / "luac_sz4", "return 1", tmp_path)
+def test_sz4_header_byte(compile_lua):
+    blob = compile_lua("luac_sz4", "return 1").read_bytes()
     assert blob[:4] == b"\x1bLua" and blob[4] == 0x51
     assert blob[8] == 4          # sizeof(serialized size_t)
 
-def test_sz8_header_byte(tmp_path):
-    blob = _compile(BUILD / "luac_sz8", "return 1", tmp_path)
+def test_sz8_header_byte(compile_lua):
+    blob = compile_lua("luac_sz8", "return 1").read_bytes()
     assert blob[8] == 8
 
 def test_sz4_lua_runs_sz4_bytecode(tmp_path):

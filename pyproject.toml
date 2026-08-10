@@ -1,7 +1,7 @@
 [project]
 name = "pyluadec"
 version = "0.1.0"
-description = "Add your description here"
+description = "Width-parameterized Lua 5.1 bytecode ingest layer and decompiler toolchain"
 authors = [
     { name = "fotile96", email = "fotile13@gmail.com" }
 ]
@@ -18,3 +18,7 @@ build-backend = "uv_build"
 dev = [
     "pytest>=9.1.1",
 ]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]

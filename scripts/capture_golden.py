@@ -15,6 +15,13 @@ ROOT = Path(__file__).resolve().parents[1]
 GOLDEN = ROOT / "corpus" / "golden"
 
 def main() -> int:
+    if (GOLDEN / "manifest.json").exists():
+        print(f"refusing to overwrite: {GOLDEN / 'manifest.json'} already exists. "
+              f"corpus/golden/ is a deliberately read-only archive captured once from "
+              f"the old project's 32-bit tools (see spec §6 R5 and the migration "
+              f"runbook) -- delete it by hand first if you really mean to recapture.",
+              file=sys.stderr)
+        return 1
     import lua51_proto_extractor as old  # old bridge, 32-bit only
     corpus = Path(os.environ["PYLUADEC_CORPUS_DIR"])
     old_luac = os.environ["PYLUADEC_OLD_LUAC"]

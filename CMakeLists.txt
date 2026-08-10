@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.24)
 project(pyluadec_native LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 99)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # ---- apply serialization-width patch into build dir (vendor stays pristine)
@@ -33,8 +35,7 @@ function(add_lua_variant SUFFIX SERIAL_TYPE)
   add_library(lua_${SUFFIX} STATIC ${srcs})
   target_include_directories(lua_${SUFFIX} PUBLIC ${LUA_PATCHED_SRC})
   target_compile_definitions(lua_${SUFFIX}
-    PUBLIC LUAC_SERIAL_SIZET=${SERIAL_TYPE}
-    PRIVATE LUA_USE_POSIX LUA_COMPAT_ALL)
+    PUBLIC LUAC_SERIAL_SIZET=${SERIAL_TYPE} LUA_USE_POSIX)
 
   add_executable(lua_${SUFFIX}_bin ${LUA_PATCHED_SRC}/lua.c)
   set_target_properties(lua_${SUFFIX}_bin PROPERTIES OUTPUT_NAME lua_${SUFFIX}

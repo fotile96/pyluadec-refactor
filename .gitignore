@@ -5,3 +5,4 @@ build/
 __pycache__/
 src/pyluadec/_native/*.so
 *.egg-info/
+corpus/discrepancies.json

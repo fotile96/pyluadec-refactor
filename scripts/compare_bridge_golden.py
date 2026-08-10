@@ -1,5 +1,5 @@
 """Compare new ingest layer against golden (old bridge dump + luac listings)."""
-import gzip, json, re, sys
+import gzip, json, re, struct, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,6 +29,12 @@ def _cmp_proto(old: dict, new, path: str, out: list):
         for i, (oc, nc) in enumerate(zip(old["constants"], new.constants)):
             if isinstance(nc, LuaNumber):
                 ok = isinstance(oc, (int, float)) and not isinstance(oc, bool) and float(oc) == nc.value
+                # Self-consistency invariant, independent of any oracle: the
+                # raw 8-byte payload must decode (native byte order) to the
+                # same value LuaNumber already parsed it as.
+                expected_payload = struct.pack("=d", nc.value)
+                if expected_payload != nc.payload:
+                    out.append(_diff(f"{path}/k{i}", "const.payload", expected_payload, nc.payload))
             elif isinstance(nc, bytes):
                 try:
                     ok = oc == nc.decode("utf-8")
@@ -36,13 +42,17 @@ def _cmp_proto(old: dict, new, path: str, out: list):
                     out.append(_diff(f"{path}/k{i}", "const.encoding", oc, nc, "expected"))
                     continue
             else:
-                ok = oc == nc
+                ok = type(oc) is type(nc) and oc == nc
             if not ok:
                 out.append(_diff(f"{path}/k{i}", "const", oc, nc))
     old_ups = old["upvalues"]
-    new_ups = [u.decode("utf-8", "replace") if u is not None else None for u in new.upvalues]
-    if old_ups != new_ups:
-        out.append(_diff(path, "upvalues", old_ups, new_ups))
+    try:
+        new_ups = [u.decode("utf-8") if u is not None else None for u in new.upvalues]
+    except UnicodeDecodeError:
+        out.append(_diff(path, "upvalues.encoding", old_ups, new.upvalues, "expected"))
+    else:
+        if old_ups != new_ups:
+            out.append(_diff(path, "upvalues", old_ups, new_ups))
     if len(old["subprotos"]) != len(new.subprotos):
         out.append(_diff(path, "subprotos.len", len(old["subprotos"]), len(new.subprotos)))
     else:
@@ -132,7 +142,7 @@ if __name__ == "__main__":
     import os
     corpus = Path(os.environ["PYLUADEC_CORPUS_DIR"])
     report = compare_corpus(corpus)
-    outp = GOLDEN / "discrepancies.json"
+    outp = ROOT / "corpus" / "discrepancies.json"
     outp.write_text(json.dumps(report, indent=1, ensure_ascii=False), encoding="utf-8")
     unexpected = [d for d in report if d["verdict"] == "unexpected"]
     print(f"{len(report)} discrepancies ({len(unexpected)} unexpected) -> {outp}")
