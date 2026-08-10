@@ -1,6 +1,5 @@
 import importlib.util
 import json
-import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -50,19 +49,4 @@ def test_ledger_is_a_reproducible_fixed_point(corpus_dir, tmp_path, monkeypatch)
 
     assert rc == 0
     regenerated = (tmp_path / "corpus" / "ledger.jsonl").read_bytes()
-    # BRIEF DEFECT (documented in task-0-report.md): run_corpus.py stamps every
-    # entry's `ladder` field with the live pyluadec.verify.normalize.LADDER_VERSION
-    # (scripts/run_corpus.py:19,54). This task bumps LADDER_VERSION from
-    # "l3-ladder-v0" to "l3-ladder-v1" but is explicitly told NOT to regenerate the
-    # committed corpus/ledger.jsonl (that happens in M3 Task 8) -- so a byte-for-byte
-    # comparison against the still-v0 committed ledger cannot pass, contrary to the
-    # brief's Step 5 claim that this test "doesn't compare the ladder constant" (it
-    # does, transitively, via the raw-byte comparison). Verified by running this
-    # test unmodified: it failed with the ladder field as the sole diff. Normalizing
-    # only the known, task-scoped `ladder` delta out of both sides preserves the
-    # test's actual regression-guard purpose (catching any *other* unintended byte
-    # drift) without requiring a ledger regeneration this task is forbidden to do.
-    def _normalize_ladder(data: bytes) -> bytes:
-        return re.sub(rb'"ladder": "[^"]*"', b'"ladder": "<normalized>"', data)
-
-    assert _normalize_ladder(regenerated) == _normalize_ladder(LEDGER.read_bytes())
+    assert regenerated == LEDGER.read_bytes()
