@@ -55,6 +55,68 @@ def test_if_region_claims_then_and_else_children():
     assert all_claimed(node) == frozenset({1, 2, 3, 4})
 
 
+def test_numeric_for_region_claims_body_children():
+    # Same gap class as If.else_body: NumericFor.body is a child region whose
+    # pcs must be recursed into. Nothing else in the suite constructs a
+    # NumericFor, so without this test a dropped `_CHILDREN[NumericFor]`
+    # entry silently loses an entire loop body's pcs from the audit.
+    from pyluadec.sir.regions import Straight, NumericFor, all_claimed
+    from tests.synth import mk_instr
+    from pyluadec.lift import LirInstr, Op
+    from pyluadec.lift.effects import analyze, EffectMode
+    def li(pc, op=Op.MOVE):
+        ri = mk_instr(op, pc=pc)
+        return LirInstr(ri=ri, effects=analyze(ri, EffectMode.STRICT),
+                        successors=(pc+1,), consumed=())
+    node = NumericFor(prep=li(1, Op.FORPREP), loop=li(5, Op.FORLOOP),
+                       body=Straight((li(2), li(3), li(4)), frozenset({2, 3, 4})),
+                       claimed_pcs=frozenset({1, 5}))
+    assert all_claimed(node) == frozenset({1, 2, 3, 4, 5})
+
+
+def test_generic_for_region_claims_body_children():
+    # Same gap class as NumericFor above, for the other loop-region kind.
+    from pyluadec.sir.regions import Straight, GenericFor, all_claimed
+    from tests.synth import mk_instr
+    from pyluadec.lift import LirInstr, Op
+    from pyluadec.lift.effects import analyze, EffectMode
+    def li(pc, op=Op.MOVE):
+        ri = mk_instr(op, pc=pc)
+        return LirInstr(ri=ri, effects=analyze(ri, EffectMode.STRICT),
+                        successors=(pc+1,), consumed=())
+    node = GenericFor(call=li(5, Op.TFORLOOP), loop=li(6, Op.JMP),
+                       body=Straight((li(2), li(3), li(4)), frozenset({2, 3, 4})),
+                       claimed_pcs=frozenset({5, 6}))
+    assert all_claimed(node) == frozenset({2, 3, 4, 5, 6})
+
+
+def test_children_dispatch_is_complete_for_region_kinds_with_child_fields():
+    # Structural completeness check, not per-kind coverage: any region
+    # dataclass with a field annotated as `Region`/`Region | None`/
+    # `tuple[Region, ...]` must have a `_CHILDREN` entry, or a future region
+    # kind (M4) added without wiring `_CHILDREN` would silently drop its
+    # children from the audit the same way If.else_body / NumericFor.body /
+    # GenericFor.body did before this fix round. This test derives the
+    # expected set from the dataclass fields themselves rather than from a
+    # hand-maintained list, so it does not rot alongside regions.py.
+    import dataclasses
+    from pyluadec.sir import regions
+    all_region_classes = [regions.Straight, regions.Seq, regions.If,
+                          regions.NumericFor, regions.GenericFor, regions.Break,
+                          regions.Return, regions.Fallback]
+    for cls in all_region_classes:
+        has_child_field = any(
+            "Region" in (f.type if isinstance(f.type, str) else str(f.type))
+            for f in dataclasses.fields(cls)
+        )
+        if has_child_field:
+            assert cls in regions._CHILDREN, (
+                f"{cls.__name__} has a Region-typed field but no _CHILDREN entry")
+        else:
+            assert cls not in regions._CHILDREN, (
+                f"{cls.__name__} has no Region-typed field but has a _CHILDREN entry")
+
+
 def test_synth_mk_proto_lifts():
     from tests.synth import mk_proto, mk_instr
     from pyluadec.lift import lift_proto, Op
