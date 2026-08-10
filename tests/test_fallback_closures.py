@@ -23,6 +23,21 @@ CLOSURE_CASES = [
     # 混合：捕获的循环变量被闭包内自增
     'local fs = {} for i = 1, 2 do fs[i] = function() i = i + 100 return i end end '
     'print(fs[1](), fs[1](), fs[2]())',
+    # CLOSE 隔离方向的对偶：CLOSE 不得触碰边界*以下*的寄存器——一个仍存活的被
+    # 捕获局部量（register 0）在边界更高的无关 CLOSE（register 1）触发后，仍
+    # 必须与更早创建的闭包共享同一盒。用 do-end 制造一个不相关的内层 CLOSE，
+    # 验证其之后对下方寄存器的写入/读取仍经同一盒穿透。decode 确认：CLOSE A=1
+    # 确实在两次 CLOSURE（register 0 的捕获）与之后的写/读之间执行。
+    'local y = 0 _G.gety = function() return y end '
+    'do local z = 3 local f = function() return z end print(f()) end '
+    'y = 5 print(gety())',
+    # 同一对偶的姊妹用例：两个兄弟闭包共享同一未关闭局部量（register 0），
+    # 一个写一个读，跨越一个无关内层作用域的 CLOSE（register 3）后仍必须
+    # 观察到彼此的写入。
+    'local shared = 0 local function set(v) shared = v end '
+    'local function get() return shared end '
+    'do local z = 1 local tmp = function() return z end print(tmp()) end '
+    'set(9) print(get())',
     # 下方为 Task 7 遗留的 CLOSURE 依赖用例（原文逐字保留）
     'local function f(...) return ... end print(f(1, nil, 3))',
     'local function g() return 1, 2, 3 end print(g())',
