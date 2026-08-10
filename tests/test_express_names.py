@@ -64,11 +64,11 @@ def test_multiply_written_dead_write_is_still_local(tmp_path):
     (overwritten before any read), so there is exactly one *use* (the final
     read feeding b) with nothing writing that use's inputs in between -- the
     def/use pair alone would look "adjacent pure" and inline as a temp. Only
-    the def-count check (2 writes) forces it local. This is the register.py
-    docs example that test_reassigned_register_is_local does not actually
-    isolate: that test's register also fails the use-count check (its 'a' is
-    read twice: once by the ADD that recomputes it, once by print), so it
-    would still classify as local even if the def-count check were deleted.
+    the def-count check (2 writes) forces it local. This is a case
+    test_reassigned_register_is_local does not actually isolate: that test's
+    register also fails the use-count check (its 'a' is read twice: once by
+    the ADD that recomputes it, once by print), so it would still classify as
+    local even if the def-count check were deleted.
     """
     from pyluadec.express.names import classify_registers
     fn = _fn("local a = 1 a = 2 local b = a", tmp_path)
