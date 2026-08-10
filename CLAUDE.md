@@ -80,3 +80,34 @@ Phase 1（M0）已完成：uv 骨架、vendored pristine Lua 5.1.5、序列化�
 - 语料位置约定：语料从不硬编码进代码，一律经环境变量 `PYLUADEC_CORPUS_DIR` 获取（指向 229 个 `.lua` 字节码文件所在目录，参照原项目的 `/root/pyluadec/others/script_to_decompile/`）。未设置或目录不存在时，依赖语料的 pytest 用例会 `pytest.skip`（见 `tests/conftest.py` 的 `corpus_dir` fixture），不会报错中断其余测试。
 
 64 位新机开荒（Linux x86_64 / macOS arm64）的完整步骤、双平台验收要求、门失败时的排查方法，见 `docs/runbooks/64bit-migration.md`。
+
+Phase 2（M2：fallback closed loop）已完成，收口于 `docs/runbooks/decompile-pipeline.md`（全文档，含逐层模块说明、fallback 产物阅读指南、台账字段语义）——本节只给定位与速查，细节一律以该 runbook 为准，不在此重复。
+
+### 管线模块布局
+
+```
+ingest -> lift -> cfg -> structure.fallback -> oracle 编译验证 -> ledger
+```
+
+- `pyluadec.ingest`：`load_file`/`load_bytes` → `Proto`（Phase 1 已交付，header-dispatched sz4/sz8）。
+- `pyluadec.lift`（新增）：`opcodes.py`（解码器 + `OP_SPECS`，golden listing 全语料核对）、`effects.py`（38 opcode 效应表，公理层，STRICT/NO_METAMETHOD/TRUSTING 三档——**只有 STRICT 有论证依据，标定档位属 M4**）、`lift.py`（`lift_proto` → LIR，pc 认领审计覆盖全语料 1944 proto）。
+- `pyluadec.cfg`（新增）：`blocks.py`（`build_cfg`）、`dom.py`（`immediate_dominators`，CHK 算法，对不可归约图安全）——CFG 在 M2 被 `structure.fallback` 实际消费，不是原项目那种建而不用的摆设。
+- `pyluadec.structure.fallback`（新增）：`emit_chunk(root) -> bytes`，pc 派发状态机，38/38 opcode 全覆盖。这是 M2 的地板（floor）：语义精确、故意丑，**M3 起由结构化识别（if/while/for 还原）逐步替换**，fallback 本身不会去美化。
+- `pyluadec.verify`（新增）：`normalize.py`（L3.0 严格比对器 + 空的归一化阶梯骨架 `NORMALIZATIONS`/`LADDER_VERSION`）、`ledger.py`（`structural_hash`、`LedgerEntry`、`write_ledger`/`read_ledger`）。
+- `pyluadec.pipeline`（新增）：`walk_proto_paths`、`decompile_chunk`、`decompile_file` —— 驱动整条管线的入口。
+- `pyluadec.oracle`（新增）：包装 `build/luac_sz4`/`build/lua_sz4`，`compile_source`/`run_bytes`，供编译验证与差分执行使用。
+
+### 新增常用命令
+
+- 全语料编译门 + 台账重生成：`PYLUADEC_CORPUS_DIR=... uv run python scripts/run_corpus.py`（产出 `build/decompiled/*.lua`——不入库；重写 `corpus/ledger.jsonl`——入库）。干净跑法应打印 `compiled 229/229`。
+- 台账面板：`uv run python scripts/ledger_dashboard.py [--markdown]`（只读，从不写台账）。
+- 单文件反编译、差分执行调试单个用例（`tests/diffexec.assert_fallback_roundtrip`）：命令与用法见 runbook「常用操作」节。
+
+### 台账约定（ratchet 纪律）
+
+- `corpus/ledger.jsonl` **入库**（1478 条唯一 proto 结构哈希、覆盖 1944 处出现、229 文件，M2 收口时全部 `L1`）；`corpus/discrepancies.json` **不入库**（gitignored，纯门产物，"最近一次验证干净"的可追溯性应落在 CI 或本文件而非该 JSON——Phase 1 遗留的正式决定）。
+- 台账只能由 `scripts/run_corpus.py` 整体重新生成后提交，**禁止手编**任何一行。
+- 台账是自身生成脚本的不动点（同语料、同 oracle 构建再跑一次必须字节级复现），由 `tests/test_ledger_ratchet.py` 守护；等级只升不降，禁止出现 `L0`。
+- `oracle` 字段记录的是 `git log -1 -- vendor native`（oracle 构建产物的溯源），**不是** `git rev-parse HEAD`——用 HEAD 会导致每次纯文档/纯测试提交都让全部台账行看起来"变了"，淹没真实回归；原因与修复过程见 runbook 对应小节。
+
+详见 `docs/runbooks/decompile-pipeline.md`：管线每层的函数签名、fallback 产物的 `__pld_R`/`__pld_U`/盒模型/`__pld_pc` 状态机阅读指南（含与 `luac_sz4 -l -l` 原始 listing 对照调试的实操示例）、效应表三档的语义与限度、台账字段的完整语义。
