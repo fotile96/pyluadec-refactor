@@ -839,10 +839,11 @@ verified ways the two can diverge, and none of them would be caught by the
     time*, and the fallback-decompiled table always starts at capacity 0
     and grows incrementally instead of being presized by `NEWTABLE`'s hint.
   - Corpus-reachable, not just a synthetic concern: across the 229-file
-    corpus, 62 `NEWTABLE` instructions carry a non-zero hash presize (`C`),
-    92 carry a non-zero array presize (`B`) or hash presize, 92 `SETLIST`
-    instructions exist, and 7 `TFORLOOP`s (the opcode that drives `pairs`/
-    `ipairs`-style iteration and would observe any order divergence).
+    corpus, 92 `NEWTABLE` instructions carry a non-zero array presize (`B`),
+    62 carry a non-zero hash presize (`C`), and 154 carry at least one of the
+    two; there are 92 `SETLIST` instructions and 7 `TFORLOOP`s (the opcode
+    that drives `pairs`/`ipairs`-style iteration and would observe any order
+    divergence).
   - Faithful layout needs real table-constructor reconstruction (recovering
     the constructor literal shape, not just replaying the opcode sequence
     into an empty table) — that is M3 structuring work, not a fallback
