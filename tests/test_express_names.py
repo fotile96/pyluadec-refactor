@@ -159,9 +159,9 @@ def test_open_region_write_between_def_and_use_forces_local():
 
     Open regions are not statically bounded, so they never appear in a real
     instruction's .writes/.reads -- an instruction with writes_open=True can
-    silently clobber any register from its base up to maxstacksize. Real
-    luac never places one between a temp candidate's def and use (see
-    test_corpus_no_open_region_in_single_def_use_window for the empirical
+    silently clobber any register it might reach. Real luac never places one
+    between a temp candidate's def and use (see
+    test_corpus_no_open_region_in_pre_fix_temp_window for the empirical
     corpus check), so this is a hand-built shape via tests/synth.py, exactly
     the kind of "IR luac never would produce" this module must still not
     silently mishandle. Register 7 has one def, one use, and nothing writes
@@ -196,17 +196,20 @@ def test_open_region_write_between_def_and_use_forces_local():
     assert 7 in rc.locals and 7 not in rc.temps
 
 
-def test_open_region_outside_its_affected_range_still_blocks_via_barrier():
-    """Isolates _adjacent_pure's unconditional open-region barrier from the
-    defs/uses open-region augmentation in classify_registers.
+def test_open_region_check_ignores_which_registers_it_touches():
+    """_adjacent_pure's open-region check is unconditional: it blocks on ANY
+    reads_open/writes_open instruction in (dp, up], regardless of whether
+    that instruction's own base register happens to overlap the candidate.
 
     Register 2's def/use window (pc 1..3) contains a VARARG B==0 at pc 2 with
-    base register 5 -- its conservatively-touched range [5, maxstacksize) does
-    NOT include register 2, so the defs/uses augmentation adds no entry for
-    register 2 at all; only the unconditional "any open-region instruction in
-    the window blocks, regardless of which registers it touches" barrier in
-    _adjacent_pure can catch this. (Confirmed by hand: removing just that
-    barrier while keeping the augmentation flips register 2 to temp.)
+    base register 5 -- register 2 is nowhere near that range. This pins the
+    deliberate design choice of NOT trying to compute the open region's
+    actual affected range (base is known, but "top" is a dynamic stack depth
+    this module does not simulate, so no such range could be proven safe to
+    exclude) -- see the M3 task-4 round-2 review, which flagged and removed
+    an earlier version that tried to track per-register open ranges globally
+    (unwindowed, which was itself the round-2 defect) rather than treating
+    "is there any open region in my own window at all" as the question.
     """
     from pyluadec.express.names import classify_registers
     from pyluadec.lift import Effect, InstrEffects, LirFunction, LirInstr, Op
@@ -236,27 +239,83 @@ def test_open_region_outside_its_affected_range_still_blocks_via_barrier():
     assert 2 in rc.locals and 2 not in rc.temps
 
 
-def test_open_write_at_use_pc_forces_local_via_defs_augmentation(tmp_path):
-    """Isolates the defs/uses open-region augmentation from _adjacent_pure's
-    barrier, using a real (non-synthetic) luac-compiled shape.
+def test_open_write_at_use_pc_forces_local(tmp_path):
+    """_adjacent_pure's open-region check scans (dp, up] -- inclusive of the
+    use pc itself -- using a real (non-synthetic) luac-compiled shape.
 
     'print(string.format("%d", 42))': string.format's own CALL has C==0
     (its results feed print's open argument list), so it both *reads*
     registers 2 and 3 as explicit arguments AND (via writes_open) implicitly
-    *re-defines* them with its own return values -- at the very same pc as
-    the read. _adjacent_pure's window scan is strictly `dp < pc < up`, so an
-    open-region instruction sitting exactly *at* up (never strictly between
-    dp and up) never reaches that barrier at all. Only the augmentation
-    (which is not windowed -- it runs once per instruction, unconditionally)
-    adds the second def entry that makes len(defs[reg]) != 1. (Confirmed by
-    hand: removing just the augmentation while keeping the barrier flips
-    registers 2 and 3 to temp; see test_call_arg_staging_is_temp for the
-    contrasting case, same shape of Lua source, without the open call.)
+    re-defines them with its own return values -- at the very same pc as the
+    read (up). A strictly-between scan (dp, up) would never reach pc == up
+    at all, so this specifically exercises the half-open-at-the-top window,
+    not just "some open region exists somewhere in this function" (which
+    test_windowing_ignores_open_regions_outside_the_def_use_window pins the
+    negative of). See test_call_arg_staging_is_temp for the contrasting case
+    -- same shape of Lua source, without the open call -- where the
+    equivalent registers correctly inline as temps.
     """
     from pyluadec.express.names import classify_registers
     fn = _fn("print(string.format('%d', 42))", tmp_path)
     rc = classify_registers(fn)
     assert {2, 3} <= rc.locals
+
+
+def test_windowing_ignores_open_regions_outside_the_def_use_window():
+    """Round-2 regression pin: an open-region instruction elsewhere in the
+    function -- outside a candidate's own (dp, up] window -- must NOT
+    disqualify that candidate. An earlier version of classify_registers
+    poisoned its defs/uses dicts globally for every open-region instruction
+    in the function, regardless of position; on the 229-file corpus that
+    flipped 154 of 342 temp->local reclassifications for zero soundness
+    gain (registers whose own def/use window had no open region in it at
+    all). This is a synthetic function (tests/synth.py) with two disjoint
+    regions: an open VARARG at pc 2, unrelated to register 9's own def (pc
+    4) and use (pc 6) later in the same function -- register 9's window
+    contains no open-region instruction, so it must still inline as a temp
+    despite the function having one elsewhere.
+    """
+    from pyluadec.express.names import classify_registers
+    from pyluadec.lift import Effect, InstrEffects, LirFunction, LirInstr, Op
+    from tests.synth import mk_instr, mk_proto
+
+    unrelated_def_ri = mk_instr(Op.LOADK, a=0, bx=0, pc=1)
+    unrelated_def_fx = InstrEffects(reads=frozenset(), writes=frozenset({0}),
+                                     reads_open=False, writes_open=False,
+                                     effect=Effect.PURE, may_error=False)
+    vararg_ri = mk_instr(Op.VARARG, a=0, b=0, pc=2)          # open, but far from reg 9's window
+    vararg_fx = InstrEffects(reads=frozenset(), writes=frozenset(),
+                              reads_open=False, writes_open=True,
+                              effect=Effect.PURE, may_error=False)
+    unrelated_use_ri = mk_instr(Op.MOVE, a=1, b=0, pc=3)
+    unrelated_use_fx = InstrEffects(reads=frozenset({0}), writes=frozenset({1}),
+                                     reads_open=False, writes_open=False,
+                                     effect=Effect.PURE, may_error=False)
+    def_ri = mk_instr(Op.LOADK, a=9, bx=0, pc=4)
+    def_fx = InstrEffects(reads=frozenset(), writes=frozenset({9}),
+                           reads_open=False, writes_open=False,
+                           effect=Effect.PURE, may_error=False)
+    filler_ri = mk_instr(Op.MOVE, a=2, b=1, pc=5)
+    filler_fx = InstrEffects(reads=frozenset({1}), writes=frozenset({2}),
+                              reads_open=False, writes_open=False,
+                              effect=Effect.PURE, may_error=False)
+    use_ri = mk_instr(Op.MOVE, a=3, b=9, pc=6)
+    use_fx = InstrEffects(reads=frozenset({9}), writes=frozenset({3}),
+                           reads_open=False, writes_open=False,
+                           effect=Effect.PURE, may_error=False)
+    instrs = {
+        1: LirInstr(ri=unrelated_def_ri, effects=unrelated_def_fx, successors=(2,), consumed=()),
+        2: LirInstr(ri=vararg_ri, effects=vararg_fx, successors=(3,), consumed=()),
+        3: LirInstr(ri=unrelated_use_ri, effects=unrelated_use_fx, successors=(4,), consumed=()),
+        4: LirInstr(ri=def_ri, effects=def_fx, successors=(5,), consumed=()),
+        5: LirInstr(ri=filler_ri, effects=filler_fx, successors=(6,), consumed=()),
+        6: LirInstr(ri=use_ri, effects=use_fx, successors=(), consumed=()),
+    }
+    proto = mk_proto((0,) * 6, numparams=0, maxstacksize=10)
+    fn = LirFunction(proto=proto, instrs=instrs, n_pcs=6,
+                      captured_regs=frozenset(), closure_pseudo={})
+    rc = classify_registers(fn)
+    assert 9 in rc.temps and 9 not in rc.locals
 
 
 def test_corpus_no_open_region_in_pre_fix_temp_window(corpus_dir):
