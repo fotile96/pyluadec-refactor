@@ -85,7 +85,8 @@ def test_decoder_matches_fresh_listing_for_corpus_missing_ops(tmp_path):
     out = tmp_path / "t.out"
     subprocess.run([str(BUILD / "luac_sz4"), "-o", str(out), str(src)], check=True)
     listing = subprocess.run([str(BUILD / "luac_sz4"), "-l", "-l", str(out)],
-                             capture_output=True, text=True, check=True).stdout
+                             capture_output=True, text=True, check=True,
+                             cwd=tmp_path).stdout
     for need in ("SELF", "POW", "UNM", "NOT"):
         assert need in listing        # 用例确实触发了这些 opcode
     root = load_file(out)
