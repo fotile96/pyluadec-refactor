@@ -11,8 +11,24 @@ from typing import Callable
 
 from pyluadec.ingest.proto import LuaNumber, Proto
 
-NORMALIZATIONS: tuple[tuple[str, Callable[[Proto], Proto]], ...] = ()
-LADDER_VERSION = "l3-ladder-v0"
+def _strip_lineinfo(p: Proto) -> Proto:
+    import dataclasses
+    return dataclasses.replace(
+        p,
+        source=None,
+        linedefined=0,
+        lastlinedefined=0,
+        lineinfo=(),
+        locvars=tuple(dataclasses.replace(v, name=None) for v in p.locvars),
+        upvalues=tuple(None for _ in p.upvalues),      # drop names, keep count
+        subprotos=tuple(_strip_lineinfo(s) for s in p.subprotos),
+    )
+
+
+NORMALIZATIONS: tuple[tuple[str, Callable[[Proto], Proto]], ...] = (
+    ("strip-lineinfo", _strip_lineinfo),
+)
+LADDER_VERSION = "l3-ladder-v1"
 
 
 @dataclass(frozen=True)
