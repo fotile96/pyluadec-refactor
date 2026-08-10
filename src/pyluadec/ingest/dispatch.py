@@ -1,5 +1,5 @@
 from pathlib import Path
-from .header import parse_header
+from .header import IngestError, parse_header
 from .proto import Proto, from_bridge_dict
 
 def _bridge_for(sizeof_sizet: int):
@@ -21,7 +21,12 @@ def _bridge_for(sizeof_sizet: int):
 
 def load_bytes(blob: bytes, chunkname: str = "=chunk") -> Proto:
     h = parse_header(blob)
-    return from_bridge_dict(_bridge_for(h.sizeof_sizet).load_bytecode(blob, chunkname))
+    bridge = _bridge_for(h.sizeof_sizet)
+    try:
+        d = bridge.load_bytecode(blob, chunkname)
+    except RuntimeError as e:
+        raise IngestError(f"bridge load failed: {e}") from e
+    return from_bridge_dict(d)
 
 def load_file(path) -> Proto:
     p = Path(path)

@@ -2665,6 +2665,7 @@ git add -A && git commit -m "feat: certification ledger v1 with content-addresse
 - Consumes: Tasks 6-10 全部。
 - Produces:
   - `pyluadec.pipeline`:
+    - `walk_proto_paths(path: str, p: Proto, out: dict[str, Proto]) -> None`（前序遍历，把 `proto_path → Proto` 填进 `out`；命名方案与 `fallback.emit_chunk` 的工厂键一致：`main`、`main_0`、`main_0_3`。公开 API —— `run_corpus.py` 与后续 M3 台账都要用）
     - `@dataclass DecompileResult: source: bytes; confessions_by_proto: dict[str, list[dict]]`（键为 proto_path，如 `"main_0_3"`）
     - `decompile_chunk(root: Proto) -> DecompileResult`（M2 恒走 fallback；每个 proto 记一条 confession `{"pc_lo": 1, "pc_hi": len(code), "reason": "fallback-state-machine", "pass": "structure.fallback"}`）
     - `decompile_file(path) -> DecompileResult`
@@ -2768,15 +2769,15 @@ class DecompileResult:
     confessions_by_proto: dict[str, list[dict]]
 
 
-def _walk_paths(path: str, p: Proto, out: dict[str, Proto]) -> None:
+def walk_proto_paths(path: str, p: Proto, out: dict[str, Proto]) -> None:
     out[path] = p
     for i, s in enumerate(p.subprotos):
-        _walk_paths(f"{path}_{i}", s, out)
+        walk_proto_paths(f"{path}_{i}", s, out)
 
 
 def decompile_chunk(root: Proto) -> DecompileResult:
     protos: dict[str, Proto] = {}
-    _walk_paths("main", root, protos)
+    walk_proto_paths("main", root, protos)
     confessions = {
         path: [{"pc_lo": 1, "pc_hi": len(p.code),
                 "reason": "fallback-state-machine", "pass": "structure.fallback"}]
@@ -2809,7 +2810,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def main() -> int:
     from pyluadec import oracle
     from pyluadec.ingest import load_file
-    from pyluadec.pipeline import _walk_paths, decompile_chunk
+    from pyluadec.pipeline import walk_proto_paths, decompile_chunk
     from pyluadec.verify.ledger import (LedgerEntry, oracle_version, structural_hash,
                                         write_ledger)
     from pyluadec.verify.normalize import LADDER_VERSION
@@ -2833,7 +2834,7 @@ def main() -> int:
             compile_ok = False
             print(f"COMPILE FAIL {f.name}: {str(e)[:200]}", file=sys.stderr)
         protos = {}
-        _walk_paths("main", root, protos)
+        walk_proto_paths("main", root, protos)
         for path, p in protos.items():
             h = structural_hash(p)
             occ = {"file": f.name, "proto_path": path}
