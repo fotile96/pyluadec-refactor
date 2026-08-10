@@ -186,16 +186,42 @@ class _FnEmitter:
             L.append(wr(a, " .. ".join(rd(i) for i in range(b, c + 1))))
         elif op is Op.CALL:
             self._emit_call(ri)
+        elif op is Op.VARARG:
+            if not (self.proto.is_vararg & 2):
+                raise EmitError(f"pc {ri.pc}: VARARG in non-vararg function")
+            if b == 1:
+                pass                                    # 零目标 no-op
+            elif b >= 2:
+                targets = ", ".join(rd(a + i) for i in range(b - 1))
+                L.append(f"{targets} = ...")
+            else:
+                L.append("do local __pld_rs = __pld_pack(...)")
+                L.append(f"for __pld_i = 1, __pld_rs.n do "
+                         f"__pld_set(__pld_R, __pld_B, {a} + __pld_i - 1, __pld_rs[__pld_i]) end")
+                L.append(f"__pld_top = {a} + __pld_rs.n end")
+        elif op is Op.SETLIST:
+            eff_c = c if c != 0 else self.proto.code[li.consumed[0] - 1]
+            base = (eff_c - 1) * 50                     # LFIELDS_PER_FLUSH
+            if b >= 1:
+                for i in range(1, b + 1):
+                    L.append(f"{rd(a)}[{base + i}] = {rd(a + i)}")
+            else:
+                L.append(f"do local __pld_n = __pld_top - {a} - 1")
+                L.append(f"for __pld_i = 1, __pld_n do {rd(a)}[{base} + __pld_i] = "
+                         f"__pld_get(__pld_R, __pld_B, {a} + __pld_i) end end")
         else:
             raise EmitError(f"pc {ri.pc}: opcode {op.name} not yet supported by fallback")
 
     def _call_expr(self, ri) -> tuple[str, list[str]]:
-        """返回 (调用表达式, 前置语句)。B==0（open args）在 Task 7 落地。"""
+        """返回 (调用表达式, 前置语句)。"""
         a, b = ri.a, ri.b
         if b >= 1:
             args = ", ".join(self.rd(a + 1 + i) for i in range(b - 1))
             return f"{self.rd(a)}({args})", []
-        raise EmitError(f"pc {ri.pc}: open-arg CALL not yet supported")
+        pre = [f"local __pld_t, __pld_n = {{}}, __pld_top - {a + 1}",
+               f"for __pld_i = 1, __pld_n do "
+               f"__pld_t[__pld_i] = __pld_get(__pld_R, __pld_B, {a + 1} + __pld_i - 1) end"]
+        return f"{self.rd(a)}(__pld_unpack(__pld_t, 1, __pld_n))", pre
 
     def _emit_call(self, ri) -> None:
         a, c = ri.a, ri.c
@@ -210,25 +236,90 @@ class _FnEmitter:
             body = [expr] if c == 1 else \
                 [", ".join(self.rd(a + i) for i in range(c - 1)) + f" = {expr}"]
             L.append("do " + " ".join(pre + body) + " end")
-        else:
-            raise EmitError(f"pc {ri.pc}: open-result CALL not yet supported")
+        else:   # c == 0: open results
+            L.append("do " + " ".join(pre))
+            L.append(f"local __pld_rs = __pld_pack({expr})")
+            L.append(f"for __pld_i = 1, __pld_rs.n do "
+                     f"__pld_set(__pld_R, __pld_B, {a} + __pld_i - 1, __pld_rs[__pld_i]) end")
+            L.append(f"__pld_top = {a} + __pld_rs.n end")
 
-    # ---- 终结指令（本 Task 仅 RETURN 定长 + LOADBOOL 跳变体）
+    # ---- 终结指令（控制流、调用全形态、open RETURN）
     def _emit_terminator(self, li: LirInstr) -> bool:
         ri = li.ri
         op, a, b = ri.op, ri.a, ri.b
         L, rd = self.lines, self.rd
-        if op is Op.RETURN:
+        if op is Op.LOADBOOL and ri.c:
+            L.append(self.wr(a, "true" if b else "false"))
+            L.append(f"__pld_pc = {ri.pc + 2}")
+            return True
+        c = ri.c
+        rk, wr = self.rk, self.wr
+        if op is Op.JMP:
+            L.append(f"__pld_pc = {ri.pc + 1 + ri.sbx}")
+            return True
+        if op in (Op.EQ, Op.LT, Op.LE):
+            cmp = {Op.EQ: "==", Op.LT: "<", Op.LE: "<="}[op]
+            cond = f"{rk(b)} {cmp} {rk(c)}"
+            if a == 0:
+                cond = f"not ({cond})"
+            L.append(f"if {cond} then __pld_pc = {ri.pc + 1} "
+                     f"else __pld_pc = {ri.pc + 2} end")
+            return True
+        if op is Op.TEST:
+            t, f = (ri.pc + 1, ri.pc + 2) if c else (ri.pc + 2, ri.pc + 1)
+            L.append(f"if {rd(a)} then __pld_pc = {t} else __pld_pc = {f} end")
+            return True
+        if op is Op.TESTSET:
+            take = f"{wr(a, '__pld_t')} __pld_pc = {ri.pc + 1}"
+            skip = f"__pld_pc = {ri.pc + 2}"
+            branch = f"if __pld_t then {take} else {skip} end" if c else \
+                     f"if __pld_t then {skip} else {take} end"
+            L.append(f"do local __pld_t = {rd(b)} {branch} end")
+            return True
+        if op is Op.FORPREP:
+            L.append("do")
+            L.append(f"local __pld_i = __pld_tonumber({rd(a)}) "
+                     f"if __pld_i == nil then __pld_error(\"'for' initial value must be a number\") end")
+            L.append(f"local __pld_l = __pld_tonumber({rd(a + 1)}) "
+                     f"if __pld_l == nil then __pld_error(\"'for' limit must be a number\") end")
+            L.append(f"local __pld_s = __pld_tonumber({rd(a + 2)}) "
+                     f"if __pld_s == nil then __pld_error(\"'for' step must be a number\") end")
+            L.append(f"{wr(a, '__pld_i - __pld_s')} {wr(a + 1, '__pld_l')} {wr(a + 2, '__pld_s')}")
+            L.append("end")
+            L.append(f"__pld_pc = {ri.pc + 1 + ri.sbx}")
+            return True
+        if op is Op.FORLOOP:
+            L.append(f"do local __pld_s = {rd(a + 2)} local __pld_i = {rd(a)} + __pld_s")
+            L.append(f"if (__pld_s > 0 and __pld_i <= {rd(a + 1)}) or "
+                     f"(__pld_s <= 0 and __pld_i >= {rd(a + 1)}) then")
+            L.append(f"{wr(a, '__pld_i')} {wr(a + 3, '__pld_i')} "
+                     f"__pld_pc = {ri.pc + 1 + ri.sbx}")
+            L.append(f"else __pld_pc = {ri.pc + 1} end end")
+            return True
+        if op is Op.TFORLOOP:
+            targets = ", ".join(rd(a + 3 + i) for i in range(c))
+            L.append(f"{targets} = {rd(a)}({rd(a + 1)}, {rd(a + 2)})")
+            L.append(f"if {rd(a + 3)} ~= nil then {wr(a + 2, rd(a + 3))} "
+                     f"__pld_pc = {ri.pc + 1} else __pld_pc = {ri.pc + 2} end")
+            return True
+        if op is Op.TAILCALL:
+            expr, pre = self._call_expr(ri)
+            if pre:
+                L.append("do " + " ".join(pre))
+                L.append(f"return {expr} end")
+            else:
+                L.append(f"return {expr}")
+            return True
+        if op is Op.RETURN:            # 补齐 open 情形
             if b == 1:
                 L.append("return")
             elif b >= 2:
                 L.append("return " + ", ".join(rd(a + i) for i in range(b - 1)))
             else:
-                raise EmitError(f"pc {ri.pc}: open RETURN not yet supported")
-            return True
-        if op is Op.LOADBOOL and ri.c:
-            L.append(self.wr(a, "true" if b else "false"))
-            L.append(f"__pld_pc = {ri.pc + 2}")
+                L.append(f"do local __pld_t, __pld_n = {{}}, __pld_top - {a}")
+                L.append(f"for __pld_i = 1, __pld_n do "
+                         f"__pld_t[__pld_i] = __pld_get(__pld_R, __pld_B, {a} + __pld_i - 1) end")
+                L.append("return __pld_unpack(__pld_t, 1, __pld_n) end")
             return True
         return False
 
