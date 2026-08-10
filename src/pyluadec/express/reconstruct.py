@@ -92,6 +92,48 @@ class ReconstructError(Exception):
 _ARITH = {Op.ADD: "+", Op.SUB: "-", Op.MUL: "*", Op.DIV: "/", Op.MOD: "%", Op.POW: "^"}
 
 
+def _local_regs_in(e: Expr) -> frozenset[int]:
+    """Every register a LocalExpr anywhere inside `e` refers to.
+
+    Used by the table-constructor folder to know which *other* registers a
+    deferred table's already-folded array/hash items depend on (see
+    `_dispatch`'s hazard check below) -- an item captured as `LocalExpr(reg)`
+    is a live reference, not a value snapshot, so if `reg` gets reassigned
+    before the table's own register is finally touched (which is when
+    `_close_table_ctx` actually emits the `local ... = {...}` statement),
+    the deferred TableExpr would silently pick up the *new* value instead of
+    the one that was live when the array item was folded.
+    """
+    if isinstance(e, LocalExpr):
+        return frozenset({e.reg})
+    if isinstance(e, IndexExpr):
+        return _local_regs_in(e.table) | _local_regs_in(e.key)
+    if isinstance(e, BinExpr):
+        return _local_regs_in(e.lhs) | _local_regs_in(e.rhs)
+    if isinstance(e, UnExpr):
+        return _local_regs_in(e.operand)
+    if isinstance(e, CallExpr):
+        regs = _local_regs_in(e.fn)
+        for arg in e.args:
+            regs |= _local_regs_in(arg)
+        return regs
+    if isinstance(e, TableExpr):
+        regs = frozenset()
+        for item in e.array:
+            regs |= _local_regs_in(item)
+        for k, v in e.hash:
+            regs |= _local_regs_in(k) | _local_regs_in(v)
+        return regs
+    # ConstExpr / GlobalExpr / UpvalExpr / VarargExpr / ClosureExpr: no
+    # LocalExpr reachable from any of these node types' own fields.
+    # (ClosureExpr's captures live in fn.closure_pseudo, not in the Expr
+    # tree itself, and are out of scope for this hazard check -- a closure
+    # literal folded directly as a table array/hash item whose captured
+    # register is later reassigned before the table closes is a known,
+    # narrower residual risk, not fixed here.)
+    return frozenset()
+
+
 def _int_const(i: int) -> LuaNumber:
     """A LuaNumber constant carrying the raw 8-byte double payload for integer
     i -- used for the synthetic array indices the standalone-SETLIST degrade
@@ -358,14 +400,19 @@ class Reconstructor:
         a, b = ri.a, ri.b
         ctx = self._table_ctx_stack[-1]
         if b == 0:
-            ctx["array"].extend(self._consume_open(a + 1))
+            items = self._consume_open(a + 1)
         else:
-            ctx["array"].extend(self._read_reg(a + i) for i in range(1, b + 1))
+            items = tuple(self._read_reg(a + i) for i in range(1, b + 1))
+        ctx["array"].extend(items)
+        for item in items:
+            ctx["hazard"] |= _local_regs_in(item)
 
     def _fold_settable(self, ri) -> None:
         key = ConstExpr(self.proto.constants[indexk(ri.b)])
         val = self.rk(ri.c)
-        self._table_ctx_stack[-1]["hash"].append((key, val))
+        ctx = self._table_ctx_stack[-1]
+        ctx["hash"].append((key, val))
+        ctx["hazard"] |= _local_regs_in(val)
 
     def _standalone_setlist(self, li: LirInstr) -> None:
         """SETLIST with no active matching table-ctx (NEWTABLE and its
@@ -508,7 +555,7 @@ class Reconstructor:
             # TableExpr rather than degrading the outer constructor too.
             if self._table_ctx_stack and self._table_ctx_stack[-1]["reg"] == a:
                 self._close_table_ctx()
-            self._table_ctx_stack.append({"reg": a, "array": [], "hash": []})
+            self._table_ctx_stack.append({"reg": a, "array": [], "hash": [], "hazard": frozenset()})
             return
 
         if self._table_ctx_stack:
@@ -521,7 +568,22 @@ class Reconstructor:
                 self._fold_settable(ri)
                 return
             fx = li.effects
-            if reg in fx.reads or reg in fx.writes or fx.reads_open or fx.writes_open:
+            # Close (materializing the table with its array/hash items AS
+            # THEY WERE when folded) before letting this instruction touch
+            # either the ctx's own register (`reg`) or any register one of
+            # its already-folded items references by LocalExpr (`hazard`,
+            # see _local_regs_in). Missing the hazard half of this check is
+            # exactly the bug task-6-report.md documents: `local t = {a, b,
+            # c}` followed by any statement that reassigns `a`/`b`/`c` before
+            # something finally reads `t` (e.g. luac reusing those same
+            # register numbers for a subsequent generic-for's staging, an
+            # extremely common shape) silently changed the printed table's
+            # contents to the *reassigned* values instead of the ones that
+            # were live at fold time -- reading only fx.writes/fx.reads for
+            # the ctx's own base register never caught a write to one of the
+            # *item* registers.
+            if (reg in fx.reads or fx.writes & ({reg} | ctx["hazard"])
+                   or fx.reads_open or fx.writes_open):
                 # This instruction interacts with the innermost pending
                 # context's register (typically: it's about to read a nested
                 # table literal's register as its own value) -- close just

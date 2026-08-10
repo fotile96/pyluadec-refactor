@@ -653,3 +653,46 @@ def test_partially_demoted_generic_for_triple_reconstructs(tmp_path):
     assert multi[0].targets == (LocalTarget(1), LocalTarget(2), LocalTarget(3))
     assert not any(isinstance(s, LocalDecl) and 1 in s.regs and s.exprs
                    and s.regs != (1,) for s in stmts)
+
+
+def test_table_close_is_not_deferred_past_a_reassignment_of_an_array_item_register(tmp_path):
+    """Found during Task 6 (the printer) driving a full SIR sweep, not by
+    this file's own (narrower, straight-run-only) Step-1 validation -- see
+    task-6-report.md.
+
+    `local t = {10, 20, 30} local sum = 0 for i, v in ipairs(t) do end`:
+    luac stages the array literal's three values into registers 1/2/3, then
+    (once they're fully consumed by SETLIST) reuses those exact same
+    register numbers for `sum` and the generic-for's iterator staging. The
+    NEWTABLE/SETLIST fold captures the array items as `LocalExpr(1/2/3)` --
+    live references, not value snapshots -- and `_close_table_ctx` doesn't
+    actually run (emitting the table's own `local t = {...}` statement)
+    until something later reads register 0 (here, the generic-for's `MOVE
+    3, 0` staging `t` as ipairs' argument). Before this fix, `_dispatch`'s
+    close-triggering check only watched the table's OWN register (0) for
+    reads/writes; it never noticed that registers 1 and 2 got reassigned
+    (to `sum`'s `0` and to `ipairs`) in between -- so by the time the
+    deferred TableExpr's LocalDecl was finally emitted, the array items
+    printed as `l0_1, l0_2, l0_3` referred to `sum`/`ipairs`/`t`'s CURRENT
+    values, not the `10, 20, 30` that were live when the array was actually
+    built. Pinned at the Stmt-order level here (not just "compiles", which
+    this bug doesn't break -- it silently changes the table's contents):
+    the table's LocalDecl must appear BEFORE any statement that reassigns
+    register 1 or 2.
+    """
+    from pyluadec.express.reconstruct import Assign, LocalDecl
+    from pyluadec.express.expr import TableExpr
+    p, fn = _proto_and_fn(
+        "local t = {10, 20, 30}\nlocal sum = 0\nfor i, v in ipairs(t) do end\n",
+        tmp_path)
+    rc, stmts = _all_stmts(fn)
+    table_idx = next(i for i, s in enumerate(stmts)
+                     if isinstance(s, LocalDecl) and s.exprs
+                     and isinstance(s.exprs[0], TableExpr))
+    reassign_idx = next(i for i, s in enumerate(stmts)
+                        if isinstance(s, Assign)
+                        and any(t.reg in (1, 2) for t in s.targets
+                                if hasattr(t, "reg")))
+    assert table_idx < reassign_idx, (
+        "table LocalDecl must be emitted before any reassignment of the "
+        f"registers its array items reference; stmts={stmts}")
