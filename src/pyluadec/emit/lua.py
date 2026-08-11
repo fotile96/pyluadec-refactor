@@ -68,9 +68,9 @@ from pyluadec.express.reconstruct import (Assign, AssignTarget, ExprStmt,
                                           ReturnStmt, Stmt, UpvalTarget)
 from pyluadec.ingest.proto import Proto
 from pyluadec.lift import LUA_KEYWORDS, Op
-from pyluadec.lift.lift import LirFunction, lift_proto
-from pyluadec.sir import (Break, GenericFor, If, NumericFor, Region, Return,
-                          Seq, Straight)
+from pyluadec.lift.lift import LirFunction, LirInstr, lift_proto
+from pyluadec.sir import (Break, EndIter, GenericFor, If, NumericFor, Region,
+                          Repeat, Return, Seq, Straight, WhileTrue)
 from pyluadec.sir.build import StructureError, build_sir
 from pyluadec.structure.fallback import const_lit
 
@@ -337,20 +337,37 @@ class Printer:
         vals = ", ".join(self.expr(e) for e in s.exprs)
         return f"local {names} = {vals}"
 
-    def condition(self, r: If) -> str:
-        """Render an If's comparison instruction as a boolean expression that
-        is true exactly when the region tree's `then_body` should run.
+    def condition(self, cond: LirInstr) -> str:
+        """Render a comparison/TEST instruction as the boolean expression that
+        is true exactly when control **falls through** past the JMP that
+        follows it.
+
+        Two callers, both wanting exactly that expression:
+          - `If`: the fallthrough is the `then_body`, so this IS the `if`
+            condition.
+          - `Repeat`: `lparser.c`'s `repeatstat` patches the condition's
+            *false* list back to the loop header (`cond()` is
+            `luaK_goiftrue`, which yields the jump taken when the source
+            condition is false), so the backward JMP is taken exactly when the
+            source's `until` condition is false and the fallthrough -- past
+            the JMP, out of the loop -- is exactly the `until` condition. So
+            `until <this expression>` is right, un-negated.
 
         Polarity (empirically measured against real `luac_sz4` output and
         lvm.c's dojump mechanics -- see module docstring "Brief defects" #1):
-        for EQ/LT/LE, `then_body` is the fallthrough after the JMP, which
-        lvm.c takes exactly when the comparison result is UNEQUAL to A; so
-        A==0 means `then` is the un-negated comparison, A==1 means `then` is
-        its negation. For TEST A C, `then_body` runs when
-        `l_isfalse(R(A)) == C`; so C==0 means `then` is R(A) itself
-        (truthy-tested), C==1 means `then` is `not R(A)`.
+        for EQ/LT/LE, the fallthrough is taken when the comparison result is
+        UNEQUAL to A; so A==0 means fallthrough is the un-negated comparison,
+        A==1 means it is its negation. For TEST A C, the fallthrough is taken
+        when `l_isfalse(R(A)) == C`; so C==0 means it is R(A) itself
+        (truthy-tested), C==1 means it is `not R(A)`.
+
+        `If.negated`/`Repeat.negated` are deliberately NOT consulted: the
+        polarity is derived from the instruction's own A/C field, which is the
+        single source of truth both region kinds carry. (`If.negated` has
+        always been informational in this printer; `Repeat.negated` is defined
+        the same way so the two cannot drift apart.)
         """
-        ri = r.cond.ri
+        ri = cond.ri
         op = ri.op
         if op in (Op.EQ, Op.LT, Op.LE):
             sym = {Op.EQ: "==", Op.LT: "<", Op.LE: "<="}[op]
@@ -398,7 +415,7 @@ class Printer:
         if isinstance(r, Break):
             return [pad + "break"]
         if isinstance(r, If):
-            cond = self.condition(r)
+            cond = self.condition(r.cond)
             out = [f"{pad}if {cond} then"]
             # Each arm is its own Lua block: a `local` one arm declares is not
             # in scope in the other, nor after the `end`. See
@@ -452,6 +469,56 @@ class Printer:
             self.recon.close_scope(snap)
             out.append(f"{pad}end")
             return out
+        if isinstance(r, WhileTrue):
+            # No header expression to render: `while true` has no condition,
+            # and the region claims only the closing JMP (`r.closing`), which
+            # is the `end` itself and produces no statement. So unlike the
+            # `for` arms there is nothing to `take_expr` before opening the
+            # body's scope -- the "take before open" ordering those arms need
+            # is vacuous here rather than violated.
+            out = [f"{pad}while true do"]
+            # The body is its own Lua block, exactly like an `if` arm: a
+            # `local` it declares is out of scope after the `end`, and unlike
+            # the `for` arms this is NOT merely defensive. luac reuses a
+            # while-body local's register for a *different* local after the
+            # loop (`while true do local x = 1 ... end local y = 2 ...`), so
+            # without restoring `declared` the second one prints as a bare
+            # `l0_0 = ...` -- a write to a GLOBAL. Measured by inverting this
+            # (M4 task 2): the recompile grows a constant and diverges on
+            # `code`, so certification refuses and the proto drops to L1. See
+            # Reconstructor.open_scope, and
+            # tests/test_emit_while.py::test_body_local_register_reused_after_the_loop.
+            snap = self.recon.open_scope()
+            out += self.region(r.body, indent + 1)
+            self.recon.close_scope(snap)
+            out.append(f"{pad}end")
+            return out
+        if isinstance(r, Repeat):
+            out = [f"{pad}repeat"]
+            snap = self.recon.open_scope()
+            out += self.region(r.body, indent + 1)
+            # The `until` condition is rendered INSIDE the body's scope and the
+            # scope is closed only afterwards. That is not a stylistic choice:
+            # `lparser.c`'s `repeatstat` reads the condition inside the scope
+            # block (`enterblock(fs, &bl2, 0)` ... `chunk` ... `cond`, with
+            # `leaveblock` only after), which is why `repeat local a = f()
+            # until a` is legal Lua. Closing first would drop `a` from
+            # `declared`/`env` and make the condition reference a global.
+            cond = self.condition(r.cond)
+            self.recon.close_scope(snap)
+            out.append(f"{pad}until {cond}")
+            return out
+        if isinstance(r, EndIter):
+            # A threaded end-of-iteration JMP prints as nothing: its
+            # source-level destination was "the end of the loop body", and
+            # `sir.build` only claims one in tail position of its range (and
+            # only when that range is itself in tail position of the whole
+            # loop body -- `_own_enditers <= _tail_enditers`), so falling out
+            # of the printed block does exactly what the jump did. That this
+            # is faithful is not argued here, it is adjudicated by
+            # certification: luac must re-thread the printed source into the
+            # identical instruction stream.
+            return []
         raise StructureError(f"unprintable region {type(r).__name__}")
 
 
@@ -507,6 +574,13 @@ def _terminates(r: Region) -> bool:
     `GenericFor` never counts as terminating here: a loop's own natural
     "iteration finished" exit always falls through to whatever follows it,
     independent of what any single iteration's body does.
+
+    The M4 loop nodes fall through to the default `False` for the same reason,
+    deliberately: a `WhileTrue`/`Repeat` may be followed by ordinary
+    statements (luac happily compiles code after an unconditionally-infinite
+    loop, and printing it is legal Lua that recompiles the same), and an
+    `EndIter` prints nothing and is only ever claimed in tail position of its
+    range, so it has no siblings for a `True` here to suppress.
     """
     if isinstance(r, (Return, Break)):
         return True
