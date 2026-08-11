@@ -1,5 +1,35 @@
 # Phase 3 (M3 结构化主干) Implementation Plan
 
+---
+
+> ## ⚠️ 事后勘误（2026-08-11，M3 收口 final review 追加）
+>
+> **本文是历史记录，正文一律不改。** 下面只列出「M3 实际测量推翻了计划里写死的
+> 数字」的两处，避免后来者把计划当作现状数据引用。**现状一律以
+> `docs/runbooks/structured-pipeline.md` 和 `docs/runbooks/m3-backlog.md` 为准。**
+>
+> 1. **「子树闭合上界 ~80.3%」不成立**（正文第 69、72、1886、2221、2472 行）。
+>    该数字是计划阶段的估计，不是实测上界。2026-08-11 实测：真正的天花板是
+>    **可打印性**——整棵子树能打印的有 1170/1478 唯一 proto（**79.16%**）、
+>    1636/1944 处出现（**84.16%**），只有能打印的才谈得上认证。而 M3 实际达成
+>    1112/1478（75.2%）唯一、**1577/1944（81.12%）出现**——**已经越过 80.3%**，
+>    而上界是不可能被越过的。重新推导（re-derive）用的脚本内联在
+>    `structured-pipeline.md`「Current capability boundary → Re-deriving the
+>    three rows」，附实测输出。
+> 2. **全局状态探针不是 229/229**（正文第 2245、2247、2336、2478 行）。实际是
+>    **225/229 一致 + 4 条钉住的发散**（`snr_graphic` / `snr_mainmenu` /
+>    `snr_memory` / `snr_novel`），差异只在错误信息**文本**上，是 fallback 寄存器
+>    盒模型经 `ldebug.c::getobjname` 产生的命名产物，不是语义分歧。权威清单是
+>    `tests/test_global_state_probe.py::EXPECTED_ERROR_NAME_DIVERGENCE`；
+>    `scripts/probe_global_state.py` 的 CLI 不认识这 4 条钉子，会打印 `225/229`
+>    并返回 1，这是预期行为。正文第 2476 行的「229/229 仍全部可编译」是**另一件
+>    事**（编译门），那一条至今成立。
+>
+> 计划里其余的一次性测量（+17.3 / +63.6 / +0.0 个百分点、93/229、13.1% 等）没有
+> 被重新验证过，取自已不存在的中间代码状态；当历史读，别当数据用。
+
+---
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 用支配树驱动的区域识别 + 证明门控的表达式重建，把直线代码、无环分支（if/else、and/or）与数值/泛型 for 循环从 fallback 状态机换成结构化 Lua，并用 L3 重编译比对逐函数认证——出口是**多数 unique proto 达到 L3（proved）**，其余诚实留在 fallback（L1）。
@@ -295,7 +325,7 @@ git add -A && git commit -m "feat: L3.1 line-info normalization rung and certify
   - `regions.py`（全部 frozen dataclass，字段 `claimed_pcs: frozenset[int]` 是该区域**直接**认领的 pc；子区域的 pc 不重复计入父的 `claimed_pcs`，全树认领 = 各区域 `claimed_pcs` 的**不相交并集**）:
     - `Seq(body: tuple[Region, ...], claimed_pcs)` —— 顺序块；`claimed_pcs` 恒为空（认领委托给 body）
     - `Straight(instrs: tuple[LirInstr, ...], claimed_pcs)` —— 直线指令序列（叶子），`claimed_pcs` = 这些指令的 pc
-    - `If(cond_pcs: frozenset[int], cond: LirInstr, negated: bool, then_body: Region, else_body: Region | None, join_pc: int, claimed_pcs)` —— `cond` 是比较/测试指令，`claimed_pcs` = `cond_pcs`（比较指令 + 其后随 JMP）
+    - `If(cond: LirInstr, negated: bool, then_body: Region, else_body: Region | None, join_pc: int, claimed_pcs: frozenset[int])` —— `cond` 是比较/测试指令；`claimed_pcs` = 比较指令 + 其后随 JMP（+ then 体尾部跳过 else 的那条 JMP，若有 else）。**没有独立的 `cond_pcs` 字段**——它只是 `build.py` 里的局部变量名
     - `NumericFor(prep: LirInstr, loop: LirInstr, body: Region, claimed_pcs)` —— `claimed_pcs` = {FORPREP.pc, FORLOOP.pc}
     - `GenericFor(call: LirInstr, loop: LirInstr, body: Region, claimed_pcs)` —— `call`=TFORLOOP，`loop`=其后随 JMP；`claimed_pcs`={TFORLOOP.pc, JMP.pc}
     - `Break(claimed_pcs)` —— 单条 JMP 跳出循环，`claimed_pcs`={该 JMP.pc}

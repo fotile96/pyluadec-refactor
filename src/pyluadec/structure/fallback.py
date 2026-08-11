@@ -245,6 +245,12 @@ class _FnEmitter:
                     caps.append(f"[{idx}]=__pld_R[{ps.b}]")      # 盒对象本身
                 else:                                            # GETUPVAL 伪指令
                     caps.append(f"[{idx}]=__pld_U[{ps.b}]")
+            # proto_path convention, hand-written here for the second of three
+            # times -- see pipeline.walk_proto_paths' docstring. This key must
+            # match the ledger's `proto_path` for the same proto or you lose
+            # the ability to look a ledger row up in the emitted artifact.
+            # `bx` is the subproto index, i.e. the same `i` that
+            # walk_proto_paths and emit_chunk's walk get from enumerate().
             child = f"{self.path}_{bx}"
             L.append(wr(a, f'__pld_F["{child}"]({{{", ".join(caps)}}})'))
         else:
@@ -366,6 +372,9 @@ def emit_chunk(root: Proto) -> bytes:
     parts: list[str] = [PRELUDE]
 
     def walk(path: str, p: Proto) -> None:
+        # Third and last hand-written copy of the proto_path convention --
+        # see pipeline.walk_proto_paths' docstring for why all three must
+        # agree and what breaks silently if they drift.
         for i, s in enumerate(p.subprotos):
             walk(f"{path}_{i}", s)
         parts.append(_FnEmitter(path, p).emit())
