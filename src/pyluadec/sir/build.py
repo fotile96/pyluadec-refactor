@@ -10,8 +10,8 @@ from pyluadec.lift.lift import LirFunction
 from pyluadec.lift.opcodes import Op
 
 from .regions import (Break, EndIter, GenericFor, If, NumericFor, Region,
-                      RegionOverlap, Return, Seq, Straight, WhileTrue,
-                      all_claimed, _own_enditers, _tail_enditers)
+                      RegionOverlap, Repeat, Return, Seq, Straight, While,
+                      WhileTrue, all_claimed, _own_enditers, _tail_enditers)
 
 _COMPARE = frozenset({Op.EQ, Op.LT, Op.LE, Op.TEST})
 # TESTSET is deliberately NOT an if-condition: it is the and/or VALUE idiom
@@ -120,28 +120,300 @@ def build_sir(fn: LirFunction) -> Region:
     return region
 
 
-def _exits_only_to(fn, lo: int, S: int) -> bool:
+def _exits_only_to(fn, lo: int, S: int, allow: tuple[int, ...] = ()) -> bool:
     """True iff no instruction in [lo, S] transfers control out of the loop
-    except to S+1 (the `break` target / the loop's own fall-through exit).
+    except to S+1 (the `break` target / the loop's own fall-through exit) or
+    to one of `allow`.
 
     A jump to a RETURN/TAILCALL beyond S+1 is tolerated here because luac
     threads `break` straight onto a following return when one is there; such
     a jump is still refused later by `_structure_range` (it matches neither
     break_target nor continue_target), so tolerating it costs no acceptance
     -- it only keeps this pre-filter from being the thing that reports it.
+
+    `allow` carries the ENCLOSING loop's header (`continue_target`) when there
+    is one: luac threads a nested loop's own false-exit onto the enclosing
+    loop's closing JMP and thence to that header, so `while a do while b do
+    c() end end` really does contain a jump out of the inner loop that lands
+    on the outer header (measured 2026-08-11: pc 6 -> pc 1). Refusing it here
+    would make every nested `while <cond>` unrecognizable. It costs no
+    soundness: the body structuring below is the actual validator, and it
+    still refuses any such jump that is not in tail position.
     """
     for p in range(lo, S + 1):
         li = fn.instrs.get(p)
         if li is None:                      # a pc consumed as a pseudo-instruction
             continue
         for t in li.successors:
-            if lo <= t <= S + 1:
+            if lo <= t <= S + 1 or t in allow:
                 continue
             tgt = fn.instrs.get(t)
             if tgt is not None and tgt.ri.op in (Op.RETURN, Op.TAILCALL):
                 continue
             return False
     return True
+
+
+def _match_while_header(fn, pc2blk, lo: int, S: int, hi: int,
+                        continue_target: int | None):
+    """The header half of `while <cond> do ... end` recognition.
+
+    Given a candidate loop header `lo` and closing back edge `S`, decide
+    whether `[lo, S)` opens with luac's `whilestat` layout:
+
+        lo .. C-1   straight-line condition-operand code (may be empty)
+        C           <compare / TEST>
+        C+1         JMP -> E, the false-exit
+        C+2 .. S-1  body
+        S           JMP -> lo
+
+    Returns `(header instrs, header pcs, C, C+1, E)` or None. Never raises.
+
+    Two proofs are required beyond the opcode pattern:
+
+    * **E == S+1.** The false-exit must land exactly on the loop's own
+      fall-through exit. Anything else is a different shape (a compare whose
+      exit stays inside the loop, e.g. an `if` in the header position) and
+      must be left for the other recognizers, or refused.
+    * **The header is one basic block.** Every pc in `[lo, C]` must live in
+      `lo`'s CFG block. `build_cfg` makes every jump target a block leader,
+      so this is exactly "nothing jumps into the middle of the condition
+      code" -- the condition re-executes as a unit on every iteration, and a
+      second entry point inside it would mean the pcs do not form a Lua
+      `while` header at all. It also rules out a nested loop header hiding
+      inside the run.
+
+    `continue_target` handles the same `jpc` threading `_structure_if`
+    documents: when this loop is the last statement of an enclosing loop's
+    body, luac never patches this false-exit to a pc of its own -- it stays
+    pending and is concatenated onto the enclosing loop's closing JMP, so it
+    surfaces as a jump to the ENCLOSING header. Its source-level destination
+    is "the end of the enclosing body", which inside this range is `hi`.
+    """
+    header: list = []
+    header_pcs: list[int] = []
+    pc = lo
+    while pc < S:
+        li = fn.instrs[pc]
+        if li.ri.op in _COMPARE:
+            break
+        if len(li.successors) != 1 or li.successors[0] != pc + 1 + len(li.consumed):
+            return None                      # not straight-line: not a header
+        header.append(li)
+        header_pcs.append(pc)
+        pc += 1 + len(li.consumed)
+    else:
+        return None                          # no condition test before the back edge
+    cond_pc = pc
+    jmp_pc = cond_pc + 1
+    if jmp_pc >= S or jmp_pc not in fn.instrs or fn.instrs[jmp_pc].ri.op is not Op.JMP:
+        return None
+    exit_pc = fn.instrs[jmp_pc].successors[0]
+    if continue_target is not None and exit_pc == continue_target:
+        exit_pc = hi
+    if exit_pc != S + 1:
+        return None
+    header_blk = pc2blk[lo]
+    if any(pc2blk[p] != header_blk for p in header_pcs + [cond_pc]):
+        return None                          # something jumps into the condition
+    return tuple(header), tuple(header_pcs), cond_pc, jmp_pc, exit_pc
+
+
+def _match_while(fn, cfg, idoms, pc2blk, sites, memo, lo: int, hi: int,
+                 break_target: int | None, continue_target: int | None):
+    """Recognize `while <cond> do ... end` opening at range position `lo`.
+
+    Returns `(While region, next pc)` or None; never raises, exactly like
+    `_match_while_true` (a shape it cannot prove is simply not this loop, and
+    the caller goes on to the other recognizers and ultimately refuses).
+
+    Tried BEFORE `_match_while_true`, and the order is load-bearing. Once
+    `_structure_if` recognizes "the compare's own jump targets `break_target`"
+    (finding (A), M4 task 3), `_match_while_true` would also happily accept a
+    `while <cond>` loop -- as `while true do ... if c then <body> else break
+    end ... end`. That is semantically correct and it CANNOT certify: it
+    recompiles to three instructions where the original has two (see
+    `regions.While`). Recognizing the real shape first is what keeps the
+    desugaring from being what ships. `_match_while_true` is left reachable
+    as the fall-back for the shapes it genuinely owns.
+
+    The header/dominance obligations are `_match_while_true`'s, unchanged:
+    at least one JMP targeting `lo` must live in a block `lo`'s block
+    dominates (pc-retreating alone is not a back edge), and the chosen
+    closing JMP `S` must itself be unreachable or dominated by the header.
+    The rest is `_match_while_header`'s, and the body structuring is the
+    validator: no region is published until the body structures and claims
+    exactly `[C+2, S)`.
+
+    Unlike `_match_while_true`, only ONE candidate is ever tried: the LAST
+    JMP-to-`lo` in range. That is not an optimization, it is the correctness
+    condition. Every jump back to `lo` is by definition inside `lo`'s loop,
+    so the closing JMP -- the loop's lexically last instruction -- is the
+    last of them; a candidate with another back edge after it would be
+    claiming a loop that demonstrably continues past its own `end`. Measured
+    (M4 task 3, before this restriction): trying candidates last-first the
+    way `_match_while_true` does made `while true do if f() then g() else
+    h() end end` match as a `While` -- the `if`'s else-skip JMP@7 -> 1 read
+    as a closing back edge and its false-exit JMP@4 -> 8 as an exit to
+    S+1 == 8 -- silently amputating the else block, which then refused as an
+    unrecognized transfer. `while true` loops CAN share a header (see
+    `_match_while_true`); two `while <cond>` loops cannot, because each emits
+    its own condition code at its own header.
+
+    One relaxation of `_match_while_true`'s dominance precondition: a
+    candidate whose block is UNREACHABLE also counts as evidence that `lo` is
+    a header. luac emits a closing JMP for every loop even when every path
+    through the body returns (`while a do f() return end`), and that JMP is
+    then the loop's only back edge AND dead, so requiring a dominating one
+    would make the shape unrecognizable. It cannot reintroduce the false
+    positive the precondition exists for -- a rotated generic-for re-enters
+    its body through a jump that is very much reachable. Measured: +0 corpus
+    protos (the corpus has no such shape); `while a do f() return end` goes
+    L1 -> L3.
+    """
+    cands = [s for s in sites.get(lo, ()) if lo <= s < hi]
+    if not cands:
+        return None
+    header_blk = pc2blk[lo]
+    if not any(dominates(idoms, header_blk, pc2blk[s]) or pc2blk[s] not in idoms
+               for s in cands):
+        return None                          # pc-retreating, but not a back edge
+    allow = (continue_target,) if continue_target is not None else ()
+    S = max(cands)
+    s_blk = pc2blk[S]
+    if s_blk in idoms and not dominates(idoms, header_blk, s_blk):
+        return None                          # reachable from outside the loop
+    m = _match_while_header(fn, pc2blk, lo, S, hi, continue_target)
+    if m is None:
+        return None
+    header, header_pcs, cond_pc, jmp_pc, exit_pc = m
+    if not _exits_only_to(fn, lo, S, allow=allow):
+        return None
+    body_lo = jmp_pc + 1
+    try:
+        _verify_single_entry(cfg, idoms, pc2blk, cond_pc, body_lo, S,
+                             allow_unreachable=True)
+        body = _structure_range(fn, cfg, idoms, pc2blk, body_lo, S,
+                                break_target=exit_pc, continue_target=lo,
+                                sites=sites, memo=memo) if body_lo < S \
+            else Seq((), frozenset())
+        if all_claimed(body) != {p for p in fn.instrs if body_lo <= p < S}:
+            return None                      # under/over-claimed: not this shape
+        if _own_enditers(body):
+            # STRICTER than `_match_while_true`'s tail-position rule, and the
+            # asymmetry is deliberate. An `EndIter` prints as nothing, which
+            # is semantically faithful in tail position but always recompiles
+            # one JMP SHORT (measured, M4 task 2: 9 of 9 generated shapes that
+            # produce one run byte-identically and certify L1 on `code` --
+            # luac re-threads a `break` and an `if`'s else-skip onto the same
+            # header via `luaK_jump`'s jpc concat, and a source with only the
+            # fall-through collapses them). `_match_while` is tried FIRST, so
+            # accepting such a body here would PREEMPT readings that can
+            # certify: measured on `while true do while true do if a then f()
+            # else break end end end`, which certified L3 as a `WhileTrue` +
+            # `If` in task 2 and would have dropped to L1 as a `While` whose
+            # body ends in an EndIter. `_match_while_true` is the last
+            # recognizer standing and preempts nothing, so it keeps the weaker
+            # rule (its tail-position guard, which is about not dropping a
+            # jump at all).
+            return None
+    except (StructureError, RegionOverlap):
+        return None
+    return (While(header=header, cond=fn.instrs[cond_pc],
+                  negated=(fn.instrs[cond_pc].ri.a == 0), body=body,
+                  closing=fn.instrs[S],
+                  claimed_pcs=frozenset(header_pcs)
+                  | {cond_pc, jmp_pc, S}), exit_pc)
+
+
+def _match_repeat(fn, cfg, idoms, pc2blk, sites, memo, lo: int, hi: int,
+                  break_target: int | None, continue_target: int | None):
+    """Recognize `repeat <body> until <cond>` opening at range position `lo`.
+
+    Returns `(Repeat region, next pc)` or None; never raises.
+
+    luac's layout (`lparser.c:repeatstat`, lines 1019-1032) is the mirror of
+    `whilestat`'s -- the condition lives at the BOTTOM and its jump goes
+    backwards:
+
+        lo .. S-2:  body
+        S-1:        <compare / TEST>    -- the `until` condition
+        S:          JMP -> lo           -- taken when the condition is FALSE
+        S+1:        the loop's exit
+
+    `repeatstat` calls `cond()` (which is `luaK_goiftrue`, yielding the jump
+    taken when the source condition is FALSE) and patches THAT list back to
+    `repeat_init`. So the backward JMP fires while `until <cond>` is false and
+    falling through past it leaves the loop -- which is why `emit.lua`'s
+    printer renders the un-negated fall-through expression after `until` and
+    does not consult `Repeat.negated`. Same convention preserved here.
+
+    The header proof is the same as the other two loop recognizers'
+    (dominance, not pc order) and, as in `_match_while`, only the LAST
+    JMP-to-`lo` in range is a candidate: every jump back to `lo` is inside
+    `lo`'s loop, so the loop's lexically last instruction is the last of them.
+
+    `continue_target` is deliberately NOT threaded into the body. A `repeat`
+    has no instruction after its body that a pending jump could be
+    concatenated onto -- the condition's own code is emitted next, and
+    `luaK_code` flushes the pending list to that code's pc (see
+    `_structure_if`'s lcode.c citation). So a bare JMP to `lo` from inside the
+    body would be a shape this recognizer does not understand, and the body
+    structuring refuses it rather than claiming it as an end-of-iteration
+    jump.
+    """
+    if lo == continue_target:
+        # AMBIGUITY TIE-BREAK, not a soundness requirement. When `lo` is the
+        # enclosing loop's own header, a conditional backward JMP to it is
+        # exactly what luac emits for an `if` in TAIL POSITION of that loop's
+        # body whose false-exit was threaded onto the closing JMP -- the shape
+        # `_structure_if`'s `jt == continue_target` rewrite already handles.
+        # The two readings compile identically (`while true do if f() then
+        # g() end end` and `while true do repeat until f() g() end` are the
+        # same bytecode; verified against luac_sz4), so neither is "wrong" and
+        # the gate cannot separate them. Preferring the incumbent `If` keeps
+        # M3's reading of a very common shape rather than churning it for a
+        # `repeat` the source almost certainly did not contain. Measured to
+        # cost nothing: with and without this guard, an 8-shape
+        # repeat-inside-a-loop battery certifies the same 3, and
+        # `_match_repeat` fires ZERO times on the corpus either way.
+        return None
+    cands = [s for s in sites.get(lo, ()) if lo < s < hi]
+    if not cands:
+        return None
+    header_blk = pc2blk[lo]
+    if not any(dominates(idoms, header_blk, pc2blk[s]) for s in cands):
+        return None                          # pc-retreating, but not a back edge
+    S = max(cands)
+    cond_pc = S - 1
+    if cond_pc < lo or cond_pc not in fn.instrs \
+            or fn.instrs[cond_pc].ri.op not in _COMPARE:
+        return None
+    if fn.instrs[cond_pc].successors != (S, S + 1):
+        return None                          # the compare does not gate this JMP
+    s_blk = pc2blk[S]
+    if s_blk in idoms and not dominates(idoms, header_blk, s_blk):
+        return None                          # reachable from outside the loop
+    allow = (continue_target,) if continue_target is not None else ()
+    if not _exits_only_to(fn, lo, S, allow=allow):
+        return None
+    try:
+        _verify_single_entry(cfg, idoms, pc2blk, lo, lo, cond_pc,
+                             allow_unreachable=True)
+        body = _structure_range(fn, cfg, idoms, pc2blk, lo, cond_pc,
+                                break_target=S + 1, sites=sites,
+                                memo=memo) if lo < cond_pc \
+            else Seq((), frozenset())
+        if all_claimed(body) != {p for p in fn.instrs if lo <= p < cond_pc}:
+            return None
+        if _own_enditers(body):
+            return None                      # see _match_while's guard
+    except (StructureError, RegionOverlap):
+        return None
+    return (Repeat(body=body, cond=fn.instrs[cond_pc],
+                   negated=(fn.instrs[cond_pc].ri.a == 0),
+                   closing=fn.instrs[S],
+                   claimed_pcs=frozenset({cond_pc, S})), S + 1)
 
 
 def _match_while_true(fn, cfg, idoms, pc2blk, sites, memo, lo: int, hi: int):
@@ -313,7 +585,13 @@ def _structure_range_impl(fn, cfg, idoms, pc2blk, lo: int, hi: int,
         op = li.ri.op
         # Tried first: a loop header is a header whatever instruction sits on
         # it, and the for recognizers below key off the instruction alone.
-        w = _match_while_true(fn, cfg, idoms, pc2blk, sites, memo, pc, hi)
+        # `_match_while` before `_match_while_true` -- see its docstring: both
+        # can match a `while <cond>`, but only the former's shape certifies.
+        w = _match_while(fn, cfg, idoms, pc2blk, sites, memo, pc, hi,
+                         break_target, continue_target) \
+            or _match_while_true(fn, cfg, idoms, pc2blk, sites, memo, pc, hi) \
+            or _match_repeat(fn, cfg, idoms, pc2blk, sites, memo, pc, hi,
+                             break_target, continue_target)
         if w is not None:
             parts.append(w[0])
             pc = w[1]
@@ -387,7 +665,11 @@ def _structure_range_impl(fn, cfg, idoms, pc2blk, lo: int, hi: int,
                 # precondition that then fails to recognize would split one
                 # Straight into two for shapes M3 already accepts, changing
                 # their printed output for no reason.
-                w = _match_while_true(fn, cfg, idoms, pc2blk, sites, memo, pc, hi)
+                w = _match_while(fn, cfg, idoms, pc2blk, sites, memo, pc, hi,
+                                 break_target, continue_target) \
+                    or _match_while_true(fn, cfg, idoms, pc2blk, sites, memo, pc, hi) \
+                    or _match_repeat(fn, cfg, idoms, pc2blk, sites, memo, pc, hi,
+                                     break_target, continue_target)
                 if w is not None:
                     pending = w
                     break
@@ -486,27 +768,29 @@ def _structure_if(fn, cfg, idoms, pc2blk, pc: int, hi: int, break_target: int | 
             # JMPs sit between this else-skip and the loop's closing JMP, so
             # this else-skip is in tail position too and `hi` is correct.
             cand = hi
-        if cand < jt and not _is_generic_for_back_edge(fn, then_last):
+        if cand < jt:
             # Backward-targeting trailing JMP: not an else-skip at all (luac's
             # else-skips always jump forward over the else block), but an
             # instruction belonging to the then-body -- typically the closing
-            # JMP of a `while true` loop that ends it. Leave it inside the
-            # then-body; there is no else block.
+            # JMP of a `while`/`while true` loop, or a generic-for's own back
+            # edge, that ends it. Leave it inside the then-body; there is no
+            # else block.
             #
             # M3 raised "else-join out of range" here unconditionally, which
-            # is the single largest refusal cluster on the corpus (139/169
+            # was the single largest refusal cluster on the corpus (139/169
             # remaining unique protos, of which 135 are this shape) and the
-            # reason NO corpus `while true` loop ever reached the loop
-            # recognizer: the loops are nested inside `if`s, and the `if` gave
-            # up on their closing JMP first.
+            # reason NO corpus loop ever reached the loop recognizer: the
+            # loops are nested inside `if`s, and the `if` gave up on their
+            # closing JMP first.
             #
-            # The one exclusion -- a generic-for's own back edge, i.e. `if c
-            # then for k, v in pairs(t) do ... end end` -- is M3's *other*
-            # instance of this same defect, and it is deliberately left
-            # refused: unlike the loop shapes, a proto unblocked by it has
-            # nothing unprintable left in it, so it would print, certify, and
-            # move ledger levels, which M4 task 1 must not do (nothing prints
-            # loops until task 2). It is exactly 1 unique proto on the corpus.
+            # M4 task 1 carved out one exclusion here -- a generic-for's own
+            # back edge, i.e. `if c then for k, v in pairs(t) do ... end end`
+            # -- purely to keep the ledger frozen for that task, since such a
+            # proto has nothing unprintable left in it and would have
+            # certified and moved a ledger row. That exclusion has now
+            # expired: the loop printer landed in task 2 and this task moves
+            # the ledger by design. Removed; `snr_common.lua:main_24_1` (the
+            # measured single corpus instance) is accepted as a result.
             cond_pcs = frozenset({pc, jmp_pc})
         else:
             join = cand
@@ -537,29 +821,6 @@ def _structure_if(fn, cfg, idoms, pc2blk, pc: int, hi: int, break_target: int | 
             else Seq((), frozenset())
     return (If(cond=li, negated=(li.ri.a == 0), then_body=then_body,
                else_body=else_body, join_pc=join, claimed_pcs=cond_pcs), join)
-
-
-def _is_generic_for_back_edge(fn, pc: int) -> bool:
-    """True iff the JMP at `pc` is the trailing back edge of a generic for
-    (`TFORLOOP` at pc-1, jumping back over the body). See _structure_if for
-    why this one shape is singled out.
-
-    EXPIRY (M4 task 1 review, 2026-08-11): this exclusion exists ONLY to keep
-    `corpus/ledger.jsonl` frozen while task 1 lands -- the caller's own
-    comment calls it M3's *other* instance of the same defect the else-join
-    relaxation just fixed. Once the loop printer lands (task 2 for
-    `WhileTrue`/`EndIter`, or later once `Repeat` prints too) and printing a
-    newly-accepted proto is no longer a ledger-moving side effect of THIS
-    task, delete the `not _is_generic_for_back_edge(fn, then_last)` guard
-    above (and this function, if nothing else calls it) and flip
-    `tests/test_sir_while.py::test_generic_for_back_edge_inside_if_stays_refused`
-    from "raises StructureError" to "recognized, all_claimed" -- that test's
-    own docstring says the same thing from the test side.
-    """
-    li = fn.instrs.get(pc)
-    prev = fn.instrs.get(pc - 1)
-    return (li is not None and li.ri.op is Op.JMP and prev is not None
-            and prev.ri.op is Op.TFORLOOP and li.successors[0] < pc)
 
 
 def _match_generic_for(fn, pc: int, hi: int):

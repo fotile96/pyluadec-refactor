@@ -6,8 +6,8 @@ from pyluadec.oracle import compile_source
 from pyluadec.ingest import load_bytes
 from pyluadec.lift import lift_proto
 from pyluadec.sir.build import build_sir, StructureError
-from pyluadec.sir.regions import (WhileTrue, EndIter, Break, If, Seq, Straight,
-                                  Return, all_claimed)
+from pyluadec.sir.regions import (While, WhileTrue, EndIter, Break, If, Seq,
+                                  Straight, Return, all_claimed)
 
 
 def _sir(src: bytes):
@@ -92,15 +92,37 @@ def test_threaded_if_join_is_claimed_by_the_if():
 
 
 def test_threaded_else_skip_keeps_the_else_body():
-    # if/else as the whole body: the then-arm's else-skip JMP@7 is threaded to
-    # the header too, but it is still an else-skip -- the else body [8,10) must
-    # not be lost. 1-2 f() 3 TEST 4 JMP->8 5-6 g() 7 JMP->1 8-9 h() 10 JMP->1
+    """if/else as the whole body of a `while true`: the else body [8,10) must
+    not be lost. 1-2 f() 3 TEST 4 JMP->8 5-6 g() 7 JMP->1 8-9 h() 10 JMP->1
+
+    M4 TASK 3 CHANGED WHICH READING WINS, and the shape turns out to be
+    genuinely ambiguous rather than one of the two readings being wrong.
+    `while true do if f() then g() else h() end end` and
+    `while true do while f() do g() end h() end` compile to BYTE-IDENTICAL
+    bytecode (asserted below, not argued): after `g()` control returns to the
+    top of the enclosing loop and re-tests `f()`, which is exactly what a
+    `while f()` header does. Task 1's recognizer had only the `If` reading
+    available and picked it; `_match_while` is tried first now, so the `While`
+    reading wins. Both certify L3 -- the whole point of the gate is that it
+    does not care which of two equivalent sources produced the bytecode.
+
+    What this test still guards, and what it was always really about, is that
+    the else body is NOT amputated: the pc-claim audit in `_sir` covers every
+    instruction, and the region carrying pcs 8-9 is asserted explicitly.
+    """
     fn, r = _sir(b"while true do if f() then g() else h() end end")
     (w,) = _find(r, WhileTrue)
     assert w.closing.ri.pc == 10
-    (i,) = _find(w.body, If)
-    assert i.claimed_pcs == frozenset({3, 4, 7})
-    assert i.else_body is not None and all_claimed(i.else_body) == frozenset({8, 9})
+    # The `while f() do g() end` reading: header 1-2, cond 3, exit-JMP 4,
+    # body 5-6, closing 7. pcs 8-9 (`h()`) follow it inside the outer body.
+    (inner,) = _find(w.body, While)
+    assert inner.claimed_pcs == frozenset({1, 2, 3, 4, 7})
+    assert all_claimed(inner.body) == frozenset({5, 6})
+    assert (frozenset({8, 9}) & all_claimed(w.body)) == frozenset({8, 9})
+    # The two sources really are the same bytecode.
+    alt = compile_source(b"while true do while f() do g() end h() end", strip=True)
+    assert alt == compile_source(
+        b"while true do if f() then g() else h() end end", strip=True)
 
 
 def test_threaded_jump_becomes_enditer():
@@ -158,26 +180,32 @@ def test_for_loop_inside_while_true():
     assert w.closing.ri.pc == 9
 
 
-def test_while_cond_still_certifiable_shape():
-    # while <cond>: cond at top, exit-JMP forward, closing JMP back to the
-    # cond start. Recognizer may express this as WhileTrue(header=cond-block)
-    # with the cond as a leading If whose then-arm is a Break -- or refuse.
-    # It must NOT mis-claim. (Corpus has zero of these; support is for
-    # generality and the semantic-regression port in Task 5.)
-    fn = lift_proto(load_bytes(compile_source(
-        b"local i = 1 while i < 10 do i = i + 1 end", strip=True)))
-    try:
-        r = build_sir(fn)
-        assert all_claimed(r) == set(fn.instrs)
-    except StructureError:
-        pytest.xfail("while-<cond> deferred to Task 3 -- acceptable if Task 3 lifts this xfail")
+def test_while_cond_is_recognized():
+    """XFAIL LIFTED IN M4 TASK 3. `while <cond>` is a `While` region node now
+    -- deliberately NOT the `WhileTrue` + leading-negated-If-Break desugaring
+    the predecessor left open, which recompiles to three instructions where
+    the original has two and can never certify (see `sir.regions.While`).
+
+    Task 1's census also said "corpus has zero of these"; that was the
+    measurement its own report retracted. `while <cond>` is the dominant
+    corpus loop form: `_match_while` fires 195 times across 126 unique protos
+    (measured 2026-08-11), and `_match_while_true`/`_match_repeat` fire zero
+    times."""
+    fn, r = _sir(b"local i = 1 while i < 10 do i = i + 1 end")
+    (w,) = _find(r, While)
+    # 1 LOADK  2 LT  3 JMP->6  4 ADD  5 JMP->2  6 RETURN
+    assert w.header == ()                       # cond starts at the header pc
+    assert w.cond.ri.pc == 2 and w.closing.ri.pc == 5
+    assert w.claimed_pcs == frozenset({2, 3, 5})
+    assert all_claimed(w.body) == frozenset({4})
 
 
 def test_refusals_still_refuse():
-    # repeat stays refused until Task 3; the acyclic TESTSET family until Task 4
+    # `repeat` is recognized as of M4 task 3 (see test_sir_loops_longtail.py);
+    # the acyclic TESTSET family stays refused until task 4.
     fn = lift_proto(load_bytes(compile_source(
-        b"local i = 0 repeat i = i + 1 until i > 5", strip=True)))
-    with pytest.raises(StructureError):
+        b"local a, b local x = a or b return x", strip=True)))
+    with pytest.raises(StructureError, match="TESTSET"):
         build_sir(fn)
 
 
@@ -206,40 +234,38 @@ def test_pc_retreating_edge_that_is_not_a_dominance_back_edge_is_not_a_header():
     assert _find(r, WhileTrue) == []
 
 
-def test_generic_for_back_edge_inside_if_stays_refused():
-    """`_structure_if`'s else-join relaxation (build.py, `_is_generic_for_back_edge`)
-    deliberately excludes one shape from the "backward trailing JMP belongs to
-    the then-body" relaxation: a generic-for's own trailing back edge sitting
-    inside an if body. This is the direct fixture for it -- the brief's else-join
-    relaxation review flagged that the exclusion had no test naming it in
-    either direction, only the ledger-fixed-point test as an indirect,
-    invisible guard.
+def test_generic_for_back_edge_inside_if_is_recognized():
+    """INVERTED IN M4 TASK 3, as its predecessor's docstring said it would be.
 
-    Verified 2026-08-11 that this source reproduces the excluded path exactly
-    (not merely some other refusal): compiled shape is
+    M4 task 1 excluded exactly one shape from `_structure_if`'s "a backward
+    trailing JMP belongs to the then-body" relaxation -- a generic-for's own
+    trailing back edge sitting inside an `if` body -- via a
+    `_is_generic_for_back_edge` guard whose only purpose was keeping
+    `corpus/ledger.jsonl` frozen while task 1 landed (that proto has nothing
+    unprintable left in it, so admitting it would have certified and moved a
+    ledger row). Task 2 landed the loop printer and task 3 moves the ledger by
+    design, so the guard expired and was deleted; this test is its inverse.
+
+    Compiled shape, verified 2026-08-11 (unchanged from the predecessor):
         1 GETGLOBAL 2 TEST 3 JMP->13 4-6 f()'s callee/args 7 JMP->11
         8-10 pairs(t) call  11 TFORLOOP  12 JMP->8  13 RETURN
-    pc 12's JMP has TFORLOOP at pc 11 and a backward target (8), so
-    `_is_generic_for_back_edge(fn, 12)` is True; that makes
-    `cand < jt and not _is_generic_for_back_edge(...)` FALSE, so the
-    "belongs to the then-body" relaxation does NOT fire and control falls
-    into the `else: join = cand; if not (jt <= join <= hi): raise ...`
-    branch, which raises "else-join out of range" (jt=13, join=8) -- the
-    exact refusal message this shape is documented to keep.
+    pc 12 is the generic-for's back edge; it is the then-body's last
+    instruction and targets pc 8, backwards, so it is now left inside the
+    then-body (there is no else block) instead of being read as an else-skip
+    to an out-of-range join.
 
-    EXPECTED TO INVERT: this assertion is expected to flip from "raises" to
-    "recognized, all_claimed" in a later task (task 2 once the loop printer
-    lands, or task 3/4) -- see the EXPIRY comment on `_is_generic_for_back_edge`
-    in build.py. The exclusion exists ONLY to keep `corpus/ledger.jsonl` frozen
-    for this task (it is the one unique corpus proto the relaxation would
-    otherwise additionally accept, print, and certify, moving a ledger row).
-    Flipping this test alongside removing the exclusion is the intended
-    outcome of that future change, not a regression to chase down.
+    Corpus effect, measured: exactly one unique proto,
+    `snr_common.lua:main_24_1` -- the brief's own scope-item-1 exemplar,
+    whose refusal was `pc 2: else-join out of range` and whose shape is this
+    one, not a distinct "rotated generic-for" defect.
     """
     fn = lift_proto(load_bytes(compile_source(
         b"if c then for k, v in pairs(t) do f(k) end end", strip=True)))
-    with pytest.raises(StructureError, match="else-join out of range"):
-        build_sir(fn)
+    r = build_sir(fn)
+    assert all_claimed(r) == set(fn.instrs)
+    from pyluadec.sir.regions import GenericFor
+    (g,) = _find(r, GenericFor)
+    assert g.claimed_pcs == frozenset({7, 11, 12})
 
 
 def test_unreachable_block_inside_a_loop_body_is_still_claimed():
@@ -318,50 +344,34 @@ def test_corpus_build_sir_acceptance_floor(corpus_dir):
         except StructureError:
             pass
     print(f"build_sir accepts {ok}/{len(uniq)} unique protos")
-    # The brief's floor was 1350, predicated on "144 pure unconditional-JMP-back
-    # protos = the `while true` family this task targets". Measured 2026-08-11
-    # with this recognizer in place, that identification does not hold: a
-    # `while <cond>` loop ALSO closes with an unconditional JMP, so the 144
-    # counted back-edge *opcodes*, not loop *kinds*. Classifying the 169
-    # remaining refused unique protos by the kind of every JMP dominance back
-    # edge they contain:
-    #     134  contain only `while <cond>` loops (214 loop occurrences)
-    #      15  contain only `while true` loops   ( 17 loop occurrences)
-    #       3  compare header whose exit stays inside the loop
-    #      17  no JMP dominance back edge at all (TESTSET, dead code, ...)
-    # and all 15 of the `while true` protos are blocked by causes this task
-    # does not address (7 TESTSET, 3 dead code in an if body, 3 a conditional
-    # break threaded onto a compare's own jump, 1 other). `_match_while_true`
-    # therefore fires ZERO times over all 1478 unique protos: every corpus
-    # loop that closes with an unconditional JMP is a `while <cond>`, which is
-    # task 3's. The recognizer's coverage here is the oracle-compiled fixtures
-    # above, not the corpus.
+    # M4 TASK 3 MOVED THIS. History and the measurements behind it:
+    #   M3 baseline / after task 1 / after task 2:  1309
+    #   after task 3 (`While` + `Repeat` recognition, generic-for back-edge
+    #   exclusion removed, dead-closing-JMP relaxation):  1435
     #
-    # RECONCILING NOTE (review round, 2026-08-11): the 15/17 true-only/none
-    # split above is not the only classification a from-scratch reimplementation
-    # would reproduce. Re-running it with the exact `dominates` check
-    # `_match_while_true` itself applies, over every JMP in the function (not
-    # just `_jmp_sites` range-start candidates), reproduces 134 and 3 for the
-    # other two rows unchanged but gets 23 and 9 for true-only/none instead of
-    # 15 and 17 -- same total (32), different split. The obvious suspect --
-    # `_is_generic_for_back_edge`-shaped JMPs being filtered in or out of the
-    # count -- was checked directly and ruled out as the cause: only 5 such
-    # JMPs exist across all 169 refused protos (measured), which cannot by
-    # itself move 8 protos between buckets, and every one of those 5 already
-    # fails the strict dominance test on its own regardless of any filter
-    # (measured: `dominates(idoms, body_head_block, jmp_block)` is False for
-    # all 5 -- a generic-for's own trailing JMP is pc-retreating but not a
-    # dominance back edge, the same fact
-    # test_pc_retreating_edge_that_is_not_a_dominance_back_edge_is_not_a_header
-    # pins). What actually produced the 15/17 committed above was not
-    # re-derived here (the classification script itself was never committed
-    # to the repo); treat that split as one reasonable counting, not a
-    # ground truth. Neither the conclusion above (zero net acceptance) nor
-    # the floor assertion below depends on it -- both need only the total
-    # (169) and that `_match_while_true` fires zero times, which hold under
-    # either counting.
+    # Where the 126 came from, measured 2026-08-11 by instrumenting the three
+    # loop recognizers inside real `build_sir` runs over all 1478 unique
+    # protos:
+    #     _match_while       195 matches across 126 unique protos
+    #     _match_while_true    0 matches
+    #     _match_repeat        0 matches
+    # (+1 more from removing the generic-for back-edge exclusion:
+    #  snr_common.lua:main_24_1.) So the corpus's loops are `while <cond>`
+    # and nothing else -- task 1's corrected census (134 protos) stands as
+    # the right order of magnitude; the exact figure this recognizer reaches
+    # is 126, and the difference is protos that contain a `while <cond>` AND
+    # something else still refused.
     #
-    # So the floor is set from measurement (1309 - 10) rather than prediction,
-    # and it is a ratchet against regression, not a claim of growth. Task 3
-    # is where it moves.
-    assert ok >= 1299   # M3 baseline 1309; measured after task 1: 1309
+    # The 43 that remain refuse for reasons this task did not address:
+    #     15  "if targets out of range", ALL of them jt > hi -- an `if` whose
+    #         false-exit was threaded onto an enclosing `if`'s else-skip
+    #         (the same luaK_jump jpc mechanism `_structure_if` already
+    #         handles for loop headers, one level up). NOT one of them is
+    #         `jt == break_target`.
+    #     10  "else-join out of range"
+    #      8  "unrecognized transfer TESTSET"   (M4 task 4)
+    #     10  "branch body block ... is unreachable"
+    #
+    # Floor is measured-minus-10, a ratchet against regression rather than a
+    # claim of growth (same protocol as the previous value).
+    assert ok >= 1425   # measured after task 3: 1435

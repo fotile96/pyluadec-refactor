@@ -64,6 +64,50 @@ class WhileTrue:
 
 
 @dataclass(frozen=True)
+class While:
+    """`while <cond> do <body> end` -- a loop with a real header condition.
+
+    luac's layout (`lparser.c:whilestat`, lines 1000-1017, plus `lcode.c`'s
+    jump patching), with `L` the pc the closing back edge targets:
+
+        L .. C-1:   header instructions   -- the condition's operand code
+        C:          <compare / TEST>      -- the condition test itself
+        C+1:        JMP -> E              -- the false-exit, out of the loop
+        C+2 .. S-1: body
+        S:          JMP -> L              -- the closing back edge
+        E == S+1                          -- the loop's fall-through exit
+
+    Deliberately NOT desugared to `WhileTrue` + a leading `if not c then break
+    end`: that is semantically identical but recompiles to THREE instructions
+    (inverted compare, JMP past the break, JMP to the exit) where the original
+    has two, so it can never certify L3. Measured, M4 task 1.
+
+    `header` is claimed by this node rather than left to a preceding sibling
+    `Straight`: it re-executes on every iteration, so it belongs inside the
+    loop. It must reconstruct to ZERO statements (pure operand staging into
+    the Reconstructor's env) -- a Lua `while` header has nowhere to put a
+    statement. `emit.lua`'s arm enforces that; see its comment for why this is
+    the guard that keeps this node from silently dropping work.
+
+    `negated` follows the same convention as `If.negated`/`Repeat.negated`
+    (`ri.a == 0`) and, like both of those, is informational only: the printer
+    derives polarity from the instruction's own A/C field, the single source
+    of truth. NOTE (carried over from the M4 task 2 review, and true of all
+    three nodes): the *name* is inverted relative to the value -- `A == 0` is
+    the case where the fall-through branch is the PLAIN, un-negated
+    comparison. The name is left alone here rather than renamed across three
+    node types, precisely because no consumer reads it; if one ever does, the
+    rename must happen first.
+    """
+    header: tuple[LirInstr, ...]
+    cond: LirInstr
+    negated: bool
+    body: "Region"
+    closing: LirInstr
+    claimed_pcs: frozenset[int]      # header pcs + {cond pc, exit-JMP pc, closing pc}
+
+
+@dataclass(frozen=True)
 class Repeat:
     """`repeat <body> until <cond>`. Declared here so Tasks 2-4 can rely on
     the name and the printer can dispatch on it; recognition is Task 3, so
@@ -102,8 +146,8 @@ class Fallback:
     claimed_pcs: frozenset[int]
 
 
-Region = (Straight | Seq | If | NumericFor | GenericFor | WhileTrue | Repeat
-          | EndIter | Break | Return | Fallback)
+Region = (Straight | Seq | If | NumericFor | GenericFor | WhileTrue | While
+          | Repeat | EndIter | Break | Return | Fallback)
 
 _CHILDREN = {
     Seq: lambda r: r.body,
@@ -111,6 +155,7 @@ _CHILDREN = {
     NumericFor: lambda r: (r.body,),
     GenericFor: lambda r: (r.body,),
     WhileTrue: lambda r: (r.body,),
+    While: lambda r: (r.body,),
     Repeat: lambda r: (r.body,),
 }
 

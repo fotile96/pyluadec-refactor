@@ -70,7 +70,7 @@ from pyluadec.ingest.proto import Proto
 from pyluadec.lift import LUA_KEYWORDS, Op
 from pyluadec.lift.lift import LirFunction, LirInstr, lift_proto
 from pyluadec.sir import (Break, EndIter, GenericFor, If, NumericFor, Region,
-                          Repeat, Return, Seq, Straight, WhileTrue)
+                          Repeat, Return, Seq, Straight, While, WhileTrue)
 from pyluadec.sir.build import StructureError, build_sir
 from pyluadec.structure.fallback import const_lit
 
@@ -489,6 +489,42 @@ class Printer:
             # Reconstructor.open_scope, and
             # tests/test_emit_while.py::test_body_local_register_reused_after_the_loop.
             snap = self.recon.open_scope()
+            out += self.region(r.body, indent + 1)
+            self.recon.close_scope(snap)
+            out.append(f"{pad}end")
+            return out
+        if isinstance(r, While):
+            # The scope opens BEFORE the header is staged, not after: the
+            # condition's operand code is part of the loop, it re-runs every
+            # iteration, and the temps it stages must not survive the `end`
+            # (the same leak `close_scope` exists to stop for body locals --
+            # see the WhileTrue arm).
+            snap = self.recon.open_scope()
+            stmts = self.recon.stmts_for(r.header)
+            if stmts:
+                # THE guard for this node. `While` claims its header
+                # instructions, so if reconstructing them yields statements
+                # rather than pure operand staging, printing only `while
+                # <cond> do` would DROP those statements silently -- the
+                # pc-claim audit would still pass (the pcs are claimed) and
+                # the output would be wrong. There is nowhere in a Lua
+                # `while` header to put a statement, so this shape is not a
+                # `while` at all: refuse, and the chunk falls back.
+                #
+                # It should be unreachable on luac output: `whilestat` reads
+                # the condition with `fs->freereg == fs->nactvar`, so every
+                # register the condition writes is above every live local and
+                # is classified a temp (staged, never a statement). Kept as a
+                # loud refusal rather than an assert because
+                # `classify_registers` is a whole-function analysis -- a
+                # register that is a temp here can be a local elsewhere in the
+                # same function, and then the header really would emit one.
+                raise StructureError(
+                    f"pc {r.cond.ri.pc}: while-header code reconstructs to "
+                    f"{len(stmts)} statement(s), which a Lua while header "
+                    "cannot carry")
+            cond = self.condition(r.cond)
+            out = [f"{pad}while {cond} do"]
             out += self.region(r.body, indent + 1)
             self.recon.close_scope(snap)
             out.append(f"{pad}end")

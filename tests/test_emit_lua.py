@@ -66,10 +66,17 @@ def test_closure_prints_compilable(tmp_path):
     assert src is not None and _compiles(src)
 
 
-def test_while_returns_none(tmp_path):
+def test_unstructurable_chunk_returns_none(tmp_path):
     from pyluadec.emit.lua import print_chunk
-    # while is not structured in M3 -> print_chunk returns None (caller falls back)
-    assert print_chunk(_proto("local i=0 while i<3 do i=i+1 end return i", tmp_path)) is None
+    # `print_chunk` returns None (caller falls back) for anything build_sir
+    # refuses. M4 task 3 structures `while`, so the sample here is now the
+    # and/or VALUE idiom, which compiles to TESTSET and is still refused.
+    # EXPIRY: M4 task 4 reconstructs TESTSET; when it lands, this needs a
+    # different still-unstructurable sample (or deleting, if none remains).
+    assert print_chunk(_proto("local a, b local x = a or b return x", tmp_path)) is None
+    # ...and the shape it used to use now prints.
+    assert print_chunk(_proto("local i=0 while i<3 do i=i+1 end return i",
+                              tmp_path)) is not None
 
 
 # ---- semantic tests: not just "compiles", but "runs to the right answer" --

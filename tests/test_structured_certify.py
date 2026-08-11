@@ -66,11 +66,21 @@ def test_straight_chunk_certifies_l3(tmp_path):
     assert c.level == "L3" and c.rung is not None
 
 
-def test_while_chunk_is_l1(tmp_path):
+def test_unstructurable_chunk_is_l1(tmp_path):
+    """A chunk `print_chunk` refuses outright is L1 with no rung -- it never
+    reaches the `certify_l3` comparison at all.
+
+    Was `test_while_chunk_is_l1` until M4 task 3 structured `while` (asserted
+    below, so this test also pins that gain). The and/or VALUE idiom compiles
+    to TESTSET and is still refused.
+    EXPIRY: M4 task 4 reconstructs TESTSET."""
     from pyluadec.structure.structured import certify_proto
-    c = certify_proto(_proto("local i = 0 while i < 3 do i = i + 1 end return i", tmp_path),
+    c = certify_proto(_proto("local a, b local x = a or b return x", tmp_path),
                       is_chunk_root=True)
     assert c.level == "L1" and c.rung is None
+    w = certify_proto(_proto("local i = 0 while i < 3 do i = i + 1 end return i",
+                             tmp_path), is_chunk_root=True)
+    assert w.level == "L3"
 
 
 def test_printable_but_shape_mismatched_chunk_is_l1(tmp_path):
@@ -128,14 +138,17 @@ def test_nested_proto_certifies_via_wrapper(tmp_path):
     assert c.level == "L3", c.mismatches
 
 
-def test_straight_child_certifies_even_when_parent_has_while(tmp_path):
-    """The decoupling this design exists for: a while-y main must not poison its children."""
+def test_straight_child_certifies_even_when_parent_is_unstructurable(tmp_path):
+    """The decoupling this design exists for: an unstructurable main must not
+    poison its children. (Was `..._when_parent_has_while`; M4 task 3
+    structures `while`, so the parent's blocker is now TESTSET.
+    EXPIRY: M4 task 4.)"""
     from pyluadec.structure.structured import emit_certified_chunk
     root = _proto(
         "local f = function(a, b) return a + b end\n"
-        "local i = 0 while i < 3 do i = i + f(1, 0) end return i", tmp_path)
+        "local p, q local x = p or q return f(x, 1)", tmp_path)
     out = emit_certified_chunk(root)
-    assert out.certs["main"].level == "L1"          # while -> main falls back
+    assert out.certs["main"].level == "L1"          # TESTSET -> main falls back
     assert out.certs["main_0"].level == "L3"        # straight child certifies independently
     assert b"__pld_pc" in out.source                # artifact is the fallback chunk (root L1)
 

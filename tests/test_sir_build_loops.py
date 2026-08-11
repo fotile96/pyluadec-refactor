@@ -68,17 +68,35 @@ def test_break_in_for(tmp_path):
     assert _find(r, Break)
 
 
-def test_while_still_raises(tmp_path):
-    from pyluadec.sir.build import StructureError, build_sir
+def test_while_is_recognized(tmp_path):
+    """INVERTED IN M4 TASK 3 (was `test_while_still_raises`). `while <cond>`
+    is a real region node now; see tests/test_sir_loops_longtail.py for the
+    shape fixtures and tests/test_emit_while.py for the L3 adjudication."""
+    from pyluadec.sir import While, all_claimed
+    from pyluadec.sir.build import build_sir
     fn = _fn("local i = 0 while i < 3 do i = i + 1 end return i", tmp_path)
-    with pytest.raises(StructureError):
-        build_sir(fn)
+    r = build_sir(fn)
+    assert all_claimed(r) == set(fn.instrs)
+    assert _find(r, While)
 
 
-def test_repeat_still_raises(tmp_path):
-    from pyluadec.sir.build import StructureError, build_sir
+def test_repeat_is_recognized(tmp_path):
+    """INVERTED IN M4 TASK 3 (was `test_repeat_still_raises`)."""
+    from pyluadec.sir import Repeat, all_claimed
+    from pyluadec.sir.build import build_sir
     fn = _fn("local i = 0 repeat i = i + 1 until i >= 3 return i", tmp_path)
-    with pytest.raises(StructureError):
+    r = build_sir(fn)
+    assert all_claimed(r) == set(fn.instrs)
+    assert _find(r, Repeat)
+
+
+def test_testset_still_raises(tmp_path):
+    """The remaining acyclic refusal family, kept as the "build_sir really
+    does still refuse things" anchor the two tests above used to be.
+    EXPIRY: M4 task 4 reconstructs TESTSET."""
+    from pyluadec.sir.build import StructureError, build_sir
+    fn = _fn("local a, b local x = a or b return x", tmp_path)
+    with pytest.raises(StructureError, match="TESTSET"):
         build_sir(fn)
 
 
