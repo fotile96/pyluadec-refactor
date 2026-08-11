@@ -43,6 +43,66 @@ def decompiled(corpus_dir):
     return get
 
 
+@pytest.fixture(scope="session")
+def lifted_corpus(corpus_dir):
+    """Session-scoped, eagerly-built list of every proto in the corpus,
+    already ingested and lifted (round-1 fold-in of the M4 task-9 review's
+    suite-budget recovery, 2026-08-12).
+
+    Lifted to session scope from the pattern several corpus tests already
+    used ad hoc, module-locally: `test_effects_emitter_consistency.py`'s
+    `corpus_scan`, `test_effects_tailcall.py`'s `corpus_tailcall_census`, and
+    two separate walks inside `test_express_names.py`
+    (`test_corpus_no_open_region_in_pre_fix_temp_window`,
+    `test_corpus_every_temp_write_has_exactly_one_consumer`) each paid their
+    own full ingest+lift pass over the same 229 files. Measured this round:
+    a full ingest+lift of all 1944 proto occurrences costs ~0.69s (ingest
+    alone ~0.04s); building it once here rather than once per consumer
+    module is the same "a slow suite blocks development" trade already made
+    for `decompiled` above.
+
+    Returns a list of `(fname, path, proto, fn)` tuples, one per proto
+    occurrence (1944 total): `fname` is the corpus file's basename, `path`
+    is the tuple of subproto indices from that file's root proto (`()` for
+    the root itself, matching the walk order `proto.subprotos[i]`), `proto`
+    is the `Proto`, and `fn` is `lift_proto(proto)`. Depth-first order,
+    root before its subprotos.
+
+    NOT every corpus-walking test can use this. `test_effects_reconstructor_
+    consistency.py`'s `corpus_scan` drives `emit.lua.print_chunk(proto)`
+    under instrumentation and needs to observe a *fresh* `lift_proto` call
+    happening live inside that call (there is no seam to hand it a
+    pre-lifted `LirFunction` instead without a `src/` change, which is out
+    of scope this round) -- sharing would save only the ~0.04s ingest step,
+    not the dominant cost, so it is left alone (same reasoning as this
+    module's `decompiled` fixture being unusable for that gate, recorded in
+    task-9-report.md). `test_effects_tailcall.py`'s census also stays
+    unconverted: it only ever needs `decode()`, not a full `lift_proto`, to
+    find the 3 `TAILCALL` sites, so reusing this fixture would mean lifting
+    all 1944 protos to answer a question a cheaper decode-only pass already
+    answers in 0.23-0.25s, and its `path` is a dotted string from
+    `walk_proto_paths` (`"main_29_0"`), not this fixture's index-tuple
+    shape. `test_global_state_probe.py` does not lift the corpus directly at
+    all (it goes through the `decompiled` fixture above, whose cost is the
+    oracle compile/probe, not the lift), so there is nothing in it to
+    convert.
+    """
+    from pyluadec.ingest import load_file
+    from pyluadec.lift import lift_proto
+
+    out = []
+
+    def walk(proto, fname, path):
+        fn = lift_proto(proto)
+        out.append((fname, path, proto, fn))
+        for i, sp in enumerate(proto.subprotos):
+            walk(sp, fname, path + (i,))
+
+    for f in sorted(corpus_dir.glob("*.lua")):
+        walk(load_file(f), f.name, ())
+    return out
+
+
 def _corpus_dir_missing() -> bool:
     p = os.environ.get("PYLUADEC_CORPUS_DIR")
     return not p or not Path(p).is_dir()

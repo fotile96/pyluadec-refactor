@@ -199,9 +199,12 @@ def corpus_tailcall_census(corpus_dir):
     and what surrounds each one) and each used to re-walk all 229 files for
     itself — the second one also lifting every one of the 1944 protos just to
     find the 2 that matter. Measured (M4 task 9): 0.95s for the pair before,
-    0.26s after, on an otherwise unchanged pair of assertions. Same pattern as
-    `test_effects_emitter_consistency.py::corpus_scan`; the standing directive
-    is that a slow suite blocks development.
+    0.25s after (round-1 re-measurement, 2026-08-12, median of 3:
+    0.24s/0.25s/0.25s; the task-9 report's "0.26s" and this docstring's
+    prior wording did not reproduce), on an otherwise unchanged pair of
+    assertions. Same pattern as `test_effects_emitter_consistency.py::
+    corpus_scan`; the standing directive is that a slow suite blocks
+    development.
     """
     from pyluadec.ingest import load_file
     from pyluadec.pipeline import walk_proto_paths

@@ -29,8 +29,14 @@ in the printer, zero `effects` consumption as an operand source":
   (`:610`'s `ri.b == 1` is `RETURN`'s B field, not a register). One further
   register decode does not go through an `ri` at all and so is invisible to
   that count: `:287` reads `ps.b` off a `CLOSURE` pseudo-instruction. So
-  **4** register decodes in the printer, all four covered by Arm 2 below.
-  `effects` still appears **0** times.
+  **4** register decodes in the printer -- but only **2** of them
+  (`NumericFor`'s `A+3`, `GenericFor`'s `A+3+i`) are covered by Arm 2's
+  *second* disjunct. The `CLOSURE` capture decode is **not**, and cannot be
+  by construction; see "What it does NOT assert" below (round-1 correction,
+  2026-08-12 -- the original count claimed "all four", which a fresh
+  measurement of `named-via-frame by frame kind` contradicted: 0 of 907
+  `CLOSURE`-frame `name_for` calls pass via the frame disjunct). `effects`
+  still appears **0** times.
 
 ## What this gate asserts
 
@@ -58,13 +64,22 @@ is the *only* way a register becomes text in `emit/lua.py` (7 call sites, all
 checked below). Every call is recorded. A printed register passes if EITHER
 it was already reconciled against its own pc by Arm 1 during this function,
 OR it is in the effects union of the pcs the region being printed claims.
-The second disjunct is what covers the printer's own three register decodes
-(`NumericFor`'s `A+3` loop variable, `GenericFor`'s `A+3+i` variables, a
-`CLOSURE`'s captured `ps.b`), which no reconstructor accessor ever sees; the
-first is what lets an inlined expression carry a register from an *earlier*
-pc into a later region's text without that being a violation. Composed with
-Arm 1, every register in the emitted source is in the effects union of the
+The second disjunct is what covers **two** of the printer's own register
+decodes (`NumericFor`'s `A+3` loop variable, `GenericFor`'s `A+3+i`
+variables), which no reconstructor accessor ever sees; the first is what
+lets an inlined expression carry a register from an *earlier* pc into a
+later region's text without that being a violation. Composed with Arm 1,
+every register in the emitted source is in the effects union of the
 function's own instructions.
+
+The printer's *third* register decode -- a `CLOSURE`'s captured `ps.b` -- is
+covered by neither disjunct in the sense of "this row backs this touch": it
+is measured (round-1, 2026-08-12) to pass **exclusively** via the first
+disjunct (Arm 1 already reconciled the same register earlier in the
+function), 907/907 times on the corpus, 0 via the frame. See "What it does
+NOT assert" for why this decode cannot be reconciled by an effects-subset
+gate at all, and is stated there as an exclusion rather than claimed as
+coverage.
 
 Neither arm re-transcribes `lvm.c`. There is no fourth copy of the operand
 model in this file: the reconstructor's real accessors are the only source of
@@ -109,6 +124,55 @@ imports the thing it is checking.
   recognition and never dispatched), so neither can be reached here. `JMP`
   does appear inside the claimed-pc sets of `If`/`While` frames and so shows
   up in the reach measurement; `CLOSE` cannot and is pinned as absent.
+- **A `CLOSURE`'s captured `ps.b` (round-1 correction, 2026-08-12).** This
+  gate's first draft claimed all four of the printer's register decodes were
+  "covered by Arm 2". Measured: of 907 `name_for(ps.b, depth)` calls made
+  under a `CLOSURE` frame, **907 pass via Arm 2's first disjunct (Arm 1
+  already reconciled the register) and 0 via the frame's covered set** --
+  `printed_via_frame_by_kind` never contains a `"CLOSURE"` key (pinned by
+  `test_closures_captured_upvalue_is_covered_by_arm_one_only` below). Three
+  targeted injections confirm this is not an accident of the corpus sample,
+  it is structural: dropping `CLOSURE`'s entire `reads` in `analyze` is
+  neutralised by `lift.py`'s re-adding of `moved` after `analyze`; disabling
+  that widening directly still routes every touch through Arm 1
+  (`in_covered=0, in_fnregs=907`); and reordering Arm 2 to check `covered`
+  first changes nothing. **A strict `CLOSURE`-only check would in fact be
+  tautological, not just untested**: `lift.py` defines the row's extra reads
+  as exactly `{ps.b for ps in closure_pseudo if MOVE}` -- the identical tuple
+  `emit/lua.py` reads to print the name. A gate comparing a decode against a
+  row *defined* to equal that decode cannot fail, so it would prove nothing
+  even if it were added. This decode is therefore stated here as an
+  **exclusion** the accessor/frame model cannot reach, not claimed as
+  Arm-2-covered.
+- **`FORPREP` (round-1 correction, 2026-08-12).** `_CORPUS_REACHED` includes
+  `Op.FORPREP`, and `Op.FORPREP` is genuinely a member of `corpus_scan`'s
+  `rec.ops` -- but not because any accessor or `name_for` call was ever
+  compared against `FORPREP`'s own effects row. `FORPREP`'s registers (the
+  hidden loop-control triple `R[A]`/`R[A+1]`/`R[A+2]`: index, limit, step)
+  are pure VM-internal bookkeeping the structured path never reads or
+  writes -- the value printed as the loop's start/limit/step comes from the
+  `Straight` region *before* `FORPREP`, already staged into other registers;
+  the value printed as the loop variable is `FORLOOP`'s own `A+3` write, not
+  anything `FORPREP` touches. `rec.ops` gains `FORPREP` purely because
+  `pcs_frame` unions `fr.ops` over an *entire* `NumericFor` region's claimed
+  pcs (header + body), so a genuine touch anywhere else in the loop --
+  reading the loop variable in the body, say -- marks `FORPREP` "reached"
+  by co-location, not by evidence. Measured directly: emptying `FORPREP`'s
+  `reads` and `writes` in `analyze` over the whole corpus arm gives **0**
+  violations (`test_forpreps_row_backs_no_checked_touch` below neuters it on
+  a small compiled fixture instead, for speed, and pins the same zero). So
+  the set of opcodes this gate's reach measurement backs with an
+  independent, own-row touch is `{CLOSE, FORPREP}` short of the full 38, not
+  `{CLOSE}` alone as the reach-pin comments below previously implied; see
+  those comments for the corrected wording. `JMP`, `FORLOOP`, `TFORLOOP` and
+  `VARARG` are also reached only through a multi-pc (union) frame at least
+  some of the time, but unlike `FORPREP` each of those genuinely is touched
+  by an accessor/`name_for` call whose register is backed by *that opcode's
+  own* row -- `FORLOOP`'s and `TFORLOOP`'s own-row fault injections still
+  report violations after being neutered (measured round-1: 19 and 8
+  respectively), and `VARARG` is independently covered by the synthetic
+  grid. `FORPREP` is the one opcode in the reach set with no touch anywhere
+  that depends on its own row.
 """
 from __future__ import annotations
 
@@ -171,6 +235,25 @@ class _Recorder:
         self.functions = 0
         self.ops: set[Op] = set()
         self._fn_regs: list[set[int]] = []
+        # Round-1 fold-in (F3/Important-1 support): per-frame-kind breakdown
+        # of how a printed name passed. Populated only by `named()`'s
+        # accepting paths, so it is exact evidence for which frame kinds
+        # Arm 2's two disjuncts actually carry -- see
+        # `test_the_printer_arm_is_not_carried_entirely_by_arm_one` and
+        # `test_closures_captured_upvalue_is_covered_by_arm_one_only`.
+        self.printed_via_arm1_by_kind: dict[str, int] = {}
+        self.printed_via_frame_by_kind: dict[str, int] = {}
+        # F6 (round-1 fold-in): count of claimed pcs `pcs_frame` found no
+        # `LirInstr` for, instead of just asserting it away in a comment.
+        self.frame_pcs_skipped = 0
+        # F4 (round-1 fold-in): grid-driver refusals, counted by
+        # (exception type name, raising function) rather than blanket-caught
+        # by class alone. See `_drive_grid`/`_refusal_origin`.
+        self.refusals: dict[tuple[str, str], int] = {}
+
+    def record_refusal(self, exc: BaseException) -> None:
+        key = (type(exc).__name__, _refusal_origin(exc))
+        self.refusals[key] = self.refusals.get(key, 0) + 1
 
     # -- frames ---------------------------------------------------------
     def _top(self):
@@ -183,8 +266,21 @@ class _Recorder:
         floor = None
         for pc in pcs:
             li = fn.instrs.get(pc)
-            if li is None:                 # a claimed pc with no instruction
-                continue                   # (CLOSURE pseudo-words): nothing to say
+            if li is None:
+                # F6 (round-1 fold-in, 2026-08-12): a claimed pc with no
+                # `LirInstr`. Counted rather than asserted-and-forgotten --
+                # measured over the whole corpus arm this round, this branch
+                # is hit 0 times out of 374725 claimed-pc slots (`claimed_pcs`
+                # is documented in `sir/regions.py` as a disjoint partition
+                # of the function's *real* pcs, so every one already has a
+                # `LirInstr`; CLOSURE pseudo-words live in
+                # `fn.closure_pseudo`, keyed separately, and were never
+                # actually the source of a `None` here). Kept as a defensive
+                # branch for a case not currently observed, not removed,
+                # since nothing proves it can never occur for pcs this
+                # instrumentation hasn't seen yet.
+                self.frame_pcs_skipped += 1
+                continue
             fx = li.effects
             ops.add(li.ri.op)
             covered |= fx.reads
@@ -226,12 +322,22 @@ class _Recorder:
             return
         self.acc_touches += 1
         self.ops |= fr.ops
-        if self._fn_regs:
-            self._fn_regs[-1].add(reg)
+        # F3 (round-1 fold-in): `_fn_regs` is updated only on the accepting
+        # paths below, not unconditionally before the subset test. Updating
+        # it first meant a register that had *just* violated Arm 1 was
+        # already recorded as "reconciled" for Arm 2's first disjunct --
+        # harmless while Arm 1 itself still reports the violation, but it
+        # meant Arm 2 could never independently corroborate an Arm 1
+        # failure. Moving the update onto acceptance restores that
+        # independence.
         if reg in fr.covered:
+            if self._fn_regs:
+                self._fn_regs[-1].add(reg)
             return
         if fr.open_floor is not None and reg >= fr.open_floor:
             self.open_excused += 1
+            if self._fn_regs:
+                self._fn_regs[-1].add(reg)
             return
         self.violations.append(
             f"{kind} of R{reg} at pc(s) {sorted(fr.pcs)} [{fr.kind}] "
@@ -264,10 +370,14 @@ class _Recorder:
         self.ops |= fr.ops
         if self._fn_regs and reg in self._fn_regs[-1]:
             self.printed_via_arm1 += 1
+            self.printed_via_arm1_by_kind[fr.kind] = (
+                self.printed_via_arm1_by_kind.get(fr.kind, 0) + 1)
             return
         if reg in fr.covered or (fr.open_floor is not None
                                  and reg >= fr.open_floor):
             self.printed_via_frame += 1
+            self.printed_via_frame_by_kind[fr.kind] = (
+                self.printed_via_frame_by_kind.get(fr.kind, 0) + 1)
             return
         self.violations.append(
             f"printed name R{reg} at pc(s) {sorted(fr.pcs)} [{fr.kind}]: "
@@ -432,9 +542,24 @@ _UNWRAPPED_BY_DESIGN = frozenset({"_refuse_stale_reference"})
 # `_consume_open(start)` is not in either set: its parameter is a range start
 # rather than a register, and every slot it reads goes through `_read_reg`.
 
-# Opcodes whose effects row backs at least one checked touch on the corpus
-# arm (measured M4 task 9: 32 of 38). Asserted as a lower bound, like the
-# sibling gate's version: a bigger corpus is fine, a shrinking reach is not.
+# Opcodes appearing in `rec.ops` on the corpus arm (measured M4 task 9: 32 of
+# 38). Asserted as a lower bound, like the sibling gate's version: a bigger
+# corpus is fine, a shrinking reach is not.
+#
+# CAUTION (round-1 correction, 2026-08-12): "appears in `rec.ops`" is
+# WEAKER than "backs at least one checked touch of its own", which the
+# comment used to claim outright. `pcs_frame` unions `fr.ops` over every pc
+# a *frame* claims -- for a single-pc `_dispatch`/`condition_expr` frame
+# those coincide, but a `region()` frame (e.g. `NumericFor`) claims a whole
+# region's pcs at once, so a real touch anywhere in that region marks every
+# opcode in it "reached", including one whose own registers no accessor or
+# `name_for` call ever compares against. Measured: `FORPREP` is exactly this
+# case -- reached here, but its own row backs zero touches (see "What it
+# does NOT assert" in the module docstring, and
+# `test_forpreps_row_backs_no_checked_touch` below). `JMP`, `FORLOOP`,
+# `TFORLOOP` and `VARARG` also ride the union some of the time but, unlike
+# `FORPREP`, are each independently load-bearing too (own-row fault
+# injections still report violations / the synthetic grid covers them).
 #
 # `LOADNIL` is absent, and that is a corpus fact rather than a gap in the
 # structured path: the whole 229-file corpus contains exactly ONE `LOADNIL`
@@ -523,6 +648,22 @@ def test_the_corpus_arm_actually_walked_the_corpus(corpus_scan):
     assert rec.printed > 8_000, rec.printed
 
 
+def test_no_claimed_pc_is_missing_a_lir_instr_on_this_corpus(corpus_scan):
+    """F6 (round-1 fold-in, 2026-08-12): measure `pcs_frame`'s skip branch
+    instead of asserting its cause away in a comment.
+
+    `pcs_frame` silently `continue`s past a claimed pc with no `LirInstr`.
+    The inline reasoning (CLOSURE pseudo-words) is plausible but was never
+    measured. Measured this round: **0** of 374725 claimed-pc slots hit it
+    across the whole corpus arm. Pinned at exactly 0 rather than loosened to
+    "some small number", because a nonzero count here would mean a claimed
+    pc silently lost its coverage contribution -- exactly the kind of thing
+    that should fail loudly, not asserted comfortably away a second time.
+    """
+    assert corpus_scan["rec"].frame_pcs_skipped == 0, (
+        corpus_scan["rec"].frame_pcs_skipped)
+
+
 def test_the_corpus_arm_reaches_the_opcodes_it_claims_to(corpus_scan):
     """Reach pin. `acc_touches > 300_000` alone would stay green if a whole
     opcode family stopped being reached -- `LOADK` and `MOVE` dominate the
@@ -537,16 +678,48 @@ def test_the_printer_arm_is_not_carried_entirely_by_arm_one(corpus_scan):
     """Arm 2's *second* disjunct must be load-bearing.
 
     If every printed register were already reconciled by Arm 1, the
-    `reg in fr.covered` branch would be dead and the printer's own three
-    register decodes (`NumericFor` `A+3`, `GenericFor` `A+3+i`, a `CLOSURE`'s
-    captured `ps.b`) would be unchecked by anything. Measured: 21 of the 12118
-    printed names on this corpus reach text without any reconstructor accessor
-    having touched them first.
+    `reg in fr.covered` branch would be dead and the printer's own
+    `NumericFor` `A+3` / `GenericFor` `A+3+i` decodes would be unchecked by
+    anything. Measured: 21 of the 12118 printed names on this corpus reach
+    text without any reconstructor accessor having touched them first --
+    `by_kind` breaks down as `{NumericFor: 19, GenericFor: 2}` exactly
+    (round-1 measurement, 2026-08-12), pinned below.
+
+    NOT included here: a `CLOSURE`'s captured `ps.b` (the printer's third
+    register decode). A round-1 measurement found it passes via the *first*
+    disjunct 907/907 times, never the second -- see
+    `test_closures_captured_upvalue_is_covered_by_arm_one_only` and the
+    module docstring's "What it does NOT assert" for why that decode cannot
+    be covered by the second disjunct at all (it would be a tautological
+    check against a row `lift.py` defines to equal it).
     """
     rec = corpus_scan["rec"]
     assert rec.printed_via_frame > 0, rec.printed_via_frame
     assert rec.printed_via_arm1 > 0, rec.printed_via_arm1
     assert rec.printed_via_arm1 + rec.printed_via_frame == rec.printed
+    assert rec.printed_via_frame_by_kind == {"NumericFor": 19, "GenericFor": 2}, (
+        rec.printed_via_frame_by_kind)
+
+
+def test_closures_captured_upvalue_is_covered_by_arm_one_only(corpus_scan):
+    """Important-1 fold-in (round-1, 2026-08-12): pin the CLOSURE measurement.
+
+    The module docstring's earlier claim -- "all four [printer register
+    decodes] covered by Arm 2" -- did not reproduce for the `CLOSURE`
+    capture decode (`emit/lua.py:287`'s `name_for(ps.b, self.depth)`).
+    Measured: of the 907 corpus calls to `name_for` under a `CLOSURE` frame,
+    all 907 pass via Arm 1 (the register was already reconciled against its
+    own definition site earlier in the enclosing function) and 0 via the
+    frame's covered set. Pinned here rather than left as prose so a future
+    change that routes some of these through the frame disjunct instead (or
+    stops reconciling them via Arm 1 at all) is caught, not re-asserted by
+    hand next time someone reads the docstring.
+    """
+    rec = corpus_scan["rec"]
+    assert rec.printed_via_arm1_by_kind.get("CLOSURE", 0) == 907, (
+        rec.printed_via_arm1_by_kind.get("CLOSURE"))
+    assert "CLOSURE" not in rec.printed_via_frame_by_kind, (
+        rec.printed_via_frame_by_kind)
 
 
 def test_parameter_names_are_the_only_cross_depth_names(corpus_scan):
@@ -587,6 +760,21 @@ def test_the_gate_stays_inside_its_time_budget(corpus_scan):
 
 
 # --------------------------------------------------------------- synthetic arm
+class _ConstPoolUnderflow(Exception):
+    """`_ConstPool.__getitem__` was asked for a negative constant index.
+
+    F4 (round-1 fold-in, 2026-08-12): this used to be a bare `IndexError`,
+    and `_EXPECTED_REFUSALS` below caught `IndexError` wholesale to swallow
+    it. That also silently swallows a genuine off-by-one anywhere else in
+    the reconstructor that happened to raise `IndexError` (a real bug),
+    since Python's `except IndexError` cannot distinguish "the grid probed
+    an operand shape luac never emits" from "the reconstructor indexed a
+    tuple wrong". A dedicated exception, not an `IndexError` subclass,
+    closes that gap: only *this* refusal is expected, and any other
+    `IndexError` now propagates and fails the test loudly.
+    """
+
+
 class _ConstPool:
     """An unbounded constant pool for the synthetic grid.
 
@@ -598,7 +786,7 @@ class _ConstPool:
 
     def __getitem__(self, i):
         if i < 0:
-            raise IndexError(i)
+            raise _ConstPoolUnderflow(i)
         return b"k" if i % 2 == 0 else 1.0
 
 
@@ -622,7 +810,36 @@ def _synthetic_fn(ri, fx=None) -> LirFunction:
 # make the reconstructor refuse. That is fine and is not swallowed evidence:
 # every touch is checked at the moment it happens, so a refusal only ends a
 # row early, it never hides a violation the row already committed.
-_EXPECTED_REFUSALS = (ReconstructError, IndexError)
+#
+# F4 (round-1 fold-in, 2026-08-12): a first attempt narrowed this to
+# `(ReconstructError, _ConstPoolUnderflow)` on the theory that the only
+# expected `IndexError` came from the const pool. Measured wrong within a
+# single test run: `reconstruct.py::_fold_concat` raises a bare `IndexError`
+# of its own (`parts[-1]` on an empty tuple) for exactly the CONCAT-B>C
+# shape this comment already named, and the narrowed tuple turned that
+# long-anticipated refusal into a hard test failure. So `IndexError` stays
+# in the tuple -- but every refusal caught here is now counted by
+# `(exception type, raising function)` into `rec.refusals` and pinned by
+# `test_the_grids_refusals_are_the_known_shapes_only`, which is the "count
+# refusals by type" alternative the brief offered. A genuinely new
+# `IndexError`/`ReconstructError` origin (a real off-by-one somewhere this
+# gate has not seen before) adds a new key to that dict rather than being
+# silently swallowed the way the old bare `except IndexError` would have.
+_EXPECTED_REFUSALS = (ReconstructError, IndexError, _ConstPoolUnderflow)
+
+
+def _refusal_origin(exc: BaseException) -> str:
+    """Name of the function whose frame actually raised `exc`.
+
+    Walks to the innermost (deepest) traceback frame rather than using
+    `exc.__traceback__.tb_frame`, which would only name the `try` block's own
+    function (always `_drive_grid` here) and so could never distinguish one
+    refusal site from another.
+    """
+    tb = exc.__traceback__
+    while tb is not None and tb.tb_next is not None:
+        tb = tb.tb_next
+    return tb.tb_frame.f_code.co_name if tb is not None else "<unknown>"
 
 
 def _drive_grid(rec: _Recorder) -> int:
@@ -635,20 +852,20 @@ def _drive_grid(rec: _Recorder) -> int:
             rows += 1
             try:
                 r.stmts_for((li,))
-            except _EXPECTED_REFUSALS:
-                pass
+            except _EXPECTED_REFUSALS as exc:
+                rec.record_refusal(exc)
             try:
                 r.condition_expr(li)
-            except _EXPECTED_REFUSALS:
-                pass
+            except _EXPECTED_REFUSALS as exc:
+                rec.record_refusal(exc)
             if ri.op is Op.TESTSET:
                 alt = VAlt(staging=(), gate=None, gate_jmp_pc=None,
                            inner_staging=(), test=li, test_jmp_pc=ri.pc + 1,
                            rest=VTail(()))
                 try:
                     r._tested_value(alt, (), ri.a)
-                except _EXPECTED_REFUSALS:
-                    pass
+                except _EXPECTED_REFUSALS as exc:
+                    rec.record_refusal(exc)
     return rows
 
 
@@ -672,6 +889,45 @@ def test_effects_cover_the_reconstructor_over_a_synthetic_operand_grid(grid_scan
     rec = grid_scan["rec"]
     assert not rec.violations, (
         f"{len(rec.violations)} disagreements:\n" + "\n".join(rec.violations[:20]))
+
+
+def test_the_grids_refusals_are_the_known_shapes_only(grid_scan):
+    """F4 (round-1 fold-in, 2026-08-12): pin the refusal shapes, don't just
+    swallow every `IndexError`/`ReconstructError` by class.
+
+    Measured this round, keyed by `(exception type, raising function)`:
+    `{('ReconstructError', 'condition_expr'): 6664,
+    ('ReconstructError', '_dispatch_simple'): 2128,
+    ('IndexError', '_fold_concat'): 84,
+    ('ReconstructError', '_consume_open'): 88,
+    ('IndexError', '_setlist_batch_offset'): 28,
+    ('ReconstructError', '_setlist_batch_offset'): 140}` -- 9132 refusals
+    total, all `ReconstructError` or a *named* `IndexError` origin already
+    accounted for by the "operand shapes the grid produces but luac never
+    would" comment above `_EXPECTED_REFUSALS`. `_ConstPoolUnderflow` never
+    actually fires on the current grid (measured: 0), so it is not in this
+    set, but it stays in `_EXPECTED_REFUSALS` as a real, still-possible
+    shape rather than removed for being unexercised today.
+
+    The assertion is on the *key set*, not just a total count: a future grid
+    row (or reconstructor change) that raises `IndexError` from a function
+    not already named here is a new, unvetted refusal shape and must fail
+    this test rather than being silently absorbed into a bigger number --
+    which is exactly the gap the narrower `_ConstPoolUnderflow`-only
+    attempt was trying to close, minus the false positive it produced on
+    `_fold_concat`'s already-anticipated CONCAT-B>C refusal.
+    """
+    rec = grid_scan["rec"]
+    known = {
+        ("ReconstructError", "condition_expr"),
+        ("ReconstructError", "_dispatch_simple"),
+        ("IndexError", "_fold_concat"),
+        ("ReconstructError", "_consume_open"),
+        ("IndexError", "_setlist_batch_offset"),
+        ("ReconstructError", "_setlist_batch_offset"),
+    }
+    assert set(rec.refusals) <= known, set(rec.refusals) - known
+    assert sum(rec.refusals.values()) > 5_000, rec.refusals
     assert grid_scan["rows"] > 5_000, grid_scan["rows"]
 
 
@@ -732,8 +988,19 @@ def test_the_subset_check_is_not_vacuous_for_any_reached_opcode(grid_scan):
 
     `rec.ops` is only updated from inside `accessor()`/`named()`, after the
     touch counter, so an opcode appearing there cannot have been reached
-    without a register having been compared against its row. This is the
-    cheap guard against the failure mode this project has shipped before
+    without a register having been compared against its row -- ON THE GRID.
+    This is true here specifically because `_drive_grid` builds only
+    single-instruction `LirFunction`s, so every `pcs_frame` it opens claims
+    exactly one pc: `fr.ops` is always `{that op}`, never a union. It is
+    NOT a general property of `_Recorder` -- `pcs_frame` is also opened by
+    `Printer.region()` with a whole region's `claimed_pcs` at once, and on
+    the corpus arm that lets an opcode ride into `rec.ops` on someone else's
+    touch (round-1 finding, 2026-08-12: `FORPREP`'s row backs zero touches
+    of its own there; see the module docstring and `_CORPUS_REACHED`'s
+    comment). This test's claim does not generalize past the grid.
+
+    Subject to that scoping, this is still the cheap guard against the
+    failure mode this project has shipped before
     (`docs/runbooks/m3-backlog.md`, "Tests that could not fail at the end of
     M2"): a branch that stops touching registers passes a subset check
     forever, because the empty set is a subset of everything.
@@ -822,6 +1089,58 @@ def test_a_dropped_effects_row_entry_is_caught_on_the_printer_arm(
         "dropping FORLOOP's loop-variable write went undetected; the printer "
         "arm is not load-bearing")
     assert any("printed name" in v for v in rec.violations), rec.violations
+
+
+def test_forpreps_row_backs_no_checked_touch(compile_lua, monkeypatch):
+    """Important-2 fold-in (round-1, 2026-08-12): the inverse of the fault
+    injections above -- proving a *lack* of coverage rather than catching a
+    fault.
+
+    `FORPREP` sits in `_CORPUS_REACHED` and genuinely appears in
+    `corpus_scan["rec"].ops`, but (module docstring, "What it does NOT
+    assert") no accessor or `name_for` call is ever compared against its own
+    row: `FORPREP`'s registers are the hidden loop-control triple
+    (index/limit/step) that the structured path never reads or writes, and
+    it rides into `rec.ops` only via `pcs_frame`'s union over the whole
+    `NumericFor` region. Proof: empty `FORPREP`'s `reads` AND `writes`
+    entirely and the printed source is unaffected -- **zero** violations,
+    unlike every genuine fault injection in this file, which all report at
+    least one. Run on the same small compiled fixture as the sibling
+    `FORLOOP` injection above rather than the whole corpus, since this is a
+    negative result and the corpus arm's own version of this measurement
+    (`corpus_scan` neutered the same way) already lives in the round-1
+    report rather than the suite, to keep this test cheap.
+
+    If this test ever starts failing (violations appear), that is GOOD NEWS
+    that must not be silenced: it means the structured path started reading
+    or writing one of `FORPREP`'s registers, and this test's docstring (and
+    the module docstring's `FORPREP` bullet) need updating to say so, not
+    that the injection needs a different opcode.
+    """
+    from pyluadec.ingest import load_file
+    from pyluadec.lift import lift as lift_mod
+
+    path = compile_lua("luac_sz4", "for i = 1, 3 do print(i) end\n")
+
+    real_analyze = lift_mod.analyze
+
+    def neutered(ri, mode):
+        fx = real_analyze(ri, mode)
+        if ri.op is Op.FORPREP:
+            fx = dataclasses.replace(fx, reads=frozenset(), writes=frozenset())
+        return fx
+
+    rec = _Recorder()
+    monkeypatch.setattr(lift_mod, "analyze", neutered)
+    with instrumented(rec):
+        printed = _lua_mod.print_chunk(load_file(path))
+    assert printed is not None, "neutered FORPREP row refused before printing"
+    assert not rec.violations, (
+        "emptying FORPREP's row was detected -- FORPREP is no longer an "
+        f"unchecked opcode, update the docstrings: {rec.violations}")
+    assert Op.FORPREP in rec.ops, (
+        "FORPREP no longer appears in rec.ops at all -- this test's premise "
+        "(reached via union, not via its own touch) no longer holds")
 
 
 def test_the_recorder_reports_an_unattributable_touch():

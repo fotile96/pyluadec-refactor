@@ -726,12 +726,59 @@ docstring carries the full account; the essentials:
 - **Reach: 37/38 opcodes** across the two arms — corpus 32, synthetic grid 33
   (imported from the sibling gate, not copied). Only `CLOSE` is unreachable,
   and it cannot be reached: the structured reconstructor refuses it, so a
-  proto containing one never produces structured output.
+  proto containing one never produces structured output. **Correction
+  (round-1 review, 2026-08-12):** "reachable" here means "appears in
+  `rec.ops`", which is weaker than "backed by a checked touch of its own
+  row" for a handful of opcodes reached only through a multi-pc region
+  frame. `FORPREP` is the sharpest case: it genuinely appears in
+  `rec.ops`, but measured this round, emptying its `reads`/`writes`
+  entirely produces **0** violations — no accessor or `name_for` call is
+  ever compared against its own row, only against the row of whichever
+  other pc in the same `NumericFor` region actually got touched. So the
+  set of opcodes independently verified by their own row is `{CLOSE,
+  FORPREP}` short of 38, not `{CLOSE}` alone. `JMP`/`FORLOOP`/`TFORLOOP`/
+  `VARARG` are also reached via a multi-pc frame at least some of the
+  time but, unlike `FORPREP`, are each independently load-bearing too
+  (own-row fault injections still report violations: 19 for `FORLOOP`, 8
+  for `TFORLOOP`, measured round-1). See
+  `tests/test_effects_reconstructor_consistency.py`'s module docstring
+  ("What it does NOT assert") and `test_forpreps_row_backs_no_checked_touch`
+  for the full account.
+- **A fourth register decode's coverage claim was also wrong.** The printer
+  decodes 4 registers of its own (`NumericFor`'s `A+3`, `GenericFor`'s
+  `A+3+i`, and a `CLOSURE`'s captured `ps.b`, i.e. 3 named spots but 4
+  decodes counting `GenericFor`'s pair) — this doc and the gate's own
+  docstring originally claimed "all four covered by Arm 2". Measured
+  (round-1, 2026-08-12): of 907 corpus calls to `name_for(ps.b, depth)`
+  under a `CLOSURE` frame, **907 pass via Arm 2's first disjunct and 0 via
+  the frame's covered set** — only `NumericFor`'s `A+3` and `GenericFor`'s
+  `A+3+i` are actually covered by the second disjunct. Worse, a strict
+  `CLOSURE`-only check would be tautological: `lift.py` defines the row's
+  extra reads as exactly `{ps.b for ps in closure_pseudo if MOVE}`, the
+  same tuple `emit/lua.py` reads, so no effects-subset gate could ever
+  fail on it even if miswired. Restated as an exclusion, not a coverage
+  claim, in the gate's own docstring.
 - **Cost: 2.0s** for the instrumented whole-corpus pass (229 files, 213
   chunks printed, 1821 proto bodies entered, 423336 accessor touches, 12118
   printed names), 0.23s for the grid. Paid for by folding
   `test_effects_tailcall.py`'s two independent corpus walks into one shared
-  module-scoped census: 0.95s -> 0.26s, assertions unchanged.
+  module-scoped census: 0.95s -> **0.25s** (re-measured round-1,
+  2026-08-12, median of 3; this entry and the task-9 report previously said
+  0.26s, which did not reproduce), assertions unchanged.
+- **Round-1 fix round (2026-08-12).** Beyond the two corrections above: `F3`
+  moved `_Recorder.accessor`'s `_fn_regs` bookkeeping onto its accepting
+  paths only, so Arm 2 can independently corroborate an Arm 1 failure
+  instead of always seeing the register as already-reconciled; `F4`
+  replaced a bare `IndexError` catch with counted-and-pinned refusal shapes
+  after narrowing it outright turned out to break an already-anticipated
+  refusal (`_fold_concat` on a CONCAT-B>C grid row); `F6` measured
+  `pcs_frame`'s "no LirInstr for this claimed pc" branch at **0/374725**
+  hits on the corpus rather than leaving it asserted-and-unmeasured. No
+  `src/` change; four new pinned tests
+  (`test_closures_captured_upvalue_is_covered_by_arm_one_only`,
+  `test_forpreps_row_backs_no_checked_touch`,
+  `test_the_grids_refusals_are_the_known_shapes_only`,
+  `test_no_claimed_pc_is_missing_a_lir_instr_on_this_corpus`).
 
 ## 9. Match the candidate's strip mode to the original's — DONE (M4 task 7)
 

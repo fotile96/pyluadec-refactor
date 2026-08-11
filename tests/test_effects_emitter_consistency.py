@@ -203,16 +203,16 @@ _CORPUS_CHECKED_OPCODES = frozenset({
 
 
 @pytest.fixture(scope="module")
-def corpus_scan(corpus_dir):
+def corpus_scan(lifted_corpus):
     """One pass over the whole corpus, shared by every corpus-gated test here.
 
-    Walking 229 files and lifting all 1944 protos costs ~0.9s; doing it once
-    per assertion instead of once per test keeps this gate off the suite's
-    critical path (standing directive: a slow suite blocks development).
+    Round-1 fold-in (2026-08-12, M4 task 9 suite-budget recovery): the
+    ingest+lift walk itself now comes from `conftest.py`'s session-scoped
+    `lifted_corpus` fixture rather than a module-local repeat of it (this
+    fixture's own walk used to be one of several files in the suite each
+    paying their own ~0.9s pass over the same 229 files). Only the
+    effects/emitter comparison below is local to this module.
     """
-    from pyluadec.ingest import load_file
-    from pyluadec.lift import lift_proto
-
     t0 = time.perf_counter()
     violations: list[str] = []
     checked = 0
@@ -220,29 +220,24 @@ def corpus_scan(corpus_dir):
     total = 0
     ops_checked: set[Op] = set()
     protos = 0
-    for f in sorted(corpus_dir.glob("*.lua")):
-        stack = [load_file(f)]
-        while stack:
-            p = stack.pop()
-            stack.extend(p.subprotos)
-            protos += 1
-            fn = lift_proto(p)
-            for li in fn.instrs.values():
-                total += 1
-                fx = li.effects
-                if fx.reads_open or fx.writes_open:
-                    # Counted, not skipped -- see the module docstring's
-                    # "open part of an open region" bullet (M4 task 8).
-                    open_rows += 1
-                touched = _registers_touched(li.ri)
-                covered = fx.reads | fx.writes
-                if not touched <= covered:
-                    violations.append(
-                        f"{f.name} pc {li.ri.pc} {li.ri.op.name}: "
-                        f"touches {sorted(touched - covered)} "
-                        f"outside effects {sorted(covered)}")
-                ops_checked.add(li.ri.op)
-                checked += 1
+    for fname, _path, _proto, fn in lifted_corpus:
+        protos += 1
+        for li in fn.instrs.values():
+            total += 1
+            fx = li.effects
+            if fx.reads_open or fx.writes_open:
+                # Counted, not skipped -- see the module docstring's
+                # "open part of an open region" bullet (M4 task 8).
+                open_rows += 1
+            touched = _registers_touched(li.ri)
+            covered = fx.reads | fx.writes
+            if not touched <= covered:
+                violations.append(
+                    f"{fname} pc {li.ri.pc} {li.ri.op.name}: "
+                    f"touches {sorted(touched - covered)} "
+                    f"outside effects {sorted(covered)}")
+            ops_checked.add(li.ri.op)
+            checked += 1
     return {
         "violations": violations, "checked": checked, "open_rows": open_rows,
         "total": total, "ops_checked": ops_checked, "protos": protos,
