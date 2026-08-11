@@ -19,21 +19,32 @@ derived from `structure/fallback.py`'s per-opcode templates (`_emit_simple`,
 the tree where every opcode has an explicit, hand-written register list, so it
 is the honest reference for "which registers does emission touch".
 
-**This gate does not cover the structured path, and that is its most
-important remaining blind spot.** `express/names.py`'s register
-*classification* (`classify_registers`) does consume `effects` -- but the
-structured *reconstructor*'s per-opcode operand decoding does not.
-`express/reconstruct.py` reads `ri.a`/`ri.b`/`ri.c` directly, independently of
-`effects`, at 9 call sites (`:434, :444, :455, :456, :469, :521, :592, :611,
-:648` as of this commit) and mentions `effects` exactly once in the whole
-file (`:614`, a hazard check on `reads_open`/`writes_open` when closing a
-folded table literal -- not an operand source). `emit/lua.py` reaches operand
-fields through `ri.` 16 times in its non-docstring code and never references
-`effects` at all. So `express/reconstruct.py` -> `emit/lua.py` is a **third**
-independent hand-transcription of `lvm.c`'s per-opcode semantics, sitting
-right next to the two this gate does reconcile, and nothing here would catch
-it drifting. Extending this gate to cover the structured reconstructor is
-real M4 work (`docs/runbooks/m3-backlog.md`), not a footnote.
+**This gate does not cover the structured path** -- `express/reconstruct.py`
+-> `emit/lua.py` is a **third** independent hand-transcription of `lvm.c`'s
+per-opcode semantics, sitting right next to the two this gate reconciles.
+`express/names.py`'s register *classification* (`classify_registers`) does
+consume `effects`, but the reconstructor's per-opcode operand decoding does
+not: as re-measured at M4 task 9, `reconstruct.py` reads `ri.a`/`ri.b`/`ri.c`
+directly 23 times on 16 lines and reaches `.effects` 3 times (`:406`, `:529`,
+`:999`), none of them an operand source; `emit/lua.py` reaches `ri.<field>`
+11 times and `effects` 0 times.
+
+**That blind spot is now covered by
+`tests/test_effects_reconstructor_consistency.py`** (M4 task 9), which
+instruments the reconstructor's real accessors and `name_for` rather than
+transcribing anything, and reports 0 violations over the corpus and over the
+grid below. This module is still the only thing reconciling
+`structure/fallback.py`, and the `_registers_touched` caveat at the end of
+this docstring still applies to it.
+
+(Historical note, kept because this project treats retracted numbers as
+load-bearing: the paragraph this replaces said "9 call sites (`:434, :444,
+:455, :456, :469, :521, :592, :611, :648`)", "mentions `effects` exactly
+once (`:614`)" and "`ri.` 16 times" in the printer. All three were measured
+false at M4 task 9 -- the first two because M4 added `condition_expr` and the
+whole `CondValue` reconstructor after they were counted, the third because it
+over-counted and simultaneously missed the `ps.b` decode at `emit/lua.py:287`,
+which is a register index that never goes through an `ri`.)
 
 ## What it does NOT assert
 

@@ -676,7 +676,11 @@ such — assume the same is possible of the others.
   spec §8 this is generated from M3's per-function level data, so it is an M4
   *input*, not an M4 deliverable.
 
-## 8. The effects–emitter consistency gate does not cover the structured reconstructor
+## 8. The effects–emitter consistency gate does not cover the structured reconstructor — DONE (M4 task 9)
+
+*Everything until "Closed — M4 task 9" below is the record as it stood before
+the gate was built, kept verbatim because two of its counts were measured
+false when the work was actually done.*
 
 `tests/test_effects_emitter_consistency.py` (backlog item 2) reconciles
 `lift/effects.py` against `structure/fallback.py`'s templates. It does **not**
@@ -696,6 +700,38 @@ mechanically checking it against the table. Extending
 structured path the same way — assert the registers `Reconstructor`/`Printer`
 touch for each pc are a subset of that pc's `effects.reads | effects.writes`
 — is real M4 work, not a footnote.
+
+### Closed — M4 task 9
+
+`tests/test_effects_reconstructor_consistency.py` is that gate. Its module
+docstring carries the full account; the essentials:
+
+- **0 violations.** The reconstructor and the effects table agree everywhere
+  the structured path reaches, on both arms. Nothing had to be adjudicated
+  against `lvm.c`.
+- **Mechanism: instrumentation, not a fourth transcription.** A recording
+  shim wraps all 8 register-taking accessors of `Reconstructor` plus
+  `express.names.name_for` (the only way a register becomes text in
+  `emit/lua.py`), and attributes each touch to a pc taken from the code's own
+  structure (`_dispatch`'s `li.ri.pc`, `condition_expr`'s `cond.ri.pc`,
+  `write_reg`'s explicit `pc=` definition site, and so on). The `covered` set
+  always comes from `LirInstr.effects`; nothing in the file models an opcode.
+- **Two counts above were measured false.** `reconstruct.py` has **23**
+  `ri.<a|b|c>` operand reads on 16 lines (not 9 call sites) and reaches
+  `.effects` 3 times (not 1) — none of the three an operand source, which was
+  the load-bearing half of the claim. `emit/lua.py` has **11** `ri.<field>`
+  reaches (not 16), of which 3 are register indices; a fourth register decode
+  (`ps.b` off a `CLOSURE` pseudo-instruction) is not an `ri.` reach at all and
+  the old count missed it. `effects` is still 0 there, as claimed.
+- **Reach: 37/38 opcodes** across the two arms — corpus 32, synthetic grid 33
+  (imported from the sibling gate, not copied). Only `CLOSE` is unreachable,
+  and it cannot be reached: the structured reconstructor refuses it, so a
+  proto containing one never produces structured output.
+- **Cost: 2.0s** for the instrumented whole-corpus pass (229 files, 213
+  chunks printed, 1821 proto bodies entered, 423336 accessor touches, 12118
+  printed names), 0.23s for the grid. Paid for by folding
+  `test_effects_tailcall.py`'s two independent corpus walks into one shared
+  module-scoped census: 0.95s -> 0.26s, assertions unchanged.
 
 ## 9. Match the candidate's strip mode to the original's — DONE (M4 task 7)
 

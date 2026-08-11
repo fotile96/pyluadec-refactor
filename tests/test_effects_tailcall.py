@@ -191,7 +191,44 @@ def test_effect_is_pure_bookkeeping_not_a_new_read(monkeypatch):
     assert {10, 11, 12} <= rc.temps, sorted(rc.temps)
 
 
-def test_corpus_tailcalls_are_all_c_zero_and_followed_by_return_a_0(corpus_dir):
+@pytest.fixture(scope="module")
+def corpus_tailcall_census(corpus_dir):
+    """One decode pass over the whole corpus, shared by both corpus arms here.
+
+    Both tests below need the same census (which protos contain a `TAILCALL`,
+    and what surrounds each one) and each used to re-walk all 229 files for
+    itself — the second one also lifting every one of the 1944 protos just to
+    find the 2 that matter. Measured (M4 task 9): 0.95s for the pair before,
+    0.26s after, on an otherwise unchanged pair of assertions. Same pattern as
+    `test_effects_emitter_consistency.py::corpus_scan`; the standing directive
+    is that a slow suite blocks development.
+    """
+    from pyluadec.ingest import load_file
+    from pyluadec.pipeline import walk_proto_paths
+
+    sites = []
+    carriers = []
+    protos_seen = 0
+    for f in sorted(corpus_dir.glob("*.lua")):
+        protos: dict[str, object] = {}
+        walk_proto_paths("main", load_file(f), protos)
+        for path, p in protos.items():
+            protos_seen += 1
+            hit = False
+            for i, w in enumerate(p.code):
+                ri = decode(w, i + 1)
+                if ri.op is not Op.TAILCALL:
+                    continue
+                hit = True
+                nxt = decode(p.code[i + 1], i + 2) if i + 1 < len(p.code) else None
+                sites.append((f.name, path, ri, nxt, len(p.code)))
+            if hit:
+                carriers.append((f.name, path, p))
+    return {"sites": sites, "carriers": carriers, "protos": protos_seen}
+
+
+def test_corpus_tailcalls_are_all_c_zero_and_followed_by_return_a_0(
+        corpus_tailcall_census):
     """The corpus arm: what the 3 real `TAILCALL`s do and do not establish.
 
     Establishes (and re-derives, rather than trusting the backlog's table):
@@ -205,21 +242,8 @@ def test_corpus_tailcalls_are_all_c_zero_and_followed_by_return_a_0(corpus_dir):
     opposite and the claim was load-bearing for an argument that the
     open-write barrier could never be reached.
     """
-    from pyluadec.ingest import load_file
-    from pyluadec.pipeline import walk_proto_paths
-
-    found = []
-    for f in sorted(corpus_dir.glob("*.lua")):
-        protos: dict[str, object] = {}
-        walk_proto_paths("main", load_file(f), protos)
-        for path, p in protos.items():
-            for i, w in enumerate(p.code):
-                ri = decode(w, i + 1)
-                if ri.op is not Op.TAILCALL:
-                    continue
-                nxt = decode(p.code[i + 1], i + 2) if i + 1 < len(p.code) else None
-                found.append((f.name, path, ri, nxt, len(p.code)))
-
+    found = corpus_tailcall_census["sites"]
+    assert corpus_tailcall_census["protos"] == 1944, corpus_tailcall_census["protos"]
     assert len(found) == 3, [(f, p, ri.pc) for f, p, ri, _, _ in found]
     assert {f for f, _, _, _, _ in found} == {"snr_common.lua"}
     for _f, _path, ri, nxt, lastpc in found:
@@ -229,7 +253,7 @@ def test_corpus_tailcalls_are_all_c_zero_and_followed_by_return_a_0(corpus_dir):
         assert ri.pc + 1 != lastpc, "terminality is NOT a property of TAILCALL"
 
 
-def test_corpus_lifted_tailcalls_all_end_their_basic_block(corpus_dir):
+def test_corpus_lifted_tailcalls_all_end_their_basic_block(corpus_tailcall_census):
     """Why the differential moved nothing — asserted, not argued.
 
     `_staging_slice`'s open-write barrier only fires for an open write lying
@@ -239,27 +263,25 @@ def test_corpus_lifted_tailcalls_all_end_their_basic_block(corpus_dir):
     it can never occupy that window. This pins the premise over the real
     corpus so that a lift-layer change which gave `TAILCALL` a fall-through
     successor would fail here rather than silently re-open the question.
+
+    Lifts only the protos the census found a `TAILCALL` in, rather than all
+    1944 and then discarding 1942 of them (M4 task 9). The assertions are
+    unchanged: they only ever ran on tailcall-carrying protos, and the census
+    that selects them decodes the *same* whole corpus this used to lift.
     """
     from pyluadec.cfg import build_cfg
-    from pyluadec.ingest import load_file
-    from pyluadec.pipeline import walk_proto_paths
 
     n = 0
-    for f in sorted(corpus_dir.glob("*.lua")):
-        protos: dict[str, object] = {}
-        walk_proto_paths("main", load_file(f), protos)
-        for _path, p in protos.items():
-            fn = lift_proto(p)
-            if not any(li.ri.op is Op.TAILCALL for li in fn.instrs.values()):
-                continue
-            cfg = build_cfg(fn)
-            for blk in cfg.blocks.values():
-                for li in blk.instrs[:-1]:
-                    assert li.ri.op is not Op.TAILCALL, (f.name, li.ri.pc)
-            for li in fn.instrs.values():
-                if li.ri.op is Op.TAILCALL:
-                    assert li.successors == (), (f.name, li.ri.pc)
-                    n += 1
+    for fname, _path, p in corpus_tailcall_census["carriers"]:
+        fn = lift_proto(p)
+        cfg = build_cfg(fn)
+        for blk in cfg.blocks.values():
+            for li in blk.instrs[:-1]:
+                assert li.ri.op is not Op.TAILCALL, (fname, li.ri.pc)
+        for li in fn.instrs.values():
+            if li.ri.op is Op.TAILCALL:
+                assert li.successors == (), (fname, li.ri.pc)
+                n += 1
     assert n == 3, n
 
 
