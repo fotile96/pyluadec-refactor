@@ -216,3 +216,55 @@ def test_memoization_reuses_cert_for_structurally_identical_protos(tmp_path):
     assert out.certs["main_0"].level == "L3", out.certs["main_0"].mismatches
     assert out.certs["main_1"].level == "L3", out.certs["main_1"].mismatches
     assert out.certs["main_0"] == out.certs["main_1"]
+
+
+def test_mismatched_debug_shape_raises_instead_of_silently_memoizing_wrong_verdict(tmp_path):
+    """Round-1 review finding: structural_hash omits locvars entirely (and
+    reduces upvalues/source to a bare count -- see verify/ledger.py's own
+    _structure_view), while compare_protos DOES check locvars, and
+    _strip_lineinfo only blanks locvar NAMES, not their count/pc ranges. So
+    two protos can share a structural_hash while genuinely certifying
+    differently -- and emit_certified_chunk's memo would silently share
+    whichever verdict was computed first.
+
+    This is not reachable from any real load_file/load_bytes tree (a
+    compiled dump is uniformly -s-stripped or not, tree-wide), so the
+    counterexample has to be built by hand: take a genuinely-L3 nested
+    proto, and dataclasses.replace a stray LocVar onto an otherwise
+    byte-identical sibling -- same structural_hash, but an independently
+    computed certify_proto disagrees (L1, locvars mismatch). Grafted as an
+    extra, CLOSURE-unreferenced subprotos[1] entry alongside the real
+    subprotos[0] so main's own bytecode/CLOSURE-pseudo table (which only
+    ever indexes subprotos[0]) is untouched and doesn't itself crash.
+
+    Before the round-1 fix, emit_certified_chunk did not detect this at
+    all: `main_0_1` (the fake) silently inherited `main_0_0`'s (the real
+    proto's) L3 verdict via the shared memo entry, `is` a check confirmed
+    they were literally the same ProtoCert object. After the fix,
+    emit_certified_chunk asserts uniform debug-completeness across the tree
+    before memoizing anything, so this now raises instead.
+    """
+    import dataclasses
+    import pytest
+    from pyluadec.ingest.proto import LocVar
+    from pyluadec.verify.ledger import structural_hash
+    from pyluadec.structure.structured import emit_certified_chunk
+
+    root = _proto(
+        "local function outer(x)\n"
+        "  local function inner(y)\n"
+        "    return x + y\n"
+        "  end\n"
+        "  return inner(1)\n"
+        "end\n"
+        "print(outer(2))\n", tmp_path)
+    outer = root.subprotos[0]
+    grandchild = outer.subprotos[0]
+    fake = dataclasses.replace(grandchild, locvars=(LocVar(name=None, startpc=0, endpc=1),))
+    assert structural_hash(grandchild) == structural_hash(fake)
+
+    outer2 = dataclasses.replace(outer, subprotos=(grandchild, fake))
+    synthetic_root = dataclasses.replace(root, subprotos=(outer2,))
+
+    with pytest.raises(AssertionError, match="debug-completeness"):
+        emit_certified_chunk(synthetic_root)

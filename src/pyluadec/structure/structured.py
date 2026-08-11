@@ -15,6 +15,29 @@ line child function certifies independently even when its parent contains a
 `while` loop the recognizer refuses. Ledger level (per proto) and shipped
 artifact (per chunk) are therefore deliberately decoupled: the level is a
 proof record, the artifact is a conservative file-level choice.
+
+## Round-1 fix: memoization's unstated debug-completeness invariant
+
+`emit_certified_chunk` memoizes `certify_proto`'s verdict by
+`verify.ledger.structural_hash`. That hash deliberately omits `locvars`
+entirely and reduces `upvalues`/`source` to a bare count (see its own
+docstring/`_structure_view`) -- it is a *code-shape* key, not a full-proto
+key. `compare_protos`, by contrast, DOES check `locvars` (and
+`_strip_lineinfo`'s normalization only blanks locvar *names*, not their
+count/pc ranges -- see `verify/normalize.py`'s own docstring). So two protos
+can share a `structural_hash` while genuinely certifying differently, and
+whichever is processed first in the memo loop wins for both -- silently.
+
+This is real but not reachable from any actual `load_file`/`load_bytes`
+tree: a compiled dump is `-s`-stripped or not for its ENTIRE tree, uniformly
+(there is no partial-strip mode), so within one real chunk every proto's
+locvars/upvalue-names/source presence agrees, and a same-hash pair that
+would genuinely disagree on `locvars` cannot arise. The invariant that makes
+memoization safe is therefore "the tree has uniform debug-completeness",
+not anything `structural_hash` itself guarantees -- so `emit_certified_chunk`
+below asserts it explicitly rather than leaving it as an unstated assumption
+a future caller (e.g. one handing in a synthesized or grafted tree) could
+silently violate.
 """
 from __future__ import annotations
 
@@ -45,6 +68,40 @@ class ChunkOutcome:
 
 
 _L1 = ProtoCert(level="L1", rung=None, mismatches=())
+
+
+def _debug_shape(p: Proto) -> tuple[bool, bool, bool]:
+    """Coarse per-proto debug-completeness signature: does it carry any
+    locvar record, any named upvalue, and a non-null `source`.
+
+    This is the cheapest predicate that actually captures the invariant
+    `emit_certified_chunk`'s memoization relies on (see module docstring
+    "Round-1 fix"): `structural_hash` folds in none of these three fields
+    (not even a count, for locvars), yet `compare_protos` checks `locvars`
+    directly and `_strip_lineinfo` only anonymizes locvar names -- it keeps
+    their count and pc ranges. Two same-hash protos that disagree on any of
+    these three booleans are exactly the case where memoizing one's verdict
+    for the other could be wrong (proven by `dataclasses.replace`-grafting a
+    stray `LocVar` onto an otherwise-identical, otherwise-stripped proto in
+    the accompanying test -- same hash, genuinely different certify_proto
+    verdict).
+
+    A real compiled dump (`load_file`/`load_bytes`) is always uniformly
+    `-s`-stripped or not for its ENTIRE tree -- there is no partial-strip
+    mode -- so on any actual proto tree every node's signature is identical
+    and this predicate never distinguishes them. It is intentionally a
+    coarse presence check, not an exact-value comparison: a tree that is
+    uniformly non-stripped but happens to contain one proto with zero
+    declared locals (legitimately empty `locvars` even though debug info is
+    present) would false-positive this predicate into "mixed shape" -- an
+    over-eager but SAFE failure direction (loudly refusing to memoize rather
+    than silently trusting a hash that doesn't cover the field in
+    question), and one that does not occur on this project's actual corpus,
+    which is uniformly stripped tree-wide (verified: zero real-corpus
+    protos trip the assertion below -- see task-7-report.md's round-1
+    section).
+    """
+    return (bool(p.locvars), any(u is not None for u in p.upvalues), p.source is not None)
 
 
 def certify_proto(proto: Proto, *, is_chunk_root: bool) -> ProtoCert:
@@ -117,17 +174,48 @@ def emit_certified_chunk(root: Proto) -> ChunkOutcome:
     certified once and the result is shared -- corpus functions frequently
     repeat verbatim (e.g. identical small helper closures), and
     certification's dominant cost is one `luac_sz4` subprocess per proto.
+    This memoization is only sound if every proto in the tree agrees on
+    debug-completeness (see module docstring "Round-1 fix" and
+    `_debug_shape`); asserted below rather than assumed, so a future caller
+    that hands in a synthesized or grafted tree fails loudly instead of
+    silently inheriting a wrong verdict.
     """
     from pyluadec.pipeline import walk_proto_paths
     protos: dict[str, Proto] = {}
     walk_proto_paths("main", root, protos)
+
+    shapes = {_debug_shape(p) for p in protos.values()}
+    assert len(shapes) <= 1, (
+        f"proto tree has {len(shapes)} distinct (has_locvars, "
+        f"has_upvalue_names, has_source) debug-completeness shapes "
+        f"{sorted(shapes)} -- structural_hash-keyed memoization below "
+        "assumes a uniform tree (locvars/upvalue-names/source aren't part "
+        "of structural_hash, so two same-hash protos with different "
+        "debug-completeness can certify differently yet share a memo "
+        "entry); a real load_file/load_bytes tree is always uniformly "
+        "-s-stripped or not, so this indicates a synthesized/grafted tree, "
+        "not real bytecode")
+
     memo: dict[str, ProtoCert] = {}
     certs: dict[str, ProtoCert] = {}
+    # `main` is certified first and unconditionally, NOT because
+    # walk_proto_paths's pre-order recursion plus dict insertion order
+    # happens to put it first in `protos.items()` (true, but this does not
+    # rely on it): relying on iteration order would make the "main
+    # certified L3 => print succeeded" assertion below correct only by
+    # coincidence if some future change reordered `protos` or introduced a
+    # same-hash collision between `root` and one of its own descendants.
+    root_hash = structural_hash(root)
+    memo[root_hash] = certify_proto(root, is_chunk_root=True)
+    certs["main"] = memo[root_hash]
     for path, p in protos.items():
+        if path == "main":
+            continue
         h = structural_hash(p)
         if h not in memo:
-            memo[h] = certify_proto(p, is_chunk_root=(path == "main"))
+            memo[h] = certify_proto(p, is_chunk_root=False)
         certs[path] = memo[h]
+
     if certs["main"].level == "L3":
         src = print_chunk(root)
         assert src is not None            # main certified L3 => print succeeded
