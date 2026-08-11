@@ -638,6 +638,54 @@ def test_m4_exit_occurrence_l3_rate(ledger_rows):
 
 ---
 
+### Task 13: Live-range register classification — the bottleneck M4 actually has
+
+> **ADDED 2026-08-11, after Task 3.** Executes **immediately after Task 4**, before Task 5. It is numbered 13 only so the earlier task numbers keep pointing at the same text; read the order as 1, 2, 3, 4, **13**, 5, 6, 7…
+
+**Files:**
+- Modify: `src/pyluadec/express/names.py` (`classify_registers` / `_stack_discipline`)
+- Modify (only if the diagnosis demands): `src/pyluadec/express/reconstruct.py`
+- Test: `tests/test_express_liverange.py`
+
+**Interfaces:**
+- Consumes: `classify_registers(fn: LirFunction) -> RegClass` (fields `locals`, `temps`, `loop_vars`); `certify_proto(proto, *, is_chunk_root) -> ProtoCert`.
+- Produces: no new public names. `RegClass`'s contract is unchanged; what changes is which registers land in `locals` vs `temps`.
+
+**Why this task exists.** Task 3 raised `build_sir` acceptance from 1309 to **1435/1478** but L3 only from 1112 to **1139** — the bottleneck moved. Measured after Task 3 (script committed in `docs/runbooks/structured-pipeline.md`, re-run and reproduced byte-for-byte by the task reviewer): of the **339** unique protos still below `L3`, **251 differ from the original by extra `MOVE` instructions and nothing else**, **13** by `MOVE` plus other traffic, 13 have the same histogram, and only **62** are structuring refusals. Of the 264, **226 first diverge at a `CALL` in the original where ours has a `MOVE`**.
+
+Diagnosis, verified by the reviewer on the exemplar `snr_crd_10.lua:main_2`: pcs 1–6 stage a two-argument call in registers 0/1/2; `classify_registers(fn).locals` is `[0, 1, 2, 3]`; the printer therefore emits
+
+```lua
+local l1_0 = comSectionCardStart
+local l1_1 = ...
+local l1_2 = ...
+l1_0(l1_1, l1_2)          -- luac: comSectionCardStart(<a>, <b>) with no MOVEs
+```
+
+**`classify_registers` decides per register *number*, whole-function.** A register that is a genuine `local` in one statement and a call-staging temp in another is classified once, for the whole function, and the conservative answer (`local`) wins — materializing luac's expression stack as named locals and emitting the `MOVE`s that copy into it.
+
+**This is the same class of defect M3 Task 8 fixed once already** — and worth remembering how that went: I identified an effect-based inlining barrier as "the pre-identified lever", it moved **+0.0** protos, and simulating `lparser.c`'s own `freereg = nactvar` discipline moved **+63.6 points**. The rule was per-register-number and whole-function then, too. Task 8 fixed the *allocation* half; the *lifetime* half is still whole-function. Do not repeat my mistake of naming the lever before measuring it.
+
+**The property to satisfy (not a mechanism — pick whatever achieves it):**
+
+> A register is materialized as a named `local` **iff luac's parser would have had an active local variable in that slot at that pc.** Equivalently: classification must be a function of (register, pc-range), not of register alone. A slot that is a live local across statements *n..m* and a call-staging temp at statement *m+1* must be both, in its own ranges.
+
+Wrong in either direction still breaks certification, so both directions need fixtures. Ground truth is `lparser.c`'s `nactvar`/`freereg` bookkeeping and `lcode.c`'s expression-stack discharge — read them; the certification gate adjudicates every answer.
+
+- [ ] **Step 1: Measure before touching anything.** Re-run the committed residual script; produce the current split and a per-cluster exemplar list (smallest proto per cluster, with `luac_sz4 -o /dev/null -l` of original vs recompiled side by side). Put the table in the report — this is the task's baseline and the reviewer will check your final numbers against it.
+
+- [ ] **Step 2: Write the failing fixtures first**, from the exemplars, smallest-first. Each is oracle-compiled and asserts `certify_proto(p, is_chunk_root=True).level == "L3"`. Include at minimum: a bare two-argument global call (`f(a, b)` with `a`/`b` locals); a call whose arguments are themselves calls; a call in a loop body where the same registers are reused across iterations; and a genuine local that must NOT be demoted to a temp (the opposite-direction guard — `local x = f() g(x) h(x)` reads `x` twice, so it must stay a local). Run them: expect `L1` with `code` mismatches, never wrong output.
+
+- [ ] **Step 3: Implement**, guided by Step 1's clusters. Commit per cluster, each with its fixture going red→green and the corpus number re-measured.
+
+- [ ] **Step 4: Corpus + ledger.** `scripts/run_corpus.py`; the diff must be **upgrades only** (no `L3`→`L1`, no `L0`). Put before/after counts on both bases in the commit message. **If a proto downgrades, stop** — a classification that improves the aggregate while breaking a previously-certifying shape is exactly the trade this project does not make.
+
+- [ ] **Step 5: Report the residual honestly.** Whatever remains below `L3` gets the same cluster treatment, and the numbers go into Task 6's re-census rather than being quietly rolled forward.
+
+**Constraints beyond the global ones:** do not touch the certification gate; do not widen `build_sir` (structuring refusals are the other 62 and belong to Task 6); the standing engineering-practice rule applies — the suite is at ~30s against a 45s ceiling, and any per-proto certification you add to the committed suite must be justified.
+
+---
+
 ## Explicit non-goals (M5+, recorded so they are not re-litigated)
 
 - **Pass registry + first beautify passes** (spec §4/§7 M4 item) — deferred to M5 by decision of the human partner, 2026-08-11 (this plan's header records the rationale). M5's confession-ranking-driven idiom passes are the registry's first client.
