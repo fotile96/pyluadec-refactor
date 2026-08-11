@@ -981,8 +981,24 @@ again the largest single residual cluster.
    The first differing instruction is a `GETGLOBAL` for 10 of the B cluster
    (constant-table ordering) and a `LOADK` for 10 of the D cluster. `NEWTABLE`
    size hints account for 3. These are three genuinely different problems and
-   none of them is register classification; they are Task 6's re-census
-   material.
+   none of them is register classification. Re-run verbatim at M4 task 6 and
+   reproduces byte-for-byte.
+
+   Smallest exemplar per cluster (M4 task 6), with the ledger's own
+   `refusal_reason`:
+
+   | cluster | exemplar | insns | reason |
+   | --- | --- | --- | --- |
+   | A | `snr_lib.lua:main` | 5 | `structure: pc 73: if targets out of range` |
+   | B | `snr_common.lua:main_77_0` | 5 | `mismatch: code` |
+   | C | `snr_common.lua:main_24_1` | 19 | `mismatch: maxstacksize` |
+   | D | `snr_novel.lua:main_6` | 15 | `mismatch: code` |
+   | E | `snr_novel.lua:main_2` | 93 | `mismatch: maxstacksize` |
+
+   (Cluster A's exemplar has 5 instructions in its OWN body: the refusal is a
+   descendant's, since `print_chunk` inlines the whole tree. That is what
+   makes the A cluster's size — 54 of the 89 — a count of *ancestor chains*,
+   not of independent defects.)
 
    Two known-residual shapes are fixtured in
    `tests/test_express_liverange.py::KNOWN_RESIDUAL` with their causes:
@@ -991,6 +1007,133 @@ again the largest single residual cluster.
    pairs(l0_0)` where luac left the triple in the control slots), and
    `NEWTABLE`'s size hints (the constructor fold turns a following `t.k = s`
    statement into `{["k"] = s}`).
+
+### The residual is standing data now: `refusal_reason` (M4 task 6)
+
+Every non-`L3` ledger row carries a `refusal_reason` saying **why**; every
+`L3` row carries `null`. Before this field a `build_sir` refusal and a
+print-then-certify-rejection were indistinguishable in the ledger — both got
+the same generic whole-range `fallback-state-machine` confession, which was
+adequate only while nothing structured cleanly and then failed the comparison.
+M4's loop work made that 35 of the 89 residual rows. `tests/test_m4_exit.py`
+asserts the coupling in both directions and that the reason's kind is one of
+the four in the committed vocabulary.
+
+Four kinds; the full vocabulary and the payload rules live with the code, in
+`structure.structured.ProtoCert.reason`:
+
+| kind | meaning |
+| --- | --- |
+| `structure: <msg>` | `sir.build`/the printer refused to build a region tree |
+| `reconstruct: <msg>` | a region printed but an expression under it could not be reconstructed |
+| `compile: <phrase>` | the printed candidate (or its wrapper) did not recompile |
+| `mismatch: <field>` | it printed and recompiled, and `compare_protos` differed on `<field>` |
+
+Two deliberate exclusions, both about not putting corpus payload in a
+checked-in file: the reason carries a `Mismatch`'s FIELD NAME and never its
+`a`/`b` reprs (those are the actual code words and constants), and it never
+carries `luac`'s error text (which echoes the offending source line). The one
+raise site that used to interpolate a constant, `emit.lua._ident`, now reports
+the constant's byte LENGTH instead — pinned by
+`tests/test_emit_lua.py::test_ident_refusal_messages_do_not_quote_the_constant`.
+
+`uv run python scripts/ledger_dashboard.py` prints the histogram (numbers in
+the message collapsed to `N` for clustering). Measured 2026-08-11, 89 rows:
+
+```
+refusal: structure: pc N: else-join out of range                        18
+refusal: mismatch: maxstacksize                                         18
+refusal: mismatch: code                                                 17
+refusal: structure: pc N: if targets out of range                       17
+refusal: structure: pc N: branch body block at pc N is unreachable      13
+refusal: reconstruct: register N is read again after its staged ...      4
+refusal: reconstruct: pc N: and/or alternative reconstructs to N ...     1
+refusal: structure: pc N: while-header code reconstructs to N ...        1
+```
+
+The two decompositions agree exactly: the six refusal rows sum to 54 (cluster
+A) and the two `mismatch:` rows to 35 (clusters B–E). They are different cuts
+of the same 89 — the A/B/C/D/E table classifies by *opcode-histogram delta at
+the divergence point*, this one by *the first field `_cmp` reported*.
+
+### The `L3.2 = canonical constant-pool order` rung: declined again, with the number
+
+M3 measured 9 protos differing only by pool order and declined the rung. M4
+task 6's brief set the bar at ≥20. **Re-measured 2026-08-11: 10.** The rung is
+declined again; no `LADDER_VERSION` bump, `NORMALIZATIONS` unchanged.
+
+The measurement is exact, not a proxy. For each of the 35 non-`L3` protos
+whose candidate recompiled, walk the original/candidate pair recursively and
+ask whether, at every proto, (a) all of rung 1's surviving scalar fields are
+equal, (b) the constant pools are permutations of each other by payload-exact
+key, and (c) the code arrays are equal once every constant-index operand is
+replaced by the constant it names — the K modes come from `lift.opcodes`'
+`OP_SPECS`, transcribed from `lopcodes.c`. Ten protos pass, all in
+`snr_common.lua` (`main_9`, `main_12`, `main_14`, `main_28`, `main_36`–
+`main_40`, `main_74_9`), one occurrence each: **10 unique / 10 occurrences,
+0.68% / 0.51%.** A looser check (pools are a permutation at the divergence
+point, ignoring the rest of the subtree) gives 11 — `config.lua:main` also
+differs elsewhere, so a pool-order rung would not certify it.
+
+Buying 10 rows costs a permanent widening of the gate: rung 2 would have to
+argue that permuting a constant pool is meaning-preserving, and every future
+certification would run under that admission. The trade was refused at 9 and
+the population has barely moved. The script is
+`scratchpad`-only by design (it is a one-off measurement, not a gate); its
+logic is reproduced above in enough detail to rebuild in ten minutes.
+
+### Census entries that are not corpus rows
+
+Three known defects that the ledger cannot show, because they are either not
+exercised by this corpus or not visible as a level. All three are pinned by
+committed tests, so "known" here means recorded and fenced, not tolerated.
+
+1. **The table-constructor fold reorders statements** (pre-existing, predates
+   M4 task 13). `express.reconstruct` folds later field assignments back into
+   the constructor and prints the constructor at the position of the LAST
+   folded assignment, so any effectful statement standing between the first
+   folded item and that position is printed *before* that item is evaluated.
+   Reproduction, measured 2026-08-11:
+
+   ```lua
+   local function s(n) print(n) return n end
+   local t = {}
+   t.a = s(1)
+   print("x")
+   t.b = s(2)
+   print(t.a, t.b)
+   ```
+
+   prints `1 x 2`; the structured print of it —
+   `print("x")` then `local l0_1 = {["a"] = l0_0(1), ["b"] = l0_0(2)}` —
+   prints `x 1 2`. **Unshippable**: the root does not certify, so the
+   fallback chunk ships and its stdout matches the original exactly. Pinned
+   by `tests/test_structured_certify.py::
+   test_table_constructor_fold_reorders_statements_but_cannot_ship`, which
+   asserts both the divergence and the fact that it cannot escape. Note the
+   shorter repro that circulated for this (`local t = {} print(1)`) does
+   reorder the statements but is NOT observable — the only statement that
+   moves there is a pure `NEWTABLE`; two folded items straddling an effectful
+   statement are needed to make it visible.
+
+2. **Two of M4 task 5's five ported semantic-regression cases ship
+   fallback**, and are pinned to `L1` so they fail loudly when fixed:
+   `test_if_and_elseif_conjunctions_preserved` (refused,
+   `structure: pc 4: if targets out of range` — the nested-AND-in-an-elseif
+   -chain family, the same 17-proto corpus cluster) and
+   `test_counter_closure_and_dispatch_mix` (prints, then differs on
+   `maxstacksize` 18 vs 20 and 13 vs 15 constants — clusters B/D). Both
+   docstrings in `tests/test_semantic_regressions.py` carry the full
+   diagnosis. Both run their fallback artifact and check its stdout, so the
+   *semantics* are regression-tested regardless of the level.
+
+3. **`run_corpus.py`'s forced-`L0` path** used to keep whatever
+   `confessions` the entry already had, which for an individually-`L3` proto
+   in a chunk that failed to compile is `[]` — an `L0` row could ship
+   unconfessed. Fixed in M4 task 6 (`_force_l0`); unreachable from the corpus
+   (229/229 files compile), so it is pinned by unit tests instead:
+   `tests/test_ledger.py::test_forced_l0_entry_is_confessed` and
+   `::test_forced_l0_keeps_an_existing_confession`.
 
 ### Re-deriving the three rows
 

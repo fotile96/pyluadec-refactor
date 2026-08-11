@@ -160,6 +160,14 @@ ingest -> lift -> cfg -> sir.build -> express.reconstruct -> emit.lua
 - `l3_level`：通过的归一化级号（`L3` 行非空，当前恒为 `1`）；非 `L3` 行为 `null`。
 - `fallback`：布尔，`level != "L3"`。
 - `confessions`：`L3` 行必须为空；非 `L3` 行必须恰有一条覆盖全 pc 区间的 `fallback-state-machine` confession。
+- `refusal_reason`（M4 task 6 新增）：非 `L3` 行**为什么**没认证；`L3` 行为 `null`。
+  confession 只说"回退了"，这个字段说"回退的原因"——`build_sir` 拒绝与"打印成功但
+  认证失败"以前在台账里长得一模一样。四种 kind：`structure:` / `reconstruct:` /
+  `compile:` / `mismatch: <字段名>`，词表与"绝不写入字节码派生字符串"的规矩都记在
+  `structure.structured.ProtoCert.reason`。`tests/test_m4_exit.py` 断言双向耦合
+  （非 `L3` 必须有、`L3` 必须没有、kind 必须在词表内）。面板
+  `scripts/ledger_dashboard.py` 直接打这个字段的直方图，残差普查因此是常驻数据而
+  非一次性脚本。
 - `tests/test_m3_exit.py` 断言的是**行内耦合**（等级与 confession 必须一致）：`L3` 行 ⇒ `l3_level` 非空、`confessions == []`、`fallback is False`；非 `L3` 行 ⇒ `fallback is True`、`l3_level is None`、恰有一条 `fallback-state-machine` confession。也就是说"等级升了 confession 没摘"或"confession 摘了等级没升"这种**记账不一致**会被抓到。
 - **"等级只升不降"本身没有被任何测试断言**——没有历史 baseline 比对，见上文「台账约定」。跨版本单调性是纪律 + 人眼看 diff，机器强制留给 M4 的 ratchet CI。
 
