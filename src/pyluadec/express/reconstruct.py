@@ -13,9 +13,13 @@ a `for` loop's init/limit/step, computed in the region immediately before the
 loop) is still in `self.env` when the loop header (built by Task 6/7) calls
 `take_expr` on it.
 
-Reading a *temp* register pops its staged definition out of the environment
-(single-use is proven by express.names._adjacent_pure -- see that module's
-docstring). Reading a *local* register never pops; it always yields a fresh
+Reading a *temp* register pops its staged definition out of the environment.
+Single-use is what `express.names._stack_discipline` proves before a register
+is ever classified `temp`: it simulates `lparser.c`'s `freereg = nactvar`
+allocation discipline and disqualifies any register with a definition that is
+read zero times or more than once (see that module's docstring -- this used to
+cite `_adjacent_pure`, the effect-based barrier the freereg simulation replaced
+in M3 task 8). Reading a *local* register never pops; it always yields a fresh
 `LocalExpr(reg)` reference, which is safe to embed more than once (printing a
 variable name twice has no evaluation-order consequence, unlike printing a
 pending expression tree twice).

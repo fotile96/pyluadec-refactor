@@ -121,3 +121,44 @@ ingest -> lift -> cfg -> structure.fallback -> oracle 编译验证 -> ledger
 - `oracle` 字段记录的是 `git log -1 -- vendor native`（oracle 构建产物的溯源），**不是** `git rev-parse HEAD`——用 HEAD 会导致每次纯文档/纯测试提交都让全部台账行看起来"变了"，淹没真实回归；原因与修复过程见 runbook 对应小节。
 
 详见 `docs/runbooks/decompile-pipeline.md`：管线每层的函数签名、fallback 产物的 `__pld_R`/`__pld_U`/盒模型/`__pld_pc` 状态机阅读指南（含与 `luac_sz4 -l -l` 原始 listing 对照调试的实操示例）、效应表三档的语义与限度、台账字段的完整语义。
+
+## Phase 3（M3：structured backbone）现状
+
+Phase 3 已完成，收口于 `docs/runbooks/structured-pipeline.md`（全文档：逐层模块、认证门不变式、归一化阶梯与其健全性论证、freereg 寄存器模型、能力边界实测、日常命令）——本节只给定位与速查，细节一律以该 runbook 为准，不在此重复。M2 的 fallback 路径**没有被废弃**，它仍是地板，细节继续以 `decompile-pipeline.md` 为准。
+
+### 新增模块布局（接在 M2 之后）
+
+```
+ingest -> lift -> cfg -> sir.build -> express.reconstruct -> emit.lua
+                                   -> verify.certify(L3) -> structure.structured -> pipeline -> ledger
+```
+
+- `pyluadec.sir`（新增）：`regions.py`（冻结区域节点 + `all_claimed`）、`build.py`（`build_sir(fn) -> Region`、`has_back_edge`、`StructureError`）。支配树在此被**真正消费**（`_verify_single_entry` 用 `immediate_dominators` 校验分支/循环体单入口），不是建而不用。纪律：**识别或 `StructureError`，绝不猜结构**；每次 `build_sir` 出口强制 pc 认领审计 `all_claimed(region) == set(fn.instrs)`。
+- `pyluadec.express`（新增）：`expr.py`（表达式节点）、`names.py`（`classify_registers` / `name_for`）、`reconstruct.py`（`Reconstructor`：`stmts_for` / `take_expr` / `cond_operand` / `open_scope`+`close_scope`）。**M3 task 8 删除了 `_adjacent_pure` 与 `EffectMode` 旋钮**，改为模拟 `lparser.c` 的 `freereg = nactvar` 分配纪律（`_stack_discipline`）——实测：放宽效应屏障 +0.0 个 proto，freereg 模拟 +63.6 个百分点。
+- `pyluadec.emit.lua`（新增）：`print_chunk` / `print_function` / `Printer`。**纯结构折叠**：只走一遍类型化的树，绝不回读或后处理自己发出的字符串（无 peephole、无定点循环、无数 `do/then/end`）。`tests/test_engineering_practice.py` 静态禁止 `src/pyluadec/{ingest,lift,cfg,sir,express,emit,verify,structure}` 里出现 `re`。
+- `pyluadec.structure.structured`（新增）：`certify_proto(proto, *, is_chunk_root)`、`emit_certified_chunk(root) -> ChunkOutcome`。
+- `pyluadec.verify.certify`（新增）：`certify_l3(original, structured_src) -> CertResult`。
+
+### 认证门纪律（最重要的一条）
+
+**产物为结构化 ⟺ root proto 认证 `L3`**（`structure/structured.py:222-226`）；否则发 fallback。永不返回未认证的结构化代码。推论：区域识别、寄存器分类、内联的 bug **只会拉低 L3 比例，不会产出错误代码**。认证是逐 proto 子树独立进行的，所以一个不可结构化的函数不会污染兄弟节点的等级——等级（proof record，逐 proto）与产物（逐 chunk 的保守选择）**刻意解耦**。
+
+归一化阶梯：`L3.0` 严格 + `L3.1 = strip-lineinfo`，`LADDER_VERSION = "l3-ladder-v1"`。**每级的健全性论证必须与该级本体同处一地**（rung 1 的论证在 `verify/normalize.py::_strip_lineinfo` 的 docstring 里，从"剥完之后 `compare_protos` 还比什么"论起）。加 rung 2 时照此办理并 bump `LADDER_VERSION`。
+
+### 新增常用命令
+
+- 全局状态探针（L1.5 门）：`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_global_state.py`。**注意 CLI 不认识那 4 条已钉住的发散**，它会打印 `225/229` 并返回 1；权威判定在 `tests/test_global_state_probe.py`（套件绿即门绿）。
+- 效应表-发射器一致性门：`uv run pytest tests/test_effects_emitter_consistency.py`（语料臂 + 合成操作数网格，无需语料也能跑合成臂）。
+- 单文件结构化反编译 / 看认证结果 / 调试某个未认证函数：命令见 `structured-pipeline.md`「Common operations」节。
+
+### 台账新字段
+
+- `level`：`L3`（重编译后按阶梯逐字段匹配）/ `L1`（能编译，未验证）；`L0` 禁止出现。
+- `l3_level`：通过的归一化级号（`L3` 行非空，当前恒为 `1`）；非 `L3` 行为 `null`。
+- `fallback`：布尔，`level != "L3"`。
+- `confessions`：`L3` 行必须为空；非 `L3` 行必须恰有一条覆盖全 pc 区间的 `fallback-state-machine` confession。
+- ratchet 两半都被断言（`tests/test_m3_exit.py`）：**等级只升不降，confession 只降不升**。
+
+### 能力边界（实测，别当成"差不多都做完了"）
+
+`corpus/ledger.jsonl` 收口值：1112/1478 唯一 proto（75.2%）、1577/1944 处出现（81.1%）达 `L3`；229 个文件里 **92 个**发结构化源码，其余 137 个仍发 fallback。未覆盖的部分：`while`/`repeat`/混合与不可归约回边（162 个唯一 proto 被 `build_sir` 拒绝）、因后代闭包不可结构化而连带失败的祖先（139 个）、打印成功但认证失败的残差（58 个）。M4 议程见 `docs/runbooks/m3-backlog.md`。

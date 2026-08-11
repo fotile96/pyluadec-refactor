@@ -1,16 +1,23 @@
-# M3 backlog (produced by the Phase 2 final whole-branch review)
+# M3 backlog, and the M4 agenda
 
-This file exists because the M2 execution workspace (`.superpowers/sdd/...`) is
-scratch and gets deleted; everything below came out of the final review of the
-`phase2-m2-fallback` branch and would otherwise be lost. It is a starting
-agenda for M3 (structural recovery), not a plan — plans get written with
-`superpowers:writing-plans` when M3 begins.
+This file exists because the SDD execution workspaces (`.superpowers/sdd/...`)
+are scratch and get deleted. It started as the M2 final-review backlog for M3;
+at the close of M3 it absorbed M3's own deferred findings for the same reason.
+It is an agenda, not a plan — plans get written with
+`superpowers:writing-plans` when the milestone begins.
 
 Status at the end of M2: 229/229 corpus files produce compilable Lua via the
 fallback emitter; 130 tests pass; `corpus/ledger.jsonl` holds 1478 unique proto
 hashes over 1944 occurrences, all at level `L1`.
 
-## Ordered backlog
+Status at the end of M3 (measured at commit `fb85f2f`): 229/229 still compile;
+284 tests pass in ~30s; the ledger holds the same 1478 unique hashes over 1944
+occurrences, of which **1112 unique (75.2%) / 1577 occurrences (81.1%)** are
+`L3` — recompiled through the real `luac_sz4` and matched field-by-field at
+ladder rung 1. 92 of the 229 files ship genuinely structured source. See
+`docs/runbooks/structured-pipeline.md`.
+
+## Ordered backlog (M2 → M3)
 
 **0. Harden `verify/normalize._cmp` before adding any normalization rung.**
 Done for the five fields that were unguarded at M2 (`source`, `nups`,
@@ -27,13 +34,18 @@ as M3 starts consuming `succs` for structuring: a self-consistent corruption
 mis-structure a function.
 
 **2. Land the effects-vs-emitter reconciliation as a permanent test.**
+*(Landed — M3 Task 10: `tests/test_effects_emitter_consistency.py`.)*
 `lift/effects.py` and `structure/fallback.py` are two independent hand
-transcriptions of `lvm.c`. Nothing mechanically reconciles them. The final
-review built the check and ran it over all 1944 corpus protos with **zero
-discrepancies**: for every instruction, the register indices the emitted
-template touches must be a subset of `effects.reads | effects.writes` (skipping
-open regions, which are `__pld_top`-relative). Worth landing permanently — it
-keeps the two transcriptions agreeing as M3 stacks passes on the effects table.
+transcriptions of `lvm.c`. Nothing mechanically reconciled them. For every
+instruction, the register indices the emitted template touches must be a subset
+of `effects.reads | effects.writes` (skipping open regions, which are
+`__pld_top`-relative). Re-measured when it landed: **207214 of 214192 corpus
+instructions checked, 0 disagreements**; the other 6978 carry an open region
+(6949 `CALL`, 26 `VARARG`, 3 `RETURN`). The corpus arm reaches only 32 of 38
+opcodes, so a synthetic operand grid covers the remaining 6. See
+"The effects–emitter consistency gate" in `structured-pipeline.md` for the two
+findings that came out of writing it, including the `TAILCALL` `writes_open`
+gap carried to M4 below.
 
 **3. Promote the global-state probe to an L1.5 gate.** *(Landed — M3 Task 9;
 see "Global-state probe" below for what it does and does not reach.)* It turns
@@ -43,18 +55,29 @@ does not exercise engine-driven code paths), but a genuine rung between L1 and
 L2, and cheap. Read the reach table before treating it as strong evidence: for
 222 of 229 files the entire compared payload is `string:main=<function>`.
 
-**4. Build `tests/synth.py` — a synthetic `Proto`/`RawInstr` fixture.** Three
-correct-but-untestable paths remain at M2, all because luac cannot be coaxed
-into emitting them: SELF's `A+1 == B` aliasing guard (`fallback.py`), TESTSET's
-no-write-on-non-matching-branch, and `lift.py`'s "empty code array" raise.
-A fixture that constructs protos directly and drives `_FnEmitter` closes all
-three at once, and M3 will want it constantly.
+**4. Build `tests/synth.py` — a synthetic `Proto`/`RawInstr` fixture.**
+*(Landed — M3 Task 1: `tests/synth.py`, `mk_instr` / `mk_proto` / `mk_cfg`.)*
+Three correct-but-untestable paths remained at M2, all because luac cannot be
+coaxed into emitting them: SELF's `A+1 == B` aliasing guard (`fallback.py`),
+TESTSET's no-write-on-non-matching-branch, and `lift.py`'s "empty code array"
+raise. M3 used the fixture constantly, most recently for the synthetic arm of
+backlog item 2 (the only way to reach the 6 opcodes the corpus never contains).
 
-**5. Table-layout fidelity — an explicit M3 structuring requirement.** The
-fallback emitter does not reproduce table internal layout (see "Known semantic
-gaps" in `decompile-pipeline.md`). This is corpus-reachable and needs real
-table-constructor reconstruction, not a fallback patch. Pin it with a
-differential test when M3 implements it.
+**5. Table-layout fidelity.** *(Partially done — M3 Task 5.)* Real table
+constructors are now reconstructed (`express/reconstruct.py`: `TableExpr`,
+`_fold_setlist`, `_fold_settable`, `_close_table_ctx`), so the fallback's
+"assign fields one at a time into a bare `{}`" shape is no longer what a
+structured file emits. **Presize fidelity is guaranteed indirectly rather than
+tested directly**: any table constructor inside a proto that certifies `L3` was
+recompiled by the real `luac_sz4` into byte-identical `code`, and `NEWTABLE`'s
+`B`/`C` presize hints are part of `code` — so a wrong array/hash split cannot
+certify. What is *not* covered: the 366 unique protos still at `L1`, where the
+fallback's table shape (and hence `pairs` iteration order) is unconstrained.
+That is why the global-state probe sorts its keys; see "Design notes that are
+load-bearing" below. A direct differential test on `next`/`pairs` order remains
+open; the first corpus-level runtime evidence that it is a live gap (not a
+theoretical one) came out of Task 9's deliverable B — see M4 agenda §5,
+`snr_novel`.
 
 ## Deferred minors carried out of M2
 
@@ -97,7 +120,9 @@ gap rather than a defect:
   Extract one shared helper.
 - `verify/ledger.py` — `LedgerEntry.l3_level` and `n_insns` are written by
   `run_corpus.py` and read by nothing, not even the dashboard. Fine as forward
-  schema; do not mistake them for verified data.
+  schema; do not mistake them for verified data. *(Half-closed in M3:
+  `l3_level` is now read by `scripts/ledger_dashboard.py:42` and asserted by
+  `tests/test_m3_exit.py`. `n_insns` is still write-only.)*
 - `scripts/ledger_dashboard.py` — reports aggregate counts only, never naming
   which files or protos are `L0` / `compile_ok: false`. At 1478 entries a bare
   byte-diff is unusable for chasing a regression.
@@ -197,6 +222,50 @@ excluded: if either side's text moves — including if they start agreeing, whic
 moving off the box model in M4 should cause — the test fails and the pin must
 be re-derived.
 
+#### Instruction-level evidence for the four pins
+
+This is the load-bearing part of the justification and it is recorded here
+because it lived only in a scratch workspace. All four files fail at the **same
+original instruction on both sides**, indexing the **same nil value** produced
+by the **immediately preceding global read**. Derived with
+`./build/luac_sz4 -l <corpus>/<file>` (pcs are luac's own 1-based listing
+numbers) and cross-checked against `lift_proto(...).captured_regs`:
+
+| file | global read | index that fails | reg boxed? | decompiled text |
+| --- | --- | --- | --- | --- |
+| `snr_memory.lua` | pc 81 `GETGLOBAL 7 systemSave` | pc 82 `GETTABLE 7 7 "memoryFlag"` | reg 7 boxed | `field 'v'` |
+| `snr_novel.lua` | pc 82 `GETGLOBAL 7 systemSave` | pc 83 `GETTABLE 7 7 "novelGetFlag"` | reg 7 boxed | `field 'v'` |
+| `snr_mainmenu.lua` | pc 85 `GETGLOBAL 1 gameSave` | pc 86 `GETTABLE 1 1 "startMenuState"` | reg 1 boxed | `field 'v'` |
+| `snr_graphic.lua` | pc 344 `GETGLOBAL 18 systemSave` | pc 345 `GETTABLE 18 18 "cgFlag"` | reg 18 **not** boxed | `field '?'` |
+
+For `snr_memory`, `snr_novel` and `snr_graphic` the listed pair is the *only*
+`GETGLOBAL <that name>` immediately followed by a `GETTABLE` on the same
+register anywhere in the file's main chunk. `snr_mainmenu` has 22 such
+`gameSave` pairs; pc 85/86 is the earliest in program order and every one of
+them would compose the identical message.
+
+**Why three say `field 'v'` and one says `field '?'`.** `ldebug.c:567-578`
+(`luaG_typeerror`) asks `getobjname` for a name and formats
+`attempt to %s %s '%s' (a %s value)`. In `getobjname`, `OP_GETGLOBAL` yields
+`"global"` with the name taken straight from `p->k[Bx]` (`ldebug.c:509-514`),
+while `OP_GETTABLE` yields `"field"` with the name from
+`kname(p, GETARG_C(i))` (`ldebug.c:522-526`) — and `kname`
+(`ldebug.c:489-494`) returns the constant only when it is an RK **string**
+constant, otherwise the literal `"?"`.
+
+The fallback emitter reads a register as `__pld_R[n].v` when the register is
+boxed (captured by some closure) and as `__pld_R[n]` when it is not. In the
+first three files the failing register is boxed, so the value being indexed was
+produced by a `GETTABLE` with the *string* key `"v"` → `field 'v'`. In
+`snr_graphic` register 18 sits above every captured register (main's boxed set
+is 0–13), so it is emitted unboxed and the value came from a `GETTABLE` whose
+key is the *numeric* constant `18` → `kname` refuses it → `field '?'`.
+
+That is the whole divergence: same instruction, same nil, same operation, same
+set of globals written before the failure (empty on both sides for all four) —
+only `getobjname`'s noun differs, and it differs because it names values by the
+bytecode shape that produced them.
+
 ### Design notes that are load-bearing
 
 - Serialisation sorts by `type(k) .. ":" .. tostring(k)`, so it is insensitive
@@ -229,3 +298,232 @@ uniform `L1` level is an honest representation of this: the plan defines `L1`
 as "compilable, unverified", `l3_level` is `null`, and every entry carries a
 confession covering its whole pc range stating the function was emitted by the
 fallback state machine. Backlog item 3 is the cheapest way to strengthen this.
+
+---
+
+# M4 agenda
+
+Everything below came out of M3 and would otherwise be lost with the SDD
+workspace. Ordered by size, not by urgency.
+
+## 1. Loops: `while` / `repeat` / mixed and irreducible back edges
+
+The single largest remaining increment, and the reason ~19% of unique protos
+are still `L1`. Measured at commit `fb85f2f` over 1478 unique proto shapes /
+1944 occurrences (re-derive with the snippets in
+`docs/runbooks/structured-pipeline.md`, "Current capability boundary"):
+
+| stage | unique | occurrences |
+| --- | --- | --- |
+| `build_sir` accepts the proto's own body | 1309 (88.6%) | 1775 (91.3%) |
+| whole subtree prints (proto and every descendant) | 1170 (79.2%) | 1636 (84.2%) |
+| certifies `L3` | 1112 (75.2%) | 1577 (81.1%) |
+
+`build_sir` refuses 169 unique protos: **162 carry a back edge** it will not
+claim (195 unique protos have a back edge at all; 33 of those are recognized as
+`for` loops), and 7 are acyclic refusals. All 16 unique protos containing
+`TESTSET` — the `and`/`or` *value* idiom, deliberately not treated as an
+if-condition (`sir/build.py:16-19`) — are among the refusals.
+
+Note the second row: **139 unique protos build a region tree but still do not
+print, purely because a descendant closure does not.** `print_chunk` inlines
+the whole tree at each `CLOSURE` site, so one unstructurable inner function
+takes its entire ancestor chain with it. Recognizing `while` therefore pays off
+super-linearly.
+
+## 2. The printed-but-uncertified residual (58 unique protos)
+
+These print fine and recompile to a *different* proto. All 58 differ on `code`;
+24 also on `maxstacksize`, 11 on `constants.len`, 11 on an individual constant,
+1 on `is_vararg`. This is the residual approximation in the freereg simulation
+(`express/names.py::_stack_discipline`) — statement grouping and register
+allocation that do not quite match luac's.
+
+**Sub-case worth deciding explicitly: constant-pool interning order.** Measured
+at `fb85f2f`: 22 of the 58 have a differing constant pool, and **9 of them
+differ ONLY by the pool's order** — the same constant multiset, and `code`
+becomes identical once our constant indices are permuted onto the original's,
+with `maxstacksize` already equal. That is arguably a legitimate ladder rung
+(`L3.2 = canonicalise constant-pool order`) and it was **deliberately not
+added** during M3: it would need its own soundness argument (a permutation of
+the pool is only meaning-preserving if every RK reference is remapped
+consistently and no instruction depends on an index's numeric value), and
+adding a rung to buy 9 protos while `while` is worth 162 was the wrong order of
+work. An earlier measurement, at the code state before the "pre-declare
+parameters" change, put this at 8; do not treat either number as fixed.
+
+## 3. Effect-lattice calibration (spec M4)
+
+`lift/effects.py` grades every opcode under three modes — `STRICT`,
+`NO_METAMETHOD`, `TRUSTING`. Per CLAUDE.md **only `STRICT` has a
+justification**; the other two columns are asserted, not argued. Calibrating
+them against the 229-file corpus (which metamethod assumptions actually hold
+for this game's scripts?) and choosing a defensible default is M4 work.
+
+Note what M3 established about *why* this matters, because it is easy to
+overrate: the effect lattice is **no longer the inlining gate**. M3 task 8
+deleted `_adjacent_pure` and the `EffectMode` knob from `express/names.py` and
+replaced them with a simulation of `lparser.c`'s own `freereg = nactvar`
+discipline. Loosening the effect-based barrier was measured at **+0.0 protos**;
+the freereg simulation was worth **+63.6 points**. So calibrate the lattice
+because downstream passes (a real pass registry, reordering-based
+beautification) will need it — not because it is expected to move the L3 rate.
+Full story in `structured-pipeline.md`, "Register classification".
+
+## 4. `TAILCALL` is missing `writes_open` in the axiom layer
+
+`lift/effects.py`'s `TAILCALL` row returns `writes=∅, writes_open=0`. That is
+under-approximate: in `lvm.c`'s `OP_TAILCALL`, the `PCRC` branch
+(`lvm.c:630-632`, a non-Lua callee) leaves the callee's results at
+`R[a..top)` for the immediately following `RETURN A 0` to read.
+
+It does **not** currently break anything — `OP_TAILCALL` always has `C == 0`
+(`lvm.c:611`: `lua_assert(GETARG_C(i) - 1 == LUA_MULTRET)`), so no emitter
+template touches a register beyond `R[a..a+b)`, and the consistency gate
+(3 corpus `TAILCALL` rows, all with `B != 0`) passes. Fixing it properly needs
+what CLAUDE.md requires of any axiom-layer change: the `lvm.c` citation above
+*plus* a differential run, because adding `writes_open` puts every `TAILCALL`
+pc into `classify_registers`' `open_write_pcs` and can move classifications and
+therefore the committed ledger.
+
+## 5. Deepen the global-state probe toward L2 (Task 9 Deliverable B)
+
+**These are Task 9 measurements, recorded here rather than re-derived.** The
+question was whether invoking each newly-defined global function under a
+stubbing `_G` — instead of only serialising the globals a chunk writes — is a
+viable standing gate. Verdict: **viable, as an M4 task.**
+
+- **Reach.** 228/229 files produce a non-empty behavioural trace (only
+  `config.lua` defines no function). **397,317 recorded engine calls** versus
+  today's **452 compared globals** — three orders of magnitude more observed
+  behaviour.
+- **Determinism.** 229/229 byte-identical across three separate processes,
+  after neutralising `tostring(table)` addresses and instruction-count budgets.
+  No time/random/`pairs` leakage found.
+- **Agreement.** 226/229 between original and decompiled, with **zero new
+  decompiler defects**. Two divergences (`snr_common`, `snr_mainmenu`) are the
+  same `getobjname` naming artifact documented above; the third (`snr_novel`)
+  is the **same multiset of calls in a different order**, driven by the file's
+  single `pairs` loop — i.e. the first corpus-level *runtime* evidence for
+  backlog item 5 (table internal layout).
+- **Cost.** 2.7s for all 458 probe runs; ~**+3s** as a standing gate. Payload
+  median 48,081 B, 11.5 MB total, so store a per-file SHA-256 and dump the full
+  trace only on mismatch.
+- **Stub-return policy** (guess / zero / nil) changes 202–203 of 229 traces but
+  agreement stays 226/229 under all three: the guess decides *what you
+  observe*, not *whether the two sides agree*.
+
+**The design finding that matters more than the numbers: the budget must be a
+recorded-EVENT count with a generous instruction backstop.** An instruction
+budget alone — the shape the predecessor's `blackbox_runtime.py` uses — drops
+agreement from 226/229 to **95/229**, purely by truncating the two
+representations at different points. Measured, not assumed.
+
+Deferred out of M3 because it wants the `__pld_R` naming noise pinned or
+normalised first; it will stay red on `snr_novel` until backlog item 5 lands;
+and a 3000-event cap truncating 132/229 game loops is a reach ceiling that
+argues for a key-sequence-driven harness rather than a bare `pcall(main)`
+(cf. the predecessor's `DEBUG_KEY_SEQUENCE_HARNESS.md`).
+
+## 6. Deferred minors carried out of M3
+
+Non-blocking; each was verified as correct code with a documentation, coverage,
+or robustness gap rather than a defect. Same status as the M2 list above.
+
+**Provenance.** These are carried out of M3's per-task review ledger. At task 10
+every `file:line` reference below was re-checked against the tree and corrected
+where it had drifted; the *magnitudes* (event counts, timings) were **not**
+re-measured and should be treated as the original observation, not as current
+data. One entry was found to be outright stale on re-check and is annotated as
+such — assume the same is possible of the others.
+
+**Tests / fixtures**
+
+- `tests/synth.py` — the `_encode` iABC path (non-zero `b`/`c`) has no
+  persisted regression test; `tests/test_sir_regions.py::test_synth_mk_instr_roundtrips_fields` only
+  exercises iABx/iAsBx despite its name. The encoder was independently verified
+  correct at boundary values (`A=255`, `B=511`, `C=511`, `Bx` 0..262143, `sBx`
+  extremes), but a silent mis-encode would make every synthetic test
+  meaningless while appearing to pass. (Task 10 added the first heavy consumer:
+  `tests/test_effects_emitter_consistency.py`'s synthetic grid drives this path
+  over 7284 rows, which narrows but does not close the gap.)
+- `tests/synth.py` — `mk_cfg` duplicates `test_dom.py`'s own local `_mk_cfg`,
+  which has 6 call sites while `mk_cfg` has exactly one
+  (`tests/test_sir_build_acyclic.py:189`). Two hand-rolled CFG builders that
+  must agree on `preds` construction is one too many; fold `_mk_cfg` into
+  `synth.mk_cfg`. (Recorded during M3 as "zero call sites"; **re-measured at
+  task 10 — that was already stale**, `test_sir_build_acyclic.py` picked it
+  up when the multi-entry dominance test landed.)
+- No shared corpus-proto cache across the corpus-scanning tests — roughly
+  5–6s of redundant `load_file` + `lift_proto` suite-wide. A session-scoped
+  fixture would fix it. (`tests/conftest.py` already does this for the far more
+  expensive `decompile_file`; `test_effects_emitter_consistency.py` does it
+  module-locally.)
+
+**Code**
+
+- `express/reconstruct.py::_emit_multi` — its justifying comment overstates the
+  shadowing argument as runtime semantics; the real reason is the declare-once
+  invariant.
+- `express/reconstruct.py::close_scope` — restores `env`, which could in
+  principle resurrect an arm-consumed staged expression. Unreachable (condition
+  operands are consumed before `open_scope`), but only argued in the forward
+  direction.
+- `structure/structured.py` — `emit_certified_chunk` memoizes the root under
+  `_memo_key(root)` in the same dict descendants read. Unreachable (the root's
+  own structural view contains any descendant's), but the comment above it
+  explicitly worries about exactly what the code still permits.
+- `scripts/run_corpus.py:77-81` — the forced-`L0` loop keeps
+  `res.confessions_by_proto[path]`, which is `[]` for an individually-`L3`
+  proto, so an `L0` row could ship **unconfessed**. Latent (229/229 compile
+  today) and `tests/test_m3_exit.py` would fail loudly, but "confess, don't
+  guess" wants the `L0` path to record its own confession.
+- `scripts/ledger_dashboard.py:42` — sorts the rung histogram by `kv[0]`,
+  raising `TypeError` if any `L3` entry ever carried `l3_level: null`. The
+  dashboard is exactly the tool you reach for when that invariant breaks.
+- `tests/test_express_names.py:692` — `_temp_write_violations`' open-read model credits an
+  `R[base..top)` read to *every* register `>= base`, so 14,369 corpus
+  temp-writes pass "exactly one consumer" with no explicit reader. A genuine
+  fix, but the accepted ceiling is undocumented.
+
+**Probe (`scripts/probe_global_state.lua` / `.py`)**
+
+- The *value* side of serialisation is still ambiguous (same family as the
+  fixed key collision): `X="a" Y=1` and `X="a\nstring:Y=1"` serialise
+  identically. Latent — 222/229 payloads are `string:main=<function>`.
+- `strip_location` strips only the FIRST `<src>:<line>: ` prefix, so a
+  re-raised error carries a second location that necessarily differs between
+  the stripped `.luac` (`?:0:`) and our `.lua`. The one remaining way `ERR|`
+  residue can be representation-dependent for a reason other than
+  `getobjname`.
+- The CLI `main()` knows nothing about the pinned divergences — it prints
+  `225/229` and returns 1, so anyone running the documented script sees a RED
+  gate while the suite is green.
+- Table/function-valued **keys** still serialise via `tostring(k)` (an address,
+  non-deterministic across the two probe processes). 0 occurrences today.
+- `payload_of` splits `ERR|` on the first `|`, mis-splitting a message
+  containing `|`. Harmless today.
+
+**Performance**
+
+- Suite went 12s → ~30s over M3 (measured at task 10: 284 tests, 30.79s),
+  inherently: `test_ledger_ratchet` (10.2s) and
+  `test_corpus_compile` (8.7s) now pay one `luac_sz4` subprocess per proto, and
+  a review agreed neither should be sampled. But `emit_certified_chunk`'s memo
+  is per-chunk while the corpus has 1478 unique keys over 1944 protos — a
+  process-level memo would cut roughly 24% of the subprocess cost.
+
+## 7. Not in scope for M4, recorded so it is not re-litigated
+
+- **L2 differential-execution certification** (stub environment + trace
+  comparison + coverage badge) and key-sequence regression — spec M5. The
+  global-state probe is L1.5, not L2.
+- **Variable-name semanticisation** (`l0_0` → a meaningful name) — needs a
+  debug segment or heuristics; this corpus is stripped. M4+ at best, and of
+  questionable value.
+- **Full ratchet CI** (baseline diff, downgrade = fail, `git bisect`
+  integration) — spec §5's complete form. M3 only guarantees the ledger fields
+  can support it.
+- The predecessor's `test_ir_pipeline.py` (86 cases) translation list — per
+  spec §8 this is generated from M3's per-function level data, so it is an M4
+  *input*, not an M4 deliverable.
