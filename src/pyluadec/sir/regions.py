@@ -123,3 +123,44 @@ def all_claimed(r: Region) -> frozenset[int]:
             raise RegionOverlap(f"pcs {sorted(acc & cc)} claimed by more than one region")
         acc |= cc
     return frozenset(acc)
+
+
+def _own_enditers(r: Region) -> frozenset[int]:
+    """The EndIter pcs belonging to THIS loop level -- the walk stops at a
+    nested loop, whose own EndIters were already validated when that loop was
+    recognized."""
+    if isinstance(r, EndIter):
+        return r.claimed_pcs
+    if isinstance(r, Seq):
+        out: frozenset[int] = frozenset()
+        for c in r.body:
+            out |= _own_enditers(c)
+        return out
+    if isinstance(r, If):
+        out = _own_enditers(r.then_body)
+        if r.else_body is not None:
+            out |= _own_enditers(r.else_body)
+        return out
+    return frozenset()
+
+
+def _tail_enditers(r: Region) -> frozenset[int]:
+    """The EndIter pcs that print LAST on some path through `r` -- i.e. those
+    an emitter can legitimately print as nothing, because falling out of `r`
+    at that point executes nothing else.
+
+    `Seq` contributes only its last child (anything earlier has statements
+    after it); an `If` contributes both arms (each arm's end IS the if's end).
+    Every other node contributes nothing: a `Straight`/`Return`/`Break` is not
+    an EndIter, and a nested loop's tail is its own iteration's end, not this
+    body's."""
+    if isinstance(r, EndIter):
+        return r.claimed_pcs
+    if isinstance(r, Seq):
+        return _tail_enditers(r.body[-1]) if r.body else frozenset()
+    if isinstance(r, If):
+        out = _tail_enditers(r.then_body)
+        if r.else_body is not None:
+            out |= _tail_enditers(r.else_body)
+        return out
+    return frozenset()

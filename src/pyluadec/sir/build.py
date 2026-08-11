@@ -11,7 +11,7 @@ from pyluadec.lift.opcodes import Op
 
 from .regions import (Break, EndIter, GenericFor, If, NumericFor, Region,
                       RegionOverlap, Return, Seq, Straight, WhileTrue,
-                      all_claimed)
+                      all_claimed, _own_enditers, _tail_enditers)
 
 _COMPARE = frozenset({Op.EQ, Op.LT, Op.LE, Op.TEST})
 # TESTSET is deliberately NOT an if-condition: it is the and/or VALUE idiom
@@ -144,47 +144,6 @@ def _exits_only_to(fn, lo: int, S: int) -> bool:
     return True
 
 
-def _own_enditers(r: Region) -> frozenset[int]:
-    """The EndIter pcs belonging to THIS loop level -- the walk stops at a
-    nested loop, whose own EndIters were already validated when that loop was
-    recognized."""
-    if isinstance(r, EndIter):
-        return r.claimed_pcs
-    if isinstance(r, Seq):
-        out: frozenset[int] = frozenset()
-        for c in r.body:
-            out |= _own_enditers(c)
-        return out
-    if isinstance(r, If):
-        out = _own_enditers(r.then_body)
-        if r.else_body is not None:
-            out |= _own_enditers(r.else_body)
-        return out
-    return frozenset()
-
-
-def _tail_enditers(r: Region) -> frozenset[int]:
-    """The EndIter pcs that print LAST on some path through `r` -- i.e. those
-    an emitter can legitimately print as nothing, because falling out of `r`
-    at that point executes nothing else.
-
-    `Seq` contributes only its last child (anything earlier has statements
-    after it); an `If` contributes both arms (each arm's end IS the if's end).
-    Every other node contributes nothing: a `Straight`/`Return`/`Break` is not
-    an EndIter, and a nested loop's tail is its own iteration's end, not this
-    body's."""
-    if isinstance(r, EndIter):
-        return r.claimed_pcs
-    if isinstance(r, Seq):
-        return _tail_enditers(r.body[-1]) if r.body else frozenset()
-    if isinstance(r, If):
-        out = _tail_enditers(r.then_body)
-        if r.else_body is not None:
-            out |= _tail_enditers(r.else_body)
-        return out
-    return frozenset()
-
-
 def _match_while_true(fn, cfg, idoms, pc2blk, sites, memo, lo: int, hi: int):
     """Recognize `while true do ... end` opening at range position `lo`.
 
@@ -315,12 +274,14 @@ def _structure_range_impl(fn, cfg, idoms, pc2blk, lo: int, hi: int,
     sites/memo: the `_jmp_sites` map and the per-`build_sir` result cache,
     both created once at the top call. Passed as optional keywords rather
     than positionals so the top-level call in build_sir keeps its M3
-    signature.
+    signature -- but this function has exactly one caller, `_structure_range`
+    (never `build_sir` directly), and it always resolves both to non-None
+    before calling in. A lazy `is None` fallback here would be unreachable
+    defense that could silently fork the memo cache (a fresh, unshared `{}`)
+    if some future caller ever did pass `None` straight through -- assert
+    instead, so that caller becomes a loud bug rather than a quiet one.
     """
-    if sites is None:
-        sites = _jmp_sites(fn)
-    if memo is None:
-        memo = {}
+    assert sites is not None and memo is not None
     parts: list[Region] = []
     pc = lo
     _last_pc: int | None = None
@@ -464,6 +425,28 @@ def _structure_if(fn, cfg, idoms, pc2blk, pc: int, hi: int, break_target: int | 
         # inside this range is `hi`: the if is in tail position of the range
         # -- luac would have patched the jump to the join instead of leaving
         # it pending if any statement of this range followed the if.
+        #
+        # Why `jt == continue_target` is sufficient proof of that, rather
+        # than a coincidence of pc arithmetic: this is luac's `jpc`
+        # (pending-jump-list) mechanism (vendor/lua-5.1/src/lcode.c).
+        # `luaK_jump` (lines 59-66) does NOT patch a pending jump list to a
+        # fixed target when the next thing emitted is itself a JMP -- it
+        # saves the pending list (line 60), clears it (line 62), emits the
+        # new JMP, and then *concatenates* the saved list onto the new JMP's
+        # own chain (line 64, `luaK_concat`) so they will all later be
+        # patched to wherever that JMP itself ends up. Emitting any
+        # non-JMP instruction instead flushes the pending list immediately,
+        # to that instruction's own pc: `luaK_code` (lines 789-801) calls
+        # `dischargejpc` (line 791) before every emission, which patches the
+        # whole pending list to the current `fs->pc` (`dischargejpc`/
+        # `patchlistaux`, lines 163-166) and clears it. So a jump that is
+        # still pending by the time `whilestat` patches the loop's closing
+        # JMP to the header -- which is what `jt == continue_target` here
+        # observes -- proves every instruction between this JMP and the
+        # closing JMP was itself a JMP; no non-JMP instruction could have
+        # intervened without flushing it to a nearer target first. Hence the
+        # if really is in tail position of the range, and `hi` (not some
+        # earlier pc) is the correct rewritten destination.
         jt = hi
     if not (then_lo <= jt <= hi):
         raise StructureError(f"pc {pc}: if targets out of range")
@@ -496,7 +479,12 @@ def _structure_if(fn, cfg, idoms, pc2blk, pc: int, hi: int, break_target: int | 
             # Same threading as above, one level down: the else-skip of an
             # if/else in tail position of a loop body lands on the header.
             # It is still an else-skip -- rewriting it to `hi` is what keeps
-            # the else block [jt, hi) from being dropped.
+            # the else block [jt, hi) from being dropped. Same jpc/luaK_jump
+            # argument as the `jt == continue_target` rewrite above (see its
+            # comment, ~30 lines up, for the vendor/lua-5.1/src/lcode.c line
+            # numbers): `cand == continue_target` is proof that nothing but
+            # JMPs sit between this else-skip and the loop's closing JMP, so
+            # this else-skip is in tail position too and `hi` is correct.
             cand = hi
         if cand < jt and not _is_generic_for_back_edge(fn, then_last):
             # Backward-targeting trailing JMP: not an else-skip at all (luac's
@@ -554,7 +542,20 @@ def _structure_if(fn, cfg, idoms, pc2blk, pc: int, hi: int, break_target: int | 
 def _is_generic_for_back_edge(fn, pc: int) -> bool:
     """True iff the JMP at `pc` is the trailing back edge of a generic for
     (`TFORLOOP` at pc-1, jumping back over the body). See _structure_if for
-    why this one shape is singled out."""
+    why this one shape is singled out.
+
+    EXPIRY (M4 task 1 review, 2026-08-11): this exclusion exists ONLY to keep
+    `corpus/ledger.jsonl` frozen while task 1 lands -- the caller's own
+    comment calls it M3's *other* instance of the same defect the else-join
+    relaxation just fixed. Once the loop printer lands (task 2 for
+    `WhileTrue`/`EndIter`, or later once `Repeat` prints too) and printing a
+    newly-accepted proto is no longer a ledger-moving side effect of THIS
+    task, delete the `not _is_generic_for_back_edge(fn, then_last)` guard
+    above (and this function, if nothing else calls it) and flip
+    `tests/test_sir_while.py::test_generic_for_back_edge_inside_if_stays_refused`
+    from "raises StructureError" to "recognized, all_claimed" -- that test's
+    own docstring says the same thing from the test side.
+    """
     li = fn.instrs.get(pc)
     prev = fn.instrs.get(pc - 1)
     return (li is not None and li.ri.op is Op.JMP and prev is not None

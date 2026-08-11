@@ -128,10 +128,10 @@ def test_non_tail_threaded_jump_refuses_rather_than_dropping_it():
     # Same shape with a statement after the inner if: pc 5 still jumps to the
     # shared header, but printing it as nothing would let f() run, which the
     # jump skips. An EndIter is only sound in tail position -- refuse.
+    fn = lift_proto(load_bytes(compile_source(
+        b"while true do while true do if a() then break else b() end f() end end",
+        strip=True)))
     with pytest.raises(StructureError):
-        fn = lift_proto(load_bytes(compile_source(
-            b"while true do while true do if a() then break else b() end f() end end",
-            strip=True)))
         build_sir(fn)
 
 
@@ -204,6 +204,42 @@ def test_pc_retreating_edge_that_is_not_a_dominance_back_edge_is_not_a_header():
     from pyluadec.sir.regions import GenericFor
     assert len(_find(r, GenericFor)) == 1
     assert _find(r, WhileTrue) == []
+
+
+def test_generic_for_back_edge_inside_if_stays_refused():
+    """`_structure_if`'s else-join relaxation (build.py, `_is_generic_for_back_edge`)
+    deliberately excludes one shape from the "backward trailing JMP belongs to
+    the then-body" relaxation: a generic-for's own trailing back edge sitting
+    inside an if body. This is the direct fixture for it -- the brief's else-join
+    relaxation review flagged that the exclusion had no test naming it in
+    either direction, only the ledger-fixed-point test as an indirect,
+    invisible guard.
+
+    Verified 2026-08-11 that this source reproduces the excluded path exactly
+    (not merely some other refusal): compiled shape is
+        1 GETGLOBAL 2 TEST 3 JMP->13 4-6 f()'s callee/args 7 JMP->11
+        8-10 pairs(t) call  11 TFORLOOP  12 JMP->8  13 RETURN
+    pc 12's JMP has TFORLOOP at pc 11 and a backward target (8), so
+    `_is_generic_for_back_edge(fn, 12)` is True; that makes
+    `cand < jt and not _is_generic_for_back_edge(...)` FALSE, so the
+    "belongs to the then-body" relaxation does NOT fire and control falls
+    into the `else: join = cand; if not (jt <= join <= hi): raise ...`
+    branch, which raises "else-join out of range" (jt=13, join=8) -- the
+    exact refusal message this shape is documented to keep.
+
+    EXPECTED TO INVERT: this assertion is expected to flip from "raises" to
+    "recognized, all_claimed" in a later task (task 2 once the loop printer
+    lands, or task 3/4) -- see the EXPIRY comment on `_is_generic_for_back_edge`
+    in build.py. The exclusion exists ONLY to keep `corpus/ledger.jsonl` frozen
+    for this task (it is the one unique corpus proto the relaxation would
+    otherwise additionally accept, print, and certify, moving a ledger row).
+    Flipping this test alongside removing the exclusion is the intended
+    outcome of that future change, not a regression to chase down.
+    """
+    fn = lift_proto(load_bytes(compile_source(
+        b"if c then for k, v in pairs(t) do f(k) end end", strip=True)))
+    with pytest.raises(StructureError, match="else-join out of range"):
+        build_sir(fn)
 
 
 def test_unreachable_block_inside_a_loop_body_is_still_claimed():
@@ -300,6 +336,30 @@ def test_corpus_build_sir_acceptance_floor(corpus_dir):
     # loop that closes with an unconditional JMP is a `while <cond>`, which is
     # task 3's. The recognizer's coverage here is the oracle-compiled fixtures
     # above, not the corpus.
+    #
+    # RECONCILING NOTE (review round, 2026-08-11): the 15/17 true-only/none
+    # split above is not the only classification a from-scratch reimplementation
+    # would reproduce. Re-running it with the exact `dominates` check
+    # `_match_while_true` itself applies, over every JMP in the function (not
+    # just `_jmp_sites` range-start candidates), reproduces 134 and 3 for the
+    # other two rows unchanged but gets 23 and 9 for true-only/none instead of
+    # 15 and 17 -- same total (32), different split. The obvious suspect --
+    # `_is_generic_for_back_edge`-shaped JMPs being filtered in or out of the
+    # count -- was checked directly and ruled out as the cause: only 5 such
+    # JMPs exist across all 169 refused protos (measured), which cannot by
+    # itself move 8 protos between buckets, and every one of those 5 already
+    # fails the strict dominance test on its own regardless of any filter
+    # (measured: `dominates(idoms, body_head_block, jmp_block)` is False for
+    # all 5 -- a generic-for's own trailing JMP is pc-retreating but not a
+    # dominance back edge, the same fact
+    # test_pc_retreating_edge_that_is_not_a_dominance_back_edge_is_not_a_header
+    # pins). What actually produced the 15/17 committed above was not
+    # re-derived here (the classification script itself was never committed
+    # to the repo); treat that split as one reasonable counting, not a
+    # ground truth. Neither the conclusion above (zero net acceptance) nor
+    # the floor assertion below depends on it -- both need only the total
+    # (169) and that `_match_while_true` fires zero times, which hold under
+    # either counting.
     #
     # So the floor is set from measurement (1309 - 10) rather than prediction,
     # and it is a ratchet against regression, not a claim of growth. Task 3
