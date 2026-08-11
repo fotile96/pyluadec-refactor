@@ -54,6 +54,43 @@ class Break:
 
 
 @dataclass(frozen=True)
+class WhileTrue:
+    """`while true do <body> end`: an unconditional backward JMP closing a
+    range whose head dominates it. Claims ONLY the closing JMP -- the body
+    claims everything in [header, closing)."""
+    body: "Region"
+    closing: LirInstr                # the backward JMP closing the loop
+    claimed_pcs: frozenset[int]      # exactly {closing pc}
+
+
+@dataclass(frozen=True)
+class Repeat:
+    """`repeat <body> until <cond>`. Declared here so Tasks 2-4 can rely on
+    the name and the printer can dispatch on it; recognition is Task 3, so
+    `build_sir` never constructs one yet."""
+    body: "Region"
+    cond: LirInstr                   # bottom comparison/TEST
+    negated: bool
+    closing: LirInstr                # the conditional backward JMP
+    claimed_pcs: frozenset[int]      # {cond pc, closing pc}
+
+
+@dataclass(frozen=True)
+class EndIter:
+    """A threaded end-of-iteration JMP: a backward JMP to the current loop's
+    header from inside its body, in a position where control would fall out
+    of the body anyway.
+
+    luac produces these mechanically: `luaK_jump` concatenates the list of
+    jumps pending at the loop's closing JMP into that jump's own list, and
+    `whilestat` then patches the whole list to the loop header. So every
+    JMP-to-header other than the closing one is a jump whose *source-level*
+    destination was "the end of the loop body". Prints as nothing (Task 2);
+    certification adjudicates that luac re-threads it identically."""
+    claimed_pcs: frozenset[int]
+
+
+@dataclass(frozen=True)
 class Return:
     instr: LirInstr
     claimed_pcs: frozenset[int]
@@ -65,13 +102,16 @@ class Fallback:
     claimed_pcs: frozenset[int]
 
 
-Region = Straight | Seq | If | NumericFor | GenericFor | Break | Return | Fallback
+Region = (Straight | Seq | If | NumericFor | GenericFor | WhileTrue | Repeat
+          | EndIter | Break | Return | Fallback)
 
 _CHILDREN = {
     Seq: lambda r: r.body,
     If: lambda r: (r.then_body,) + ((r.else_body,) if r.else_body is not None else ()),
     NumericFor: lambda r: (r.body,),
     GenericFor: lambda r: (r.body,),
+    WhileTrue: lambda r: (r.body,),
+    Repeat: lambda r: (r.body,),
 }
 
 
