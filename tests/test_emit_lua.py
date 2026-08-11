@@ -382,3 +382,71 @@ def test_if_arms_do_not_share_local_declaration_state(tmp_path):
     stripped = load_bytes(oracle.compile_source(src.encode(), strip=True))
     assert certify_proto(stripped, is_chunk_root=True).level == "L3"
     assert _run(printed, tmp_path).strip() == "2"
+
+
+def test_non_ascii_string_constant_survives_print_certify_and_execution(tmp_path):
+    r"""A non-UTF-8 string constant, used as both a value and a table key.
+
+    This project exists to decompile a Japanese PSP visual novel: 17411 of the
+    corpus's 49063 string constants contain a byte > 0x7f (measured 2026-08-11),
+    and the predecessor project's documented crash mode was a bridge that threw
+    on any constant that would not decode as UTF-8. Yet 0 of the 92 structured
+    artifacts M3 ships contains a high byte -- every one of them is pure ASCII
+    -- so nothing on the STRUCTURED path had ever printed one. (The fallback
+    path has `tests/test_fallback_literals.py`; the structured printer shares
+    `const_lit`/`str_lit` with it via `emit/lua.py`'s import, but sharing a
+    helper is not the same as exercising it.)
+
+    The bytes below are Shift-JIS 日本語. They are deliberately chosen so that a
+    naive implementation is caught twice over:
+
+    - the sequence is not valid UTF-8, so any decode-then-re-encode round trip
+      (or `errors="replace"`) corrupts it;
+    - `\x7b` is the trail byte of `\x96\x7b` and is also ASCII `{`, so a
+      printer that escapes only "non-printable" bytes emits a bare `{` in the
+      middle of a string literal. That happens to be harmless inside quotes,
+      which is exactly why it needs a test rather than an eyeball.
+
+    Three independent assertions, because each catches something the others do
+    not: the printed text stays pure ASCII (so the artifact is safe to write to
+    disk and hand to a downstream tool that assumes a byte-oriented surface),
+    the chunk CERTIFIES (so luac's own constant table -- compared bitwise by
+    `compare_protos` -- came back byte-identical), and it RUNS and writes the
+    original bytes back out (so the escaping is semantically right, not merely
+    stable under a round trip through our own two functions).
+    """
+    from pyluadec import oracle
+    from pyluadec.emit.lua import print_chunk
+    from pyluadec.ingest import load_bytes
+    from pyluadec.structure.structured import certify_proto
+
+    RAW = b"\x93\xfa\x96\x7b\x8c\xea"                 # Shift-JIS 日本語
+    assert any(b > 0x7f for b in RAW)
+    try:
+        RAW.decode("utf-8")
+        raise AssertionError("fixture must not be valid UTF-8")
+    except UnicodeDecodeError:
+        pass
+
+    src = (b'local t = {["' + RAW + b'"] = "' + RAW + b'"}\n'
+           b'io.write(t["' + RAW + b'"])\n')
+    original = load_bytes(oracle.compile_source(src, strip=True))
+
+    printed = print_chunk(original)
+    assert printed is not None
+    payload = printed.encode()
+    assert all(b <= 0x7f for b in payload), printed
+    # Every high byte must appear as a fixed-width decimal escape, and the
+    # ASCII-valued trail byte must NOT have been merged into the neighbouring
+    # escape (`\150{`, not `\150123`, which Lua would read as one char).
+    assert "\\147\\250\\150{\\140\\234" in printed, printed
+
+    assert certify_proto(original, is_chunk_root=True).level == "L3"
+
+    recompiled = load_bytes(oracle.compile_source(payload, strip=True))
+    assert [k for k in recompiled.constants if isinstance(k, bytes)] == \
+           [k for k in original.constants if isinstance(k, bytes)]
+
+    r = oracle.run_bytes(payload, is_source=True)
+    assert r.returncode == 0, r.stderr.decode(errors="replace")
+    assert r.stdout == RAW

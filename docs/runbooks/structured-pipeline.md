@@ -9,12 +9,33 @@ It is the companion to `docs/runbooks/decompile-pipeline.md`, which documents
 the M2 **fallback** path. The two coexist and neither replaces the other — see
 "Relationship to the fallback runbook" at the end.
 
-Every quantitative claim below was measured in this repository at commit
-`fb85f2f` (branch `phase3-m3-structured`) against the 229-file corpus, or is
-cited to a specific `file:line` / test name. If a number here stops matching
-reality, that is a bug in the runbook; re-measure and fix it rather than
-routing around it. The measurement commands are given inline so you can
-re-derive any of them.
+Every quantitative claim below was measured in this repository against the
+229-file corpus (originally at commit `fb85f2f`; the capability-boundary
+figures re-verified 2026-08-11 on the M3 merge candidate), or is cited to a
+specific `file:line` / test name. If a number here stops matching reality,
+that is a bug in the runbook; re-measure and fix it rather than routing
+around it.
+
+**How to re-derive — read this before trusting a number here.** Three tiers:
+
+1. **Inlined and verified.** The capability-boundary table, its refusal
+   breakdown, and the 58-residual histogram have complete runnable scripts
+   under "Current capability boundary", each printed together with the output
+   it produced when run on 2026-08-11.
+2. **Read off a committed artifact or a standing test.** The L3 rates come
+   from `corpus/ledger.jsonl` (`uv run python scripts/ledger_dashboard.py`).
+   The 225/229 global-state figure comes from
+   `tests/test_global_state_probe.py` / `scripts/probe_global_state.py`. The
+   effects–emitter counts (207214/214192, 7284) live in
+   `tests/test_effects_emitter_consistency.py`'s `corpus_scan` fixture, but
+   the test asserts only floors — to see the exact numbers you have to print
+   the fixture's `checked` / `protos` yourself.
+3. **No saved command — you will have to write a script.** The fault-injection
+   counts, the +17.3 / +63.6 / +0.0 percentage-point attributions, and the
+   93/229 and 13.1% chunk-level figures were one-off measurements, several of
+   them taken against intermediate code states that no longer exist. They are
+   recorded as history, not as reproducible data. Do not assume a snippet
+   exists for them somewhere; there is none.
 
 ## The pipeline, layer by layer
 
@@ -52,6 +73,27 @@ block containing the condition. The pc-interval arithmetic alone cannot see a
 jump from unrelated code into the middle of a "then" body; the dominator check
 can. Call sites: `sir/build.py:224`, `:226` (if/else arms), `:287` (numeric-for
 body), `:306` (generic-for body).
+
+**But do not read that as "dominance drives the structuring."** The recognizer
+is pc-interval-driven; the dominator tree is a **post-hoc verifier** sitting on
+top of it, and on today's corpus it is nearly inert. Measured 2026-08-11 over
+all 1944 protos: `_verify_single_entry` is reached 1115 times; its
+`dominates()` rejection branch — the multi-entry-branch case — fires **0**
+times, and its "block unreachable from entry" branch fires 9 times but changes
+the accept/refuse verdict for only **1** proto (`snr_common.lua:main_29_0`),
+because the other 8 are refused for an unrelated reason anyway. Neutering
+`_verify_single_entry` entirely therefore moves **1 of 1944** proto outcomes
+(1775 accepted → 1776).
+
+That is not an argument for deleting it. Both branches are covered by tests
+(`tests/test_sir_build_acyclic.py`'s hand-built multi-entry CFG), the guard is
+correct, and "never fires" here is a property of *this* corpus and of the
+currently narrow recognizer: every region shape M3 accepts is one whose
+single-entry property the interval arithmetic happens to get right. M4's
+`while`/`repeat`/irreducible work is exactly where multi-entry bodies start to
+be constructible, and that is when this check stops being free insurance and
+starts being load-bearing. Keep it; just do not cite it as evidence that
+dominators are doing the recognition.
 
 **PC-claim audit.** `build_sir` asserts `all_claimed(region) == set(fn.instrs)`
 at every exit (`sir/build.py:86-89`) and raises `StructureError` naming the
@@ -132,13 +174,15 @@ debug:
 This is the single most important property of the M3 design, so it is worth
 stating precisely.
 
-`emit_certified_chunk` (`structure/structured.py:179-226`) does exactly two
+`emit_certified_chunk` (`structure/structured.py:198-251`) does exactly two
 things:
 
 1. Certifies **every** proto in the tree independently, recording a level per
    proto.
-2. Chooses the shipped artifact: `print_chunk(root)` **iff the root certified
-   `L3`**, otherwise `structure.fallback.emit_chunk(root)`.
+2. Chooses the shipped artifact: **iff the root certified `L3`**, the exact
+   bytes certification compiled and compared (`ProtoCert.source`, produced by
+   `print_chunk` inside `certify_proto`); otherwise
+   `structure.fallback.emit_chunk(root)`.
 
 So the invariant is:
 
@@ -147,8 +191,14 @@ So the invariant is:
 > `luac_sz4` into a proto that matches the original under the normalization
 > ladder. No unverified structured code is ever returned.
 
-`structured.py:224` asserts `src is not None` after the root certifies, because
-a root that certified `L3` must by construction have printed successfully.
+`structured.py:249` asserts `certs["main"].source is not None` after the root
+certifies, because a root that certified `L3` must by construction have printed
+successfully. Note that the shipped bytes are *reused from* the certification,
+not re-printed: an earlier revision called `print_chunk(root)` a second time
+here, which made "shipped == certified" contingent on `print_chunk` being
+deterministic (it is — 92/92 shipped artifacts re-print identically — but that
+is a property of the printer, not of this gate, and no test would have noticed
+losing it).
 
 The consequence worth internalising: **a bug in region identification, in
 register classification, or in inlining can only lower the L3 rate. It cannot
@@ -189,7 +239,7 @@ code-shape key that deliberately omits `source`, `linedefined`,
 `lastlinedefined`, `lineinfo`, `locvars` and upvalue names, all of which
 `compare_protos` checks. The two together cover every field the comparison
 examines, so equal keys imply equal verdicts by construction
-(`structure/structured.py:72-118`).
+(`structure/structured.py:89-135`).
 
 ## The normalization ladder
 
@@ -226,6 +276,42 @@ thing, not that they emit byte-identical diagnostics.
 Ladder tests: `tests/test_normalize_l31.py` (six cases, including
 `test_l31_still_catches_real_difference` and
 `test_l31_does_not_normalize_away_maxstacksize`).
+
+### The candidate is always compiled `-s`, so unstripped input barely certifies
+
+`verify/certify.py:54` and `structure/structured.py:183` (the wrapper path) both call
+`oracle.compile_source(..., strip=True)`. That matches this corpus — all 229
+files are `-s`-stripped (CLAUDE.md) — but it has a consequence that costs
+people an afternoon if they meet it cold, because the symptom is a bare
+`Mismatch(field="locvars")` and nothing in the modules used to mention it.
+
+Rung 1 blanks locvar and upvalue *names* but **keeps** each locvar's count,
+`startpc` and `endpc` (deliberately — a stronger check; see
+`tests/test_normalize_l31.py::test_l31_strips_locvar_and_upvalue_names_but_keeps_counts`).
+So an original that still carries debug info is compared, at every rung,
+against a candidate whose `locvars` is empty. Measured 2026-08-11 with this
+repo's `luac_sz4`:
+
+| source | original compiled `-s` | original compiled without `-s` |
+| --- | --- | --- |
+| `x = 1` | `L3` rung 0 | `L3` rung 1 |
+| `local a = 1  print(a)` | `L3` rung 0 | `L1`, field `locvars` |
+| `for i = 1, 10 do print(i) end` | `L3` rung 0 | `L1`, field `locvars` |
+
+Read off: a proto declaring **no** locals is unaffected; a proto declaring even
+one can only certify if the original was stripped. Ordinary `luac` output
+therefore falls back for essentially every real function — the most natural way
+to point this decompiler at something that is not the target corpus. Compile
+fixtures with `-s`, as `tests/test_certify.py` and
+`tests/test_structured_certify.py` do (`tests/test_emit_lua.py` keeps an
+unstripped `_proto` on purpose, to exercise the *printer*, and makes a separate
+stripped copy when it wants to certify).
+
+The stronger fix — matching the candidate's strip mode to the original's, which
+would let rung 1 compare *real* locvar scope ranges instead of two empty tuples
+— is **strictly stronger** than what the gate does today and is recorded as M4
+work in `docs/runbooks/m3-backlog.md`. It is a behaviour change that can move
+the committed ledger, so it was not made in the M3 merge-readiness round.
 
 ## Register classification: simulating `lparser.c`'s `freereg`
 
@@ -279,10 +365,12 @@ That is simulable straight from the bytecode without knowing `nactvar`, because
 - a value producer targeting `a` pops every pending entry at or above `a`
   (exactly the operands it just consumed) and pushes its own results;
 - a statement-ending instruction (`CALL` with `C==1`, `TAILCALL`, `RETURN`,
-  `SETGLOBAL`, `SETUPVAL`, `FORPREP`, `CLOSE`, or a write whose target is
-  already a known local) pops its own operands and then **promotes everything
-  still pending to local** — surviving a statement boundary is the definition
-  of being one;
+  `SETGLOBAL`, `SETUPVAL`, `FORPREP`, `CLOSE`, `FORLOOP`, `TFORLOOP`, or a
+  write whose target is already a known local) pops its own operands and then
+  **promotes everything still pending to local** — surviving a statement
+  boundary is the definition of being one. (`CLOSE`/`FORLOOP`/`TFORLOOP` share
+  one arm at `express/names.py:495-497`: a loop's back edge is a statement
+  boundary too, and nothing may stay pending across it.)
 - `SETTABLE`/`SETLIST` pop only *above* the table's own register, leaving the
   table pending (`local t = {} t.x = 1` and `local t = {x=1}` differ only in
   `NEWTABLE`'s size hints);
@@ -512,7 +600,7 @@ the original instruction stream actually did.
 ### Run the suite
 
 ```bash
-PYLUADEC_CORPUS_DIR=<corpus> uv run pytest              # 284 tests, ~30s
+PYLUADEC_CORPUS_DIR=<corpus> uv run pytest              # 285 tests, ~30s
 PYLUADEC_CORPUS_DIR=<corpus> uv run pytest tests/test_effects_emitter_consistency.py -v
 ```
 
@@ -534,11 +622,32 @@ it (see CLAUDE.md).
 | `oracle` | `git log -1 -- vendor native` — the oracle build's provenance, **not** repo HEAD. See `decompile-pipeline.md` for why. |
 
 **Ratchet discipline: levels only ever go up, confessions only ever come off.**
-A level that rose without its confession being dropped, or a confession dropped
-without the level rising, is a bookkeeping bug. Both halves are asserted:
-`tests/test_m3_exit.py::test_l3_entries_carry_a_rung_and_no_confessions` and
-`::test_non_l3_entries_confess`. `run_corpus.py:64-68` takes the higher level
-when one structural hash occurs more than once.
+That is the *discipline*. Be precise about how much of it a machine checks —
+re-read of the assertions, 2026-08-11:
+
+**Asserted.** Within-row coupling between level and confession, both
+directions: `tests/test_m3_exit.py::test_l3_entries_carry_a_rung_and_no_confessions`
+(`L3` ⇒ non-null `l3_level`, empty `confessions`, `fallback is False`) and
+`::test_non_l3_entries_confess` (non-`L3` ⇒ `fallback is True`, null
+`l3_level`, exactly one whole-range `fallback-state-machine` confession). So a
+level that rose without its confession coming off, or a confession dropped
+without the level rising, does fail the suite. Also asserted: no `L0` and
+`compile_ok` everywhere (`test_ledger_ratchet.py`, `test_m3_exit.py`), `shash`
+sortedness and uniqueness, full-corpus coverage at exactly 1944 occurrences,
+byte-identical regeneration from `run_corpus.py`
+(`::test_ledger_is_a_reproducible_fixed_point`), and the `> 0.50` exit
+fractions on both bases.
+
+**Not asserted: cross-revision monotonicity.** Nothing in the suite compares
+the ledger against any historical baseline. A ledger regenerated with *fewer*
+`L3` rows and committed passes every test above, as long as the rate stays
+over 50% and no `L0` appears — each row would still be internally consistent,
+which is all the coupling tests look at. Full ratchet CI (baseline diff,
+downgrade = fail, `git bisect` integration) is spec §5's complete form and is
+an explicit **M4** item; M3 only guarantees the ledger fields can support it
+(`docs/runbooks/m3-backlog.md` §7). Until then a shrinking L3 count is caught
+by reading the ledger diff in review, not by the suite. `run_corpus.py:64-68`
+takes the higher level when one structural hash occurs more than once.
 
 ## Current capability boundary — measured, not estimated
 
@@ -575,15 +684,180 @@ is the honest M4 agenda:
    proto's actual chunk-root status yields zero `is_vararg` mismatches; see
    `docs/runbooks/m3-backlog.md` §2 for the measurement.)
 
-Note that `structure/structured.py:13`'s docstring quotes a "~80.3%"
-subtree-closure ceiling (the same figure, with its derivation, lives in the
-planning doc `docs/superpowers/plans/2026-08-10-phase3-m3-structured-backbone.md`,
-e.g. its line 39 table and line 1856). `tests/test_m3_exit.py` does **not**
-quote it — its only thresholds are the `> 0.50` exit-gate assertions at
-`:22` and `:40`, unrelated to this ceiling. The re-measurement above does
-not reproduce the 80.3% figure on either basis (79.2% unique / 84.2%
-occurrences); treat 80.3% as a stale estimate confined to
-`structure/structured.py:13` and the planning doc, not as data.
+### Re-deriving the three rows
+
+Rows 1 and 2, verbatim (re-run 2026-08-11, reproduces the table above):
+
+```python
+# PYLUADEC_CORPUS_DIR=... uv run python -
+import os
+from pathlib import Path
+from pyluadec.emit.lua import _print_proto_body
+from pyluadec.express.reconstruct import ReconstructError
+from pyluadec.ingest import load_file
+from pyluadec.lift.lift import lift_proto
+from pyluadec.pipeline import walk_proto_paths
+from pyluadec.sir.build import StructureError, build_sir
+from pyluadec.verify.ledger import structural_hash
+
+uniq, occ = {}, {}
+for f in sorted(Path(os.environ["PYLUADEC_CORPUS_DIR"]).glob("*.lua")):
+    protos = {}
+    walk_proto_paths("main", load_file(f), protos)
+    for p in protos.values():
+        h = structural_hash(p)
+        occ[h] = occ.get(h, 0) + 1
+        uniq.setdefault(h, p)
+
+def accepts(p):
+    try:
+        build_sir(lift_proto(p)); return True
+    except StructureError:
+        return False
+
+def prints(p):
+    try:
+        _print_proto_body(p, depth=1,
+                          upval_names=tuple(f"u{i}" for i in range(p.nups)))
+        return True
+    except (StructureError, ReconstructError):
+        return False
+
+n_u, n_o = len(uniq), sum(occ.values())
+for name, S in (("accepts own body", {h for h, p in uniq.items() if accepts(p)}),
+                ("whole subtree prints", {h for h, p in uniq.items() if prints(p)})):
+    u, o = len(S), sum(occ[h] for h in S)
+    print(f"{name:24s} {u}/{n_u} ({u/n_u:.1%})  {o}/{n_o} ({o/n_o:.1%})")
+```
+
+```
+accepts own body         1309/1478 (88.6%)  1775/1944 (91.3%)
+whole subtree prints     1170/1478 (79.2%)  1636/1944 (84.2%)
+```
+
+Row 3 needs no script: it is the committed ledger. `uv run python
+scripts/ledger_dashboard.py` prints both bases (`L3 share (unique)` and
+`L3 share (occurrences)`).
+
+The refusal breakdown in point 1 (169 / 162 / 7 / 195 / 33 / 16):
+
+```python
+# PYLUADEC_CORPUS_DIR=... uv run python -
+import os
+from pathlib import Path
+from pyluadec.ingest import load_file
+from pyluadec.lift.lift import lift_proto
+from pyluadec.lift.opcodes import Op
+from pyluadec.pipeline import walk_proto_paths
+from pyluadec.sir.build import StructureError, build_sir, has_back_edge
+from pyluadec.verify.ledger import structural_hash
+
+uniq = {}
+for f in sorted(Path(os.environ["PYLUADEC_CORPUS_DIR"]).glob("*.lua")):
+    protos = {}
+    walk_proto_paths("main", load_file(f), protos)
+    for p in protos.values():
+        uniq.setdefault(structural_hash(p), p)
+
+refused, back, testset = set(), set(), set()
+for h, p in uniq.items():
+    fn = lift_proto(p)
+    if has_back_edge(fn):
+        back.add(h)
+    if any(i.ri.op is Op.TESTSET for i in fn.instrs.values()):
+        testset.add(h)
+    try:
+        build_sir(fn)
+    except StructureError:
+        refused.add(h)
+print(f"unique protos                       {len(uniq)}")
+print(f"build_sir refusals                  {len(refused)}")
+print(f"  of which carry a back edge        {len(refused & back)}")
+print(f"  acyclic refusals                  {len(refused - back)}")
+print(f"protos with a back edge at all      {len(back)}")
+print(f"  back edge but accepted (for loop) {len(back - refused)}")
+print(f"protos containing TESTSET           {len(testset)}")
+print(f"  of which are refused              {len(testset & refused)}")
+```
+
+```
+unique protos                       1478
+build_sir refusals                  169
+  of which carry a back edge        162
+  acyclic refusals                  7
+protos with a back edge at all      195
+  back edge but accepted (for loop) 33
+protos containing TESTSET           16
+  of which are refused              16
+```
+
+The 58-residual mismatch histogram in point 3. Prepend the `uniq` /
+`is_root` construction below to the `prints` helper from the first script;
+this is the only one that spends `luac_sz4` subprocesses (58 of them):
+
+```python
+# PYLUADEC_CORPUS_DIR=... uv run python -
+import json, os
+from collections import Counter
+from pathlib import Path
+from pyluadec.pipeline import walk_proto_paths
+from pyluadec.ingest import load_file
+from pyluadec.structure.structured import certify_proto
+from pyluadec.verify.ledger import structural_hash
+# ... plus the `prints` helper and its imports from the first script ...
+
+LEDGER = Path("corpus/ledger.jsonl")
+l3 = {json.loads(l)["shash"] for l in LEDGER.read_text().splitlines()
+      if l.strip() and json.loads(l)["level"] == "L3"}
+
+uniq, is_root = {}, {}
+for f in sorted(Path(os.environ["PYLUADEC_CORPUS_DIR"]).glob("*.lua")):
+    protos = {}
+    walk_proto_paths("main", load_file(f), protos)
+    for path, p in protos.items():
+        h = structural_hash(p)
+        uniq.setdefault(h, p)
+        is_root[h] = is_root.get(h, False) or (path == "main")
+
+resid = [h for h, p in uniq.items() if prints(p) and h not in l3]
+print(f"print but do not certify: {len(resid)}")
+hist = Counter()
+for h in resid:
+    c = certify_proto(uniq[h], is_chunk_root=is_root[h])
+    assert c.level == "L1", h
+    hist.update({"const[i]" if m.field.startswith("const[") else m.field
+                 for m in c.mismatches})
+for field, n in hist.most_common():
+    print(f"  {field:16s} {n}")
+```
+
+```
+print but do not certify: 58
+  code             58
+  maxstacksize     24
+  const[i]         11
+  constants.len    11
+```
+
+Note `is_chunk_root` is matched to each proto's *actual* chunk-root status
+(true iff it occurs at `proto_path == "main"` in some file). Getting that
+wrong is what produced the spurious "1 on `is_vararg`" entry an earlier
+revision reported here.
+
+### On the "~80.3%" ceiling
+
+A planning-stage estimate of a "~80.3% subtree-closure ceiling" circulated
+through this milestone and was quoted in `structure/structured.py`'s module
+docstring and in the planning doc
+(`docs/superpowers/plans/2026-08-10-phase3-m3-structured-backbone.md:69,72,1886,2221,2472`).
+**It reproduces on neither basis.** The measured printability ceiling — the
+real one, since only a proto that prints can certify — is 1170/1478 = 79.16%
+unique and 1636/1944 = 84.16% occurrences; and the achieved occurrence rate,
+1577/1944 = 81.12%, already exceeds 80.3%, which a ceiling cannot allow.
+`structure/structured.py` now carries the measured figures. The planning doc
+is a historical record and keeps its original text, with a correction note at
+the top. `tests/test_m3_exit.py` never quoted the figure — its only thresholds
+are the `> 0.50` exit-gate assertions at `:22` and `:40`.
 
 The other standing limit is the **global-state probe** (L1.5), which reaches
 225/229 files with the 4 pinned divergences documented in

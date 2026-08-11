@@ -117,7 +117,10 @@ ingest -> lift -> cfg -> structure.fallback -> oracle 编译验证 -> ledger
 
 - `corpus/ledger.jsonl` **入库**（1478 条唯一 proto 结构哈希、覆盖 1944 处出现、229 文件，M2 收口时全部 `L1`）；`corpus/discrepancies.json` **不入库**（gitignored，纯门产物，"最近一次验证干净"的可追溯性应落在 CI 或本文件而非该 JSON——Phase 1 遗留的正式决定）。
 - 台账只能由 `scripts/run_corpus.py` 整体重新生成后提交，**禁止手编**任何一行。
-- 台账是自身生成脚本的不动点（同语料、同 oracle 构建再跑一次必须字节级复现），由 `tests/test_ledger_ratchet.py` 守护；等级只升不降，禁止出现 `L0`。
+- 台账是自身生成脚本的不动点（同语料、同 oracle 构建再跑一次必须字节级复现），由 `tests/test_ledger_ratchet.py` 守护。
+- **"等级只升不降"是纪律，不是机器强制的。** 说清楚各自的边界（2026-08-11 逐条核对了断言本体）：
+  - **被断言的**：不许出现 `L0`、`compile_ok` 全真、`shash` 有序且唯一、覆盖 229 文件 / 1944 处出现、以及上面那条不动点（`tests/test_ledger_ratchet.py`）；外加**行内**等级与 confession 的耦合（`tests/test_m3_exit.py`，见下文 M3 一节）与出口比例 `> 0.50`。
+  - **没有被断言的**：**跨版本单调性**。没有任何测试拿当前台账去比历史 baseline，所以一份重新生成并提交的、L3 行数变少的台账，只要比例仍 > 50% 且不出现 `L0`，整套测试照样全绿。真正的 ratchet CI（baseline diff、降级即失败、`git bisect` 接线）是 spec §5 的完整形态，**属于 M4**，M3 只保证台账字段撑得起它——见 `docs/runbooks/m3-backlog.md` §7。因此审 PR 时台账的 diff 要人眼看。
 - `oracle` 字段记录的是 `git log -1 -- vendor native`（oracle 构建产物的溯源），**不是** `git rev-parse HEAD`——用 HEAD 会导致每次纯文档/纯测试提交都让全部台账行看起来"变了"，淹没真实回归；原因与修复过程见 runbook 对应小节。
 
 详见 `docs/runbooks/decompile-pipeline.md`：管线每层的函数签名、fallback 产物的 `__pld_R`/`__pld_U`/盒模型/`__pld_pc` 状态机阅读指南（含与 `luac_sz4 -l -l` 原始 listing 对照调试的实操示例）、效应表三档的语义与限度、台账字段的完整语义。
@@ -141,7 +144,7 @@ ingest -> lift -> cfg -> sir.build -> express.reconstruct -> emit.lua
 
 ### 认证门纪律（最重要的一条）
 
-**产物为结构化 ⟺ root proto 认证 `L3`**（`structure/structured.py:222-226`）；否则发 fallback。永不返回未认证的结构化代码。推论：区域识别、寄存器分类、内联的 bug **只会拉低 L3 比例，不会产出错误代码**。认证是逐 proto 子树独立进行的，所以一个不可结构化的函数不会污染兄弟节点的等级——等级（proof record，逐 proto）与产物（逐 chunk 的保守选择）**刻意解耦**。
+**产物为结构化 ⟺ root proto 认证 `L3`**（`structure/structured.py:247-251`）；否则发 fallback。永不返回未认证的结构化代码。推论：区域识别、寄存器分类、内联的 bug **只会拉低 L3 比例，不会产出错误代码**。认证是逐 proto 子树独立进行的，所以一个不可结构化的函数不会污染兄弟节点的等级——等级（proof record，逐 proto）与产物（逐 chunk 的保守选择）**刻意解耦**。
 
 归一化阶梯：`L3.0` 严格 + `L3.1 = strip-lineinfo`，`LADDER_VERSION = "l3-ladder-v1"`。**每级的健全性论证必须与该级本体同处一地**（rung 1 的论证在 `verify/normalize.py::_strip_lineinfo` 的 docstring 里，从"剥完之后 `compare_protos` 还比什么"论起）。加 rung 2 时照此办理并 bump `LADDER_VERSION`。
 
@@ -157,7 +160,8 @@ ingest -> lift -> cfg -> sir.build -> express.reconstruct -> emit.lua
 - `l3_level`：通过的归一化级号（`L3` 行非空，当前恒为 `1`）；非 `L3` 行为 `null`。
 - `fallback`：布尔，`level != "L3"`。
 - `confessions`：`L3` 行必须为空；非 `L3` 行必须恰有一条覆盖全 pc 区间的 `fallback-state-machine` confession。
-- ratchet 两半都被断言（`tests/test_m3_exit.py`）：**等级只升不降，confession 只降不升**。
+- `tests/test_m3_exit.py` 断言的是**行内耦合**（等级与 confession 必须一致）：`L3` 行 ⇒ `l3_level` 非空、`confessions == []`、`fallback is False`；非 `L3` 行 ⇒ `fallback is True`、`l3_level is None`、恰有一条 `fallback-state-machine` confession。也就是说"等级升了 confession 没摘"或"confession 摘了等级没升"这种**记账不一致**会被抓到。
+- **"等级只升不降"本身没有被任何测试断言**——没有历史 baseline 比对，见上文「台账约定」。跨版本单调性是纪律 + 人眼看 diff，机器强制留给 M4 的 ratchet CI。
 
 ### 能力边界（实测，别当成"差不多都做完了"）
 

@@ -2,6 +2,8 @@ import importlib.util
 import json
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LEDGER = REPO_ROOT / "corpus" / "ledger.jsonl"
 
@@ -25,6 +27,15 @@ def test_ledger_covers_full_corpus(corpus_dir):
     assert n_occurrences == 1944                    # 全部 proto 都有台账归属
 
 
+# This test re-runs the entire corpus pipeline: 229 files, ~1478 unique protos,
+# one `luac_sz4` subprocess per proto for certification plus one per chunk for
+# the compile check. Measured 9.5s on macOS arm64 (2026-08-11), the slowest
+# single test in the suite by 1s. The global `timeout = 60` in pyproject.toml
+# is a hang backstop sized for ordinary tests; this one is legitimately
+# subprocess-bound and would be the first to trip it on a slower host (the
+# documented primary environment is a 32-bit i686 userland under WSL2). Given
+# its own budget rather than loosening the global one -- see pyproject.toml.
+@pytest.mark.timeout(300)
 def test_ledger_is_a_reproducible_fixed_point(corpus_dir, tmp_path, monkeypatch):
     """corpus/ledger.jsonl must be a fixed point of scripts/run_corpus.py: a
     fresh run against the same corpus must reproduce it byte-identically.

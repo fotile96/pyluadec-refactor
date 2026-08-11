@@ -1,19 +1,13 @@
-def _mk_cfg(edges: dict[int, tuple[int, ...]], entry: int = 1):
-    """从邻接表手工构造 Cfg（instrs 为空元组，dom 计算只看图结构）。"""
-    from pyluadec.cfg.blocks import BasicBlock, Cfg
-    blocks = {s: BasicBlock(s, (), t) for s, t in edges.items()}
-    preds = {s: [] for s in edges}
-    for s, ts in edges.items():
-        for t in ts:
-            preds[t].append(s)
-    return Cfg(entry=entry, blocks=blocks,
-               preds={k: tuple(sorted(v)) for k, v in preds.items()})
+# 从邻接表手工构造 Cfg（instrs 为空元组，dom 计算只看图结构）。这里曾有一份
+# 与 tests/synth.py::mk_cfg 逐行相同的本地副本 `_mk_cfg`；两个必须在 `preds`
+# 构造上保持一致的手写 CFG 构造器是多余的一个，已折叠为共享的那一份。
+from tests.synth import mk_cfg
 
 
 def test_diamond():
     from pyluadec.cfg.dom import dominates, immediate_dominators
     #    1 → 2,3 ; 2 → 4 ; 3 → 4
-    idoms = immediate_dominators(_mk_cfg({1: (2, 3), 2: (4,), 3: (4,), 4: ()}))
+    idoms = immediate_dominators(mk_cfg({1: (2, 3), 2: (4,), 3: (4,), 4: ()}))
     assert idoms == {1: 1, 2: 1, 3: 1, 4: 1}
     assert dominates(idoms, 1, 4) and not dominates(idoms, 2, 4)
 
@@ -21,26 +15,26 @@ def test_diamond():
 def test_loop():
     from pyluadec.cfg.dom import immediate_dominators
     # 1 → 2 ; 2 → 3,4 ; 3 → 2 ; 4 → ()
-    idoms = immediate_dominators(_mk_cfg({1: (2,), 2: (3, 4), 3: (2,), 4: ()}))
+    idoms = immediate_dominators(mk_cfg({1: (2,), 2: (3, 4), 3: (2,), 4: ()}))
     assert idoms == {1: 1, 2: 1, 3: 2, 4: 2}
 
 
 def test_irreducible():
     from pyluadec.cfg.dom import immediate_dominators
     # 经典不可归约：1 → 2,3 ; 2 → 3 ; 3 → 2 （双入口循环）
-    idoms = immediate_dominators(_mk_cfg({1: (2, 3), 2: (3,), 3: (2,)}))
+    idoms = immediate_dominators(mk_cfg({1: (2, 3), 2: (3,), 3: (2,)}))
     assert idoms == {1: 1, 2: 1, 3: 1}
 
 
 def test_unreachable_block_excluded():
     from pyluadec.cfg.dom import immediate_dominators
-    idoms = immediate_dominators(_mk_cfg({1: (2,), 2: (), 9: (2,)}))   # 9 不可达
+    idoms = immediate_dominators(mk_cfg({1: (2,), 2: (), 9: (2,)}))   # 9 不可达
     assert 9 not in idoms and set(idoms) == {1, 2}
 
 
 def test_dom_tree_children():
     from pyluadec.cfg.dom import dom_tree, immediate_dominators
-    idoms = immediate_dominators(_mk_cfg({1: (2, 3), 2: (4,), 3: (4,), 4: ()}))
+    idoms = immediate_dominators(mk_cfg({1: (2, 3), 2: (4,), 3: (4,), 4: ()}))
     tree = dom_tree(idoms)
     assert tree[1] == (2, 3, 4) and tree.get(2, ()) == ()
 
@@ -60,7 +54,7 @@ def test_irreducible_requires_fixpoint_iteration():
     `immediate_dominators` 退化成单趟遍历（丢掉 `while changed:` 不动点循环）的回归。
     """
     from pyluadec.cfg.dom import immediate_dominators
-    idoms = immediate_dominators(_mk_cfg({1: (2, 3), 2: (1, 4), 3: (2, 4), 4: (2, 3)}))
+    idoms = immediate_dominators(mk_cfg({1: (2, 3), 2: (1, 4), 3: (2, 4), 4: (2, 3)}))
     assert idoms == {1: 1, 2: 1, 3: 1, 4: 1}
 
 

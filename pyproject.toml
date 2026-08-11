@@ -26,7 +26,18 @@ testpaths = ["tests"]
 # CI backstop, not a primary defense: a hang (e.g. a structuring recognizer
 # that fails to advance pc and spins forever) surfaces in CI as a job that
 # never returns -- no failure name, no diff, easy to mistake for flakiness
-# and re-run. 60s is generous relative to the full suite (~10s) and the
-# slowest individual corpus-gated tests (a few seconds each); it should never
-# fire on legitimate runs, only on genuine hangs.
+# and re-run.
+#
+# Sizing (re-measured 2026-08-11 on macOS arm64, 285 tests, corpus present):
+# the full suite is 29.5s wall clock and the slowest SINGLE test is
+# tests/test_ledger_ratchet.py::test_ledger_is_a_reproducible_fixed_point at
+# 9.5s, followed by tests/test_corpus_compile.py at 8.6s -- both re-run the
+# whole corpus pipeline, ~1478 luac_sz4 subprocesses each. So 60s is ~6x
+# headroom on THIS platform, but CLAUDE.md documents the primary environment
+# as a 32-bit i686 userland under WSL2, where subprocess spawn is materially
+# slower; 60s is plausibly reachable there for the ratchet test alone, and a
+# timeout that fires presents as exactly the ambiguous "hang" this setting
+# exists to disambiguate. The ratchet test therefore carries its own
+# @pytest.mark.timeout(300) so this global value can stay tight for
+# everything else. Keep it tight: if a new test needs more, mark the test.
 timeout = 60

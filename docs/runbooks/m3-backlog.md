@@ -10,8 +10,9 @@ Status at the end of M2: 229/229 corpus files produce compilable Lua via the
 fallback emitter; 130 tests pass; `corpus/ledger.jsonl` holds 1478 unique proto
 hashes over 1944 occurrences, all at level `L1`.
 
-Status at the end of M3 (measured at commit `fb85f2f`): 229/229 still compile;
-284 tests pass in ~30s; the ledger holds the same 1478 unique hashes over 1944
+Status at the end of M3 (ledger figures measured at commit `fb85f2f` and
+unchanged since; suite re-measured 2026-08-11 after the final-review round):
+229/229 still compile; 285 tests pass in 29.5s; the ledger holds the same 1478 unique hashes over 1944
 occurrences, of which **1112 unique (75.2%) / 1577 occurrences (81.1%)** are
 `L3` — recompiled through the real `luac_sz4` and matched field-by-field at
 ladder rung 1. 92 of the 229 files ship genuinely structured source. See
@@ -112,20 +113,41 @@ gap rather than a defect:
 - Package convention drift — `structure/__init__.py` and `verify/__init__.py`
   are empty while `lift/` and `cfg/` export curated `__all__`. Also
   `LUA_KEYWORDS` lives in `lift/opcodes.py` (a decoder) but is a codegen
-  concern consumed only by `structure/fallback.py`.
-- Duplicated proto-path convention — `pipeline.walk_proto_paths` and
-  `fallback.py`'s CLOSURE child key / `emit_chunk` walk independently implement
-  `f"{path}_{i}"`. If they drift, ledger `proto_path` stops identifying the
-  emitted `__pld_F` factory, and only the committed ledger bytes would catch it.
-  Extract one shared helper.
+  concern. *(Corrected 2026-08-11: the original entry said "consumed only by
+  `structure/fallback.py`" and proposed moving it there. That rationale is
+  gone — M3 added two more consumers, `express/names.py:57` and
+  `emit/lua.py:123`, so it is now shared by three modules across two layers.
+  The misplacement is still real; the fix is no longer "move it into
+  fallback.py" but a shared codegen-side home. Lower priority than when it
+  had one consumer.)*
+- Duplicated proto-path convention — `pipeline.walk_proto_paths:57`,
+  `fallback.py:254` (the CLOSURE child key) and `fallback.emit_chunk:379`
+  independently implement `f"{path}_{i}"`. If they drift, ledger `proto_path`
+  stops identifying the emitted `__pld_F` factory — an undocumented but real
+  debugging affordance — and nothing would catch it. *(M3 final-review round:
+  **documented at all three sites** rather than extracted, deliberately.
+  Extraction is not the one-liner it looks like: `fallback.py` importing from
+  `pipeline.py` inverts the layering, so the helper needs a new neutral home,
+  which is the same open question as the `LUA_KEYWORDS` entry above. And a
+  shared format helper would only unify the *spelling*; the other half of the
+  coupling is that `walk_proto_paths`' `enumerate` index and the CLOSURE
+  handler's `Bx` must denote the same child, which a shared f-string does not
+  check.)* **M4:** extract the helper into a shared home **and** add the test
+  that actually closes this — assert the `__pld_F` key set of one file's
+  fallback artifact equals the set of `proto_path`s the ledger records for
+  that file.
 - `verify/ledger.py` — `LedgerEntry.l3_level` and `n_insns` are written by
   `run_corpus.py` and read by nothing, not even the dashboard. Fine as forward
   schema; do not mistake them for verified data. *(Half-closed in M3:
-  `l3_level` is now read by `scripts/ledger_dashboard.py:42` and asserted by
-  `tests/test_m3_exit.py`. `n_insns` is still write-only.)*
-- `scripts/ledger_dashboard.py` — reports aggregate counts only, never naming
-  which files or protos are `L0` / `compile_ok: false`. At 1478 entries a bare
-  byte-diff is unusable for chasing a regression.
+  `l3_level` is now read by `scripts/ledger_dashboard.py:31` (the `rungs`
+  Counter, rendered at `:42`) and asserted by `tests/test_m3_exit.py`.
+  `n_insns` is still write-only.)*
+- ~~`scripts/ledger_dashboard.py` — reports aggregate counts only, never naming
+  which files or protos are `L0` / `compile_ok: false`.~~ **CLOSED in M3
+  task 8.** `ledger_dashboard.py:56-81` is a "Name names" block that prints
+  every entry with `compile_ok: false` or `level == "L0"` individually —
+  `shash` prefix, first file and `proto_path`, level, and the count of further
+  occurrences — in both plain and `--markdown` modes. Verified 2026-08-11.
 - `docs/runbooks/decompile-pipeline.md` — the sentence "92 carry a non-zero
   array presize (B) or hash presize" is loosely worded: 92 is the count for
   `B != 0` alone; `B != 0 or C != 0` is 154. The other counts in that section
@@ -309,9 +331,11 @@ workspace. Ordered by size, not by urgency.
 ## 1. Loops: `while` / `repeat` / mixed and irreducible back edges
 
 The single largest remaining increment, and the reason ~19% of unique protos
-are still `L1`. Measured at commit `fb85f2f` over 1478 unique proto shapes /
-1944 occurrences (re-derive with the snippets in
-`docs/runbooks/structured-pipeline.md`, "Current capability boundary"):
+are still `L1`. Measured over 1478 unique proto shapes / 1944 occurrences
+(originally at commit `fb85f2f`, re-verified 2026-08-11). **The runnable
+scripts for this table and for the refusal breakdown below are inlined in
+`docs/runbooks/structured-pipeline.md`, "Current capability boundary" →
+"Re-deriving the three rows"**, each with the output it produced:
 
 | stage | unique | occurrences |
 | --- | --- | --- |
@@ -400,18 +424,68 @@ consumer, `express/names.py:129,203-205`, where it gates a for-loop's
 backward staging-producer search (`_staging_slice`): if an open-write
 instruction sits between a candidate producer and the loop header consuming
 it, the search gives up rather than attribute the register. A missing
-`writes_open` on `TAILCALL` could in principle let that search walk straight
-through one. It cannot in practice: `OP_TAILCALL` is emitted from exactly one
-call site, `lparser.c:1251` inside `retstat`, which unconditionally calls
+`writes_open` on `TAILCALL` could let that search walk straight through one.
+
+What *is* established: `OP_TAILCALL` is emitted from exactly one call site,
+`lparser.c:1251` inside `retstat`, which unconditionally calls
 `luaK_ret(fs, first, LUA_MULTRET)` immediately afterward with no intervening
-`luaK_code*` call — `luaK_ret` compiles to `OP_RETURN A 0`
-(`lcode.c:69-71`: `luaK_codeABC(fs, OP_RETURN, first, nret+1, 0)` with
-`nret == LUA_MULTRET == -1`). So a `TAILCALL` is always immediately followed,
-in the instruction stream, by exactly one `RETURN A 0` and then the end of
-the function — confirmed on the corpus too (all 3 `TAILCALL` occurrences).
-There is no pc after a `TAILCALL` other than that terminal `RETURN`, so no
-for-loop header can ever sit downstream of one for `_staging_slice` to walk
-back across. The claim holds; it just needed this second half stated.
+`luaK_code*` call — `luaK_ret` compiles to `OP_RETURN A 0` (`lcode.c:69-71`:
+`luaK_codeABC(fs, OP_RETURN, first, nret+1, 0)` with
+`nret == LUA_MULTRET == -1`). So **a `TAILCALL` is always immediately followed
+by exactly one `RETURN A 0`**. All 3 corpus occurrences confirm this half
+(re-measured 2026-08-11, script below).
+
+**What is NOT established — and a previous revision of this file claimed it
+was.** That `RETURN` is *not* the end of the function. It is the end of a
+`return` *statement*, which can sit inside an `if` arm with more code after
+it. Every corpus `TAILCALL` contradicts the terminality claim:
+
+```
+snr_common.lua:main_26  TAILCALL@6  next=RETURN A=3 B=0 C=0  lastpc=8  terminal? False
+snr_common.lua:main_29_0  TAILCALL@8  next=RETURN A=2 B=0 C=0  lastpc=18  terminal? False
+snr_common.lua:main_29_0  TAILCALL@16  next=RETURN A=2 B=0 C=0  lastpc=18  terminal? False
+```
+
+`main_29_0` is the clearest case — an if/else where each arm tail-calls:
+
+```
+  8 TAILCALL A=2 B=3 C=0
+  9 RETURN   A=2 B=0 C=0     <- ends the `return` statement, not the function
+ 10 JMP      ...             <- ...and there are 8 more pcs after it
+ ...
+ 18 RETURN   A=0 B=1 C=0
+```
+
+So a for-loop header downstream of a `TAILCALL` is **not** structurally
+excluded, and the `_staging_slice` argument is unsupported. **The
+differential run stays required** before touching the `TAILCALL` row — it is
+the thing that would settle this, and it is M4 work. Do not let the
+`lparser.c` citation, which only covers the first half, be read as a licence
+to skip it.
+
+Re-derive the table:
+
+```python
+# PYLUADEC_CORPUS_DIR=... uv run python -
+import os
+from pathlib import Path
+from pyluadec.ingest import load_file
+from pyluadec.lift.opcodes import decode, Op
+from pyluadec.pipeline import walk_proto_paths
+
+for f in sorted(Path(os.environ["PYLUADEC_CORPUS_DIR"]).glob("*.lua")):
+    protos = {}
+    walk_proto_paths("main", load_file(f), protos)
+    for path, p in protos.items():
+        for i, w in enumerate(p.code):
+            if decode(w, i + 1).op is not Op.TAILCALL:
+                continue
+            pc, lastpc = i + 1, len(p.code)
+            n = decode(p.code[i + 1], pc + 1) if i + 1 < lastpc else None
+            print(f"{f.name}:{path}  TAILCALL@{pc}  "
+                  f"next={n.op.name} A={n.a} B={n.b} C={n.c}  "
+                  f"lastpc={lastpc}  terminal? {pc + 1 == lastpc}")
+```
 
 ## 5. Deepen the global-state probe toward L2 (Task 9 Deliverable B)
 
@@ -466,21 +540,20 @@ such — assume the same is possible of the others.
 
 **Tests / fixtures**
 
-- `tests/synth.py` — the `_encode` iABC path (non-zero `b`/`c`) has no
-  persisted regression test; `tests/test_sir_regions.py::test_synth_mk_instr_roundtrips_fields` only
-  exercises iABx/iAsBx despite its name. The encoder was independently verified
-  correct at boundary values (`A=255`, `B=511`, `C=511`, `Bx` 0..262143, `sBx`
-  extremes), but a silent mis-encode would make every synthetic test
-  meaningless while appearing to pass. (Task 10 added the first heavy consumer:
-  `tests/test_effects_emitter_consistency.py`'s synthetic grid drives this path
-  over 7284 rows, which narrows but does not close the gap.)
-- `tests/synth.py` — `mk_cfg` duplicates `test_dom.py`'s own local `_mk_cfg`,
-  which has 6 call sites while `mk_cfg` has exactly one
-  (`tests/test_sir_build_acyclic.py:189`). Two hand-rolled CFG builders that
-  must agree on `preds` construction is one too many; fold `_mk_cfg` into
-  `synth.mk_cfg`. (Recorded during M3 as "zero call sites"; **re-measured at
-  task 10 — that was already stale**, `test_sir_build_acyclic.py` picked it
-  up when the multi-entry dominance test landed.)
+- ~~`tests/synth.py` — the `_encode` iABC path (non-zero `b`/`c`) has no
+  persisted regression test.~~ **CLOSED in `f97e61d`.**
+  `tests/test_sir_regions.py::test_synth_mk_instr_roundtrips_fields:41-44`
+  now covers it: a plain `mk_instr(Op.ADD, a=3, b=4, c=6)` case plus the
+  `A=255`/`B=511`/`C=511` boundary that had previously only been
+  hand-verified. Verified 2026-08-11; the entry above was stale when this
+  file was written. (`tests/test_effects_emitter_consistency.py`'s synthetic
+  grid also drives this path over 7284 rows.)
+- ~~`tests/synth.py` — `mk_cfg` duplicates `test_dom.py`'s own local
+  `_mk_cfg`.~~ **CLOSED (M3 final-review round).** `test_dom.py` now imports
+  `tests.synth.mk_cfg`; the bodies were line-for-line identical, so the swap
+  needed no behaviour change. (The entry was itself corrected twice: recorded
+  during M3 as "zero call sites", re-measured at task 10 as one call site
+  (`tests/test_sir_build_acyclic.py:189`) plus `test_dom.py`'s six.)
 - No shared corpus-proto cache across the corpus-scanning tests — roughly
   5–6s of redundant `load_file` + `lift_proto` suite-wide. A session-scoped
   fixture would fix it. (`tests/conftest.py` already does this for the far more
@@ -533,9 +606,10 @@ such — assume the same is possible of the others.
 
 **Performance**
 
-- Suite went 12s → ~30s over M3 (measured at task 10: 284 tests, 30.79s),
-  inherently: `test_ledger_ratchet` (10.2s) and
-  `test_corpus_compile` (8.7s) now pay one `luac_sz4` subprocess per proto, and
+- Suite went 12s → ~30s over M3 (task 10: 284 tests, 30.79s; re-measured
+  2026-08-11 after the final-review round, 285 tests, 29.5s on macOS arm64),
+  inherently: `test_ledger_ratchet` (10.2s at task 10, 9.5s on re-measure) and
+  `test_corpus_compile` (8.7s / 8.6s) now pay one `luac_sz4` subprocess per proto, and
   a review agreed neither should be sampled. But `emit_certified_chunk`'s memo
   is per-chunk while the corpus has 1478 unique keys over 1944 protos — a
   process-level memo would cut roughly 24% of the subprocess cost.
@@ -575,3 +649,35 @@ mechanically checking it against the table. Extending
 structured path the same way — assert the registers `Reconstructor`/`Printer`
 touch for each pc are a subset of that pc's `effects.reads | effects.writes`
 — is real M4 work, not a footnote.
+
+## 9. Match the candidate's strip mode to the original's (strictly stronger gate)
+
+`verify/certify.py:54` and `structure/structured.py:183` (the wrapper path) both
+compile the structured candidate with `strip=True`, unconditionally. On this
+corpus that is exactly right — all 229 files are `-s`-stripped — but it makes
+the gate **weaker than it could be** and makes the decompiler behave badly on
+ordinary input.
+
+Weaker, because rung 1 (`_strip_lineinfo`) keeps each locvar's
+count/`startpc`/`endpc`. When both sides are stripped those are two empty
+tuples and the comparison is vacuous. If the candidate were compiled `-s` only
+when the original was, rung 1 would compare **real locvar scope ranges** — a
+direct check that our reconstruction put each `local` in the same lexical block
+over the same pc range as the original. That is a genuinely stronger structural
+proof, and it is exactly the kind of evidence M4's `while`/`repeat` work will
+want, since loop bodies are where scope ranges get interesting.
+
+Badly on ordinary input, because today an original that carries debug info
+mismatches `locvars` at every rung, so any proto declaring at least one local
+falls back — with `Mismatch(field="locvars")` as the only clue. Measured
+2026-08-11: `local a = 1  print(a)` certifies `L3` rung 0 when compiled `-s`
+and `L1` when not; `x = 1` (no locals) certifies either way. The table and the
+full explanation are in `structured-pipeline.md`, "The candidate is always
+compiled `-s`".
+
+Why it was not done in M3's merge-readiness round: it is a **behaviour change
+to the certification gate** and can move `corpus/ledger.jsonl`, which that
+round was required to keep byte-identical. Do it as its own change, with the
+ledger diff reviewed on purpose. Note it should not change the corpus result at
+all (both sides already stripped there) — if it does, that is itself the
+finding. Documented meanwhile in `certify_l3`'s docstring.

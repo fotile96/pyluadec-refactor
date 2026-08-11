@@ -7,8 +7,14 @@
   identification — `Straight`/`Seq`/`If`/`NumericFor`/`GenericFor`/`Break`/
   `Return`), `pyluadec.express` (register classification + statement/expression
   reconstruction), and `pyluadec.emit.lua` (a 561-line pure structural printer:
-  one walk of the typed trees, no regex, no post-processing of its own output,
-  statically enforced by `tests/test_engineering_practice.py`).
+  one walk of the typed trees, no regex, no post-processing of its own output).
+  The *absence of `re`* across
+  `src/pyluadec/{ingest,lift,cfg,sir,express,emit,verify,structure}` is
+  statically enforced by
+  `tests/test_engineering_practice.py::test_no_regex_in_analysis_or_emission_layers`
+  (one narrowly-scoped pre-existing exception in `structure/fallback.py`).
+  "One walk, no post-processing" is a design discipline held by review and by
+  the module docstring, not by a static check.
 - **1112 of 1478 unique proto shapes (75.2%) and 1577 of 1944 proto
   occurrences (81.1%) now certify `L3`** — the printed source recompiled
   through the real `luac_sz4` and compared field-by-field against the original.
@@ -44,9 +50,17 @@
   unique protos containing `TESTSET` (the `and`/`or` value idiom) are among
   these 169 refusals. A further 139 unique protos build a region tree but do
   not print because a descendant closure does not, and 58 print but do not
-  certify. All of them stay at `L1` with a confession — levels only ever go
-  up. This is the largest single M4 increment; see
-  `docs/runbooks/m3-backlog.md`.
+  certify. All of them stay at `L1` with a confession. This is the largest
+  single M4 increment; see `docs/runbooks/m3-backlog.md`.
+- **Ledger ratchet — what is machine-checked and what is not.** Asserted: no
+  `L0`, `compile_ok` everywhere, `shash` sortedness/uniqueness, full-corpus
+  coverage at 1944 occurrences, byte-identical regeneration from
+  `run_corpus.py`, and *within-row* coupling between level and confession in
+  both directions (`test_m3_exit.py`). **Not** asserted: cross-revision
+  monotonicity — no test compares against a historical baseline, so a
+  regenerated ledger with fewer `L3` rows passes the suite as long as the rate
+  stays above 50%. "Levels only ever go up" is discipline plus review of the
+  ledger diff; full ratchet CI is an explicit M4 item.
 - See `docs/runbooks/structured-pipeline.md` for the full reference: layer
   layout, the certification invariant, the ladder, the `freereg` register model
   that was worth +63.6 points of L3 rate (and the pre-identified effect-mode

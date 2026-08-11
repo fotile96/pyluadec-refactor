@@ -23,6 +23,35 @@ class DecompileResult:
 
 
 def walk_proto_paths(path: str, p: Proto, out: dict[str, Proto]) -> None:
+    """Assign every proto in the tree its `proto_path` ("main", "main_0",
+    "main_0_1", ...). These are the keys of `DecompileResult.levels` /
+    `.confessions_by_proto` and of every `occurrences[].proto_path` in
+    `corpus/ledger.jsonl`.
+
+    ## Coupling: `f"{path}_{i}"` is written independently in THREE places
+
+    Here, at `structure/fallback.py`'s CLOSURE handler (`f"{self.path}_{bx}"`,
+    the `__pld_F` factory key it emits), and in `fallback.emit_chunk`'s own
+    `walk`. That they agree is not decoration: it is what lets you take a
+    `proto_path` out of a ledger row and find the corresponding
+    `__pld_F["main_3_0"]` factory in `build/decompiled/<file>.lua`, which is
+    the normal way to chase a single proto's fallback output. Nothing tests
+    it. A one-line edit to any of the three would silently break the
+    cross-reference, and only a careful reader of the ledger diff would
+    notice.
+
+    Two halves to the agreement, and note that a shared format helper would
+    only fix the first:
+
+    1. the *spelling* — `"_"` and decimal, all three sites;
+    2. the *index* — this function uses `enumerate(p.subprotos)`, while the
+       CLOSURE handler uses the instruction's `Bx`, which is the subproto
+       index by `lparser.c` construction. Those must denote the same child.
+
+    Extracting a shared helper (and, better, a test asserting the emitted
+    `__pld_F` key set equals the ledger's `proto_path` set for one file) is
+    recorded in `docs/runbooks/m3-backlog.md` under the deferred minors.
+    """
     out[path] = p
     for i, s in enumerate(p.subprotos):
         walk_proto_paths(f"{path}_{i}", s, out)

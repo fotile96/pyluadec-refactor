@@ -10,11 +10,20 @@ No unverified structured code is ever returned.
 Why per-proto rather than chunk-level all-or-nothing (quantified 2026-08-10):
 only 93/229 corpus files have their ENTIRE proto tree inside the structurable
 subset -- a chunk-level gate would cap the exit metric at ~13.1% (unique-proto
-basis). Per-proto subtree certification has a ceiling of ~80.3%: a straight-
-line child function certifies independently even when its parent contains a
-`while` loop the recognizer refuses. Ledger level (per proto) and shipped
-artifact (per chunk) are therefore deliberately decoupled: the level is a
-proof record, the artifact is a conservative file-level choice.
+basis). Per-proto subtree certification lifts that ceiling because a
+straight-line child function certifies independently even when its parent
+contains a `while` loop the recognizer refuses. Ledger level (per proto) and
+shipped artifact (per chunk) are therefore deliberately decoupled: the level
+is a proof record, the artifact is a conservative file-level choice.
+
+The ceiling that per-proto certification actually has is **printability**:
+1170/1478 unique proto shapes (79.16%) and 1636/1944 occurrences (84.16%)
+print their whole subtree, and only a proto that prints can certify. Achieved
+at M3 exit: 1112/1478 (75.2%) unique, 1577/1944 (81.12%) occurrences. (An
+earlier planning estimate of "~80.3%" was quoted here as the ceiling; it
+reproduces on neither basis, and 81.12% occurrences already exceeds it. The
+measurement scripts for all three rows are inlined in
+`docs/runbooks/structured-pipeline.md`, "Current capability boundary".)
 
 ## Memoization key (round-1 fix, superseded in M3 task 8)
 
@@ -58,6 +67,14 @@ class ProtoCert:
     level: str                       # "L3" | "L1"
     rung: int | None
     mismatches: tuple[Mismatch, ...]
+    # The exact bytes that were compiled and compared to reach this verdict,
+    # for a chunk-root `L3` certification; `None` otherwise (non-root
+    # certifications compile a wrapper, not a shippable chunk, and a non-`L3`
+    # verdict has nothing certified to hand out). `emit_certified_chunk`
+    # ships THIS object rather than calling `print_chunk` a second time, so
+    # "shipped == certified" holds by construction rather than by the
+    # printer happening to be deterministic.
+    source: bytes | None = None
 
 
 @dataclass(frozen=True)
@@ -147,8 +164,10 @@ def certify_proto(proto: Proto, *, is_chunk_root: bool) -> ProtoCert:
         src = print_chunk(proto)
         if src is None:
             return _L1
-        cert = certify_l3(proto, src.encode())
-        return ProtoCert(cert.level, cert.rung, cert.mismatches)
+        payload = src.encode()
+        cert = certify_l3(proto, payload)
+        return ProtoCert(cert.level, cert.rung, cert.mismatches,
+                         payload if cert.level == "L3" else None)
 
     upval_names = tuple(f"u{i}" for i in range(proto.nups))
     try:
@@ -219,10 +238,16 @@ def emit_certified_chunk(root: Proto) -> ChunkOutcome:
             memo[k] = certify_proto(p, is_chunk_root=False)
         certs[path] = memo[k]
 
+    # Ship the very bytes certification compiled and compared, NOT a second
+    # `print_chunk(root)` call. Re-printing would make "shipped == certified"
+    # depend on `print_chunk` being deterministic -- true today, and measured
+    # (92/92 shipped artifacts re-print identically), but a property of the
+    # printer rather than of this gate, and one no test here would notice
+    # losing. Reusing `ProtoCert.source` makes the invariant structural.
     if certs["main"].level == "L3":
-        src = print_chunk(root)
-        assert src is not None            # main certified L3 => print succeeded
-        return ChunkOutcome(source=src.encode(), certs=certs)
+        certified = certs["main"].source
+        assert certified is not None      # main certified L3 => print succeeded
+        return ChunkOutcome(source=certified, certs=certs)
     return ChunkOutcome(source=emit_chunk(root), certs=certs)
 
 
