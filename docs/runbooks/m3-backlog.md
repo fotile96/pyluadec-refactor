@@ -654,34 +654,24 @@ structured path the same way — assert the registers `Reconstructor`/`Printer`
 touch for each pc are a subset of that pc's `effects.reads | effects.writes`
 — is real M4 work, not a footnote.
 
-## 9. Match the candidate's strip mode to the original's (strictly stronger gate)
+## 9. Match the candidate's strip mode to the original's — DONE (M4 task 7)
 
-`verify/certify.py:54` and `structure/structured.py:183` (the wrapper path) both
-compile the structured candidate with `strip=True`, unconditionally. On this
-corpus that is exactly right — all 229 files are `-s`-stripped — but it makes
-the gate **weaker than it could be** and makes the decompiler behave badly on
-ordinary input.
+**Closed.** `certify_l3` and `certify_proto`'s wrapper path now compile the
+candidate with `strip=not carries_debug(original)`. The corpus did not move:
+`corpus/ledger.jsonl` and all 229 files in `build/decompiled/` are byte-identical
+after `scripts/run_corpus.py`, because every corpus proto reads as stripped
+(measured 2026-08-12: 1944/1944 have empty `lineinfo`, `locvars` and
+`upvalues`). Rung 1 now compares real locvar scope ranges on unstripped input,
+which the negative control in `tests/test_certify_stripmode.py` proves is
+falsifiable: a candidate hoisting a local out of a `do` block, with
+byte-identical `code`, is refused on `locvars` alone.
 
-Weaker, because rung 1 (`_strip_lineinfo`) keeps each locvar's
-count/`startpc`/`endpc`. When both sides are stripped those are two empty
-tuples and the comparison is vacuous. If the candidate were compiled `-s` only
-when the original was, rung 1 would compare **real locvar scope ranges** — a
-direct check that our reconstruction put each `local` in the same lexical block
-over the same pc range as the original. That is a genuinely stronger structural
-proof, and it is exactly the kind of evidence M4's `while`/`repeat` work will
-want, since loop bodies are where scope ranges get interesting.
-
-Badly on ordinary input, because today an original that carries debug info
-mismatches `locvars` at every rung, so any proto declaring at least one local
-falls back — with `Mismatch(field="locvars")` as the only clue. Measured
-2026-08-11: `local a = 1  print(a)` certifies `L3` rung 0 when compiled `-s`
-and `L1` when not; `x = 1` (no locals) certifies either way. The table and the
-full explanation are in `structured-pipeline.md`, "The candidate is always
-compiled `-s`".
-
-Why it was not done in M3's merge-readiness round: it is a **behaviour change
-to the certification gate** and can move `corpus/ledger.jsonl`, which that
-round was required to keep byte-identical. Do it as its own change, with the
-ledger diff reviewed on purpose. Note it should not change the corpus result at
-all (both sides already stripped there) — if it does, that is itself the
-finding. Documented meanwhile in `certify_l3`'s docstring.
+One thing this entry got wrong, worth keeping: it called the change **strictly
+stronger**. Measured over 30 sources compiled both ways, 12 unstripped rows went
+`L1 -> L3` and **2 went `L3 -> L1`** (`repeat f() until g()`,
+`return a and b or c` — the printer materialises a `local` the original never
+declared, invisible in `code`, invisible to a stripped candidate). A gate cannot
+start examining a dimension and also promise never to reject on it; "stricter"
+is the accurate word. The full before/after table, the two losses, and the
+narrower property that *is* strictly true are in `structured-pipeline.md`,
+"The candidate's strip mode follows the original's".

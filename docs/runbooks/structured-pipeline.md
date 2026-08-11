@@ -320,10 +320,11 @@ debug:
 ### `pyluadec.verify.certify` + `pyluadec.structure.structured` — the landing gate
 
 - `verify/certify.py` — `certify_l3(original, structured_src) -> CertResult`:
-  compile the printed source with the real `luac_sz4` (`strip=True`), load the
-  result back through `ingest`, and compare field-by-field against the original
-  at each ladder rung in turn.
-- `structure/structured.py` (262 lines) — `certify_proto(proto, *, is_chunk_root)`
+  compile the printed source with the real `luac_sz4` (stripped iff the
+  original is — `carries_debug`; see "The candidate's strip mode follows the
+  original's"), load the result back through `ingest`, and compare
+  field-by-field against the original at each ladder rung in turn.
+- `structure/structured.py` — `certify_proto(proto, *, is_chunk_root)`
   and `emit_certified_chunk(root) -> ChunkOutcome`.
 
 ## The certification gate is the only landing gate
@@ -331,7 +332,7 @@ debug:
 This is the single most important property of the M3 design, so it is worth
 stating precisely.
 
-`emit_certified_chunk` (`structure/structured.py:198-251`) does exactly two
+`structure/structured.py::emit_certified_chunk` does exactly two
 things:
 
 1. Certifies **every** proto in the tree independently, recording a level per
@@ -348,7 +349,7 @@ So the invariant is:
 > `luac_sz4` into a proto that matches the original under the normalization
 > ladder. No unverified structured code is ever returned.
 
-`structured.py:249` asserts `certs["main"].source is not None` after the root
+`emit_certified_chunk` asserts `certs["main"].source is not None` after the root
 certifies, because a root that certified `L3` must by construction have printed
 successfully. Note that the shipped bytes are *reused from* the certification,
 not re-printed: an earlier revision called `print_chunk(root)` a second time
@@ -396,7 +397,8 @@ code-shape key that deliberately omits `source`, `linedefined`,
 `lastlinedefined`, `lineinfo`, `locvars` and upvalue names, all of which
 `compare_protos` checks. The two together cover every field the comparison
 examines, so equal keys imply equal verdicts by construction
-(`structure/structured.py:89-135`).
+(`structure/structured.py::_debug_fingerprint`, over
+`verify/certify.py::debug_view`).
 
 ## The normalization ladder
 
@@ -434,47 +436,112 @@ Ladder tests: `tests/test_normalize_l31.py` (six cases, including
 `test_l31_still_catches_real_difference` and
 `test_l31_does_not_normalize_away_maxstacksize`).
 
-### The candidate is always compiled `-s`, so unstripped input barely certifies
+### The candidate's strip mode follows the original's
 
-`verify/certify.py:54` and `structure/structured.py:183` (the wrapper path) both call
-`oracle.compile_source(..., strip=True)`. That matches this corpus — all 229
-files are `-s`-stripped (CLAUDE.md) — but it has a consequence that costs
-people an afternoon if they meet it cold, because the symptom is a bare
-`Mismatch(field="locvars")` and nothing in the modules used to mention it.
+`verify/certify.py::certify_l3` and `structure/structured.py::certify_proto`
+(the wrapper path) both compile the candidate with
+`strip=not carries_debug(original)`. Before M4 task 7 they compiled it `-s`
+unconditionally — this section replaces the one titled "The candidate is always
+compiled `-s`, so unstripped input barely certifies", which described that
+older behaviour.
 
-Rung 1 blanks locvar and upvalue *names* but **keeps** each locvar's count,
-`startpc` and `endpc` (deliberately — a stronger check; see
+**Detection.** `verify/certify.py::carries_debug` walks
+`verify/certify.py::debug_view` — the same per-proto field view
+`structure/structured.py::_debug_fingerprint` hashes for the certification
+memo, so there is exactly one enumeration of "the fields `compare_protos`
+checks that `structural_hash` omits". Three of those fields are disjuncts:
+`lineinfo`, `locvars`, `upvalues`, i.e. exactly `lundump.c` `LoadDebug`'s
+three sized lists, i.e. exactly what `-s` zeroes out. The walk is over the
+**subtree**, because `compare_protos` recurses.
+
+`source` is deliberately **not** a disjunct, and this is not a detail.
+Measured 2026-08-12 over the full corpus: all 1944 protos carry
+`source = b"=?"` — a non-`None` placeholder — while all three debug lists are
+empty in every one of them. Counting a non-`None` `source` as debug info would
+classify all 229 files as unstripped and move the committed ledger.
+`linedefined`/`lastlinedefined` are excluded for the plainer reason that they
+survive `-s` (they are in `DumpFunction`'s body, not the debug segment), so
+they carry no information about strippedness.
+`tests/test_certify_stripmode.py::test_source_placeholder_alone_is_not_debug`
+and `::test_every_corpus_proto_reads_as_stripped` pin both halves.
+
+**What rung 1 now compares.** Rung 1 blanks locvar and upvalue *names* but
+keeps each locvar's count, `startpc` and `endpc` (see
 `tests/test_normalize_l31.py::test_l31_strips_locvar_and_upvalue_names_but_keeps_counts`).
-So an original that still carries debug info is compared, at every rung,
-against a candidate whose `locvars` is empty. Measured 2026-08-11 with this
-repo's `luac_sz4`:
+Against a stripped original both sides' `locvars` are empty and that check is
+`() == ()` — vacuous. Against an unstripped original the candidate now carries
+real `locvars` too, so rung 1 checks that **every `local` was reconstructed
+into the same lexical block over the same pc range**. Nothing else in the gate
+makes a claim about lexical scope: `code` cannot see it, because `luac`
+allocates the same register whether or not a value is bound to a name.
 
-| source | original compiled `-s` | original compiled without `-s` |
+The negative control that makes this falsifiable is in
+`tests/test_certify_stripmode.py`. Three sources compile to byte-identical
+`code`, `constants` and `maxstacksize`, differing only in one `LocVar.endpc`:
+
+| source | `a`'s scope | verdict, original `-s` | verdict, original unstripped |
+| --- | --- | --- | --- |
+| `do local a = f() g(a) end` `return` | endpc 5 | — (this is the original) | — |
+| `do local l0_0 = f() g(l0_0) end` `return` | endpc 5 | `L3` | `L3` rung 1 |
+| `local l0_0 = f() g(l0_0)` `return` | endpc 6 | `L3` | `L1`, field `locvars` |
+
+The third row hoists the local out of the `do` block. A stripped original
+cannot tell it from the second; an unstripped one refuses it on `locvars`,
+with both sides non-empty and differing only in `endpc`. The trailing bare
+`return` is load-bearing: `close_func` calls `removevars` before emitting the
+implicit final RETURN, so a chunk-level local's `endpc` lands one pc later than
+`leaveblock` would put it, while the explicit `return` allocates no register
+and leaves the instruction stream identical. Put anything register-allocating
+after the block instead (`h()`, `return 1`) and the hoist shifts every later
+register, so the mismatch lands on `code` and proves nothing about scopes.
+
+**What it changed, measured 2026-08-12.** The corpus does not move at all —
+every corpus proto takes the `strip=True` branch, `corpus/ledger.jsonl` is
+byte-identical after `scripts/run_corpus.py`, and so are all 229 files in
+`build/decompiled/`. On unstripped input, over 30 hand-written sources
+compiled both ways:
+
+| | count of 60 rows | examples |
 | --- | --- | --- |
-| `x = 1` | `L3` rung 0 | `L3` rung 1 |
-| `local a = 1  print(a)` | `L3` rung 0 | `L1`, field `locvars` |
-| `for i = 1, 10 do print(i) end` | `L3` rung 0 | `L1`, field `locvars` |
+| unstripped `L1` → `L3` | 12 | `local a = 1 print(a)`, `for i = 1, 10 do print(i) end`, `local function fact(n) ... end` |
+| unstripped `L3` → `L1` | 2 | `repeat f() until g()`, `return a and b or c` |
+| same level, rung 1 → rung 0 | 3 | `x = 1`, `print(1)`, `return 1` |
+| identical verdict | 43 | all 30 stripped rows, plus 13 unstripped |
 
-Read off: a proto whose whole **subtree** declares no locals is unaffected; one
-whose subtree declares even a single local can only certify if the original was
-stripped. "Subtree", not "this proto" — `compare_protos` recurses, so
-`f = function() local a = 1 return a end` has `len(main.locvars) == 0` and still
-refuses unstripped, on the subproto's `locvars` (measured 2026-08-11:
-`strip=True` → `L3` rung 1, `strip=False` → `L1` field `locvars`). That shape —
-a main chunk whose only statements assign `Name = function() ... end` — is what
-this corpus is made of. Ordinary `luac` output
-therefore falls back for essentially every real function — the most natural way
-to point this decompiler at something that is not the target corpus. Compile
-fixtures with `-s`, as `tests/test_certify.py` and
-`tests/test_structured_certify.py` do (`tests/test_emit_lua.py` keeps an
-unstripped `_proto` on purpose, to exercise the *printer*, and makes a separate
-stripped copy when it wants to certify).
+No stripped row changed level *or* rung. The three rung-1 → rung-0 rows are
+originals with nothing in their subtree to reconstruct differently: the
+unstripped candidate now reproduces `source`/`lineinfo` exactly, so they match
+at the strict rung instead of needing the normalization.
 
-The stronger fix — matching the candidate's strip mode to the original's, which
-would let rung 1 compare *real* locvar scope ranges instead of two empty tuples
-— is **strictly stronger** than what the gate does today and is recorded as M4
-work in `docs/runbooks/m3-backlog.md`. It is a behaviour change that can move
-the committed ledger, so it was not made in the M3 merge-readiness round.
+The two losses are the point rather than a defect, and they are worth reading
+before assuming the change is a pure gain. In both, the original declares no
+locals and our printer materialises one (`local l0_0 = g()` for `repeat`'s
+condition; `local l0_0 = a and b or c` for the chain's result). `code` is
+byte-identical, so under the old always-`-s` candidate the invented local was
+invisible; the newly non-vacuous comparison sees it and refuses. The mirror
+case exists on the nested path too — single-use inlining *drops* a local the
+original had (`local y = x + 1 return y` prints as `return l1_0 + 1`) — and is
+now refused for the same reason. Both are pinned:
+`::test_stricter_gate_refuses_reconstructions_that_invent_a_local` and
+`::test_wrapper_path_refuses_when_reconstruction_drops_a_local`.
+
+So the honest statement of the direction of change is **stricter**, not
+"strictly stronger": a gate cannot begin examining a dimension and also promise
+never to reject on it. What *is* strictly true is narrower and checkable: the
+stripped branch is untouched code, and every changed verdict — in either
+direction — is attributable to the debug-segment lists ceasing to be vacuous.
+In all 14 level-changed rows the losing side's mismatches are confined to
+`locvars` (12 rows) or `locvars` + `upvalues` (2 rows, where the *count*
+differed because a stripped candidate has no upvalue list at all). None
+mismatched on `code`, `constants`, `maxstacksize`, `nups`, `numparams`,
+`is_vararg` or `subprotos.len` — the change moved exactly the dimension it was
+aimed at, and the upvalue-count check on unstripped input became non-vacuous
+along with the scope check.
+
+Fixtures elsewhere in the suite are unaffected: they compile `-s`
+(`tests/test_certify.py`, `tests/test_structured_certify.py`), and
+`tests/test_emit_lua.py`'s deliberately-unstripped `_proto` exercises the
+*printer* and makes a separate stripped copy when it wants to certify.
 
 ## Register classification: simulating `lparser.c`'s `freereg`
 
@@ -810,6 +877,7 @@ from pyluadec import oracle
 from pyluadec.emit.lua import _print_proto_body
 from pyluadec.lift.opcodes import decode, luac_operand_str
 from pyluadec.structure.structured import certify_proto
+from pyluadec.verify.certify import carries_debug
 
 C = Path(os.environ["PYLUADEC_CORPUS_DIR"])
 p = load_file(C / "snr_memory.lua").subprotos[0]        # the proto under test
@@ -818,7 +886,10 @@ print("level", cert.level, "fields", sorted({m.field for m in cert.mismatches}))
 
 body = _print_proto_body(p, depth=1, upval_names=tuple(f"u{i}" for i in range(p.nups)))
 wrapper = f"return function({', '.join(f'l1_{i}' for i in range(p.numparams))})\n{body}end\n"
-mine = load_bytes(oracle.compile_source(wrapper.encode(), strip=True)).subprotos[0]
+# strip mode must match what certify_proto picked, or the locvar/upvalue
+# comparison you are debugging is not the one it made.
+mine = load_bytes(oracle.compile_source(
+    wrapper.encode(), strip=not carries_debug(p))).subprotos[0]
 for i, (x, y) in enumerate(zip(p.code, mine.code)):
     if x != y:
         a, b = decode(x, pc=i + 1), decode(y, pc=i + 1)
@@ -1264,6 +1335,7 @@ from pyluadec.lift.opcodes import decode
 from pyluadec.pipeline import walk_proto_paths
 from pyluadec.sir.build import StructureError
 from pyluadec.structure.structured import certify_proto
+from pyluadec.verify.certify import carries_debug
 from pyluadec.verify.ledger import structural_hash
 
 uniq, isroot = {}, {}
@@ -1283,10 +1355,11 @@ def ops(code):
 
 def candidate(p, root):
     """Exactly the proto certify_proto compares against, or None if it refuses."""
+    strip = not carries_debug(p)                 # as certify_proto does
     if root:
         src = print_chunk(p)
         return None if src is None else load_bytes(
-            oracle.compile_source(src.encode(), strip=True))
+            oracle.compile_source(src.encode(), strip=strip))
     upn = tuple(f"u{i}" for i in range(p.nups))
     try:
         body = _print_proto_body(p, depth=1, upval_names=upn)
@@ -1297,7 +1370,7 @@ def candidate(p, root):
         params += ", ..." if params else "..."
     decls = ("local " + ", ".join(upn) + "\n") if upn else ""
     r = load_bytes(oracle.compile_source(
-        f"{decls}return function({params})\n{body}end\n".encode(), strip=True))
+        f"{decls}return function({params})\n{body}end\n".encode(), strip=strip))
     return r.subprotos[0] if len(r.subprotos) == 1 else None
 
 def nav(p, path):                      # paths are "root", "root/0", "root/0/1"

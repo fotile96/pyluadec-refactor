@@ -60,7 +60,7 @@ from pyluadec.ingest import Proto, load_bytes
 from pyluadec import oracle
 from pyluadec.sir.build import StructureError
 from pyluadec.structure.fallback import emit_chunk
-from pyluadec.verify.certify import certify_l3
+from pyluadec.verify.certify import carries_debug, certify_l3, debug_view
 from pyluadec.verify.ledger import structural_hash
 from pyluadec.verify.normalize import Mismatch, NORMALIZATIONS, compare_protos
 
@@ -138,6 +138,11 @@ def _debug_fingerprint(p: Proto) -> str:
     """Hash of exactly the fields `compare_protos` checks that
     `structural_hash` omits, recursively over the subtree.
 
+    The field enumeration itself lives in `verify.certify.debug_view`, whose
+    other consumer is `carries_debug` (the candidate's strip-mode decision,
+    M4 task 7). Sharing it is deliberate: a debug field that matters to the
+    comparison matters to both, and splitting the list would let one drift.
+
     `structural_hash` is a *code-shape* key (see its own docstring): it folds
     in numparams/is_vararg/nups/maxstacksize/code/constants/subprotos and the
     upvalue COUNT, and deliberately drops `source`, `linedefined`,
@@ -168,18 +173,7 @@ def _debug_fingerprint(p: Proto) -> str:
     always used). Keying the memo correctly removes both the false positive
     and the underlying unsoundness, rather than trading one for the other.
     """
-    def view(q: Proto) -> dict:
-        return {
-            "source": q.source.hex() if q.source is not None else None,
-            "linedefined": q.linedefined,
-            "lastlinedefined": q.lastlinedefined,
-            "lineinfo": list(q.lineinfo),
-            "locvars": [[v.name.hex() if v.name is not None else None,
-                         v.startpc, v.endpc] for v in q.locvars],
-            "upvalues": [u.hex() if u is not None else None for u in q.upvalues],
-            "subprotos": [view(s) for s in q.subprotos],
-        }
-    blob = json.dumps(view(p), sort_keys=True, separators=(",", ":"))
+    blob = json.dumps(debug_view(p), sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(blob.encode()).hexdigest()
 
 
@@ -188,7 +182,8 @@ def certify_proto(proto: Proto, *, is_chunk_root: bool) -> ProtoCert:
 
     `is_chunk_root=True`: the proto IS the chunk main -- its structured print
     already is a complete compilable chunk, so it is compiled and compared
-    directly (via `certify_l3`, `strip=True` to match the golden dump path).
+    directly (via `certify_l3`, which picks the candidate's strip mode from
+    the original's own debug-completeness; `-s` for this corpus).
 
     `is_chunk_root=False`: the proto is nested. It is printed as its own
     subtree (`_print_proto_body`, depth=1, synthetic upvalue names `u0..u{n-1}`)
@@ -235,7 +230,8 @@ def certify_proto(proto: Proto, *, is_chunk_root: bool) -> ProtoCert:
     decls = ("local " + ", ".join(upval_names) + "\n") if upval_names else ""
     wrapper = f"{decls}return function({params})\n{body}end\n"
     try:
-        recompiled = load_bytes(oracle.compile_source(wrapper.encode(), strip=True))
+        recompiled = load_bytes(oracle.compile_source(
+            wrapper.encode(), strip=not carries_debug(proto)))
     except oracle.LuaCompileError:
         return ProtoCert(level="L1", rung=None, mismatches=(),
                          reason="compile: candidate wrapper did not recompile")
