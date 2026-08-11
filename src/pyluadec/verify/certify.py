@@ -38,8 +38,13 @@ def certify_l3(original: Proto, structured_src: bytes) -> CertResult:
         b"for i = 1, 10 do print(i) end"  strip=True -> L3 rung 0
                                           strip=False -> L1, field `locvars`
 
-    So the rule is: a proto that declares no locals is unaffected, and a proto
-    that declares even one can only certify if the original was stripped.
+    So the rule is: a proto whose whole SUBTREE declares no locals is
+    unaffected, and one whose subtree declares even a single local can only
+    certify if the original was stripped. Note "subtree", not "this proto":
+    `compare_protos` recurses, so `f = function() local a = 1 return a end`
+    has `len(main.locvars) == 0` and still refuses unstripped, on the
+    subproto's `locvars`. That shape -- a main chunk whose only statements
+    assign `Name = function() ... end` -- is what this corpus is made of.
     Ordinary `luac` output (no `-s`) therefore falls back for nearly every
     real function, with `Mismatch(field="locvars")` as the only clue. Compile
     your fixtures with `-s`, as `tests/test_certify.py`'s and

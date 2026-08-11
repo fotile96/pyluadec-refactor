@@ -6,3 +6,5 @@ __pycache__/
 src/pyluadec/_native/*.so
 *.egg-info/
 corpus/discrepancies.json
+# luac dumps unless given -o/-p; a bare `luac_sz4 -l` run drops this in cwd.
+luac.out

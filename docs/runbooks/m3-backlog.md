@@ -250,7 +250,9 @@ This is the load-bearing part of the justification and it is recorded here
 because it lived only in a scratch workspace. All four files fail at the **same
 original instruction on both sides**, indexing the **same nil value** produced
 by the **immediately preceding global read**. Derived with
-`./build/luac_sz4 -l <corpus>/<file>` (pcs are luac's own 1-based listing
+`./build/luac_sz4 -o /dev/null -l <corpus>/<file>` (the `-o /dev/null` matters:
+luac dumps unless told not to, so a bare `-l` litters `luac.out` into your cwd;
+pcs are luac's own 1-based listing
 numbers) and cross-checked against `lift_proto(...).captured_regs`:
 
 | file | global read | index that fails | reg boxed? | decompiled text |

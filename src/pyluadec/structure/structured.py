@@ -70,7 +70,14 @@ class ProtoCert:
     # The exact bytes that were compiled and compared to reach this verdict,
     # for a chunk-root `L3` certification; `None` otherwise (non-root
     # certifications compile a wrapper, not a shippable chunk, and a non-`L3`
-    # verdict has nothing certified to hand out). `emit_certified_chunk`
+    # verdict has nothing certified to hand out). One caveat on "otherwise":
+    # a descendant sharing the root's `_memo_key` would be handed the root's
+    # entry, `source` included. That cannot happen -- `structural_hash` folds
+    # subprotos recursively, so a proto cannot equal a strict descendant of
+    # itself (well-founded on depth) absent a hash collision -- and nothing
+    # reads `source` off a non-root cert. Stated because the field comment
+    # would otherwise be a stronger promise than the code makes.
+    # `emit_certified_chunk`
     # ships THIS object rather than calling `print_chunk` a second time, so
     # "shipped == certified" holds by construction rather than by the
     # printer happening to be deterministic.

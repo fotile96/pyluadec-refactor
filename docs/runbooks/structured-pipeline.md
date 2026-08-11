@@ -79,9 +79,9 @@ is pc-interval-driven; the dominator tree is a **post-hoc verifier** sitting on
 top of it, and on today's corpus it is nearly inert. Measured 2026-08-11 over
 all 1944 protos: `_verify_single_entry` is reached 1115 times; its
 `dominates()` rejection branch — the multi-entry-branch case — fires **0**
-times, and its "block unreachable from entry" branch fires 9 times but changes
+times, and its "block unreachable from entry" branch fires 8 times but changes
 the accept/refuse verdict for only **1** proto (`snr_common.lua:main_29_0`),
-because the other 8 are refused for an unrelated reason anyway. Neutering
+because the other 7 are refused for an unrelated reason anyway. Neutering
 `_verify_single_entry` entirely therefore moves **1 of 1944** proto outcomes
 (1775 accepted → 1776).
 
@@ -298,8 +298,14 @@ repo's `luac_sz4`:
 | `local a = 1  print(a)` | `L3` rung 0 | `L1`, field `locvars` |
 | `for i = 1, 10 do print(i) end` | `L3` rung 0 | `L1`, field `locvars` |
 
-Read off: a proto declaring **no** locals is unaffected; a proto declaring even
-one can only certify if the original was stripped. Ordinary `luac` output
+Read off: a proto whose whole **subtree** declares no locals is unaffected; one
+whose subtree declares even a single local can only certify if the original was
+stripped. "Subtree", not "this proto" — `compare_protos` recurses, so
+`f = function() local a = 1 return a end` has `len(main.locvars) == 0` and still
+refuses unstripped, on the subproto's `locvars` (measured 2026-08-11:
+`strip=True` → `L3` rung 1, `strip=False` → `L1` field `locvars`). That shape —
+a main chunk whose only statements assign `Name = function() ... end` — is what
+this corpus is made of. Ordinary `luac` output
 therefore falls back for essentially every real function — the most natural way
 to point this decompiler at something that is not the target corpus. Compile
 fixtures with `-s`, as `tests/test_certify.py` and
@@ -590,7 +596,9 @@ pc 7 — a `FORPREP` offset mismatch is a symptom, not the cause. Cross-check
 against the raw listing with
 
 ```bash
-./build/luac_sz4 -l -l <corpus>/snr_memory.lua | less
+# -o /dev/null: luac DUMPS unless told not to, so a bare -l run
+# drops a luac.out into your cwd (see decompile-pipeline.md).
+./build/luac_sz4 -o /dev/null -l -l <corpus>/snr_memory.lua | less
 ```
 
 and against the fallback output's `__pld_pc` state machine (see
@@ -791,9 +799,9 @@ protos containing TESTSET           16
   of which are refused              16
 ```
 
-The 58-residual mismatch histogram in point 3. Prepend the `uniq` /
-`is_root` construction below to the `prints` helper from the first script;
-this is the only one that spends `luac_sz4` subprocesses (58 of them):
+The 58-residual mismatch histogram in point 3. Self-contained — run it
+verbatim like the two above. This is the only one that spends `luac_sz4`
+subprocesses (58 of them):
 
 ```python
 # PYLUADEC_CORPUS_DIR=... uv run python -
@@ -804,7 +812,17 @@ from pyluadec.pipeline import walk_proto_paths
 from pyluadec.ingest import load_file
 from pyluadec.structure.structured import certify_proto
 from pyluadec.verify.ledger import structural_hash
-# ... plus the `prints` helper and its imports from the first script ...
+from pyluadec.emit.lua import _print_proto_body
+from pyluadec.sir.build import StructureError
+from pyluadec.express.reconstruct import ReconstructError
+
+def prints(p):
+    try:
+        _print_proto_body(p, depth=1,
+                          upval_names=tuple(f"u{i}" for i in range(p.nups)))
+        return True
+    except (StructureError, ReconstructError):
+        return False
 
 LEDGER = Path("corpus/ledger.jsonl")
 l3 = {json.loads(l)["shash"] for l in LEDGER.read_text().splitlines()
