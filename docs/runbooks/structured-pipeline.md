@@ -884,6 +884,172 @@ Two findings from writing it, both worth carrying:
   +6981 corpus rows, +1 corpus opcode (`VARARG`, whose 26 occurrences are all
   `B == 0`).
 
+## The effect lattice: what the three modes mean, and why `STRICT` stays
+
+M4 task 11. Evidence: `tests/test_effects_modes.py`. Per-row argument:
+the comment block above `_row` in `src/pyluadec/lift/effects.py`, and the
+`EffectMode` docstring.
+
+### What the lattice is for
+
+`lift/effects.py` grades every opcode into `PURE < READ_HEAP < WRITE_HEAP <
+ARBITRARY` under three modes. CLAUDE.md's standing statement was that **only
+`STRICT` has a justification** — the other two columns were asserted. This
+section is the calibration.
+
+Right-size it before reading further: **the lattice is not the inlining gate
+and never moved the L3 rate.** M3 task 8 deleted `_adjacent_pure` and the
+`EffectMode` knob from `express/names.py`; loosening the effect barrier
+measured **+0.0 protos**, while simulating `lparser.c`'s `freereg = nactvar`
+was worth +63.6 points (see "Register classification" above). The lattice is
+calibrated because M5's pass registry and any reordering pass will consume it,
+not because it is expected to move a number.
+
+### The modes are a chain, and that does most of the work
+
+The three modes are not three independent tables. They are nested assumption
+sets:
+
+| mode | assumes |
+| --- | --- |
+| `STRICT` | nothing beyond the Lua 5.1 VM |
+| `NO_METAMETHOD` | …additionally, no value an instruction touches carries a metatable whose event that opcode could fire |
+| `TRUSTING` | …additionally, a table *read* may be reordered freely — no intervening store or call changes what it returns |
+
+A grading sound under a weaker assumption set is sound under a stronger one.
+So **any row whose three columns are identical needs no argument beyond
+`STRICT`'s** — the looser columns are entailed, for free.
+
+Derived mechanically from `analyze()` by
+`test_mode_columns_split_20_entailed_18_relaxed`:
+
+- **20 of 38 rows are identical in all three modes** — `MOVE LOADK LOADBOOL
+  LOADNIL NEWTABLE GETUPVAL SETUPVAL NOT JMP TEST TESTSET CALL TAILCALL RETURN
+  FORPREP FORLOOP TFORLOOP CLOSE CLOSURE VARARG`. Entailed; nothing owed.
+- **18 rows have at least one looser column strictly below `STRICT`** —
+  `GETGLOBAL GETTABLE SELF SETGLOBAL SETTABLE SETLIST ADD SUB MUL DIV MOD POW
+  UNM LEN CONCAT EQ LT LE`. Each of these carries a `# nm:` / `# tr:` line in
+  `_row`.
+
+And, from `test_trusting_moves_only_three_rows_below_no_metamethod`:
+**`TRUSTING` moves exactly 3 rows below `NO_METAMETHOD` — `GETGLOBAL`,
+`GETTABLE`, `SELF`, all `READ_HEAP → PURE`.** That is the entire value
+`TRUSTING` adds over `NO_METAMETHOD`, and all three are `# UNARGUED`.
+
+Standing tally: **`NO_METAMETHOD` is argued on 37 rows and `# UNARGUED` on 1
+(`LEN`, see the finding below). `TRUSTING` is argued on 35 and `# UNARGUED`
+on 3 (`GETGLOBAL`, `GETTABLE`, `SELF`).**
+
+### The census, and its limit
+
+Re-derived 2026-08-12 by
+`test_corpus_never_names_metamethod_machinery` over the 229-file corpus:
+
+| quantity | measured |
+| --- | --- |
+| files / proto occurrences | 229 / 1944 |
+| constants | 71414 |
+| string constants | 49063 (23586 distinct) |
+| constants containing `__` (any metamethod event name) | **0** |
+| constants containing `setmetatable`/`getmetatable`/`rawget`/`rawset`/`rawequal`/`newproxy`/`getfenv`/`setfenv`/`debug` | **0** |
+| positive control (`vms`, the most-read global) | 993 |
+
+The positive control is there because a census that answers "zero everywhere"
+proves nothing if the scan is broken; the same loop that returns 0 for every
+needle above returns 993 for `vms`. All comparisons are on `bytes`; the corpus
+strings are Japanese game text and are never decoded.
+
+A Lua 5.1 script cannot install a metatable without naming `setmetatable`, and
+cannot name a metamethod event without a `__`-prefixed string. So **no table
+this corpus builds itself carries a metatable.** That is the whole of
+`NO_METAMETHOD`'s empirical support.
+
+One loophole worth closing explicitly, since a static census over constants is
+only as good as its claim to see all the code: the corpus never names
+`loadstring`, `dofile` or `require` (0 constants each, measured the same
+session), and `load` is never read as a global — so the scripts cannot compile
+a chunk at runtime that the census would miss. The only unseen code is the
+engine's own.
+
+**The limit matters more than the result, and this project has been burned by
+dropping exactly this kind of caveat.** The census sees only what the scripts
+name. Measured the same session:
+
+- of the **164** distinct global names the corpus reads (51497 `GETGLOBAL`
+  sites), **56 are never written by any of the 229 files** — they arrive from
+  outside the corpus. 52 are game-engine API (`layerLoad`, `playBGM`,
+  `fontPrint`, `wait`, `switchScreen`, …) and 4 are Lua stdlib (`math`,
+  `string`, `pairs`, `select`);
+- **8379 of the 11910 `GETTABLE` sites** index a value whose nearest
+  textually-preceding writer is a `GETGLOBAL`, against **188** that index a
+  freshly `NEWTABLE`-d one. (That split comes from a straight-line backward
+  scan that ignores control flow — an order of magnitude, not an exact
+  attribution. The 164/56 global-name split is exact.)
+
+Engine-supplied globals and userdata may carry `__index`, `__newindex` or
+`__gc` that no constant table can reveal. **`NO_METAMETHOD` is therefore NOT
+proven for `GETGLOBAL`/`GETTABLE`/`SELF`/`SETTABLE` on engine values** — and
+those are the common case, not the exotic one.
+
+`TRUSTING` is worse off: the corpus does not merely fail to support it, it
+*falsifies* it. 892 `SETGLOBAL` sites over 108 global names that are also
+read; **29 protos read and write the same global name**; 1667 `SETTABLE` + 92
+`SETLIST` sites; 44809 `CALL` sites, any of which may store into any reachable
+table.
+
+### The decision: `STRICT` stays the default
+
+1. **`STRICT` remains the pipeline-wide default.** `lift.lift_proto`'s `mode`
+   parameter defaults to it, and nothing in `src/pyluadec/` selects anything
+   else — pinned by
+   `test_strict_is_the_default_and_the_only_mode_in_use`, which fails if a
+   later change starts lifting under a looser mode without updating this
+   section.
+2. **`NO_METAMETHOD` is a permitted per-pass opt-in for M5**, scoped: sound
+   for tables the script constructed, unproven for engine values. A pass that
+   wants it must establish the value class it applies to, per region. It is
+   not a safe global default precisely because the unproven case dominates.
+3. **`TRUSTING` is not recommended for any pass.** Everything it buys over
+   `NO_METAMETHOD` is treating three table-read opcodes as `PURE`, and the
+   corpus supplies counterexamples to exactly that. It is kept in the enum
+   (removing it is a behaviour change to the axiom layer, out of scope here)
+   with all three of its distinguishing rows marked `# UNARGUED`.
+
+Nothing downstream needs loosening today, which is why this is a
+documentation-and-tests task and `lift/effects.py`'s behaviour is byte-for-byte
+unchanged (verified by replaying `analyze`/`successors`/`extra_words` for all
+38 opcodes over an operand grid against the pre-change file: 82080 identical
+comparisons).
+
+### Two findings, recorded and deliberately not fixed
+
+An axiom-layer grading change needs the full protocol — an `lvm.c` citation
+*plus* a differential run (M4 task 8 is the worked example). Neither of these
+got one this round, so neither was touched.
+
+- **`LEN` at `NO_METAMETHOD` is believed wrong: `PURE` should be
+  `READ_HEAP`.** `lvm.c:514-522` takes the table case to
+  `setnvalue(ra, cast_num(luaH_getn(hvalue(rb))))`, and `luaH_getn`
+  binary-searches the table's array part. Removing metamethods does not stop
+  that from reading the table. As graded, a `SETTABLE` could legally be
+  reordered across a `#t` and change its result. 22 `LEN` sites in the corpus,
+  so not vacuous. (`LEN` at `TRUSTING` is fine — `PURE` is precisely what
+  `TRUSTING` licenses; the defect is confined to one column. The string case,
+  `lvm.c:523-526`, really is `PURE`.) This is the one `# UNARGUED` in the
+  `NO_METAMETHOD` column.
+- **`NEWTABLE` and `CLOSURE` are graded `PURE`/`may_error=False` at all three
+  modes despite being able to run arbitrary Lua.** Both end in
+  `Protect(luaC_checkGC(L))` (`lvm.c:461-467`, `lvm.c:723-742`);
+  `luaC_checkGC` (`lgc.h:80`) can advance the collector into `GCSfinalize`
+  (`lgc.c:592-595`), where `GCTM` (`lgc.c:445-473`) calls a userdata's `__gc`
+  via `luaD_call`. Unobservable for this corpus — a Lua 5.1 script can only
+  create userdata via `newproxy`, and the census finds 0 occurrences of it and
+  0 of `__gc` — but an under-approximation in general, and it is the same
+  engine-value blind spot as above wearing a different hat. `CONCAT`'s
+  `NO_METAMETHOD = PURE` inherits the same caveat (string interning allocates
+  too), which is why it is graded consistently with these two rather than
+  singled out.
+
 ## Common operations
 
 ### Decompile one file and see what certified

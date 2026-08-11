@@ -390,7 +390,20 @@ adding a rung to buy 9 protos while `while` is worth 162 was the wrong order of
 work. An earlier measurement, at the code state before the "pre-declare
 parameters" change, put this at 8; do not treat either number as fixed.
 
-## 3. Effect-lattice calibration (spec M4)
+## 3. Effect-lattice calibration (spec M4) — DONE (M4 task 11)
+
+*Closed 2026-08-12. Evidence `tests/test_effects_modes.py`, per-row argument
+in `lift/effects.py`'s `_row` comment block and `EffectMode` docstring, write-up
+in `structured-pipeline.md` → "The effect lattice". Outcome: `STRICT` stays the
+default; `NO_METAMETHOD` is a permitted per-pass opt-in scoped to
+script-constructed tables (the census finds 0 metamethod-related constants in
+71414 constants, but 56 of 164 global names read are never written by the corpus
+and so come from the engine, where the census is blind); `TRUSTING` is not
+recommended — it moves only 3 rows (`GETGLOBAL`/`GETTABLE`/`SELF`) and the corpus
+falsifies all three. `lift/effects.py`'s behaviour is unchanged. Two rows were
+found under-graded and left alone pending the full axiom-change protocol: `LEN`
+at `NO_METAMETHOD`, and `NEWTABLE`/`CLOSURE`'s GC path. The original entry
+follows.*
 
 `lift/effects.py` grades every opcode under three modes — `STRICT`,
 `NO_METAMETHOD`, `TRUSTING`. Per CLAUDE.md **only `STRICT` has a
