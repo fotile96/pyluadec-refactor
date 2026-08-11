@@ -74,14 +74,44 @@ def test_table_constructor_reconstructs(tmp_path):
     assert decls and len(decls[0].exprs[0].array) == 3
 
 
+
+def _resolve(e, stmts):
+    """Follow a LocalExpr back through the LocalDecl chain that gave its
+    register its value, until a non-LocalExpr expression is reached.
+
+    luac stages a local's value into fresh registers before an operator
+    consumes it (`local c = a .. b` becomes MOVE r2,r0; MOVE r3,r1; CONCAT
+    r2,r2,r3), so an operand of the reconstructed BinExpr can be a LocalExpr
+    naming a register whose own declaration is itself a LocalExpr. One level
+    of lookup is not always enough; this walks the chain.
+    """
+    from pyluadec.express.expr import LocalExpr
+    from pyluadec.express.reconstruct import LocalDecl
+    value = {r: x for s in stmts if isinstance(s, LocalDecl)
+             for r, x in zip(s.regs, s.exprs)}
+    seen = set()
+    while isinstance(e, LocalExpr) and e.reg in value and e.reg not in seen:
+        seen.add(e.reg)
+        e = value[e.reg]
+    return e
+
+
 def test_reassignment_emits_assign_not_second_decl(tmp_path):
     from pyluadec.express.names import classify_registers
-    from pyluadec.express.reconstruct import reconstruct_straight, LocalDecl, Assign
-    p, fn = _proto_and_fn("local a = 1 a = a + 1 return a", tmp_path)
+    from pyluadec.express.reconstruct import (reconstruct_straight, LocalDecl,
+                                              Assign, LocalTarget)
+    # `print(a)` is load-bearing, not decoration: without a use of `a` that
+    # survives a statement boundary, the freereg model introduced in M3 task 8
+    # correctly reads `local a = 1 a = a + 1 return a` as one expression
+    # (`return 1 + 1`) with no local at all, and there would be no
+    # reassignment left to test. The extra statement is what makes register 0
+    # a genuine local, so that its second write is an Assign.
+    p, fn = _proto_and_fn("local a = 1 a = a + 1 print(a) return a", tmp_path)
     rc = classify_registers(fn)
     stmts = reconstruct_straight(fn, tuple(fn.instrs[i] for i in sorted(fn.instrs)), rc, depth=0)
-    assert sum(isinstance(s, LocalDecl) for s in stmts) == 1
-    assert sum(isinstance(s, Assign) for s in stmts) == 1
+    assert 0 in rc.locals
+    assert sum(isinstance(s, LocalDecl) and 0 in s.regs for s in stmts) == 1
+    assert sum(isinstance(s, Assign) and LocalTarget(0) in s.targets for s in stmts) == 1
 
 
 # ---- additional coverage beyond the brief's four starter tests ------------
@@ -120,8 +150,14 @@ def test_sub_does_not_swap_operands(tmp_path):
     subs = [e for s in stmts if isinstance(s, LocalDecl)
             for e in s.exprs if isinstance(e, BinExpr) and e.op == "-"]
     assert len(subs) == 1
-    lhs = struct.unpack("<d", subs[0].lhs.value.payload)[0]
-    rhs = struct.unpack("<d", subs[0].rhs.value.payload)[0]
+    # `a` and `b` are real locals (their values survive the statement that
+    # created them), so SUB's operands are LocalExpr references rather than
+    # the literals themselves -- resolve each back through its declaration.
+    # Before M3 task 8 the classifier inlined both literals straight into the
+    # SUB, reading `local a = 5 local b = 2 local c = a - b` as
+    # `local c = 5 - 2` and silently dropping two locals.
+    lhs = struct.unpack("<d", _resolve(subs[0].lhs, stmts).value.payload)[0]
+    rhs = struct.unpack("<d", _resolve(subs[0].rhs, stmts).value.payload)[0]
     assert (lhs, rhs) == (5.0, 2.0)
 
 
@@ -155,12 +191,10 @@ def test_concat_does_not_swap_operands(tmp_path):
     # By the time CONCAT runs, a's and b's values have already been staged
     # into fresh (local) registers by luac -- resolve those registers' own
     # first-declared value to check the underlying literals, in order.
-    decl_value = {r: e for s in stmts if isinstance(s, LocalDecl)
-                  for r, e in zip(s.regs, s.exprs)}
     assert isinstance(lhs, LocalExpr) and isinstance(rhs, LocalExpr)
     assert lhs.reg != rhs.reg
-    assert decl_value[lhs.reg].value == b"x"
-    assert decl_value[rhs.reg].value == b"y"
+    assert _resolve(lhs, stmts).value == b"x"
+    assert _resolve(rhs, stmts).value == b"y"
 
 
 def test_rk_constant_operand_is_not_read_as_register(tmp_path):
@@ -172,7 +206,9 @@ def test_rk_constant_operand_is_not_read_as_register(tmp_path):
     from pyluadec.express.names import classify_registers
     from pyluadec.express.reconstruct import reconstruct_straight, Assign
     from pyluadec.express.expr import BinExpr, ConstExpr
-    p, fn = _proto_and_fn("local a = 1 a = a + 1 return a", tmp_path)
+    # See test_reassignment_emits_assign_not_second_decl for why `print(a)`
+    # is needed to keep register 0 a local under the M3 task-8 freereg model.
+    p, fn = _proto_and_fn("local a = 1 a = a + 1 print(a) return a", tmp_path)
     rc = classify_registers(fn)
     stmts = reconstruct_straight(fn, tuple(fn.instrs[i] for i in sorted(fn.instrs)), rc, depth=0)
     assigns = [s for s in stmts if isinstance(s, Assign)]
@@ -196,9 +232,15 @@ def test_temp_read_pops_environment_single_use(tmp_path):
     rc = classify_registers(fn)
     r = Reconstructor(fn, rc, depth=0)
     r.stmts_for(tuple(fn.instrs[i] for i in sorted(fn.instrs)))
-    # a and b were single-use temps consumed by the ADD; they must not
-    # remain in the environment afterward.
-    assert 0 not in r.env or fn.proto.numparams > 0
+    # Nothing un-inlined may be left staged: every surviving environment
+    # entry must be the stable `LocalExpr(reg)` placeholder force_materialize
+    # installs for a register it already declared, never a pending expression
+    # tree no statement ever consumed. (Under the M3 task-8 freereg model a/b/c
+    # here are genuine locals -- each value survives the statement that created
+    # it -- so the environment is legitimately non-empty; what must hold is
+    # that no temp is stranded in it.)
+    from pyluadec.express.expr import LocalExpr
+    assert all(isinstance(e, LocalExpr) and e.reg == k for k, e in r.env.items())
     assert not (rc.temps & set(r.env))
 
 

@@ -285,10 +285,19 @@ def test_two_level_nested_closure_resolves_grandchild_upvalue_correctly(tmp_path
           "print(outer())\n")
     printed = print_chunk(_proto(src, tmp_path))
     assert printed is not None
-    # Confirms this genuinely exercises the closure-in-call-position shape
-    # at (at least) two nesting levels, not just "some closure somewhere".
-    assert printed.count("(function()") >= 2, \
-        f"expected >=2 inlined closure-call sites in:\n{printed}"
+    # Confirms this genuinely exercises three nesting levels, and that the
+    # innermost body names BOTH captured locals at their own defining depths
+    # (`a` from depth 0, `b` from depth 1) -- which is the depth-2 upvalue
+    # chaining this test exists for. Until M3 task 8 the assertion here was
+    # `printed.count("(function()") >= 2`, because the register classifier
+    # inlined each `local function` literal straight into its call site; the
+    # freereg model now correctly keeps them as the named locals the source
+    # declared, so counting inlined closure-call sites no longer measures
+    # nesting depth. `_run` below is unchanged and remains the real check.
+    assert printed.count("function(") == 3, \
+        f"expected 3 nested function literals in:\n{printed}"
+    assert "l0_0 - l1_0" in printed, \
+        f"innermost body must name both captured locals at their own depths:\n{printed}"
     assert _run(printed, tmp_path).strip() == "93"
 
 
@@ -328,3 +337,48 @@ def test_table_constructor_with_nested_table_prints_compilable(tmp_path):
     printed = print_chunk(_proto(src, tmp_path))
     assert printed is not None
     assert _run(printed, tmp_path).strip() == "1\t2\t3\t4"
+
+
+def test_if_arms_do_not_share_local_declaration_state(tmp_path):
+    """Each `if` arm is its own Lua block: a `local` declared in one arm must
+    be re-declared in the other, not assigned to.
+
+    Regression pin for the defect the L3 gate caught and M3 task 8 fixed. The
+    `Reconstructor`'s `declared` set is deliberately shared across the whole
+    SIR walk (a `for` header's staging temps are produced by the region before
+    it), but Lua block scoping is not: with no per-block snapshot, the FIRST
+    arm to write register 1 emitted `local l0_1 = 1` and recorded register 1
+    as declared, so the second arm's write printed as a bare `l0_1 = 2` --
+    which, register 1 not being in scope there, is a **write to a global**.
+    Semantically wrong (SETGLOBAL where the original had a register write) and
+    silent.
+
+    Running the output does not catch this on its own: reading a global that
+    the same chunk just wrote still prints 2. What catches it is that both
+    arms must DECLARE, and that the chunk must certify -- luac confirming the
+    printed source recompiles to this exact proto, which a stray SETGLOBAL
+    cannot do.
+    """
+    from pyluadec import oracle
+    from pyluadec.emit.lua import print_chunk
+    from pyluadec.ingest import load_bytes
+    from pyluadec.structure.structured import certify_proto
+    src = ("local c = false\n"
+          "if c then local a = 1 print(a) else local b = 2 print(b) end\n")
+    proto = _proto(src, tmp_path)
+    printed = print_chunk(proto)
+    assert printed is not None
+    lines = [l.strip() for l in printed.splitlines()]
+    i_if = next(i for i, l in enumerate(lines) if l.startswith("if "))
+    i_else = lines.index("else")
+    i_end = next(i for i in range(i_else, len(lines)) if lines[i] == "end")
+    then_arm, else_arm = lines[i_if + 1:i_else], lines[i_else + 1:i_end]
+    assert any(l.startswith("local ") for l in then_arm), printed
+    assert any(l.startswith("local ") for l in else_arm), printed
+    # This module's `_proto` compiles UNSTRIPPED (it exists to exercise the
+    # printer), while certification compiles its candidate with -s to match
+    # the golden dump path -- so the certification half needs its own stripped
+    # copy of the same source, or it would fail on lineinfo/locvars alone.
+    stripped = load_bytes(oracle.compile_source(src.encode(), strip=True))
+    assert certify_proto(stripped, is_chunk_root=True).level == "L3"
+    assert _run(printed, tmp_path).strip() == "2"

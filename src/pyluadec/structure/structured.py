@@ -16,31 +16,30 @@ line child function certifies independently even when its parent contains a
 artifact (per chunk) are therefore deliberately decoupled: the level is a
 proof record, the artifact is a conservative file-level choice.
 
-## Round-1 fix: memoization's unstated debug-completeness invariant
+## Memoization key (round-1 fix, superseded in M3 task 8)
 
-`emit_certified_chunk` memoizes `certify_proto`'s verdict by
-`verify.ledger.structural_hash`. That hash deliberately omits `locvars`
-entirely and reduces `upvalues`/`source` to a bare count (see its own
-docstring/`_structure_view`) -- it is a *code-shape* key, not a full-proto
-key. `compare_protos`, by contrast, DOES check `locvars` (and
-`_strip_lineinfo`'s normalization only blanks locvar *names*, not their
-count/pc ranges -- see `verify/normalize.py`'s own docstring). So two protos
-can share a `structural_hash` while genuinely certifying differently, and
-whichever is processed first in the memo loop wins for both -- silently.
+`emit_certified_chunk` memoizes `certify_proto`'s verdict. The obvious key,
+`verify.ledger.structural_hash`, is NOT sufficient: it is a *code-shape* key
+that deliberately omits `source`, `linedefined`/`lastlinedefined`,
+`lineinfo`, `locvars`, and upvalue names, all of which `compare_protos`
+checks. Two protos can therefore share a `structural_hash` while genuinely
+certifying differently, and whichever is processed first would win for both,
+silently.
 
-This is real but not reachable from any actual `load_file`/`load_bytes`
-tree: a compiled dump is `-s`-stripped or not for its ENTIRE tree, uniformly
-(there is no partial-strip mode), so within one real chunk every proto's
-locvars/upvalue-names/source presence agrees, and a same-hash pair that
-would genuinely disagree on `locvars` cannot arise. The invariant that makes
-memoization safe is therefore "the tree has uniform debug-completeness",
-not anything `structural_hash` itself guarantees -- so `emit_certified_chunk`
-below asserts it explicitly rather than leaving it as an unstated assumption
-a future caller (e.g. one handing in a synthesized or grafted tree) could
-silently violate.
+Round 1 handled this by asserting the tree had uniform debug-completeness
+(true of any real `load_file`/`load_bytes` dump, which is `-s`-stripped or
+not for its entire tree). That assertion had a documented false positive and
+started firing on ordinary unstripped input once this module acquired a
+production caller. It is gone: the memo is now keyed on `_memo_key` =
+`structural_hash` + `_debug_fingerprint`, which together cover every field
+`compare_protos` examines, so equal keys imply equal verdicts by
+construction and no assumption about the caller's tree is needed. See
+`_debug_fingerprint`.
 """
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
 
 from pyluadec.emit.lua import print_chunk, _print_proto_body
@@ -70,38 +69,53 @@ class ChunkOutcome:
 _L1 = ProtoCert(level="L1", rung=None, mismatches=())
 
 
-def _debug_shape(p: Proto) -> tuple[bool, bool, bool]:
-    """Coarse per-proto debug-completeness signature: does it carry any
-    locvar record, any named upvalue, and a non-null `source`.
+def _debug_fingerprint(p: Proto) -> str:
+    """Hash of exactly the fields `compare_protos` checks that
+    `structural_hash` omits, recursively over the subtree.
 
-    This is the cheapest predicate that actually captures the invariant
-    `emit_certified_chunk`'s memoization relies on (see module docstring
-    "Round-1 fix"): `structural_hash` folds in none of these three fields
-    (not even a count, for locvars), yet `compare_protos` checks `locvars`
-    directly and `_strip_lineinfo` only anonymizes locvar names -- it keeps
-    their count and pc ranges. Two same-hash protos that disagree on any of
-    these three booleans are exactly the case where memoizing one's verdict
-    for the other could be wrong (proven by `dataclasses.replace`-grafting a
-    stray `LocVar` onto an otherwise-identical, otherwise-stripped proto in
-    the accompanying test -- same hash, genuinely different certify_proto
-    verdict).
+    `structural_hash` is a *code-shape* key (see its own docstring): it folds
+    in numparams/is_vararg/nups/maxstacksize/code/constants/subprotos and the
+    upvalue COUNT, and deliberately drops `source`, `linedefined`,
+    `lastlinedefined`, `lineinfo`, `locvars`, and upvalue NAMES.
+    `compare_protos` checks every one of those. So two protos can share a
+    structural hash and still certify differently, and memoizing one's verdict
+    for the other would be silently wrong.
 
-    A real compiled dump (`load_file`/`load_bytes`) is always uniformly
-    `-s`-stripped or not for its ENTIRE tree -- there is no partial-strip
-    mode -- so on any actual proto tree every node's signature is identical
-    and this predicate never distinguishes them. It is intentionally a
-    coarse presence check, not an exact-value comparison: a tree that is
-    uniformly non-stripped but happens to contain one proto with zero
-    declared locals (legitimately empty `locvars` even though debug info is
-    present) would false-positive this predicate into "mixed shape" -- an
-    over-eager but SAFE failure direction (loudly refusing to memoize rather
-    than silently trusting a hash that doesn't cover the field in
-    question), and one that does not occur on this project's actual corpus,
-    which is uniformly stripped tree-wide (verified: zero real-corpus
-    protos trip the assertion below -- see task-7-report.md's round-1
-    section).
+    `structural_hash(p) + _debug_fingerprint(p)` together cover every field
+    `compare_protos` examines, which makes the memoization in
+    `emit_certified_chunk` sound by construction rather than by an assumption
+    about the caller. What the printed source looks like depends only on
+    fields `structural_hash` already covers, and what the comparison accepts
+    depends only on those two together -- so equal keys imply equal verdicts.
+
+    ## Why this replaced the round-1 tree-uniformity assertion (M3 task 8)
+
+    Round 1 addressed the same hazard with a coarse `(has_locvars,
+    has_upvalue_names, has_source)` signature and an assertion that every
+    proto in the tree agreed on it -- sound only because a real dump is
+    uniformly `-s`-stripped or not. Its own docstring flagged the false
+    positive: an unstripped tree containing one function that declares no
+    locals has legitimately-empty `locvars` for that proto, so the tree read
+    as "mixed" and the assertion fired. That was harmless while
+    `emit_certified_chunk` had no production caller; this task wired it into
+    `pipeline.decompile_chunk`, at which point it became an AssertionError on
+    ordinary unstripped input (the exact source tests/test_pipeline.py has
+    always used). Keying the memo correctly removes both the false positive
+    and the underlying unsoundness, rather than trading one for the other.
     """
-    return (bool(p.locvars), any(u is not None for u in p.upvalues), p.source is not None)
+    def view(q: Proto) -> dict:
+        return {
+            "source": q.source.hex() if q.source is not None else None,
+            "linedefined": q.linedefined,
+            "lastlinedefined": q.lastlinedefined,
+            "lineinfo": list(q.lineinfo),
+            "locvars": [[v.name.hex() if v.name is not None else None,
+                         v.startpc, v.endpc] for v in q.locvars],
+            "upvalues": [u.hex() if u is not None else None for u in q.upvalues],
+            "subprotos": [view(s) for s in q.subprotos],
+        }
+    blob = json.dumps(view(p), sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(blob.encode()).hexdigest()
 
 
 def certify_proto(proto: Proto, *, is_chunk_root: bool) -> ProtoCert:
@@ -170,33 +184,22 @@ def emit_certified_chunk(root: Proto) -> ChunkOutcome:
     structured print -- `print_chunk` prints the whole tree inline at each
     CLOSURE site); the semantically-exact fallback chunk otherwise.
 
-    Identical (by `structural_hash`) protos recurring within one chunk are
-    certified once and the result is shared -- corpus functions frequently
-    repeat verbatim (e.g. identical small helper closures), and
-    certification's dominant cost is one `luac_sz4` subprocess per proto.
-    This memoization is only sound if every proto in the tree agrees on
-    debug-completeness (see module docstring "Round-1 fix" and
-    `_debug_shape`); asserted below rather than assumed, so a future caller
-    that hands in a synthesized or grafted tree fails loudly instead of
-    silently inheriting a wrong verdict.
+    Identical protos recurring within one chunk are certified once and the
+    result is shared -- corpus functions frequently repeat verbatim (e.g.
+    identical small helper closures), and certification's dominant cost is one
+    `luac_sz4` subprocess per proto. "Identical" here means `_memo_key`:
+    `structural_hash` (code shape) plus `_debug_fingerprint` (everything else
+    `compare_protos` looks at). Together those cover every field the
+    comparison examines, so equal keys imply equal verdicts by construction --
+    see `_debug_fingerprint` for why keying on `structural_hash` alone was not
+    enough, and for what replaced the round-1 assertion that used to stand in
+    for this.
     """
     from pyluadec.pipeline import walk_proto_paths
     protos: dict[str, Proto] = {}
     walk_proto_paths("main", root, protos)
 
-    shapes = {_debug_shape(p) for p in protos.values()}
-    assert len(shapes) <= 1, (
-        f"proto tree has {len(shapes)} distinct (has_locvars, "
-        f"has_upvalue_names, has_source) debug-completeness shapes "
-        f"{sorted(shapes)} -- structural_hash-keyed memoization below "
-        "assumes a uniform tree (locvars/upvalue-names/source aren't part "
-        "of structural_hash, so two same-hash protos with different "
-        "debug-completeness can certify differently yet share a memo "
-        "entry); a real load_file/load_bytes tree is always uniformly "
-        "-s-stripped or not, so this indicates a synthesized/grafted tree, "
-        "not real bytecode")
-
-    memo: dict[str, ProtoCert] = {}
+    memo: dict[tuple[str, str], ProtoCert] = {}
     certs: dict[str, ProtoCert] = {}
     # `main` is certified first and unconditionally, NOT because
     # walk_proto_paths's pre-order recursion plus dict insertion order
@@ -205,19 +208,23 @@ def emit_certified_chunk(root: Proto) -> ChunkOutcome:
     # certified L3 => print succeeded" assertion below correct only by
     # coincidence if some future change reordered `protos` or introduced a
     # same-hash collision between `root` and one of its own descendants.
-    root_hash = structural_hash(root)
-    memo[root_hash] = certify_proto(root, is_chunk_root=True)
-    certs["main"] = memo[root_hash]
+    root_key = _memo_key(root)
+    memo[root_key] = certify_proto(root, is_chunk_root=True)
+    certs["main"] = memo[root_key]
     for path, p in protos.items():
         if path == "main":
             continue
-        h = structural_hash(p)
-        if h not in memo:
-            memo[h] = certify_proto(p, is_chunk_root=False)
-        certs[path] = memo[h]
+        k = _memo_key(p)
+        if k not in memo:
+            memo[k] = certify_proto(p, is_chunk_root=False)
+        certs[path] = memo[k]
 
     if certs["main"].level == "L3":
         src = print_chunk(root)
         assert src is not None            # main certified L3 => print succeeded
         return ChunkOutcome(source=src.encode(), certs=certs)
     return ChunkOutcome(source=emit_chunk(root), certs=certs)
+
+
+def _memo_key(p: Proto) -> tuple[str, str]:
+    return (structural_hash(p), _debug_fingerprint(p))

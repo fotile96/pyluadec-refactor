@@ -113,17 +113,18 @@ def test_generic_for_control_slots_are_temp_and_loop_vars_are_local(tmp_path):
     assert not ({1, 2, 3} & rc.locals)
 
 
-def test_adjacent_pure_blocks_inlining_across_may_error_pure_instruction():
-    """_adjacent_pure's may_error term, isolated from its effect-level term.
+def test_value_not_consumed_before_a_loop_header_is_local():
+    """A value that is still live when a `for` header runs is a local.
 
-    FORPREP/FORLOOP are the only opcodes that are PURE at every EffectMode
-    yet may_error=True (see lift/effects.py's FORLOOP comment) -- so they are
-    the only way to build a def/use pair whose intervening instruction is
-    blocked *solely* by the may_error check, never by the effect>=WRITE_HEAP
-    check. This hand-built shape (real luac never stages a temp's def and use
-    across a for-loop header) isolates exactly that: register 5 has one def,
-    one use, and nothing writes its (empty) input set in between -- only
-    may_error keeps it out of temps.
+    Historically this test isolated `_adjacent_pure`'s may_error term
+    (FORPREP/FORLOOP being the only opcodes that are PURE at every EffectMode
+    yet may_error=True). `_adjacent_pure` is gone as of M3 task 8 and the
+    freereg simulation that replaced it reaches the same verdict for a
+    stronger reason: FORPREP is a statement boundary, so anything still
+    pending when it executes is promoted to local by definition. Register 5
+    is written at pc 1 and only read at pc 3, on the far side of the header,
+    so it survives a statement boundary -> local. (Real luac never stages a
+    temp across a for header; this is a tests/synth.py shape.)
     """
     from pyluadec.express.names import classify_registers
     from pyluadec.lift import Effect, InstrEffects, LirFunction, LirInstr, Op
@@ -155,7 +156,11 @@ def test_adjacent_pure_blocks_inlining_across_may_error_pure_instruction():
 
 def test_open_region_write_between_def_and_use_forces_local():
     """A VARARG B==0 (open write, R[A..top) unbounded) between a def and its
-    use must force local, never temp.
+    use must force local, never temp. Under the freereg simulation that
+    replaced `_adjacent_pure` in M3 task 8 this still holds, by a different
+    route: the open producer pushes at register 0, which pops everything at
+    or above it -- register 7 among them -- and register 7 had not been read
+    at that point, so it is disqualified.
 
     Open regions are not statically bounded, so they never appear in a real
     instruction's .writes/.reads -- an instruction with writes_open=True can
@@ -197,19 +202,19 @@ def test_open_region_write_between_def_and_use_forces_local():
 
 
 def test_open_region_check_ignores_which_registers_it_touches():
-    """_adjacent_pure's open-region check is unconditional: it blocks on ANY
-    reads_open/writes_open instruction in (dp, up], regardless of whether
-    that instruction's own base register happens to overlap the candidate.
+    """A value pushed below an open region and never consumed inside its own
+    statement is a local.
 
-    Register 2's def/use window (pc 1..3) contains a VARARG B==0 at pc 2 with
-    base register 5 -- register 2 is nowhere near that range. This pins the
-    deliberate design choice of NOT trying to compute the open region's
-    actual affected range (base is known, but "top" is a dynamic stack depth
-    this module does not simulate, so no such range could be proven safe to
-    exclude) -- see the M3 task-4 round-2 review, which flagged and removed
-    an earlier version that tried to track per-register open ranges globally
-    (unwindowed, which was itself the round-2 defect) rather than treating
-    "is there any open region in my own window at all" as the question.
+    This test used to pin `_adjacent_pure`'s open-region check as
+    unconditional (blocking on ANY reads_open/writes_open in the window
+    regardless of which registers it touched). That barrier is gone as of M3
+    task 8. The freereg simulation reaches the same verdict here for a reason
+    that does not depend on the open region at all: register 2 is written at
+    pc 1, read at pc 3 by a MOVE that pushes at register 9, and the function
+    then ends -- so register 2 is still pending at the end and is promoted to
+    local. Kept as a standing shape-robustness pin (tests/synth.py builds an
+    instruction order luac would not emit; the classifier must still give a
+    printable answer rather than crash or silently inline).
     """
     from pyluadec.express.names import classify_registers
     from pyluadec.lift import Effect, InstrEffects, LirFunction, LirInstr, Op
@@ -239,83 +244,63 @@ def test_open_region_check_ignores_which_registers_it_touches():
     assert 2 in rc.locals and 2 not in rc.temps
 
 
-def test_open_write_at_use_pc_forces_local(tmp_path):
-    """_adjacent_pure's open-region check scans (dp, up] -- inclusive of the
-    use pc itself -- using a real (non-synthetic) luac-compiled shape.
+def test_open_call_argument_staging_stays_temp(tmp_path):
+    """Registers staged as the fixed arguments of a call whose results feed an
+    OPEN argument list are temps, and the whole chunk certifies L3.
 
-    'print(string.format("%d", 42))': string.format's own CALL has C==0
-    (its results feed print's open argument list), so it both *reads*
-    registers 2 and 3 as explicit arguments AND (via writes_open) implicitly
-    re-defines them with its own return values -- at the very same pc as the
-    read (up). A strictly-between scan (dp, up) would never reach pc == up
-    at all, so this specifically exercises the half-open-at-the-top window,
-    not just "some open region exists somewhere in this function" (which
-    test_windowing_ignores_open_regions_outside_the_def_use_window pins the
-    negative of). See test_call_arg_staging_is_temp for the contrasting case
-    -- same shape of Lua source, without the open call -- where the
-    equivalent registers correctly inline as temps.
+    Supersedes `test_open_write_at_use_pc_forces_local` (M3 task 8), which
+    asserted the opposite -- that registers 2 and 3 here are LOCALS. That
+    assertion pinned a limitation of the old `_adjacent_pure` def/use barrier,
+    not a fact about the bytecode: `print(string.format("%d", 42))` stages
+    "%d" and 42 into registers 2 and 3, string.format's own `CALL ... C==0`
+    consumes them and leaves its results open at register 1, and print's
+    `CALL ... B==0` consumes that. Every one of those values lives and dies
+    inside one statement, so all four registers are luac temporaries; calling
+    two of them `local` forced the printer to emit `local` declarations luac
+    never compiled, costing stack slots and a certification.
+
+    The `assert certify_proto(...).level == "L3"` below is what makes this a
+    fact rather than a preference: `luac` itself confirms that the printed
+    source recompiles to this exact proto.
     """
     from pyluadec.express.names import classify_registers
+    from pyluadec.structure.structured import certify_proto
     fn = _fn("print(string.format('%d', 42))", tmp_path)
     rc = classify_registers(fn)
-    assert {2, 3} <= rc.locals
+    assert {0, 1, 2, 3} <= rc.temps
+    assert not rc.locals
+    assert certify_proto(fn.proto, is_chunk_root=True).level == "L3"
 
 
-def test_windowing_ignores_open_regions_outside_the_def_use_window():
-    """Round-2 regression pin: an open-region instruction elsewhere in the
-    function -- outside a candidate's own (dp, up] window -- must NOT
-    disqualify that candidate. An earlier version of classify_registers
-    poisoned its defs/uses dicts globally for every open-region instruction
-    in the function, regardless of position; on the 229-file corpus that
-    flipped 154 of 342 temp->local reclassifications for zero soundness
-    gain (registers whose own def/use window had no open region in it at
-    all). This is a synthetic function (tests/synth.py) with two disjoint
-    regions: an open VARARG at pc 2, unrelated to register 9's own def (pc
-    4) and use (pc 6) later in the same function -- register 9's window
-    contains no open-region instruction, so it must still inline as a temp
-    despite the function having one elsewhere.
+def test_open_region_in_an_earlier_statement_does_not_poison_a_later_one(tmp_path):
+    """An open-region instruction in one statement must not disqualify the
+    temps of a *later* statement.
+
+    Round-2 of this module fixed a version of classify_registers that poisoned
+    its bookkeeping globally for every open-region instruction in the
+    function, flipping 154 of 342 registers temp->local corpus-wide for no
+    soundness gain. That regression is still worth a standing pin, but the
+    old test built the shape by hand out of `tests/synth.py` instructions in
+    an order luac never emits (a value pushed at register 9 and then a fresh
+    value pushed at register 2 while 9 was still live -- freereg only ever
+    moves down by *consuming* the values above it). The freereg simulation
+    that replaced the def/use barrier in M3 task 8 reads that as "register 9
+    was silently dropped" and classifies it local, which is the correct
+    reading of that instruction sequence.
+
+    So the property is re-pinned on real luac output instead: statement one
+    is an open call (`print(string.format(...))`, whose inner CALL has C==0),
+    statement two stages two ordinary constant arguments. The second
+    statement's staging registers must still be temps, and the chunk must
+    certify.
     """
     from pyluadec.express.names import classify_registers
-    from pyluadec.lift import Effect, InstrEffects, LirFunction, LirInstr, Op
-    from tests.synth import mk_instr, mk_proto
-
-    unrelated_def_ri = mk_instr(Op.LOADK, a=0, bx=0, pc=1)
-    unrelated_def_fx = InstrEffects(reads=frozenset(), writes=frozenset({0}),
-                                     reads_open=False, writes_open=False,
-                                     effect=Effect.PURE, may_error=False)
-    vararg_ri = mk_instr(Op.VARARG, a=0, b=0, pc=2)          # open, but far from reg 9's window
-    vararg_fx = InstrEffects(reads=frozenset(), writes=frozenset(),
-                              reads_open=False, writes_open=True,
-                              effect=Effect.PURE, may_error=False)
-    unrelated_use_ri = mk_instr(Op.MOVE, a=1, b=0, pc=3)
-    unrelated_use_fx = InstrEffects(reads=frozenset({0}), writes=frozenset({1}),
-                                     reads_open=False, writes_open=False,
-                                     effect=Effect.PURE, may_error=False)
-    def_ri = mk_instr(Op.LOADK, a=9, bx=0, pc=4)
-    def_fx = InstrEffects(reads=frozenset(), writes=frozenset({9}),
-                           reads_open=False, writes_open=False,
-                           effect=Effect.PURE, may_error=False)
-    filler_ri = mk_instr(Op.MOVE, a=2, b=1, pc=5)
-    filler_fx = InstrEffects(reads=frozenset({1}), writes=frozenset({2}),
-                              reads_open=False, writes_open=False,
-                              effect=Effect.PURE, may_error=False)
-    use_ri = mk_instr(Op.MOVE, a=3, b=9, pc=6)
-    use_fx = InstrEffects(reads=frozenset({9}), writes=frozenset({3}),
-                           reads_open=False, writes_open=False,
-                           effect=Effect.PURE, may_error=False)
-    instrs = {
-        1: LirInstr(ri=unrelated_def_ri, effects=unrelated_def_fx, successors=(2,), consumed=()),
-        2: LirInstr(ri=vararg_ri, effects=vararg_fx, successors=(3,), consumed=()),
-        3: LirInstr(ri=unrelated_use_ri, effects=unrelated_use_fx, successors=(4,), consumed=()),
-        4: LirInstr(ri=def_ri, effects=def_fx, successors=(5,), consumed=()),
-        5: LirInstr(ri=filler_ri, effects=filler_fx, successors=(6,), consumed=()),
-        6: LirInstr(ri=use_ri, effects=use_fx, successors=(), consumed=()),
-    }
-    proto = mk_proto((0,) * 6, numparams=0, maxstacksize=10)
-    fn = LirFunction(proto=proto, instrs=instrs, n_pcs=6,
-                      captured_regs=frozenset(), closure_pseudo={})
+    from pyluadec.structure.structured import certify_proto
+    fn = _fn("print(string.format('%d', 42)) print('a', 'b')", tmp_path)
     rc = classify_registers(fn)
-    assert 9 in rc.temps and 9 not in rc.locals
+    assert {0, 1, 2, 3} <= rc.temps
+    assert not rc.locals
+    assert certify_proto(fn.proto, is_chunk_root=True).level == "L3"
 
 
 def test_corpus_no_open_region_in_pre_fix_temp_window(corpus_dir):
@@ -399,53 +384,31 @@ def test_corpus_no_open_region_in_pre_fix_temp_window(corpus_dir):
     assert hits == [], f"open-region instruction inside a pre-fix temp window: {hits[:5]}"
 
 
-def test_adjacent_pure_window_excludes_the_def_pc_itself():
-    """Pins _adjacent_pure's window at the BOTTOM: (dp, up] is exclusive at
-    dp, inclusive at up. The top boundary (inclusive at up) is already
-    covered by test_open_write_at_use_pc_forces_local; nothing in this
-    module's existing tests pins the bottom.
+def test_classification_does_not_consult_the_effect_table(tmp_path):
+    """A value produced by an effectful, may_error instruction is still a temp
+    when it is consumed inside its own statement.
 
-    Mutating the scan from `dp < pc <= up` to `dp <= pc <= up` (i.e.
-    including the def instruction's own pc in the barrier scan) makes a
-    register's *own* def-time effect/may_error block its *own* eligibility
-    -- nonsensical, since _adjacent_pure's barriers are about what happens
-    *between* computing a value and consuming it, not about the computation
-    itself. On the 229-file corpus this exact mutation flips 49 registers
-    temp->local for no soundness reason (a computed-once value that was
-    never touched by anything else is still safe to inline at its single
-    use site, regardless of whether computing it could itself raise/mutate
-    the heap -- that risk exists identically whether the value is inlined
-    or stored to a local first).
+    Supersedes `test_adjacent_pure_window_excludes_the_def_pc_itself` (M3 task
+    8), which pinned the bottom edge of `_adjacent_pure`'s `(dp, up]` scan
+    window -- a function that no longer exists. Its underlying claim was that
+    the *risk* of an instruction (can it raise, can it touch the heap) has
+    nothing to do with whether its result is inlinable, and that claim is now
+    structural: `_stack_discipline` never looks at `InstrEffects.effect` or
+    `.may_error` at all, only at which registers are read and written.
 
-    Register 5's def (pc 1) is deliberately given effect=ARBITRARY,
-    may_error=True -- exactly what a realistic risky def instruction (e.g.
-    GETGLOBAL or ADD under EffectMode.STRICT) looks like -- with its single
-    use immediately adjacent (pc 2, nothing between). Under the correct
-    exclusive-at-dp window, dp itself is never scanned, so this passes
-    unaffected -> temp. Under the `[dp, up]` mutation, dp enters the scan
-    and its own effect/may_error immediately fails the barrier -> local.
+    `print(t.field)` is the smallest real shape that would have been blocked
+    by the old barrier for effect reasons alone: under EffectMode.STRICT both
+    the `GETGLOBAL t` and the `GETTABLE` are ARBITRARY, and GETTABLE is
+    may_error as well. Both results are consumed before the statement ends,
+    so both are temps -- confirmed by luac via certification.
     """
     from pyluadec.express.names import classify_registers
-    from pyluadec.lift import Effect, InstrEffects, LirFunction, LirInstr, Op
-    from tests.synth import mk_instr, mk_proto
-
-    def_ri = mk_instr(Op.ADD, a=5, b=0, c=1, pc=1)
-    def_fx = InstrEffects(reads=frozenset(), writes=frozenset({5}),
-                           reads_open=False, writes_open=False,
-                           effect=Effect.ARBITRARY, may_error=True)
-    use_ri = mk_instr(Op.MOVE, a=6, b=5, pc=2)
-    use_fx = InstrEffects(reads=frozenset({5}), writes=frozenset({6}),
-                           reads_open=False, writes_open=False,
-                           effect=Effect.PURE, may_error=False)
-    instrs = {
-        1: LirInstr(ri=def_ri, effects=def_fx, successors=(2,), consumed=()),
-        2: LirInstr(ri=use_ri, effects=use_fx, successors=(), consumed=()),
-    }
-    proto = mk_proto((0, 0), numparams=0, maxstacksize=8)
-    fn = LirFunction(proto=proto, instrs=instrs, n_pcs=2,
-                      captured_regs=frozenset(), closure_pseudo={})
+    from pyluadec.structure.structured import certify_proto
+    fn = _fn("print(t.field)", tmp_path)
     rc = classify_registers(fn)
-    assert 5 in rc.temps and 5 not in rc.locals
+    assert {0, 1} <= rc.temps
+    assert not rc.locals
+    assert certify_proto(fn.proto, is_chunk_root=True).level == "L3"
 
 
 def test_controls_register_reused_as_ordinary_local_classifies_local(tmp_path):
@@ -739,21 +702,50 @@ def _temp_write_violations(fn, rc):
     control = (Op.FORPREP, Op.FORLOOP, Op.TFORLOOP)
     writes: dict[int, list[int]] = {}
     reads: dict[int, list[int]] = {}
+    # `R[base..top)` regions do not appear in .reads/.writes at all -- their
+    # top is a dynamic stack depth. Counting only explicit reads/writes makes
+    # this oracle report a false verdict for every register staged into an
+    # open call: `f(a, b, c, g(h))` stages a/b/c into registers that ONLY the
+    # open `CALL f ... B==0` reads (false "zero readers"), and the inner
+    # `CALL g ... C==0` then re-defines those same slots with its results
+    # (which, unmodelled, made the outer read look like a second reader of
+    # the *staging* write -- false "two readers"). Both directions occur in
+    # the corpus (M3 task 8: 464 and 874 protos respectively).
+    open_reads: list[tuple[int, int]] = []       # (pc, lowest register read)
+    open_writes: list[tuple[int, int]] = []      # (pc, lowest register written)
     for pc in sorted(fn.instrs):
         li = fn.instrs[pc]
         for r in li.effects.writes:
             writes.setdefault(r, []).append(pc)
         for r in li.effects.reads:
             reads.setdefault(r, []).append(pc)
+        if li.effects.reads_open:
+            open_reads.append((pc, li.ri.a if li.ri.op is Op.RETURN else li.ri.a + 1))
+        if li.effects.writes_open or li.ri.op is Op.TAILCALL:
+            # TAILCALL is listed here even though lift/effects.py does not set
+            # writes_open on it. When its callee is not a Lua function,
+            # OP_TAILCALL leaves the results at R[a..top) and the RETURN that
+            # luac always emits directly after it returns exactly that open
+            # range -- so `return f(a, b, c, "k")` has TAILCALL read a..a+4
+            # explicitly and then RETURN read the same slots open, which
+            # without this looks like a second consumer of the *staging*
+            # writes. Modelled here in the oracle rather than in the effect
+            # table, which is this project's axiom layer and out of scope for
+            # this task (CLAUDE.md: changing it needs an lvm.c/PDF citation
+            # and a full differential run).
+            open_writes.append((pc, li.ri.a))
+
     bad = []
     for r in sorted(rc.temps):
-        ws = writes.get(r, [])
+        ws = sorted(set(writes.get(r, []))
+                    | {pc for pc, base in open_writes if r >= base})
+        rs = sorted(set(reads.get(r, []))
+                    | {pc for pc, base in open_reads if r >= base})
         for i, pc in enumerate(ws):
             if fn.instrs[pc].ri.op in control:
                 continue
             nxt = ws[i + 1] if i + 1 < len(ws) else None
-            n = sum(1 for u in reads.get(r, [])
-                    if u > pc and (nxt is None or u <= nxt))
+            n = sum(1 for u in rs if u > pc and (nxt is None or u <= nxt))
             if n != 1:
                 bad.append((r, pc, n))
     return bad

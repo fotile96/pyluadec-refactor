@@ -178,7 +178,18 @@ class Reconstructor:
         # the loop variable (legal Lua: `for i=1,3 do i=i+10 ... end`
         # reassigns i without affecting iteration), write_reg emits an
         # Assign, never a second LocalDecl.
-        self.declared: set[int] = set(rc.loop_vars)
+        # Parameters are already in scope, and already named, when the body
+        # starts -- `numparams` registers at the bottom of the frame. Without
+        # seeding them, the first write to a parameter's register goes through
+        # force_materialize's LocalDecl branch and emits `local l1_0 = ...`,
+        # which SHADOWS the parameter with a brand-new variable instead of
+        # assigning to it. That is not merely ugly: it costs a stack slot and
+        # a `local` the original never had, so the recompiled proto's
+        # maxstacksize (and often its code) diverge. Measured on the corpus,
+        # `function(s) s = string.gsub(s, ...) ... end` -- a very common shape
+        # here -- printed a spurious `local l1_0 = ...` on its first line
+        # before this seeding (M3 task 8).
+        self.declared: set[int] = set(rc.loop_vars) | set(range(fn.proto.numparams))
         # (base_reg, expr) for a not-yet-consumed open-result producer
         # (CALL C==0 or VARARG B==0): the instruction that will read the
         # open range [base_reg, dynamic top) consumes this via _consume_open.
@@ -203,6 +214,35 @@ class Reconstructor:
             self._dispatch(li)
         self._finalize_pending()
         return tuple(self._out)
+
+    def open_scope(self) -> tuple[frozenset[int], dict[int, Expr]]:
+        """Snapshot the declaration/staging state before walking a nested Lua
+        block (an `if` arm, a loop body).
+
+        `declared` and `env` are deliberately shared across the whole SIR walk
+        (see the class docstring), but Lua block scoping is not: a `local`
+        emitted inside one `if` arm is out of scope in the sibling arm and
+        after the `end`. Without a snapshot, the FIRST arm to write register
+        R emits `local lD_R = ...` and adds R to `declared`, and then the
+        second arm's write to the same register goes through
+        `force_materialize`'s Assign branch and prints a bare `lD_R = ...`.
+        At that point `lD_R` is not in scope, so Lua parses it as a **write
+        to a global** -- a silent semantic change (SETGLOBAL where the
+        original had a register write). L3 certification has always refused
+        that output, so it never shipped, but it cost every affected proto
+        its certification and it would have been a real defect in any
+        consumer that trusted the printer without the gate.
+
+        `env` is restored alongside `declared` because the two are coupled:
+        `force_materialize` writes `env[reg] = LocalExpr(reg)` when it
+        declares, and rolling back one without the other would leave a
+        placeholder `LocalExpr` for a name that is no longer in scope.
+        """
+        return frozenset(self.declared), dict(self.env)
+
+    def close_scope(self, snap: tuple[frozenset[int], dict[int, Expr]]) -> None:
+        self.declared = set(snap[0])
+        self.env = dict(snap[1])
 
     def take_expr(self, reg: int) -> Expr:
         """Pop a control slot's staged definition (NumericFor init/limit/step,

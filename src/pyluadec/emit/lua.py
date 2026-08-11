@@ -233,6 +233,7 @@ class Printer:
                         f"subproto index {li.ri.bx} produced by more than "
                         "one CLOSURE instruction")
                 self._closure_pc_by_idx[li.ri.bx] = pc
+        self._implicit_return_pc = _implicit_return_pc(fn)
 
     # ---- expressions --------------------------------------------------
     def expr(self, e: Expr, parent_prec: int = 0) -> str:
@@ -388,16 +389,27 @@ class Printer:
                     break
             return out
         if isinstance(r, Return):
+            if r.instr.ri.pc == self._implicit_return_pc:
+                # luac's own appended `RETURN 0 1` -- has no source-level
+                # counterpart, so printing it would make the recompile emit
+                # two. See `_implicit_return_pc`.
+                return []
             return [pad + self.stmt(s) for s in self.recon.stmts_for((r.instr,))]
         if isinstance(r, Break):
             return [pad + "break"]
         if isinstance(r, If):
             cond = self.condition(r)
             out = [f"{pad}if {cond} then"]
+            # Each arm is its own Lua block: a `local` one arm declares is not
+            # in scope in the other, nor after the `end`. See
+            # Reconstructor.open_scope for what went wrong without this.
+            snap = self.recon.open_scope()
             out += self.region(r.then_body, indent + 1)
+            self.recon.close_scope(snap)
             if r.else_body is not None:
                 out.append(f"{pad}else")
                 out += self.region(r.else_body, indent + 1)
+                self.recon.close_scope(snap)
             out.append(f"{pad}end")
             return out
         if isinstance(r, NumericFor):
@@ -407,7 +419,18 @@ class Printer:
             limit = self.expr(self.recon.take_expr(a + 1))
             step = self.expr(self.recon.take_expr(a + 2))
             out = [f"{pad}for {var} = {init}, {limit}, {step} do"]
+            # A loop body is its own block, same as an `if` arm. Unlike the
+            # `if` case this is defensive rather than a fixed defect: a
+            # register whose FIRST write is inside a loop body sits above
+            # everything still live after the loop (the body's locals and the
+            # header's own slots are all released at `end`), so luac cannot
+            # produce a shape where such a register is written again
+            # afterwards -- there is no reachable leak to regress against.
+            # Kept for symmetry and for non-luac input; see
+            # Reconstructor.open_scope.
+            snap = self.recon.open_scope()
             out += self.region(r.body, indent + 1)
+            self.recon.close_scope(snap)
             out.append(f"{pad}end")
             return out
         if isinstance(r, GenericFor):
@@ -415,10 +438,52 @@ class Printer:
             vars_ = ", ".join(name_for(a + 3 + i, self.depth) for i in range(c))
             iters = ", ".join(self.expr(self.recon.take_expr(a + i)) for i in range(3))
             out = [f"{pad}for {vars_} in {iters} do"]
+            # A loop body is its own block, same as an `if` arm. Unlike the
+            # `if` case this is defensive rather than a fixed defect: a
+            # register whose FIRST write is inside a loop body sits above
+            # everything still live after the loop (the body's locals and the
+            # header's own slots are all released at `end`), so luac cannot
+            # produce a shape where such a register is written again
+            # afterwards -- there is no reachable leak to regress against.
+            # Kept for symmetry and for non-luac input; see
+            # Reconstructor.open_scope.
+            snap = self.recon.open_scope()
             out += self.region(r.body, indent + 1)
+            self.recon.close_scope(snap)
             out.append(f"{pad}end")
             return out
         raise StructureError(f"unprintable region {type(r).__name__}")
+
+
+def _implicit_return_pc(fn: LirFunction) -> int | None:
+    """The pc of the `RETURN A 1` luac appends to every function body, or
+    None if this function's last instruction isn't one.
+
+    `lparser.c`'s `close_func` unconditionally calls `luaK_ret(fs, 0, 0)`,
+    so the final instruction of every compiled Lua 5.1 proto is `RETURN 0 1`
+    whether or not the source itself ended in a `return`. That instruction
+    has NO source-level counterpart -- it is what the compiler *adds*. If
+    the printer emits a `return` statement for it, recompiling the printed
+    source produces that `return`'s own `RETURN 0 1` *plus* a freshly
+    appended one, so a proto whose original tail was a single `RETURN 0 1`
+    comes back with two and fails certification on `code` (measured: this
+    was the single largest `code`-only mismatch cluster on the corpus).
+
+    Suppressing it is exact rather than heuristic in both directions:
+      - Source that did NOT end in `return`: the region tree has exactly one
+        trailing `Return`, this one. Suppressed -> nothing printed ->
+        recompile re-appends exactly one. Match.
+      - Source that DID end in an explicit `return`/`return e`: luac emitted
+        that statement's own RETURN *and then* appended this one, so the
+        explicit return has its own earlier pc and is printed normally --
+        `Printer.region`'s `Seq` branch stops at it (`_terminates`) and
+        never reaches this pc at all. Match.
+    So this never deletes a source-level `return`: the suppressed pc is by
+    construction the one instruction no source statement produced.
+    """
+    last_pc = max(fn.instrs)
+    ri = fn.instrs[last_pc].ri
+    return last_pc if (ri.op is Op.RETURN and ri.b == 1) else None
 
 
 def _terminates(r: Region) -> bool:

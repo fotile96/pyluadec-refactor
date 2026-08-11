@@ -5,7 +5,6 @@ import bisect
 from dataclasses import dataclass
 
 from pyluadec.cfg import build_cfg
-from pyluadec.lift.effects import Effect
 from pyluadec.lift.lift import LirFunction
 from pyluadec.lift.opcodes import Op
 
@@ -260,6 +259,14 @@ def classify_registers(fn: LirFunction) -> RegClass:
             for pc in extra)
 
     regs = set(defs) | set(uses) | controls | loop_vars
+    # Registers already known to be real, named locals before the freereg
+    # simulation runs: parameters, closure-captured slots, and every slot a
+    # `for` header owns (its control triple and its visible loop variables).
+    # Seeding them keeps the simulation from ever pushing them as temps and
+    # from treating a read of one as a read of a consumed temp.
+    stack_temps = _stack_discipline(
+        fn, ordered,
+        controls | loop_vars | set(range(fn.proto.numparams)) | set(fn.captured_regs))
     locals_: set[int] = set()
     temps: set[int] = set()
     for r in sorted(regs):
@@ -281,57 +288,205 @@ def classify_registers(fn: LirFunction) -> RegClass:
             continue
         if r in loop_vars:
             locals_.add(r); continue
-        d, u = defs.get(r, []), uses.get(r, [])
-        if len(d) != 1 or len(u) != 1:
-            locals_.add(r); continue
-        dp, up = d[0], u[0]
-        if dp >= up or not _adjacent_pure(fn, r, dp, up, ordered):
-            locals_.add(r); continue
-        temps.add(r)
+        if r in stack_temps:
+            temps.add(r)
+        else:
+            locals_.add(r)
     return RegClass(locals=frozenset(locals_), temps=frozenset(temps),
                     loop_vars=frozenset(loop_vars))
 
 
-def _adjacent_pure(fn: LirFunction, reg: int, dp: int, up: int, ordered) -> bool:
-    """No open region through the use (inclusive), no write to reg's inputs,
-    and no WRITE_HEAP/may_error strictly between the def and its use.
+def _stack_discipline(fn: LirFunction, ordered: list[int],
+                      known_locals: set[int]) -> set[int]:
+    """Registers whose EVERY definition in this function is a luac *temporary*
+    -- a value pushed onto the expression stack and consumed again before the
+    statement that produced it ends.
 
-    Two different windows, deliberately:
-      - The open-region check (reads_open/writes_open) scans (dp, up] --
-        including the use instruction itself. An open WRITE at the very use
-        pc (e.g. a CALL C==0 whose own execution both reads reg as an
-        explicit argument and, via its open result-write, overwrites reg's
-        slot with a return value right after) is a same-pc hazard a
-        strictly-between scan cannot see -- this is the
-        print(string.format(...)) corpus case (M3 task-4 round-2 review).
-        Checked without regard to which specific registers the open region
-        touches: its affected range has a known base but an unbounded top,
-        so this function cannot prove reg falls outside it. This check is
-        NOT scoped to any wider range than a single candidate's own (dp, up]
-        window -- unlike an earlier version of this function, it must never
-        disqualify a register for an open-region instruction that has
-        nothing to do with that register's own def/use pair (see round-2
-        review: over-broad global open-region bookkeeping had flipped 154 of
-        342 registers to local for zero soundness gain, verified on the
-        229-file corpus).
-      - The other barriers (a write to one of the def's own inputs, or an
-        intervening WRITE_HEAP-effect/may_error instruction) are checked
-        over the strictly-between window (dp, up), as before: they are
-        about what happens *before* reg is consumed, not about the
-        consuming instruction's own other effects.
+    ## Why this replaced the old def/use "adjacent pure" barrier (M3 task 8)
+
+    The previous rule was: a register is a temp iff it has exactly one
+    tracked def and one tracked use, in that order, with no WRITE_HEAP/
+    may_error/open-region instruction in between. That is a *per-register-
+    number, whole-function* question, and luac does not allocate registers
+    that way. It reuses the same slot for a fresh temporary in every
+    statement, so on real corpus code a register like `1` typically has a
+    dozen defs and a dozen uses and the single-def rule rejected it outright.
+    Everything it rejected then materialized as a real `local`, which needs
+    more stack slots than luac used -- `maxstacksize` was the single largest
+    mismatch cluster on the corpus (1292/1944 protos, measured before this
+    change; the two shapes below were 1220 of them).
+
+    It was also wrong in the other direction, for a reason worth recording
+    because it explains why simply loosening the barrier's effect mode
+    achieved nothing (measured: 339/1944 both before and after). The barrier
+    was accidentally acting as a crude *statement-boundary detector*: in
+    `local x = 1 print(x)` the `GETGLOBAL print` sitting between x's def and
+    its use is what kept x local (GETGLOBAL is ARBITRARY under STRICT).
+    Re-grading GETGLOBAL to READ_HEAP made genuine temps inlinable and
+    genuine locals inlinable at the same rate, so the net was exactly zero.
+    The effect model was never answering the question being asked.
+
+    ## The rule this implements instead
+
+    `lparser.c`'s `statement()` ends with `fs->freereg = fs->nactvar` -- at
+    every statement boundary the expression stack is empty and only declared
+    locals occupy registers. Registers below `nactvar` are named locals;
+    everything at or above it is scratch that lives and dies inside one
+    statement. So:
+
+        a definition is a temp iff its value is consumed before the end of
+        the statement that produced it, and a local iff it survives one.
+
+    That is directly simulable from the bytecode without knowing `nactvar`,
+    because `freereg` after any value-producing instruction is simply its
+    target register plus one (luaK frees an operator's operands and then
+    `exp2nextreg`s the result into the lowest slot it just freed). The
+    simulation keeps a `pending` stack of pushed-but-unconsumed values:
+
+      * a value producer targeting `a` pops every pending entry at or above
+        `a` (those are exactly the operands it just consumed) and pushes its
+        own results;
+      * a statement-ending instruction (`CALL` with C==1, `TAILCALL`,
+        `RETURN`, `SETGLOBAL`, `SETUPVAL`, `FORPREP`, `CLOSE`, or a write
+        whose target is already a known local) pops its own operands and then
+        **promotes everything still pending to local** -- surviving a
+        statement boundary is the definition of being one;
+      * `SETTABLE`/`SETLIST` pop only above the table's own register, leaving
+        the table itself pending: `local t = {} t.x = 1` and `local t = {x=1}`
+        differ only in NEWTABLE's size hints, so the table's fate is left to
+        be decided by whether it survives a *later* boundary;
+      * conditions (`TEST`/`EQ`/`LT`/`LE`) and `JMP` only read. Nothing is
+        popped there, so `if f() then` correctly keeps f()'s result a temp
+        (the next instruction to target that slot pops it) while
+        `local x = f() if x then` correctly promotes x at the boundary that
+        follows.
+
+    A pending value must be read exactly once before it is popped, or the
+    register is disqualified: zero reads would make the reconstructor's
+    environment leak a staged expression that is never emitted (a silently
+    dropped statement), and more than one read would make it inline the same
+    expression tree -- and re-evaluate it -- in two places. Reading a
+    register that is neither pending nor a known local (i.e. re-reading a
+    value already consumed) disqualifies it for the same reason.
+
+    ## Soundness
+
+    This is a *heuristic for reconstructing luac's input*, exactly as the old
+    barrier was, and it is not what makes the output safe: nothing this feeds
+    ever ships unless L3 certification recompiles the printed source back to
+    the original proto under the normalization ladder, which is strictly
+    stronger than any register model. Being wrong here costs certifications,
+    never correctness. The verdict is aggregated per register number and any
+    single disqualified definition makes the whole register local, so the
+    approximation is one-directional: a register the simulation is unsure
+    about becomes a named local, which is always printable.
+
+    Known approximation (unchanged in kind from the previous rule): the walk
+    is pc-linear and has no control-flow model, so a `pending` value that is
+    live across a branch is simulated as if the branch fell through. Because
+    every statement boundary clears `pending` entirely, and luac places
+    branches at statement boundaries, this is exact for real luac output; on
+    anything else it drifts toward "promote to local", the safe direction.
     """
-    dli = fn.instrs[dp]
-    inputs = set(dli.effects.reads)
+    pending: list[list[int]] = []           # [reg, def_pc, n_reads], reg-ascending
+    verdict: dict[int, bool] = {}
+
+    def mark(reg: int, ok: bool) -> None:
+        verdict[reg] = verdict.get(reg, True) and ok
+
+    def do_read(r: int) -> None:
+        for ent in pending:
+            if ent[0] == r:
+                ent[2] += 1
+                return
+        if r not in known_locals:
+            # Not pending and not a known local: either a slot this function
+            # never defines, or a second read of an already-consumed temp.
+            # Either way it cannot be a pop-once inlinable binding.
+            mark(r, False)
+
+    def read_open(base: int) -> None:
+        """An `R[base..top)` read (CALL/TAILCALL B==0, RETURN B==0, SETLIST
+        B==0) consumes every pending value from `base` upwards. Counting
+        those reads is what lets `print(string.format(...))` keep its two
+        staged argument registers as temps."""
+        for ent in pending:
+            if ent[0] >= base:
+                ent[2] += 1
+
+    def pop_ge(base: int) -> None:
+        while pending and pending[-1][0] >= base:
+            reg, _dpc, n = pending.pop()
+            mark(reg, n == 1)
+
+    def promote_all() -> None:
+        while pending:
+            reg, _dpc, _n = pending.pop()
+            mark(reg, False)
+
+    # NOTE on the intermediate `promote_all()` calls below (fault-injection
+    # result, M3 task 8): disabling the one after a `CALL` statement, or the
+    # one after a write to an already-known local, changes NOTHING -- not the
+    # corpus ledger (byte-identical), not any test, and not any shape
+    # constructed by hand to try to separate them. That is not an accident:
+    # the terminal `promote_all()` after the loop disqualifies every register
+    # still pending at the end, and a register that survives an intermediate
+    # boundary survives to that one too unless a later `pop_ge` reaches it --
+    # which only happens when the register is redefined, and a redefinition
+    # gives it a second def that must independently prove itself clean. They
+    # are kept because they state the model (a statement boundary empties the
+    # expression stack) at the point it applies rather than leaving it
+    # implicit, but they are documented here as defensive rather than
+    # load-bearing, so nobody reads their presence as evidence they were
+    # needed.
     for pc in ordered:
-        if not (dp < pc <= up):
-            continue
         li = fn.instrs[pc]
-        if li.effects.reads_open or li.effects.writes_open:
-            return False
-        if pc == up:
-            continue
-        if li.effects.writes & inputs:
-            return False
-        if li.effects.effect >= Effect.WRITE_HEAP or li.effects.may_error:
-            return False
-    return True
+        ri = li.ri
+        op, a, b, c = ri.op, ri.a, ri.b, ri.c
+
+        def push(regs) -> None:
+            for r in regs:
+                if r not in known_locals:
+                    pending.append([r, pc, 0])
+
+        for r in sorted(li.effects.reads):
+            do_read(r)
+        if li.effects.reads_open:
+            read_open(a if op is Op.RETURN else a + 1)
+
+        if op in (Op.CALL, Op.TAILCALL):
+            pop_ge(a)
+            if op is Op.TAILCALL or c == 1:
+                promote_all()                      # call statement / tail return
+            elif c == 0:
+                push((a,))                         # open producer
+            else:
+                push(range(a, a + c - 1))
+        elif op is Op.RETURN:
+            if b != 1:
+                pop_ge(a)
+            promote_all()
+        elif op in (Op.SETGLOBAL, Op.SETUPVAL, Op.FORPREP):
+            pop_ge(a)
+            promote_all()
+        elif op in (Op.CLOSE, Op.FORLOOP, Op.TFORLOOP):
+            promote_all()
+        elif op in (Op.SETTABLE, Op.SETLIST):
+            pop_ge(a + 1)                          # table itself stays pending
+        elif op in (Op.JMP, Op.TEST, Op.EQ, Op.LT, Op.LE):
+            pass                                   # reads only
+        elif op is Op.VARARG:
+            if b == 0:
+                pop_ge(a); push((a,))
+            elif b >= 2:
+                pop_ge(a); push(range(a, a + b - 1))
+        else:
+            writes = sorted(li.effects.writes)
+            if writes:
+                pop_ge(writes[0])
+                if writes[0] in known_locals:
+                    promote_all()                  # assignment to a named local
+                else:
+                    push(writes)
+    promote_all()
+    return {r for r, ok in verdict.items() if ok}
