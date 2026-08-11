@@ -47,14 +47,23 @@ def carries_debug(p: Proto) -> bool:
 
     Measured 2026-08-12 over the full corpus: all 1944 protos carry
     `source = b"=?"` (a non-`None` placeholder) while all three debug lists
-    are empty in every one of them. `ldump.c` writes `source` inside
-    `DumpString(f->source)` guarded by the strip flag, so a `-s` dump from
-    THIS `luac` has `source = None` -- but the corpus was produced by the
-    game's own toolchain and kept a placeholder. Counting a non-`None`
-    `source` as debug info would therefore classify all 229 corpus files as
-    unstripped, compile every candidate unstripped, and move the committed
-    ledger. `linedefined`/`lastlinedefined` are excluded for the plainer
-    reason that they are not in the debug segment at all (they sit in
+    are empty in every one of them. `ldump.c`'s `DumpFunction` writes `source`
+    as `DumpString((f->source==p || D->strip) ? NULL : f->source, D)`, where
+    `p` is the *parent* proto's `source` (`NULL` at the root call). That guard
+    has two independent ways to produce `NULL`, not one: `D->strip` (a `-s`
+    dump from THIS `luac` has `source = None` unconditionally), and
+    `f->source==p` -- a nested proto whose own `source` string is
+    *object-identical* to its parent's writes `NULL` and is expected to
+    inherit the parent's `source` on load, **even when the dump is
+    unstripped**. So "this proto's `source` is non-`None`" proves nothing
+    about strippedness in general, not only on this corpus: an ordinary
+    unstripped multi-function dump also has `NULL` `source` on every nested
+    proto that shares its chunk's source string, which is the common case.
+    Counting a non-`None` `source` as debug info would therefore misclassify
+    both that ordinary case and, on this corpus specifically, classify all 229
+    corpus files as unstripped, compile every candidate unstripped, and move
+    the committed ledger. `linedefined`/`lastlinedefined` are excluded for the
+    plainer reason that they are not in the debug segment at all (they sit in
     `DumpFunction`'s body and survive `-s`, per CLAUDE.md), so they say
     nothing about strippedness.
 
@@ -138,17 +147,39 @@ def certify_l3(original: Proto, structured_src: bytes) -> CertResult:
     The direction is **stricter, not "strictly stronger"** -- a distinction
     the M4 task 7 brief got wrong and measurement corrected. The stripped
     column above is untouched code and cannot move. The unstripped column
-    mostly gains, but it also loses: measured over 30 sources compiled both
-    ways, 12 unstripped rows went `L1 -> L3` and 2 went `L3 -> L1`
-    (`repeat f() until g()`, `return a and b or c`, where the printer
-    materialises a `local` the original never declared -- identical `code`,
-    one extra locvar, previously invisible because the candidate had no debug
-    segment at all). A gate cannot start examining a dimension and also
-    promise never to reject on it. The narrower property that IS strictly
-    true: in every one of the 14 level-changed rows the losing side's
-    mismatches are confined to `locvars` and `upvalues`, never `code`,
-    `constants`, `maxstacksize` or the frame contract. Both losses are pinned
-    in `tests/test_certify_stripmode.py`; the full table is in
+    mostly gains, but it also loses, and the loss is not a corner case:
+    **any statement whose reconstruction materialises a table-base,
+    index-target, or condition value as a `local` the original never declared
+    now refuses on unstripped input** -- the printer names it because it is a
+    genuine `freereg` local by the stack-discipline rule (survives to the end
+    of its statement), but the original source never bound it to a name, and
+    an unstripped candidate can now show that difference. An ordinary example,
+    not an exotic one: `a.b = 1` prints as
+
+        local l0_0 = a
+        l0_0["b"] = 1
+
+    -- same `code` as the original, one locvar the original doesn't have.
+    `L3` rung 1 before this task (the always-`-s` candidate had no locvars to
+    disagree with), `L1` on `locvars` after. `repeat f() until g()` and
+    `return a and b or c` (the two losses in the M4 task 7 report's own
+    30-source sample, reproduced below) are the identical mechanism applied to
+    a loop condition and an `and`/`or` chain, not a separate phenomenon.
+
+    **The 12:2 gain:loss ratio is a property of that particular 30-source
+    sample, not of the change.** A second, independently-chosen sample of 30
+    ordinary one-liners (plain/table/index assignments, calls, arithmetic,
+    comparisons, method calls, table constructors, `if`/`while`/`for`,
+    `local function`) measured 2026-08-12 gives, of 29 sources that printed:
+    4 gains, 4 losses, 21 unchanged -- roughly 1:1, not 12:1. Losses track how
+    often reconstruction invents a table-base or condition local, not how
+    unusual the Lua construct looks. A gate cannot start examining a
+    dimension and also promise never to reject on it. The narrower property
+    that IS strictly true across both samples: every level-changed row's
+    losing side mismatches only on `locvars` (and, in the first sample, two
+    rows also on `upvalues`' count) -- never on `code`, `constants`,
+    `maxstacksize` or the frame contract. Losses are pinned in
+    `tests/test_certify_stripmode.py`; both samples' full tables are in
     `docs/runbooks/structured-pipeline.md`.
     """
     try:

@@ -144,7 +144,7 @@ ingest -> lift -> cfg -> sir.build -> express.reconstruct -> emit.lua
 
 ### 认证门纪律（最重要的一条）
 
-**产物为结构化 ⟺ root proto 认证 `L3`**（`structure/structured.py:247-251`）；否则发 fallback。永不返回未认证的结构化代码。推论：区域识别、寄存器分类、内联的 bug **只会拉低 L3 比例，不会产出错误代码**。认证是逐 proto 子树独立进行的，所以一个不可结构化的函数不会污染兄弟节点的等级——等级（proof record，逐 proto）与产物（逐 chunk 的保守选择）**刻意解耦**。
+**产物为结构化 ⟺ root proto 认证 `L3`**（`structure/structured.py::emit_certified_chunk`）；否则发 fallback。永不返回未认证的结构化代码。推论：区域识别、寄存器分类、内联的 bug **只会拉低 L3 比例，不会产出错误代码**。认证是逐 proto 子树独立进行的，所以一个不可结构化的函数不会污染兄弟节点的等级——等级（proof record，逐 proto）与产物（逐 chunk 的保守选择）**刻意解耦**。
 
 归一化阶梯：`L3.0` 严格 + `L3.1 = strip-lineinfo`，`LADDER_VERSION = "l3-ladder-v1"`。**每级的健全性论证必须与该级本体同处一地**（rung 1 的论证在 `verify/normalize.py::_strip_lineinfo` 的 docstring 里，从"剥完之后 `compare_protos` 还比什么"论起）。加 rung 2 时照此办理并 bump `LADDER_VERSION`。
 

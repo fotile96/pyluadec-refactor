@@ -672,6 +672,17 @@ stronger**. Measured over 30 sources compiled both ways, 12 unstripped rows went
 `return a and b or c` — the printer materialises a `local` the original never
 declared, invisible in `code`, invisible to a stripped candidate). A gate cannot
 start examining a dimension and also promise never to reject on it; "stricter"
-is the accurate word. The full before/after table, the two losses, and the
-narrower property that *is* strictly true are in `structured-pipeline.md`,
-"The candidate's strip mode follows the original's".
+is the accurate word.
+
+**That 12:2 ratio is a property of the one 30-source sample it was measured
+on, not of the change** (round-1 correction, 2026-08-12) — the general rule is
+"any reconstruction that materialises a table-base, index-target, or
+condition value as a `local` the original never declared now refuses",
+and it fires on ordinary code, not just `repeat`/`and`-`or`: a
+second, independently-chosen sample of 30 ordinary one-liners gave 4 gains and
+4 losses out of 29 printable sources, roughly 1:1, because that sample
+happened to include four plain table/index assignments (`a.b = 1` and
+similar). The full before/after tables for both samples, the two 12:2-sample
+losses in full, and the general rule with an ordinary-assignment example are
+in `structured-pipeline.md`, "The candidate's strip mode follows the
+original's".

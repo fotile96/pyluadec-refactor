@@ -499,7 +499,7 @@ register, so the mismatch lands on `code` and proves nothing about scopes.
 every corpus proto takes the `strip=True` branch, `corpus/ledger.jsonl` is
 byte-identical after `scripts/run_corpus.py`, and so are all 229 files in
 `build/decompiled/`. On unstripped input, over 30 hand-written sources
-compiled both ways:
+compiled both ways (the M4 task 7 report's own sample):
 
 | | count of 60 rows | examples |
 | --- | --- | --- |
@@ -513,26 +513,73 @@ originals with nothing in their subtree to reconstruct differently: the
 unstripped candidate now reproduces `source`/`lineinfo` exactly, so they match
 at the strict rung instead of needing the normalization.
 
-The two losses are the point rather than a defect, and they are worth reading
-before assuming the change is a pure gain. In both, the original declares no
-locals and our printer materialises one (`local l0_0 = g()` for `repeat`'s
-condition; `local l0_0 = a and b or c` for the chain's result). `code` is
-byte-identical, so under the old always-`-s` candidate the invented local was
-invisible; the newly non-vacuous comparison sees it and refuses. The mirror
-case exists on the nested path too — single-use inlining *drops* a local the
-original had (`local y = x + 1 return y` prints as `return l1_0 + 1`) — and is
-now refused for the same reason. Both are pinned:
+**The 12:2 ratio is a property of that particular 30-source sample, not of the
+change**, and reading it as "losses are rare" would be the wrong takeaway. The
+general rule: **any statement whose reconstruction materialises a table-base,
+index-target, or condition value as a `local` the original never declared now
+refuses on unstripped input.** An ordinary example, not an exotic one —
+`a.b = 1` (measured 2026-08-12):
+
+```
+local l0_0 = a
+l0_0["b"] = 1
+```
+
+same `code` as the original, one locvar (`l0_0`, holding the table base) the
+original doesn't have. `L3` rung 1 before this task, `L1` on `locvars` after.
+`t[1] = t[2]` and `a[1] = c[2]` behave identically. `repeat`/`and`-`or` are the
+same mechanism applied to a loop condition and a chain result, not a separate
+phenomenon.
+
+A second, independently-chosen sample of 30 ordinary one-liners — plain,
+table-field and index assignments, calls, arithmetic, comparisons, method
+calls, table constructors, `if`/`while`/`for`, `local function` — measured
+2026-08-12 (29 of the 30 printed; one, a bare `a = b == c` chunk, hits an
+unrelated `emit.lua` limitation and was excluded) gives:
+
+| | count of 29 | examples |
+| --- | --- | --- |
+| unstripped `L1` → `L3` | 4 | `local a = 1`, `local a = f()`, `for i = 1, 10 do print(i) end`, `local function g() return 1 end` |
+| unstripped `L3` → `L1` | 4 | `a.b = 1`, `a[1] = 1`, `a.b = c`, `a[1] = c[2]` |
+| identical verdict | 21 | — |
+
+Roughly **1:1**, not 12:1 — because this sample happens to contain four
+ordinary table/index writes, the construct the mechanism above targets, while
+the report's original sample contained none. Losses track how often
+reconstruction invents a table-base or condition local, not how unusual the
+Lua construct looks; a sample with more field/index assignments in it will
+show more losses, not fewer.
+
+The two losses in the report's original sample are worth reading in full
+regardless — they are the same mechanism, just on less everyday syntax. In
+both, the original declares no locals and our printer materialises one
+(`local l0_0 = g()` for `repeat`'s condition; `local l0_0 = a and b or c` for
+the chain's result). `code` is byte-identical, so under the old always-`-s`
+candidate the invented local was invisible; the newly non-vacuous comparison
+sees it and refuses. On the nested
+path, single-use inlining *drops* a local the original had (`local y = x + 1
+return y` prints as `return l1_0 + 1`) — but re-measured 2026-08-12, this is
+**not** a new refusal: the wrapper candidate has always been compiled `-s`
+before this task landed the rung-1 comparison it now uses, so it already
+refused `L1` on `locvars` (the original's two locvars against the always-empty
+candidate's `b='()'`). It still refuses `L1` on `locvars` after this task —
+now against a candidate that carries one real locvar (the surviving
+parameter) instead of none. The verdict is unchanged; only the mismatch is
+better diagnosed. Both are pinned:
 `::test_stricter_gate_refuses_reconstructions_that_invent_a_local` and
 `::test_wrapper_path_refuses_when_reconstruction_drops_a_local`.
 
 So the honest statement of the direction of change is **stricter**, not
 "strictly stronger": a gate cannot begin examining a dimension and also promise
-never to reject on it. What *is* strictly true is narrower and checkable: the
-stripped branch is untouched code, and every changed verdict — in either
-direction — is attributable to the debug-segment lists ceasing to be vacuous.
-In all 14 level-changed rows the losing side's mismatches are confined to
-`locvars` (12 rows) or `locvars` + `upvalues` (2 rows, where the *count*
-differed because a stripped candidate has no upvalue list at all). None
+never to reject on it. What *is* strictly true is narrower and checkable, and
+holds across both samples: the stripped branch is untouched code, and every
+changed verdict — in either direction — is attributable to the debug-segment
+lists ceasing to be vacuous. In all 14 level-changed rows of the report's
+original sample the losing side's mismatches are confined to `locvars` (12
+rows) or `locvars` + `upvalues` (2 rows, where the *count* differed because a
+stripped candidate has no upvalue list at all); in all 8 level-changed rows of
+the second, independent sample they are confined to `locvars` alone (that
+sample has no upvalue-capturing closures to exercise the second case). None
 mismatched on `code`, `constants`, `maxstacksize`, `nups`, `numparams`,
 `is_vararg` or `subprotos.len` — the change moved exactly the dimension it was
 aimed at, and the upvalue-count check on unstripped input became non-vacuous
@@ -542,6 +589,20 @@ Fixtures elsewhere in the suite are unaffected: they compile `-s`
 (`tests/test_certify.py`, `tests/test_structured_certify.py`), and
 `tests/test_emit_lua.py`'s deliberately-unstripped `_proto` exercises the
 *printer* and makes a separate stripped copy when it wants to certify.
+
+**Forward note for M4 Tasks 8-12 (loops, long-tail structuring).**
+`repeat f() until g()` — a canonical loop shape those tasks will be printing
+far more of — is one of this section's two measured losses: it refuses
+certification when its original is compiled unstripped, for the mechanism
+above (the condition value becomes a `local` the source never declared).
+Every fixture in the suite compiles `-s` today, so this is currently covered
+only by inheritance, not by design. New fixtures those tasks add should
+compile `-s` **deliberately**, the way `test_certify.py` and
+`test_structured_certify.py` already do — not merely because copying an
+existing fixture happens to preserve it — so a later change to how loops are
+authored in test sources doesn't silently reintroduce an unstripped `repeat`
+or `while`/`for` fixture that certifies today only by luck of never having
+been given debug info to compare.
 
 ## Register classification: simulating `lparser.c`'s `freereg`
 

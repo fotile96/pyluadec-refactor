@@ -106,6 +106,16 @@ def test_wrong_lexical_block_is_refused_when_original_carries_debug():
     m = r.mismatches[0]
     # Both sides non-empty is the whole point: before this task the candidate
     # side was `()` and the comparison carried no information about scopes.
+    # Deliberately exact-repr, not structural (round-1 F6): the reprs
+    # themselves ARE the evidence for "both non-empty, differ only in
+    # endpc" -- a structural assertion (e.g. comparing parsed
+    # startpc/endpc tuples) would prove the same claim but hide the exact
+    # shape a reader needs to see to believe it. Traded-off risk: if a
+    # later task's printer changes how this fixture's `do` block prints,
+    # this fails as a string mismatch rather than "the scope check broke" --
+    # acceptable here because `test_wrong_lexical_block_has_identical_code`
+    # already isolates the premise (byte-identical `code`) from this
+    # assertion, so a failure here is unambiguously about `locvars` either way.
     assert m.a == "(LocVar(name=None, startpc=2, endpc=5),)"
     assert m.b == "(LocVar(name=None, startpc=2, endpc=6),)"
 
@@ -186,6 +196,14 @@ def test_nested_wrapper_path_certifies_unstripped_original():
 # see `test_stripped_originals_are_untouched` and
 # `test_every_corpus_proto_reads_as_stripped`.
 
+# The `invented` params are also deliberately exact-repr, not structural
+# (round-1 F6, same trade-off as the negative control above): the point of
+# this test is that the printer's invented local is the ONLY evidence of
+# difference, and the repr shows the reader the exact `startpc`/`endpc` that
+# claim rests on. `candidate.code == orig.code` above already isolates the
+# premise, so a repr drift here (e.g. if a later M4 task changes how
+# `repeat` or an `and`/`or` chain prints) fails as "this fixture's shape
+# changed", not as a silent loss of coverage for the mechanism itself.
 @pytest.mark.parametrize("src,invented", [
     (b"repeat f() until g()", "(LocVar(name=None, startpc=4, endpc=6),)"),
     (b"return a and b or c", "(LocVar(name=None, startpc=7, endpc=8),)"),
@@ -219,8 +237,17 @@ def test_stricter_gate_refuses_reconstructions_that_invent_a_local(src, invented
 def test_wrapper_path_refuses_when_reconstruction_drops_a_local():
     """The mirror image, on the nested path: single-use inlining removes a
     local the original had. `local y = x + 1 return y` prints as
-    `return l1_0 + 1`, same `code`, one locvar fewer. Certified `L3` before
-    this task (the candidate had no locvars to disagree with), refused now."""
+    `return l1_0 + 1`, same `code`, one locvar fewer than the original's two
+    (`x` the parameter, `y` the inlined body local).
+
+    This is an UNCHANGED refusal, better diagnosed -- not a new regression.
+    Re-measured 2026-08-12: the wrapper candidate here refused `L1` on
+    `locvars` before this task too, because a candidate compiled `-s`
+    unconditionally has `locvars == ()` against the original's two entries
+    (`b='()'`). After this task it still refuses `L1` on `locvars`, now with
+    `b` carrying the one real locvar (the parameter) the candidate does have,
+    against the original's two. Only the mismatch's `b` value changed; the
+    verdict did not."""
     from pyluadec.structure.structured import certify_proto
     root = _proto(b"local function f(x) local y = x + 1 return y end\nreturn f(2)\n",
                   strip=False)
