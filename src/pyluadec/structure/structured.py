@@ -296,7 +296,8 @@ def emit_certified_chunk(root: Proto) -> ChunkOutcome:
     # Ship the very bytes certification compiled and compared, NOT a second
     # `print_chunk(root)` call. Re-printing would make "shipped == certified"
     # depend on `print_chunk` being deterministic -- true today, and measured
-    # (92/92 shipped artifacts re-print identically), but a property of the
+    # (M4 task 12: 212/212 shipped artifacts re-print identically; it was
+    # 92/92 at M3 close, before the loop work), but a property of the
     # printer rather than of this gate, and one no test here would notice
     # losing. Reusing `ProtoCert.source` makes the invariant structural.
     if certs["main"].level == "L3":

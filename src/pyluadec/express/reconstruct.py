@@ -276,6 +276,32 @@ class Reconstructor:
                 frozenset(self._pending), frozenset(self._consumed))
 
     def close_scope(self, snap: tuple[frozenset[int], dict[int, Expr], frozenset[int], frozenset[int]]) -> None:
+        """Roll `declared`/`env`/`_pending`/`_consumed` back to `snap`.
+
+        **The one hazard this rollback could create, argued in BOTH
+        directions** (M3 left a deferred minor here because only the forward
+        half was written down). Restoring `env` and `_pending` wholesale can in
+        principle RESURRECT a staged expression: if register R is pending when
+        the block opens, the block consumes it (pops and inlines it), and a
+        read after the `end` pops it a second time, one effectful expression
+        gets printed twice.
+
+        Forward: it does not happen, because a region's condition and control
+        operands are consumed *before* `open_scope` is called (see
+        `sir.build`'s region construction and `emit.lua.Printer.region`), so
+        nothing that a block body could consume is pending across the
+        snapshot boundary.
+
+        Backward, which is what was missing: measured over the whole corpus
+        (M4 task 12), **0 of 1853 `open_scope`/`close_scope` pairs re-added any
+        register to `_pending`**, so the antecedent of the hazard never once
+        arises on real bytecode -- not merely "the consequent was never
+        observed". Re-derive by wrapping these two methods and diffing
+        `self._pending` across `orig_close`. This is a measurement, not a
+        guarantee: a future region type that stages an operand and then opens a
+        scope before consuming it would create the antecedent, and the fix then
+        is to consume before snapshotting rather than to weaken the rollback.
+        """
         self.declared = set(snap[0])
         self.env = dict(snap[1])
         self._pending = set(snap[2])
@@ -1011,6 +1037,16 @@ class Reconstructor:
             # were live at fold time -- reading only fx.writes/fx.reads for
             # the ctx's own base register never caught a write to one of the
             # *item* registers.
+            # `fx.reads_open`/`fx.writes_open` close unconditionally: an open
+            # region's extent is `L->top` at runtime, so neither `reg` nor
+            # anything in `hazard` can be proved outside it. THIS IS
+            # `writes_open`'s SECOND CONSUMER (named here because it kept
+            # getting missed): the other is `express.names.classify_registers`,
+            # which folds `writes_open` pcs into `open_write_pcs` and uses them
+            # as a barrier in `_staging_slice`. Any change to which opcodes
+            # carry an open region has to be swept over both -- see M4 task 8,
+            # where adding `writes_open` to TAILCALL needed a differential run
+            # precisely because of these two.
             if (reg in fx.reads or fx.writes & ({reg} | ctx["hazard"])
                    or fx.reads_open or fx.writes_open):
                 # This instruction interacts with the innermost pending

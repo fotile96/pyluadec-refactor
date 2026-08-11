@@ -17,6 +17,14 @@ message so a drop is still visible in the failure text of whatever else breaks.
 Cross-revision monotonicity (no `L3` -> `L1` on any individual row) is NOT
 asserted here: that needs a committed baseline to diff against, which is M5's
 ratchet CI. See `docs/runbooks/structured-pipeline.md`, "Not asserted".
+
+**Measured at the M4 wrap (task 12, 2026-08-12), and recorded here because
+nothing asserts it.** Diffing `corpus/ledger.jsonl` at `bbe74f6` (the M4
+branch point) against HEAD: the two files carry the *same* 1478 `shash` keys,
+**277 rows upgraded `L1` -> `L3`, 1201 unchanged, 0 downgraded**, 0 `L0`,
+`compile_ok` true on all 1478, 1944 occurrences on both sides. So M4's ledger
+change is monotone in fact. It is monotone by review, not by machine -- redo
+this diff by hand at the next milestone wrap until the ratchet CI exists.
 """
 import json
 from pathlib import Path

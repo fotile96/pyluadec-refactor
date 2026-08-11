@@ -575,4 +575,17 @@ def test_corpus_build_sir_acceptance_floor(corpus_dir):
     #
     # Floor is measured-minus-10, a ratchet against regression rather than a
     # claim of growth (same protocol as the previous value).
+    #
+    # EXPOSURE, stated rather than left implicit (M4 task 12): a regression of
+    # up to 9 unique protos passes this assertion green. That is deliberate --
+    # a floor set AT the measurement is a tripwire, not a floor, and the
+    # standard repair for a tripwire is to edit the threshold, which is how a
+    # gate stops meaning anything (same argument as `tests/test_m4_exit.py`'s
+    # module docstring). But 10/1478 is a 0.7% band, an order of magnitude
+    # tighter than the exit gate's ~9 points, so it is a narrow one. The
+    # instrument that would actually catch a 9-proto regression is a
+    # cross-revision baseline diff on `corpus/ledger.jsonl`, which nothing
+    # asserts today; it is M5's ratchet CI (M5 agenda in
+    # `docs/runbooks/m3-backlog.md`). Until then the ledger diff gets read by
+    # a human in review.
     assert ok >= 1437   # measured after task 4: 1447

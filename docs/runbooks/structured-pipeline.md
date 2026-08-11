@@ -1,9 +1,16 @@
-# Structured pipeline runbook (M3)
+# Structured pipeline runbook (M3–M4)
 
 This is the operational and conceptual guide to the **structured** decompile
 path: dominator-driven region identification, expression reconstruction, the
 pure structural printer, and the per-proto `L3` certification gate that decides
 whether any of it is allowed to ship.
+
+Written for M3 and extended through M4 (loop recognition, the `and`/`or` value
+idiom, per-definition register classification, strip-mode matching, the effect
+lattice). **This file is the authority for the capability boundary and for the
+effect lattice.** Open work lives in `docs/runbooks/m3-backlog.md`'s "M5
+agenda"; the readability comparison against the predecessor's shipped output
+is `docs/reports/m4-readability.md`.
 
 It is the companion to `docs/runbooks/decompile-pipeline.md`, which documents
 the M2 **fallback** path. The two coexist and neither replaces the other — see
@@ -11,10 +18,16 @@ the M2 **fallback** path. The two coexist and neither replaces the other — see
 
 Every quantitative claim below was measured in this repository against the
 229-file corpus (originally at commit `fb85f2f`; the capability-boundary
-figures re-verified 2026-08-11 on the M3 merge candidate), or is cited to a
-specific `file:line` / test name. If a number here stops matching reality,
-that is a bug in the runbook; re-measure and fix it rather than routing
-around it.
+figures re-measured through M4 and last verified 2026-08-12 at `3ae72c6`), or
+is cited to a specific symbol / test name. If a number here stops matching
+reality, that is a bug in the runbook; re-measure and fix it rather than
+routing around it.
+
+**Cite symbols, not line numbers.** Line citations in this project have a
+measured failure rate: one sweep checked 19 of them and found **9 stale**, and
+a later round introduced 6 more through its own docstring growth. Prefer
+`module.py::symbol`. The `file:line` citations that remain here have each been
+verified against the tree; convert any you touch.
 
 **How to re-derive — read this before trusting a number here.** Three tiers:
 
@@ -675,7 +688,8 @@ That is simulable straight from the bytecode without knowing `nactvar`, because
   write whose target is already a known local) pops its own operands and then
   **promotes everything still pending to local** — surviving a statement
   boundary is the definition of being one. (`CLOSE`/`FORLOOP`/`TFORLOOP` share
-  one arm at `express/names.py:495-497`: a loop's back edge is a statement
+  one arm in `express/names.py::_stack_discipline`, the
+  `op in (Op.CLOSE, Op.FORLOOP, Op.TFORLOOP)` branch: a loop's back edge is a statement
   boundary too, and nothing may stay pending across it.)
 - `SETTABLE`/`SETLIST` pop only *above* the table's own register, leaving the
   table pending (`local t = {} t.x = 1` and `local t = {x=1}` differ only in
@@ -772,7 +786,9 @@ writes happen *mid*-statement.
 
 ### The two `promote_all()` calls are not interchangeable
 
-Documented at `express/names.py:427-465`; both were separately fault-injected
+Documented in `express/names.py::_stack_discipline`, under the comment
+beginning "NOTE on the two intermediate `promote_all()` calls below"; both
+were separately fault-injected
 after a review found a comment that lumped them together and got the first one
 wrong.
 
@@ -808,12 +824,15 @@ Each step measured against all 1944 protos:
 | freereg simulation replaces the barrier | 1575 | 81.02% | **+63.6** |
 | pre-declare parameters | 1577 | 81.12% | +0.1 |
 
-The intermediate rows (3, 339, 339, 1575) are historical: each was measured
-at the commit that landed that change during M3's development, not at this
-runbook's `fb85f2f`, and are not independently re-derivable at `fb85f2f`
-since the tree has moved past each intermediate state. Only the final row
-(1577, 81.12%) is re-derivable here — it matches `corpus/ledger.jsonl` at
-this commit (`tests/test_m3_exit.py`).
+**This whole table is M3 history and none of it is re-derivable at HEAD.**
+The intermediate rows (3, 339, 339, 1575) were each measured at the commit
+that landed that change during M3's development, not at this runbook's
+`fb85f2f`, and the tree has moved past every intermediate state. The final
+row (1577, 81.12%) matched `corpus/ledger.jsonl` at `fb85f2f`; **it no longer
+does** — M4 took the occurrence count to 1855 (95.4%), so re-deriving 1577
+from today's ledger is impossible and an earlier revision of this paragraph
+claiming otherwise was correct only until M4 task 1 landed. The table is kept
+for the *lesson*, which does not depend on the absolute numbers.
 
 The pre-identified lever was a no-op; the fix nobody had planned was worth
 +63.6 points. That is the milestone's main methodological lesson: the
@@ -1228,8 +1247,9 @@ which is all the coupling tests look at. Full ratchet CI (baseline diff,
 downgrade = fail, `git bisect` integration) is spec §5's complete form and is
 an explicit **M4** item; M3 only guarantees the ledger fields can support it
 (`docs/runbooks/m3-backlog.md` §7). Until then a shrinking L3 count is caught
-by reading the ledger diff in review, not by the suite. `run_corpus.py:64-68`
-takes the higher level when one structural hash occurs more than once.
+by reading the ledger diff in review, not by the suite. `scripts/run_corpus.py`'s
+`main()` takes the higher level (its `_RANK` comparison) when one structural
+hash occurs more than once.
 
 ## Current capability boundary — measured, not estimated
 
@@ -1749,20 +1769,30 @@ through this milestone and was quoted in `structure/structured.py`'s module
 docstring and in the planning doc
 (`docs/superpowers/plans/2026-08-10-phase3-m3-structured-backbone.md:69,72,1886,2221,2472`).
 **It reproduces on neither basis.** The measured printability ceiling — the
-real one, since only a proto that prints can certify — is 1170/1478 = 79.16%
-unique and 1636/1944 = 84.16% occurrences; and the achieved occurrence rate,
-1577/1944 = 81.12%, already exceeds 80.3%, which a ceiling cannot allow.
-`structure/structured.py` now carries the measured figures. The planning doc
-is a historical record and keeps its original text, with a correction note at
-the top. `tests/test_m3_exit.py` never quoted the figure — its only thresholds
-are the `> 0.50` exit-gate assertions at `:22` and `:40`.
+real one, since only a proto that prints can certify — was 1170/1478 = 79.16%
+unique and 1636/1944 = 84.16% occurrences at M3 close; and the achieved
+occurrence rate then, 1577/1944 = 81.12%, already exceeded 80.3%, which a
+ceiling cannot allow. `structure/structured.py` now carries the measured
+figures. The planning doc is a historical record and keeps its original text,
+with a correction note at the top. `tests/test_m3_exit.py` never quoted the
+figure — its only thresholds are its two `> 0.50` exit-gate assertions.
 
-The other standing limit is the **global-state probe** (L1.5), which reaches
-225/229 files with the 4 pinned divergences documented in
-`docs/runbooks/m3-backlog.md`. It is a genuine rung between "compiles" and
-"differentially equivalent", but read its reach table before treating it as
-strong evidence: for 222 of 229 files the entire compared payload is
-`string:main=<function>`.
+**M4 settled it beyond argument.** Printability is now 1424/1478 = 96.3%
+unique and 1890/1944 = 97.2% occurrences, and the achieved `L3` rate is
+1389/1478 = 94.0% / 1855/1944 = 95.4%. The "ceiling" is exceeded by more than
+thirteen points on either basis. Kept here as a worked example of a
+planning-stage number that survived into three documents and a module
+docstring without ever being measured.
+
+The other standing limits are the two probes. The **global-state probe**
+(L1.5) reaches 225/229 files with 4 pinned divergences; read its reach table
+before treating it as strong evidence, because for 222 of 229 files the entire
+compared payload is `string:main=<function>`. The **behaviour probe** (L1.75,
+M4 task 10) deepens that to 227/229 over 398196 recorded events — but its
+reach is bimodal, not a uniform deepening: the 3000-event cap truncates 132 of
+229 files, which contribute 99.5% of the events, while the other 97 contribute
+a median of **10** events each. Both are documented in
+`docs/runbooks/m3-backlog.md`; neither is L2.
 
 ## Relationship to the fallback runbook
 
@@ -1778,5 +1808,7 @@ Practical division of labour:
   known M2 semantic gaps → `decompile-pipeline.md`.
 - Anything about `sir` / `express` / `emit` / certification / the normalization
   ladder / the L3 rate → this file.
-- The M4 agenda, the global-state probe, and the deferred minors → 
-  `docs/runbooks/m3-backlog.md`.
+- The M5 agenda, the global-state and behaviour probes, and the deferred
+  minors → `docs/runbooks/m3-backlog.md`.
+- Readability against the predecessor's shipped output →
+  `docs/reports/m4-readability.md`.

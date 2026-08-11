@@ -55,11 +55,21 @@ def lifted_corpus(corpus_dir):
     two separate walks inside `test_express_names.py`
     (`test_corpus_no_open_region_in_pre_fix_temp_window`,
     `test_corpus_every_temp_write_has_exactly_one_consumer`) each paid their
-    own full ingest+lift pass over the same 229 files. Measured this round:
-    a full ingest+lift of all 1944 proto occurrences costs ~0.69s (ingest
-    alone ~0.04s); building it once here rather than once per consumer
-    module is the same "a slow suite blocks development" trade already made
-    for `decompiled` above.
+    own full ingest+lift pass over the same 229 files. Building it once here
+    rather than once per consumer module is the same "a slow suite blocks
+    development" trade already made for `decompiled` above.
+
+    **Cost, re-measured M4 task 12 (2026-08-12).** A full ingest+lift of all
+    1944 proto occurrences costs **~0.97s** in a fresh process, and pytest
+    attributes **~1.05s** to this fixture's `setup` (median of 3 runs of
+    `pytest tests/test_effects_modes.py --durations=3`: 1.05 / 1.05 / 1.06s).
+    Ingest alone is ~0.03s, so the lift is essentially all of it. An earlier
+    revision of this docstring said "~0.69s"; that figure is real but it is a
+    *warm-process repeated-pass* measurement (0.686-0.692s over 5 back-to-back
+    passes in one interpreter), and the suite only ever pays the cold one. Two
+    independent reviewers measured 0.97-1.04s and were right; the number here
+    was describing a loop nobody runs. If you re-measure, say which of the two
+    you measured.
 
     Returns a list of `(fname, path, proto, fn)` tuples, one per proto
     occurrence (1944 total): `fname` is the corpus file's basename, `path`

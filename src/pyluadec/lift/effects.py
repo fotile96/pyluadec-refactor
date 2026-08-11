@@ -94,8 +94,16 @@ class EffectMode(Enum):
 class InstrEffects:
     reads: frozenset[int]
     writes: frozenset[int]
-    reads_open: bool      # 额外读 R[base..top-1]（CALL B==0 / RETURN B==0 / SETLIST B==0）
-    writes_open: bool     # 额外写 R[base..top-1]（CALL C==0 / VARARG B==0）
+    # The two open-region flags name a `R[base..top)` window whose extent is a
+    # RUNTIME value (`L->top`), so it cannot be enumerated into `reads`/`writes`
+    # at all. Keep these two enumerations in step with `_row` -- they were
+    # already one opcode stale once (M4 task 8 gave TAILCALL `writes_open` and
+    # this comment kept saying CALL/VARARG). Verified against `_row` over the
+    # full opcode x operand grid, M4 task 12:
+    reads_open: bool      # 额外读 R[base..top-1]：CALL B==0 / TAILCALL B==0 /
+                          # RETURN B==0 / SETLIST B==0
+    writes_open: bool     # 额外写 R[base..top-1]：CALL C==0 / VARARG B==0 /
+                          # TAILCALL (unconditional -- see the TAILCALL row)
     effect: Effect
     may_error: bool       # NO_METAMETHOD 假设下仍可能抛错
 
@@ -287,9 +295,16 @@ def _row(ri: RawInstr):
             # branch (lvm.c:630-632 -- the callee was a C function, already
             # run to completion by luaD_precall) falls through to the next
             # instruction with the callee's results sitting at R[a..top).
-            # The other reachable branch, PCRLUA (lvm.c:613-629), replaces
-            # the frame and `goto reentry`s, so it never returns here at all;
-            # modelling the union of the two means modelling the write.
+            # `luaD_precall` has THREE outcomes (ldo.h:32-34), and OP_TAILCALL
+            # switches on all three -- an earlier revision of this comment
+            # enumerated only two, which understated the case analysis even
+            # though it did not change the grading. The other two both leave
+            # this dispatch rather than falling through: PCRLUA (lvm.c:613-629)
+            # replaces the frame and `goto reentry`s, and PCRYIELD arrives at
+            # the `default:` arm (lvm.c:633-635), a bare `return` out of
+            # luaV_execute because the C callee yielded (ldo.c:323). So exactly
+            # one of the three continues to the next pc, and modelling the
+            # union of the three means modelling that one's write.
             # `writes` stays empty because the region is top-relative (same
             # convention as CALL C==0 / VARARG B==0). M4 task 8.
             return reads, F(), b == 0, 1, ARB, ARB, ARB, True

@@ -795,13 +795,46 @@ and tested (`tests/test_effects.py`), so that the passes which *will* need
 it — inlining, dead-store elimination, any optimization that wants to prove
 "this rewrite doesn't change observable behavior" — have a ready-made,
 already-reasoned-about foundation instead of re-deriving per-opcode
-semantics from scratch. **Calibrating which mode is actually safe to use
-against this corpus (i.e. proving or falsifying "this corpus never relies on
-metamethods") is explicitly deferred to M4** (see the plan's non-goals:
-"效应档位标定——M4"). Until that calibration happens, treat `STRICT` as the
-only mode with a justified use, and treat any future code that switches to
-`NO_METAMETHOD`/`TRUSTING` without citing the M4 calibration work as
-suspect.
+semantics from scratch.
+
+### Calibration: DONE in M4 task 11 — read that, not this
+
+The three paragraphs above describe what the modes *mean*, and that is still
+accurate. Everything this section used to say about calibration ("explicitly
+deferred to M4", "treat any code selecting `NO_METAMETHOD`/`TRUSTING` as
+suspect") is **superseded**. The calibration happened. The authority is
+`docs/runbooks/structured-pipeline.md` → "The effect lattice: what the three
+modes mean, and why `STRICT` stays", with the per-row argument in
+`lift/effects.py`'s `_row` comment block and the pins in
+`tests/test_effects_modes.py`. The outcome, restated here so an M5 pass
+author who lands on this file first is not sent the wrong way:
+
+- **`STRICT` stays the pipeline-wide default.** It is `lift_proto`'s default
+  argument and the only mode any `src/` code selects — enforced by
+  `tests/test_effects_modes.py::test_strict_is_the_default_and_the_only_mode_in_use`,
+  which a change would have to delete and justify.
+- **`NO_METAMETHOD` is a permitted per-pass opt-in, scoped to
+  script-constructed tables.** The corpus census finds 0 metamethod-related
+  constants in 71414 constants across all 1944 protos, which establishes it
+  for tables the scripts build themselves — and *not* for engine values: 56 of
+  the 164 distinct global names the corpus reads are never written by any of
+  the 229 files, so they arrive from the PSP engine where the census is blind.
+  A pass selecting it must establish the value class it applies to, per
+  region. It is not a safe global default precisely because the unproven case
+  dominates.
+- **`TRUSTING` is recommended against for any pass.** Its entire delta over
+  `NO_METAMETHOD` is three rows (`GETGLOBAL`/`GETTABLE`/`SELF` →`PURE`), and
+  the corpus *falsifies* all three rather than merely failing to support them:
+  892 `SETGLOBAL` sites, 29 protos that read and write the same global name,
+  1667 `SETTABLE` + 92 `SETLIST` + 44809 `CALL` sites. It is kept in the enum
+  (removing it would be an axiom-layer behaviour change) with all three
+  distinguishing rows marked `# UNARGUED`.
+
+Two rows were found under-graded during that calibration and deliberately
+left alone pending the full axiom-change protocol (`lvm.c` citation plus a
+differential run): `LEN` at `NO_METAMETHOD`, and `NEWTABLE`/`CLOSURE`'s GC
+path. The `LEN` one is a real defect and is item 1 of the M5 agenda in
+`docs/runbooks/m3-backlog.md`.
 
 ## Known semantic gaps
 

@@ -109,9 +109,18 @@ class While:
 
 @dataclass(frozen=True)
 class Repeat:
-    """`repeat <body> until <cond>`. Declared here so Tasks 2-4 can rely on
-    the name and the printer can dispatch on it; recognition is Task 3, so
-    `build_sir` never constructs one yet."""
+    """`repeat <body> until <cond>`.
+
+    Recognized since M4 task 3 (`sir/build.py::_match_repeat`), so unlike the
+    "declared but never constructed" state this docstring used to describe,
+    `build_sir` does build these. **It never builds one from THIS corpus**,
+    though: measured M4 task 12, the 229 decompiled files contain 0 `repeat`
+    and 0 `until` lines, against 971 `while` and 1482 `for` lines. The
+    recognizer's evidence is therefore entirely synthetic
+    (`tests/test_emit_while.py`, `tests/test_sir_build_loops.py`) -- treat
+    corpus green as saying nothing about this node, and see
+    MEMORY.md's "the corpus is a weaker oracle than it looks".
+    """
     body: "Region"
     cond: LirInstr                   # bottom comparison/TEST
     negated: bool

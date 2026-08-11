@@ -80,8 +80,8 @@ Phase 1（M0）已完成：uv 骨架、vendored pristine Lua 5.1.5、序列化�
   静默 `pytest.skip`（而不是报错中断），其中包括 M2 出口门
   `test_corpus_compile.py`、golden/parity 两道门、台账不动点测试
   `test_ledger_ratchet.py`、以及 L1.5/L1.75 两道探针门——裸跑仍会打印绿色结果，
-  但这不代表这些门跑过了（2026-08-12 实测：裸跑 `450 passed, 48 skipped`，
-  带语料 `498 passed`；这个数字随测试增加而变，别把它当常量抄）。`tests/conftest.py` 装了一个 `pytest_terminal_summary`
+  但这不代表这些门跑过了（M4 收口实测，2026-08-12：裸跑 `462 passed, 50 skipped`（4.4s），
+  带语料 `512 passed`（40.0s）；这个数字随测试增加而变，别把它当常量抄）。`tests/conftest.py` 装了一个 `pytest_terminal_summary`
   钩子，语料目录缺失时会在测试结束后打印醒目的警告横幅，提醒你这一点；但**不会**
   让裸跑本身失败——语料门控用 skip 而非 error 是有意为之（本地/CI 环境不一定都
   能拿到 229 个语料文件），这条 CLAUDE.md 记录只是把"文档化默认值"和"裸跑的真实
@@ -101,7 +101,7 @@ ingest -> lift -> cfg -> structure.fallback -> oracle 编译验证 -> ledger
 ```
 
 - `pyluadec.ingest`：`load_file`/`load_bytes` → `Proto`（Phase 1 已交付，header-dispatched sz4/sz8）。
-- `pyluadec.lift`（新增）：`opcodes.py`（解码器 + `OP_SPECS`，golden listing 全语料核对）、`effects.py`（38 opcode 效应表，公理层，STRICT/NO_METAMETHOD/TRUSTING 三档——**只有 STRICT 有论证依据，标定档位属 M4**）、`lift.py`（`lift_proto` → LIR，pc 认领审计覆盖全语料 1944 proto）。
+- `pyluadec.lift`（新增）：`opcodes.py`（解码器 + `OP_SPECS`，golden listing 全语料核对）、`effects.py`（38 opcode 效应表，公理层，STRICT/NO_METAMETHOD/TRUSTING 三档；**档位标定已于 M4 task 11 完成**，结论见下文 Phase 4 一节与 `structured-pipeline.md`「The effect lattice」——简言之：`STRICT` 仍是唯一默认且是 `src/` 里唯一被选用的档位，`NO_METAMETHOD` 是允许的逐 pass opt-in 但只限脚本自建的表，`TRUSTING` 不建议任何 pass 使用）、`lift.py`（`lift_proto` → LIR，pc 认领审计覆盖全语料 1944 proto）。
 - `pyluadec.cfg`（新增）：`blocks.py`（`build_cfg`）、`dom.py`（`immediate_dominators`，CHK 算法，对不可归约图安全）——CFG 在 M2 被 `structure.fallback` 实际消费，不是原项目那种建而不用的摆设。
 - `pyluadec.structure.fallback`（新增）：`emit_chunk(root) -> bytes`，pc 派发状态机，38/38 opcode 全覆盖。这是 M2 的地板（floor）：语义精确、故意丑，**M3 起由结构化识别（if/while/for 还原）逐步替换**，fallback 本身不会去美化。
 - `pyluadec.verify`（新增）：`normalize.py`（L3.0 严格比对器 + 空的归一化阶梯骨架 `NORMALIZATIONS`/`LADDER_VERSION`）、`ledger.py`（`structural_hash`、`LedgerEntry`、`write_ledger`/`read_ledger`）。
@@ -120,8 +120,8 @@ ingest -> lift -> cfg -> structure.fallback -> oracle 编译验证 -> ledger
 - 台账只能由 `scripts/run_corpus.py` 整体重新生成后提交，**禁止手编**任何一行。
 - 台账是自身生成脚本的不动点（同语料、同 oracle 构建再跑一次必须字节级复现），由 `tests/test_ledger_ratchet.py` 守护。
 - **"等级只升不降"是纪律，不是机器强制的。** 说清楚各自的边界（2026-08-11 逐条核对了断言本体）：
-  - **被断言的**：不许出现 `L0`、`compile_ok` 全真、`shash` 有序且唯一、覆盖 229 文件 / 1944 处出现、以及上面那条不动点（`tests/test_ledger_ratchet.py`）；外加**行内**等级与 confession 的耦合（`tests/test_m3_exit.py`，见下文 M3 一节）与出口比例 `> 0.50`。
-  - **没有被断言的**：**跨版本单调性**。没有任何测试拿当前台账去比历史 baseline，所以一份重新生成并提交的、L3 行数变少的台账，只要比例仍 > 50% 且不出现 `L0`，整套测试照样全绿。真正的 ratchet CI（baseline diff、降级即失败、`git bisect` 接线）是 spec §5 的完整形态，**属于 M4**，M3 只保证台账字段撑得起它——见 `docs/runbooks/m3-backlog.md` §7。因此审 PR 时台账的 diff 要人眼看。
+  - **被断言的**：不许出现 `L0`、`compile_ok` 全真、`shash` 有序且唯一、覆盖 229 文件 / 1944 处出现、以及上面那条不动点（`tests/test_ledger_ratchet.py`）；外加**行内**等级与 confession 的耦合（`tests/test_m3_exit.py`，见下文 M3 一节）、M3 出口比例 `> 0.50` 与 M4 出口比例 `> 0.85`（`tests/test_m4_exit.py`，同时钉住分母 `== 1944` 与 `refusal_reason` 的双向耦合）。
+  - **没有被断言的**：**跨版本单调性**。没有任何测试拿当前台账去比历史 baseline，所以一份重新生成并提交的、L3 行数变少的台账，只要比例仍 > 50% 且不出现 `L0`，整套测试照样全绿。真正的 ratchet CI（baseline diff、降级即失败、`git bisect` 接线）是 spec §5 的完整形态，M4 结束时**仍未落地，已顺延到 M5**（M4 只是让台账多了 `refusal_reason` 这个能按原因聚类的字段）——见 `docs/runbooks/m3-backlog.md` 的 M5 议程。因此审 PR 时台账的 diff 要人眼看。
 - `oracle` 字段记录的是 `git log -1 -- vendor native`（oracle 构建产物的溯源），**不是** `git rev-parse HEAD`——用 HEAD 会导致每次纯文档/纯测试提交都让全部台账行看起来"变了"，淹没真实回归；原因与修复过程见 runbook 对应小节。
 
 详见 `docs/runbooks/decompile-pipeline.md`：管线每层的函数签名、fallback 产物的 `__pld_R`/`__pld_U`/盒模型/`__pld_pc` 状态机阅读指南（含与 `luac_sz4 -l -l` 原始 listing 对照调试的实操示例）、效应表三档的语义与限度、台账字段的完整语义。
@@ -171,8 +171,49 @@ ingest -> lift -> cfg -> sir.build -> express.reconstruct -> emit.lua
   `scripts/ledger_dashboard.py` 直接打这个字段的直方图，残差普查因此是常驻数据而
   非一次性脚本。
 - `tests/test_m3_exit.py` 断言的是**行内耦合**（等级与 confession 必须一致）：`L3` 行 ⇒ `l3_level` 非空、`confessions == []`、`fallback is False`；非 `L3` 行 ⇒ `fallback is True`、`l3_level is None`、恰有一条 `fallback-state-machine` confession。也就是说"等级升了 confession 没摘"或"confession 摘了等级没升"这种**记账不一致**会被抓到。
-- **"等级只升不降"本身没有被任何测试断言**——没有历史 baseline 比对，见上文「台账约定」。跨版本单调性是纪律 + 人眼看 diff，机器强制留给 M4 的 ratchet CI。
+- **"等级只升不降"本身没有被任何测试断言**——没有历史 baseline 比对，见上文「台账约定」。跨版本单调性是纪律 + 人眼看 diff，机器强制留给 **M5** 的 ratchet CI（M4 未做）。
 
 ### 能力边界（实测，别当成"差不多都做完了"）
 
 `corpus/ledger.jsonl` 收口值：1112/1478 唯一 proto（75.2%）、1577/1944 处出现（81.1%）达 `L3`；229 个文件里 **92 个**发结构化源码，其余 137 个仍发 fallback。未覆盖的部分（169 + 139 + 58 = 366 = 1478 − 1112）：`while`/`repeat`/混合与不可归约回边（169 个唯一 proto 被 `build_sir` 拒绝——162 个因为带回边，另 7 个是无环拒绝）、因后代闭包不可结构化而连带失败的祖先（139 个）、打印成功但认证失败的残差（58 个）。M4 议程见 `docs/runbooks/m3-backlog.md`。
+
+**这一段是 M3 收口快照，已被 M4 超越**——当前值见下文 Phase 4 一节。
+
+
+## Phase 4（M4：loops and verification hardening）现状
+
+Phase 4 已完成。**能力边界与残差普查的权威仍是 `docs/runbooks/structured-pipeline.md`**（「Current capability boundary」节，M4 期间逐任务重测），效应档位的权威是同文件「The effect lattice」节，可读性评估在 `docs/reports/m4-readability.md`，**尚未完成的工作全部在 `docs/runbooks/m3-backlog.md` 末尾的「M5 agenda」**（编号条目，可引用）。本节只给定位与速查。
+
+### 收口数字（2026-08-12 实测于 `3ae72c6`）
+
+- `L3`：**1389/1478 唯一 proto（94.0%）、1855/1944 处出现（95.4%）**（M3 收口为 75.2% / 81.1%）。出口门 `tests/test_m4_exit.py` 的地板是 **0.85**（双基），外加分母 `== 1944` 与 `refusal_reason` 的双向耦合。**地板故意留了 ~9 个百分点余量**：把地板设在实测值上就不是地板而是绊线，而绊线的标准修法是改阈值——那就是门失去意义的过程。
+- **229 个文件里 212 个发结构化源码**（M3 为 92），其余 17 个仍发 fallback。
+- 测试：**512 passed in 40.0s**（上限 45s）。裸跑（不带语料）`462 passed, 50 skipped`。
+- 语料里剩下的 **89 处未认证 proto 全部落在那 17 个文件内**，并且连带拖住了同文件内 **692 处已单独认证 `L3`** 的 proto——`print_chunk` 在每个 `CLOSURE` 处内联整棵树，祖先链上任何一处拒绝就作废上面全部。这是目前最大的一个杠杆（M5 agenda 3）。
+
+### 新增区域类型与识别器
+
+`sir/regions.py` 增加 `While` / `WhileTrue` / `Repeat` / `EndIter` / `CondValue`，识别器在 `sir/build.py`（`_match_while` / `_match_while_true` / `_match_repeat` / `_match_cond_value`）。纪律不变：**识别或 `StructureError`，绝不猜结构**。
+
+**`repeat` 有识别器但这批语料一条都没有**（229 个反编译产物里 `repeat`/`until` 行数为 0，`while` 为 971），所以它的证据完全是合成的——语料全绿对这个节点不构成任何证据。
+
+真正的瓶颈不是循环而是寄存器分类：task 13 把 `RegClass` 从「每个寄存器号一个判决」改成「每个 `(寄存器, 定义点)` 一个判决」，打印成功但认证失败的残差从 283 降到 **35**。
+
+### 新增门（都在默认套件里）
+
+- `tests/test_m4_exit.py`：出口比例 + `refusal_reason` 词表与耦合。
+- `tests/test_behaviour_probe.py`（L1.75 行为探针）：**229 文件、227 字节一致、2 条钉住的发散、398196 个事件**。**读它的 reach 分裂再决定信多少**：3000 事件上限截断了 132/229 个文件，这 132 个贡献了 99.5% 的事件，另外 97 个中位数只有 **10** 个事件。
+- `tests/test_effects_reconstructor_consistency.py`：把 `lift/effects.py` 与**结构化**路径对账（`reconstruct.py` → `emit/lua.py` 是 `lvm.c` 的第三份独立手抄）。0 违规，靠插桩而不是第四份手抄。它自己的 docstring 记了**它不断言什么**。
+- `tests/test_effects_modes.py`：档位标定的普查与钉子，含「`STRICT` 是唯一被 `src/` 选用的档位」这条静态检查。
+
+### 效应档位标定结论（M4 task 11）
+
+`STRICT` 仍是唯一默认；`NO_METAMETHOD` 是允许的逐 pass opt-in，但**只对脚本自建的表成立**（普查在 71414 个常量里找到 0 个元方法相关常量，但语料读取的 164 个全局名里有 56 个从不被写入，来自引擎，普查看不见）；`TRUSTING` 不建议任何 pass 使用（它相对 `NO_METAMETHOD` 只动 3 行，而语料**证伪**了这三行）。`lift/effects.py` 行为未变。两行被判定分级过松、按公理层变更协议留待处理：`LEN` 在 `NO_METAMETHOD` 下应为 `READ_HEAP` 而非 `PURE`（**这是确认的缺陷**，M5 agenda 1）、以及 `NEWTABLE`/`CLOSURE` 的 GC 路径（不建议改）。
+
+### 可读性（与原项目产物对比，`docs/reports/m4-readability.md`）
+
+结构化产物的行数是原项目的 **0.98 倍**（212 个文件全部落在 0.78×–1.03×），`__pld_*` 残留 **0**，212 个文件上 `while`/`break` 的行首计数与原项目**完全相同**（190/190、175/175）。**读得更差的四处**：非 ASCII 字符串打成十进制转义（这是个日文视觉小说，下游就是翻译——这是最大的一处）、不发 `elseif`（208 个变成嵌套 `if`，最坏 61 层缩进对原项目的 5 层）、字符串键不用点语法（`t["k"]` 对 `t.k`）、函数体不缩进（可能是有意的下游耦合，见「下游耦合」一节）。还有：那 17 个 fallback 文件**按行数占语料的 47.6%**，所以"229 里 212 个"是往好里数的数法。
+
+### 仍未做（都在 M5 agenda）
+
+完整 ratchet CI（baseline diff、降级即失败）**M4 没做**——M4 只交付了让它能按原因聚类的 `refusal_reason` 字段；`LEN` 重新分级；那 89 处残差；L2 差分执行认证与按键序列 harness；`_stack_discipline`（462 行、33 个 if、11 个内嵌闭包）的拆分。

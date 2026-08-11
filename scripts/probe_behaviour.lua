@@ -294,6 +294,18 @@ local function zero() return 0 end
 -- `S|sys.f|1`. Keeping the proxy's own raw table permanently empty means
 -- rawget(self, k) is always nil, so __newindex (and __index, for reads that
 -- have to see the last-written value) fires on every access.
+--
+-- KNOWN COST of the shadow-table shape, for both `pfields` here and
+-- `envfields` below: the raw tables stay permanently empty, so `pairs`,
+-- `next` and `rawget` on a stub proxy or on `env` report them as EMPTY no
+-- matter what has been written -- those three bypass metamethods in Lua 5.1
+-- and there is no __pairs in 5.1 to intercept. A target that iterates a stub
+-- table it just populated would therefore see nothing and take a different
+-- path than under the real engine. Verified unexercised by this corpus (the
+-- 229 files' traces are byte-identical between the two sides, and the only
+-- `pairs` loop in the corpus, `snr_novel.lua`'s, iterates a table the SCRIPT
+-- built, not a proxy); recorded because the next probe user will not
+-- rediscover it from the code.
 local pfields = setmetatable({}, {__mode = "k"})
 
 proxy_mt.__index = function(self, k)
@@ -395,7 +407,8 @@ end
 -- each name -- measured: `X = 1 X = 2 X = 3` recorded only `G|X|1`, and
 -- `A = 1; function main() A = A + 1 end` recorded no `G|A|...` event at all
 -- for the reassignment. `envfields` is also what the invocation loop below
--- enumerates and calls, since `env` itself is never populated.
+-- enumerates and calls, since `env` itself is never populated. Same
+-- `pairs`/`next`/`rawget`-report-empty cost as `pfields`; documented there.
 local envfields = {}
 local env = {}
 setmetatable(env, {
