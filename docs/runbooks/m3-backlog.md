@@ -334,10 +334,19 @@ super-linearly.
 ## 2. The printed-but-uncertified residual (58 unique protos)
 
 These print fine and recompile to a *different* proto. All 58 differ on `code`;
-24 also on `maxstacksize`, 11 on `constants.len`, 11 on an individual constant,
-1 on `is_vararg`. This is the residual approximation in the freereg simulation
+24 also on `maxstacksize`, 11 on `constants.len`, 11 on an individual constant.
+This is the residual approximation in the freereg simulation
 (`express/names.py::_stack_discipline`) — statement grouping and register
 allocation that do not quite match luac's.
+
+(An earlier pass of this breakdown also reported 1 of the 58 differing on
+`is_vararg`. Re-measured (round 1): that entry is basis-dependent, not a real
+member of this set. Certifying all 58 with `is_chunk_root` matched correctly
+to whether each proto actually is a file's main chunk yields **zero**
+`is_vararg` mismatches; the "1" appeared only when the one main chunk among
+the 58 was certified in wrapper isolation (`is_chunk_root=False`, the
+nested-proto path) instead. Every other figure in this breakdown holds under
+both bases.)
 
 **Sub-case worth deciding explicitly: constant-pool interning order.** Measured
 at `fb85f2f`: 22 of the 58 have a differing constant pool, and **9 of them
@@ -385,6 +394,24 @@ what CLAUDE.md requires of any axiom-layer change: the `lvm.c` citation above
 *plus* a differential run, because adding `writes_open` puts every `TAILCALL`
 pc into `classify_registers`' `open_write_pcs` and can move classifications and
 therefore the committed ledger.
+
+This was argued above only on the emitter side. `open_write_pcs` has a second
+consumer, `express/names.py:129,203-205`, where it gates a for-loop's
+backward staging-producer search (`_staging_slice`): if an open-write
+instruction sits between a candidate producer and the loop header consuming
+it, the search gives up rather than attribute the register. A missing
+`writes_open` on `TAILCALL` could in principle let that search walk straight
+through one. It cannot in practice: `OP_TAILCALL` is emitted from exactly one
+call site, `lparser.c:1251` inside `retstat`, which unconditionally calls
+`luaK_ret(fs, first, LUA_MULTRET)` immediately afterward with no intervening
+`luaK_code*` call — `luaK_ret` compiles to `OP_RETURN A 0`
+(`lcode.c:69-71`: `luaK_codeABC(fs, OP_RETURN, first, nret+1, 0)` with
+`nret == LUA_MULTRET == -1`). So a `TAILCALL` is always immediately followed,
+in the instruction stream, by exactly one `RETURN A 0` and then the end of
+the function — confirmed on the corpus too (all 3 `TAILCALL` occurrences).
+There is no pc after a `TAILCALL` other than that terminal `RETURN`, so no
+for-loop header can ever sit downstream of one for `_staging_slice` to walk
+back across. The claim holds; it just needed this second half stated.
 
 ## 5. Deepen the global-state probe toward L2 (Task 9 Deliverable B)
 
@@ -527,3 +554,24 @@ such — assume the same is possible of the others.
 - The predecessor's `test_ir_pipeline.py` (86 cases) translation list — per
   spec §8 this is generated from M3's per-function level data, so it is an M4
   *input*, not an M4 deliverable.
+
+## 8. The effects–emitter consistency gate does not cover the structured reconstructor
+
+`tests/test_effects_emitter_consistency.py` (backlog item 2) reconciles
+`lift/effects.py` against `structure/fallback.py`'s templates. It does **not**
+reconcile it against `express/reconstruct.py` -> `emit/lua.py`, the structured
+path. `express/names.py`'s register *classification* does consume `effects`,
+but the reconstructor's per-opcode operand decoding is independent of it:
+`reconstruct.py` reads `ri.a`/`ri.b`/`ri.c` directly at 9 call sites (`:434,
+:444, :455, :456, :469, :521, :592, :611, :648`) and mentions `effects` at
+exactly one place in the whole file (`:614`, a hazard check on
+`reads_open`/`writes_open`, not an operand source); `emit/lua.py` reaches
+operand fields through `ri.` 16 times in its non-docstring code and never
+references `effects` at all. So `reconstruct.py` -> `emit/lua.py` is a
+**third** independent hand-transcription of `lvm.c`'s per-opcode semantics,
+sitting right next to the two the existing gate reconciles, with nothing
+mechanically checking it against the table. Extending
+`test_effects_emitter_consistency.py` (or a sibling test) to walk the
+structured path the same way — assert the registers `Reconstructor`/`Printer`
+touch for each pc are a subset of that pc's `effects.reads | effects.writes`
+— is real M4 work, not a footnote.

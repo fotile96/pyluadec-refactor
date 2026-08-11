@@ -39,12 +39,13 @@
   207214 of 214192 corpus instructions checked, 0 disagreements, plus a
   synthetic operand grid reaching all 38 opcodes.
 - **Capability boundary, stated honestly.** `while`, `repeat`, and mixed or
-  irreducible back edges are **not** structured: `build_sir` refuses 162 unique
-  protos carrying such an edge (plus 7 acyclic refusals, including all 16 that
-  contain `TESTSET`, the `and`/`or` value idiom). A further 139 unique protos
-  build a region tree but do not print because a descendant closure does not,
-  and 58 print but do not certify. All of them stay at `L1` with a confession —
-  levels only ever go up. This is the largest single M4 increment; see
+  irreducible back edges are **not** structured: `build_sir` refuses 169 unique
+  protos, 162 of them carrying such an edge, plus 7 acyclic refusals — all 16
+  unique protos containing `TESTSET` (the `and`/`or` value idiom) are among
+  these 169 refusals. A further 139 unique protos build a region tree but do
+  not print because a descendant closure does not, and 58 print but do not
+  certify. All of them stay at `L1` with a confession — levels only ever go
+  up. This is the largest single M4 increment; see
   `docs/runbooks/m3-backlog.md`.
 - See `docs/runbooks/structured-pipeline.md` for the full reference: layer
   layout, the certification invariant, the ladder, the `freereg` register model

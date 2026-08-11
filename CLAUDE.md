@@ -161,4 +161,4 @@ ingest -> lift -> cfg -> sir.build -> express.reconstruct -> emit.lua
 
 ### 能力边界（实测，别当成"差不多都做完了"）
 
-`corpus/ledger.jsonl` 收口值：1112/1478 唯一 proto（75.2%）、1577/1944 处出现（81.1%）达 `L3`；229 个文件里 **92 个**发结构化源码，其余 137 个仍发 fallback。未覆盖的部分：`while`/`repeat`/混合与不可归约回边（162 个唯一 proto 被 `build_sir` 拒绝）、因后代闭包不可结构化而连带失败的祖先（139 个）、打印成功但认证失败的残差（58 个）。M4 议程见 `docs/runbooks/m3-backlog.md`。
+`corpus/ledger.jsonl` 收口值：1112/1478 唯一 proto（75.2%）、1577/1944 处出现（81.1%）达 `L3`；229 个文件里 **92 个**发结构化源码，其余 137 个仍发 fallback。未覆盖的部分（169 + 139 + 58 = 366 = 1478 − 1112）：`while`/`repeat`/混合与不可归约回边（169 个唯一 proto 被 `build_sir` 拒绝——162 个因为带回边，另 7 个是无环拒绝）、因后代闭包不可结构化而连带失败的祖先（139 个）、打印成功但认证失败的残差（58 个）。M4 议程见 `docs/runbooks/m3-backlog.md`。

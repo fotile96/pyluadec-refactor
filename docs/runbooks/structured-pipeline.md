@@ -336,6 +336,13 @@ Each step measured against all 1944 protos:
 | freereg simulation replaces the barrier | 1575 | 81.02% | **+63.6** |
 | pre-declare parameters | 1577 | 81.12% | +0.1 |
 
+The intermediate rows (3, 339, 339, 1575) are historical: each was measured
+at the commit that landed that change during M3's development, not at this
+runbook's `fb85f2f`, and are not independently re-derivable at `fb85f2f`
+since the tree has moved past each intermediate state. Only the final row
+(1577, 81.12%) is re-derivable here — it matches `corpus/ledger.jsonl` at
+this commit (`tests/test_m3_exit.py`).
+
 The pre-identified lever was a no-op; the fix nobody had planned was worth
 +63.6 points. That is the milestone's main methodological lesson: the
 hypothesis had a plausible mechanism and a 95% measurement behind it, and it
@@ -561,14 +568,22 @@ is the honest M4 agenda:
    why the subtree-closed ceiling is well below the own-body one.
 3. **1170 → 1112: 58 unique protos print but do not certify.** All 58 differ on
    `code`; 24 also on `maxstacksize`, 11 on `constants.len`, 11 on an
-   individual constant, 1 on `is_vararg`. This is the residual approximation in
-   the freereg simulation — statement grouping and register allocation that do
-   not quite match luac's.
+   individual constant. This is the residual approximation in the freereg
+   simulation — statement grouping and register allocation that do not quite
+   match luac's. (Round 1: dropped a basis-dependent "1 on `is_vararg`" entry
+   here — certifying all 58 with `is_chunk_root` matched correctly to each
+   proto's actual chunk-root status yields zero `is_vararg` mismatches; see
+   `docs/runbooks/m3-backlog.md` §2 for the measurement.)
 
-Note that `structure/structured.py`'s docstring and `tests/test_m3_exit.py`
-both quote a "~80.3%" subtree-closure ceiling. The re-measurement above does
-not reproduce that figure on either basis (79.2% unique / 84.2% occurrences);
-treat 80.3% as a stale estimate, not as data.
+Note that `structure/structured.py:13`'s docstring quotes a "~80.3%"
+subtree-closure ceiling (the same figure, with its derivation, lives in the
+planning doc `docs/superpowers/plans/2026-08-10-phase3-m3-structured-backbone.md`,
+e.g. its line 39 table and line 1856). `tests/test_m3_exit.py` does **not**
+quote it — its only thresholds are the `> 0.50` exit-gate assertions at
+`:22` and `:40`, unrelated to this ceiling. The re-measurement above does
+not reproduce the 80.3% figure on either basis (79.2% unique / 84.2%
+occurrences); treat 80.3% as a stale estimate confined to
+`structure/structured.py:13` and the planning doc, not as data.
 
 The other standing limit is the **global-state probe** (L1.5), which reaches
 225/229 files with the 4 pinned divergences documented in

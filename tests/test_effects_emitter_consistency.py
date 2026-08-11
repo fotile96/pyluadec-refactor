@@ -17,10 +17,23 @@ write are a **subset** of `effects.reads | effects.writes`.
 derived from `structure/fallback.py`'s per-opcode templates (`_emit_simple`,
 `_emit_call`, `_emit_terminator`) -- the fallback emitter is the one place in
 the tree where every opcode has an explicit, hand-written register list, so it
-is the honest reference for "which registers does emission touch". The
-structured path (`express/reconstruct.py` -> `emit/lua.py`) reaches registers
-through `li.effects` itself and so cannot drift from the table by construction;
-it is the fallback transcription that needs the reconciliation.
+is the honest reference for "which registers does emission touch".
+
+**This gate does not cover the structured path, and that is its most
+important remaining blind spot.** `express/names.py`'s register
+*classification* (`classify_registers`) does consume `effects` -- but the
+structured *reconstructor*'s per-opcode operand decoding does not.
+`express/reconstruct.py` reads `ri.a`/`ri.b`/`ri.c` directly, independently of
+`effects`, at 9 call sites (`:434, :444, :455, :456, :469, :521, :592, :611,
+:648` as of this commit) and mentions `effects` exactly once in the whole
+file (`:614`, a hazard check on `reads_open`/`writes_open` when closing a
+folded table literal -- not an operand source). `emit/lua.py` reaches operand
+fields through `ri.` 16 times in its non-docstring code and never references
+`effects` at all. So `express/reconstruct.py` -> `emit/lua.py` is a **third**
+independent hand-transcription of `lvm.c`'s per-opcode semantics, sitting
+right next to the two this gate does reconcile, and nothing here would catch
+it drifting. Extending this gate to cover the structured reconstructor is
+real M4 work (`docs/runbooks/m3-backlog.md`), not a footnote.
 
 ## What it does NOT assert
 
@@ -40,6 +53,14 @@ it is the fallback transcription that needs the reconciliation.
   the corpus arm of this gate checks 32 opcodes. `SELF`, `POW`, `UNM`, `NOT`
   and `CLOSE` never occur. That is why the synthetic arm below exists: it runs
   the same invariant over an exhaustive operand grid and reaches 38/38.
+- **`_registers_touched` is a frozen hand-copy of `structure/fallback.py`'s
+  templates, not a live reference to them.** If `fallback.py` changes which
+  registers a template touches and this copy is not updated to match, the
+  gate keeps checking the old model against `effects.py` and stays green --
+  it would not notice the fallback emitter drifting out from under it. This
+  is inherent to transcribing rather than importing; do not over-trust a
+  green run here as proof the *current* `fallback.py` agrees with `effects.py`
+  without also checking this copy is still current.
 """
 from __future__ import annotations
 
@@ -67,9 +88,14 @@ def _registers_touched(ri: RawInstr) -> set[int]:
       only ever rewrites a `VCALL` into `OP_TAILCALL` after `luaK_setmultret`,
       which is what forces C to 0. `fallback.py::_emit_terminator`'s TAILCALL
       arm accordingly emits a bare `return <call>` and never mentions C.
-      Grouping them made the synthetic grid below fail on 21 rows (every
-      `TAILCALL` with a fabricated `C != 0`); the helper was the wrong side and
-      was fixed rather than the assertion relaxed.
+      Grouping them made the synthetic grid below fail on 48 rows (measured by
+      temporarily restoring the brief's grouping over the committed grid): not
+      every `TAILCALL` with `C != 0` fails (144 grid rows have `B != 0 and
+      C != 0`; `B == 0` rows are skipped as an open region before the
+      comparison runs), only the 48 where `C > B + 1` -- the 12 `(b, c)` pairs
+      in the operand grid satisfying that inequality, times the grid's 4
+      `a`-values. The helper was the wrong side and was fixed rather than the
+      assertion relaxed.
     - `CLOSURE` lists only `{a}`. `fallback.py` also emits
       `__pld_R[ps.b]` for each captured register, but those are supplied to the
       effects table by `lift.py` (`fx.reads | moved`), so the subset holds with
