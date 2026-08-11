@@ -139,8 +139,12 @@ gap rather than a defect:
   The misplacement is still real; the fix is no longer "move it into
   fallback.py" but a shared codegen-side home. Lower priority than when it
   had one consumer.)*
-- Duplicated proto-path convention — `pipeline.walk_proto_paths:57`,
-  `fallback.py:254` (the CLOSURE child key) and `fallback.emit_chunk:379`
+- Duplicated proto-path convention — `pipeline.walk_proto_paths`'s own
+  `f"{path}_{i}"` call (line 57 at the M4 branch point; a docstring expansion
+  since pushed it to line 63 without this citation being re-swept — found
+  fixing task 12's Important-1 finding, same drift pattern, so cited by
+  symbol only from here on), `fallback.py:254` (the CLOSURE child key) and
+  `fallback.emit_chunk:379`
   independently implement `f"{path}_{i}"`. If they drift, ledger `proto_path`
   stops identifying the emitted `__pld_F` factory — an undocumented but real
   debugging affordance — and nothing would catch it. *(M3 final-review round:
@@ -819,7 +823,9 @@ such — assume the same is possible of the others.
   `tests.synth.mk_cfg`; the bodies were line-for-line identical, so the swap
   needed no behaviour change. (The entry was itself corrected twice: recorded
   during M3 as "zero call sites", re-measured at task 10 as one call site
-  (`tests/test_sir_build_acyclic.py:189`) plus `test_dom.py`'s six.)
+  (`tests/test_sir_build_acyclic.py`'s `mk_cfg(edges, entry=1)` call in
+  `test_verify_single_entry_catches_block_reachable_via_a_non_dominating_path`)
+  plus `test_dom.py`'s six.)
 - ~~No shared corpus-proto cache across the corpus-scanning tests — roughly
   5–6s of redundant `load_file` + `lift_proto` suite-wide.~~ **CLOSED (M4
   task 9 round 1).** `tests/conftest.py::lifted_corpus` is that session-scoped
@@ -1190,6 +1196,15 @@ The 17 files, measured 2026-08-12: `config.lua`, `snr_common.lua`,
 *large* ones: they are 17 of 229 files but **27623 of 57998 predecessor lines
 (47.6%)** of the corpus's shipped text. Counting files overstates how much of
 the corpus is structured; see `docs/reports/m4-readability.md`.
+
+This item is not only a corpus statistic: two of `tests/test_semantic_regressions.py`'s
+five named (synthetic, compiled-from-source-in-test, not corpus) cases hit the
+same two clusters and stay pinned at `L1` today —
+`test_counter_closure_and_dispatch_mix` (the `mismatch` "prints but does not
+certify" residual) and `test_if_and_elseif_conjunctions_preserved` (the
+`build_sir` "if targets out of range" refusal). Closing this item should make
+both assertions in those two tests go stale on purpose, which is the signal
+to update them.
 
 ## 4. The `L3.2 = canonical constant-pool order` rung: declined twice, decide or drop
 

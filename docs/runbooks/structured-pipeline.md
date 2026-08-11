@@ -110,8 +110,8 @@ because it isn't a `_verify_single_entry` call: an inline
 `claimed != {p for p in fn.instrs if lo <= p < join}` equality inside
 `_match_cond_value`, after `_parse_value` returns. Fix round 1 also found
 this one pinned by nothing, but the two turned out to differ in kind on
-investigation: `_parse_value`'s own recursive descent and `value_claimed`
-(`sir/regions.py:208-220`) are built from the same contiguous sub-ranges by
+investigation: `_parse_value`'s own recursive descent and
+`sir/regions.py::value_claimed` are built from the same contiguous sub-ranges by
 construction, so `_parse_value` succeeding provably implies the equality
 holds -- no adversarial bytecode can separate them today. The check only has
 teeth against a FUTURE bug that edits one of the two without the other; fault

@@ -328,8 +328,8 @@ def test_cond_value_claim_check_is_unreachable_from_real_parse_value_but_the_pc_
     build.py:625-626`), and every VAlt/VTail it returns is built from
     CONTIGUOUS sub-ranges of exactly the pcs `_parse_value` itself consumed
     at each step (gate+gate_jmp, inner_staging, test+test_jmp, staging, then
-    `rest` starting exactly where the previous piece ended). `value_claimed`
-    (`sir/regions.py:208-220`) mirrors that same field-by-field -- so
+    `rest` starting exactly where the previous piece ended).
+    `sir/regions.py::value_claimed` mirrors that same field-by-field -- so
     `_parse_value` succeeding implies `value_claimed(node) == {lo..join-1}`
     by construction, not by luck. No amount of adversarial bytecode can pull
     the two apart; only a FUTURE bug that edits one without the other could

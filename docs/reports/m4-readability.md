@@ -74,11 +74,39 @@ expected.
 Structured output is not merely the same order of magnitude as the shipped
 artifact — it is **marginally shorter in aggregate**, and every one of the 212
 files lands inside 0.78×–1.03×. That is a stronger result than "same order of
-magnitude", and it is worth being precise about why it is not a claim of
-superiority: we are shorter mostly because we do not indent function bodies
-(no line-count effect) and because the predecessor emits hoisted
-`local v0, v1, …` blocks and unused per-function `local` declarations. We are
-*longer* wherever the predecessor used `elseif` (see §2.2).
+magnitude", and an earlier draft of this section attached an unmeasured cause
+to it (indentation, and predecessor-side `local`-hoisting) — indentation has
+no line-count effect by construction, and the `local` claim is contradicted by
+§1.4's own row: the predecessor emits **906** line-leading `local`s against
+our **1329**, i.e. hoisting makes the predecessor *shorter* in `local` lines,
+not longer. Re-measured properly, by summing whole categories of
+line-leading tokens over the same 212 files:
+
+| category | ours | predecessor | delta (ours − predecessor) |
+| --- | --- | --- | --- |
+| control/decl keywords (`if`/`elseif`/`else`/`end`/`while`/`for`/`local`/`return`/`break`/`repeat`/`until`/`do`/`function`) | 5610 | 4774 | **+836** |
+| lines whose first token is a bare synthesized variable (`l<d>_<d>` for us, `v<N>` for the predecessor) | 1214 | 2522 | **−1308** |
+| every other line (calls, string literals, table bodies, …) | 23074 | 23079 | **−5** |
+
+`836 − 1308 − 5 = −477`, exactly the measured aggregate delta — this fully
+accounts for the gap; nothing is left over. The keyword row is the
+missing-`elseif` defect (§1.4, +836 ≈ its own +208/+205/+208 breakdown for
+`if`/`else`/`end`, `local` included). The row that actually makes us
+*shorter* is the second one: the predecessor writes more than twice as many
+lines whose entire content is `v<N> = <expr>` or a lone use of `v<N>` — 2522
+against our 1214. Spot-checking `snr_crd_10.lua`/`snr_crd_100.lua`/
+`snr_crd_103.lua` shows a recurring shape: `v2 = 0` immediately followed by
+`while v2 < 1 do` (a loop-guard temporary we fold into `while true do` with no
+separate counter line), and `v5 = oCard.selectCardObj()` immediately followed
+by `if v5 == 9 then` (a condition value we inline directly into the `if`).
+Corpus-wide, of the 1768 `v<N> = …` lines in these 212 files, 739 are function
+definitions (a wash — both sides emit one line per closure) and **358 of the
+remaining 1029 are reused within the next 3 lines**, consistent with a
+one-shot temporary that our reconstructor's expression inlining does not
+materialize as its own line. This is a line-accounting result, not a
+read of the predecessor's emitter source — *why* it favors splitting these
+into separate assignments is not established here. We are *longer* wherever
+the predecessor used `elseif` (see §2.2).
 
 The fallback population is 4.35× the predecessor and could not be otherwise:
 it is a `__pld_pc` dispatch state machine, one basic block per `if` arm.
@@ -141,7 +169,7 @@ the second, and a structured heavy-logic file (`snr_s4_10_fa.lua`, a
 1183-line state-machine driver) takes the second slot. The substitution is
 noted rather than silently made.
 
-### 2.1 Clean scenario file — `snr_crd_10.lua` (structured; ours 82 lines, predecessor 85)
+### 2.1 Clean scenario file — `snr_crd_10.lua` (structured; ours 82 lines, predecessor 86)
 
 Ours:
 
@@ -201,7 +229,7 @@ may be *deliberate* downstream coupling (CLAUDE.md records that
 `post_process/`'s line-anchored regexes expect 顶层无缩进), so it should not be
 changed without deciding that question.
 
-### 2.2 Heavy-logic structured file — `snr_s4_10_fa.lua` (ours 1183 lines, predecessor 1167)
+### 2.2 Heavy-logic structured file — `snr_s4_10_fa.lua` (ours 1183 lines, predecessor 1168)
 
 Predecessor:
 

@@ -46,8 +46,15 @@
   stub-return policy is **not** agreement-invariant (227/227/226/226 across four
   policies).
 - **Semantic-regression port.** The predecessor's 5 named semantic cases and 6
-  roundtrip cases are ported, plus a generated differential harness; all 5
-  named cases ship structured.
+  roundtrip cases are ported, plus a generated differential harness; **3 of
+  the 5 named cases ship structured, 2 ship the M2 fallback** —
+  `test_counter_closure_and_dispatch_mix` and
+  `test_if_and_elseif_conjunctions_preserved`, each pinned by an `== "L1"`
+  assertion and a `b"__pld_pc" in out.source` check in
+  `tests/test_semantic_regressions.py`, with the cause named in that case's
+  own docstring (the "prints but does not certify" `mismatch` residual, and
+  `build_sir`'s "if targets out of range" refusal, respectively — both in the
+  M5 agenda's residual clusters).
 - **Certification got stricter, not just wider.** `certify_l3` now compiles the
   candidate with `strip=not carries_debug(original)`, so rung 1 compares real
   locvar scope ranges on unstripped input. The corpus did not move (all 1944
@@ -86,10 +93,11 @@
   localization input, in `docs/reports/m4-readability.md`. Structured output is
   0.98× the predecessor's line count in aggregate with all 212 files inside
   0.78×–1.03×, and carries **zero** `__pld_*` artifacts. It reads *worse* in
-  four named places — non-ASCII strings as decimal escapes, no `elseif` (208 of
-  them become nested `if`s, worst case 61 levels of nesting against 5), no dot
-  sugar for string keys, un-indented function bodies. And the 17 files still on
-  fallback are 47.6% of the corpus **by line volume**, so "212 of 229 files" is
+  five named printer-level places — non-ASCII strings as decimal escapes, no
+  `elseif` (208 of them become nested `if`s, worst case 61 levels of nesting
+  against 5), no dot sugar for string keys, un-indented function bodies, unary
+  minus printing as `(-1)` — plus a sixth, structural one: the 17 files still
+  on fallback are 47.6% of the corpus **by line volume**, so "212 of 229 files" is
   the flattering way to count.
 - **Not done in M4, and now the M5 agenda** (`docs/runbooks/m3-backlog.md`):
   full ratchet CI (baseline diff, downgrade = fail) — M4 delivered the field
