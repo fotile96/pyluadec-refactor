@@ -22,14 +22,32 @@ reconstruction, not something to absorb with a new ladder rung.
 `pc` already points at the FOLLOWING instruction, which is always a `JMP`
 (`lcode.c:condjump` emits the pair). So: when `bool(R[B]) == C`, the value is
 kept (`R[A] := R[B]`) and control lands on that JMP's own target; otherwise
-control falls through PAST the JMP. That is exactly the reading in the
-no-frills VM-instruction PDF (`others/a-no-frills-introduction-to-lua-5.1-vm-
-instructions.pdf` §TESTSET), which CLAUDE.md makes authoritative over the
-official docs.
+control falls through PAST the JMP.
 
 `C == 1` is `or` (keep a truthy left operand), `C == 0` is `and` (keep a falsy
 one) -- `lcode.c:jumponcond` is reached from `luaK_goiffalse` with `cond=1`
 for `or` and from `luaK_goiftrue` with `cond=0` for `and`.
+
+## The no-frills PDF confirms this, but its prose does not (erratum)
+
+CLAUDE.md makes `others/a-no-frills-introduction-to-lua-5.1-vm-instructions.pdf`
+authoritative over the official Lua docs, so it was checked directly (p. 37).
+Three of its four statements agree with the above; one contradicts the other
+three and must be discarded:
+
+  * pseudocode, AGREES: `TESTSET A B C   if (R(B) <=> C) then R(A) := R(B)
+    else PC++`;
+  * operator mapping, AGREES: "The `and` operator uses a C of 0 (false) while
+    `or` uses a C value of 1 (true)";
+  * worked example, AGREES -- `local a,b,c; c = a and b` compiles to
+    `[1] testset 2 0 0  ; to [3] if true / [2] jmp -> [4] / [3] move 2 1`, i.e.
+    a TRUTHY `a` (not matching C==0) falls through to evaluate `b`, and a falsy
+    one takes the JMP with `c := a`;
+  * prose, CONTRADICTS ITS OWN PSEUDOCODE: "If R(B) matches C, the next
+    instruction is skipped, otherwise R(B) is assigned to R(A) and the VM
+    continues with the next instruction." That is the mapping inverted. It
+    also disagrees with `lvm.c`, which is the ground truth here. Recorded so
+    the next reader of that page does not have to re-derive it.
 
 Two rewrites in `lcode.c:patchtestreg` matter here and are pinned by fixtures
 below:
