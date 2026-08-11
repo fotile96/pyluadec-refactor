@@ -19,9 +19,9 @@ around it.
 **How to re-derive — read this before trusting a number here.** Three tiers:
 
 1. **Inlined and verified.** The capability-boundary table, its refusal
-   breakdown, and the 58-residual histogram have complete runnable scripts
-   under "Current capability boundary", each printed together with the output
-   it produced when run on 2026-08-11.
+   breakdown, and the print-but-do-not-certify histogram have complete
+   runnable scripts under "Current capability boundary", each printed together
+   with the output it produced when run on 2026-08-11.
 2. **Read off a committed artifact or a standing test.** The L3 rates come
    from `corpus/ledger.jsonl` (`uv run python scripts/ledger_dashboard.py`).
    The 225/229 global-state figure comes from
@@ -51,13 +51,14 @@ ingest -> lift -> cfg -> sir.build -> express.reconstruct -> emit.lua
 
 ### `pyluadec.sir` — CFG + dominators to a region tree
 
-- `sir/regions.py` (211 lines) — the frozen region node types:
+- `sir/regions.py` (297 lines) — the frozen region node types:
   `Straight`, `Seq`, `If`, `NumericFor`, `GenericFor`, `Break`, `Return`,
   `Fallback`, the M4 loop nodes `WhileTrue` / `While` / `Repeat` / `EndIter`,
-  and `all_claimed(region) -> frozenset[int]`, which folds a
+  the M4 task-4 `CondValue` (plus its internal `VAlt` / `VTail` chain nodes and
+  `value_claimed`), and `all_claimed(region) -> frozenset[int]`, which folds a
   region tree into the set of pcs it claims and raises `RegionOverlap` if two
   siblings claim the same pc.
-- `sir/build.py` (904 lines) — `build_sir(fn: LirFunction) -> Region`.
+- `sir/build.py` (1115 lines) — `build_sir(fn: LirFunction) -> Region`.
   Also exports `has_back_edge(fn)` as a cheap pre-check and `StructureError`
   as the refusal signal.
 
@@ -67,14 +68,15 @@ There is no "best effort" branch anywhere in this module.
 
 Dominators are genuinely consumed, not built and ignored (the predecessor
 project built a CFG and then wrote `_ = cfg`). `build_sir` computes
-`immediate_dominators(cfg)` at `sir/build.py:109` and every branch/loop body
-range goes through `_verify_single_entry` (`sir/build.py:58-98`), which refuses
+`immediate_dominators(cfg)` at `sir/build.py:119` and every branch/loop body
+range goes through `_verify_single_entry` (`sir/build.py:68-108`), which refuses
 unless every CFG block starting inside the claimed pc range is dominated by the
 block containing the condition. The pc-interval arithmetic alone cannot see a
 jump from unrelated code into the middle of a "then" body; the dominator check
-can. Call sites: `sir/build.py:808`, `:810` (if/else arms), `:875` (numeric-for
-body), `:898` (generic-for body), `:294` (`while <cond>` body), `:401`
-(`repeat` body), `:464` (`while true` body).
+can. Call sites: `sir/build.py:1019`, `:1021` (if/else arms), `:1086`
+(numeric-for body), `:1109` (generic-for body), `:304` (`while <cond>` body),
+`:411` (`repeat` body), `:474` (`while true` body), `:676` (the M4 task-4
+`CondValue` range).
 
 Since M4, dominance is no longer only a post-hoc verifier: the three loop
 recognizers **define a back edge by dominance, not by pc order** (a rotated
@@ -146,6 +148,50 @@ than assumed:
   preempt a reading that can certify. `_match_while_true` runs last and
   preempts nothing, so it keeps the weaker rule.
 
+#### `_match_cond_value` — the `and`/`or` VALUE idiom (M4 task 4)
+
+Tried at every dispatch position **before** `_structure_if`, and returns
+`None` rather than raising, like the loop recognizers. It claims a whole
+short-circuit value chain as one `CondValue` region whose target register
+receives one assignment.
+
+What luac emits (`lvm.c:577-585`, `lcode.c:condjump`/`patchtestreg`/`exp2reg`;
+the no-frills VM-instruction PDF §TESTSET agrees and CLAUDE.md makes it
+authoritative): `TESTSET A B C` followed by a `JMP` keeps `R[B]` (`R[A] :=
+R[B]`) and takes that JMP when `bool(R[B]) == C`, otherwise falls through past
+it. `C == 1` is `or` (`luaK_goiffalse` → `jumponcond(e, 1)`), `C == 0` is
+`and`. Every alternative in one chain is patched to the same destination
+register and the same join by `patchlistaux`.
+
+The chain is parsed **right-nested**, which is the semantics rather than a
+formatting preference: a taken TESTSET short-circuits the entire remainder.
+Measured against `luac_sz4` — `b or c and d` (two ungated TESTSETs, C=1 then
+C=0) and `(b or c) and d` are visibly different bytecode.
+
+Two `patchtestreg` rewrites are handled explicitly, and one is deliberately
+declined:
+
+- **the gate.** `luaK_patchtohere` patches a pending jump list with `NO_REG`,
+  which retargets it at the *next alternative* instead of the join. That is
+  `(<gate> and X) or Y`, the only shape in this corpus. `_parse_value`
+  requires the gate's target to equal `test_pc + 2` exactly — recognition, not
+  a heuristic. The mirror shape `(<gate> or X) and Y` (gated alternative with
+  `C == 0`) is refused: this project has not derived its source form.
+- **the bare-`TEST` variant.** When the destination register IS the tested
+  one, `patchtestreg` rewrites the TESTSET to `TEST B 0 C`. Accepted only once
+  the chain is *committed* by a real TESTSET or a gate, because an
+  uncommitted one is genuinely ambiguous: `x = x or 1` and
+  `if not x then x = 1 end` compile to the same bytecode, and M3's `if`
+  reading is the incumbent (the same tie-break `_match_repeat` documents).
+
+**THE guard**, `Reconstructor._refuse_statements`: an alternative's operand
+code must reconstruct to an *expression*. If it reconstructs to a statement,
+printing only the and/or expression would drop that statement silently and the
+pc-claim audit would not notice — the pcs are claimed either way. (The audit
+proves nothing was left unclaimed, never that everything claimed was printed.)
+It fires on 6 corpus protos, always because `classify_registers` calls the
+staging register a local; see "Current capability boundary".
+
 Threading (`luaK_jump`'s `jpc` concatenation, `vendor/lua-5.1/src/lcode.c`) is
 the mechanism behind most of the special cases in this module: a jump still
 pending when luac emits another JMP is concatenated onto that JMP's list and
@@ -158,14 +204,14 @@ handled, and is the entire `if targets out of range` refusal cluster (15
 unique protos).
 
 **PC-claim audit.** `build_sir` asserts `all_claimed(region) == set(fn.instrs)`
-at every exit (`sir/build.py:116-119`) and raises `StructureError` naming the
+at every exit (`sir/build.py:126-129`) and raises `StructureError` naming the
 unclaimed pcs otherwise. A region tree that silently drops instructions is the
 classic decompiler failure; this makes it impossible to return one. Corpus-wide
 coverage: `tests/test_sir_build_acyclic.py::test_acyclic_corpus_claims_every_pc`
 and `tests/test_sir_build_loops.py::test_for_corpus_claims_every_pc`.
 
 `_structure_range` also refuses to loop forever: any recognizer path that fails
-to advance `pc` raises rather than spinning (`sir/build.py:570-574`).
+to advance `pc` raises rather than spinning (`sir/build.py:769-774`).
 
 ### `pyluadec.express` — LIR to statement/expression IR
 
@@ -726,35 +772,41 @@ occurrences.
 
 | stage | unique | occurrences |
 | --- | --- | --- |
-| `build_sir` accepts the proto's own body | 1435 (97.1%) | 1901 (97.8%) |
-| whole subtree prints (proto **and** every descendant) | 1416 (95.8%) | 1882 (96.8%) |
+| `build_sir` accepts the proto's own body | 1447 (97.9%) | 1913 (98.4%) |
+| whole subtree prints (proto **and** every descendant) | 1422 (96.2%) | 1888 (97.1%) |
 | certifies `L3` | **1139 (77.1%)** | **1604 (82.5%)** |
 
-Three different numbers, three different causes. **M4 task 3 moved the top two
-rows and barely moved the third, and that is the single most important fact
-about the current state**: structure recognition is no longer the bottleneck;
-register classification is.
+Three different numbers, three different causes. **M4 tasks 3 and 4 moved the
+top two rows and did not move the third at all, and that is the single most
+important fact about the current state**: structure recognition is no longer
+the bottleneck; register classification is.
 
-1. **1478 → 1435: `build_sir` refuses 43 unique protos** (was 169 before M4
-   task 3). 36 carry a back edge it will not claim, 7 are acyclic refusals.
-   By message: 15 `if targets out of range` (in **every** case the if's
-   false-exit was threaded onto an *enclosing if's* else-skip by the same
-   `luaK_jump` jpc concat `_structure_if` already unwinds for loop headers —
-   not one is `jt == break_target`), 10 `else-join out of range`, 8
-   `unrecognized transfer TESTSET` (the `and`/`or` *value* idiom, deliberately
-   not an if-condition — `sir/build.py:16-19`; all 16 protos containing a
-   TESTSET are refused, 8 of them with that message and 8 blocked earlier),
-   10 `branch body block ... is unreachable`.
-2. **1435 → 1416: 19 more unique protos build a region tree but do not print,
-   because a descendant closure does not.** `print_chunk` inlines the whole
-   tree at each `CLOSURE` site, so one unstructurable inner function takes its
-   entire ancestor chain with it. (Was 139 protos before M4 task 3.)
-3. **1416 → 1139: 277 unique protos print but do not certify.** This is now
+1. **1478 → 1447: `build_sir` refuses 31 unique protos** (169 before M4 task
+   3, 43 after it, 31 after task 4). 26 carry a back edge it will not claim,
+   5 are acyclic refusals. By message: 11 `else-join out of range`, 10
+   `if targets out of range` (in **every** case the if's false-exit was
+   threaded onto an *enclosing if's* else-skip by the same `luaK_jump` jpc
+   concat `_structure_if` already unwinds for loop headers — not one is
+   `jt == break_target`), 10 `branch body block ... is unreachable`.
+   `unrecognized transfer TESTSET` is gone: M4 task 4's `_match_cond_value`
+   claims the `and`/`or` VALUE idiom as a `CondValue` region, which took the 8
+   protos refused with that message plus 4 more that contain no TESTSET at all
+   (`(<gate> and X) or Y` chains whose test `patchtestreg` rewrote to a bare
+   `TEST`) and were refused as `if targets out of range`. All 16 protos that
+   contain a TESTSET are still non-`L3`, but for reasons downstream of
+   structuring — see point 3 and the note after it.
+2. **1447 → 1422: 25 more unique protos build a region tree but do not print,
+   because a descendant closure does not** (or, for 6 of them, because their
+   own `CondValue` operand code reconstructs to a statement — see
+   `_refuse_statements`). `print_chunk` inlines the whole tree at each
+   `CLOSURE` site, so one unstructurable inner function takes its entire
+   ancestor chain with it. (Was 139 protos before M4 task 3.)
+3. **1422 → 1139: 283 unique protos print but do not certify.** This is now
    the dominant gap by a wide margin, and its cause is measured rather than
-   guessed: **251 of them differ from the original by extra `MOVE`
+   guessed: **253 of them differ from the original by extra `MOVE`
    instructions and by nothing else at all** (opcode-histogram delta between
-   the original and the recompiled candidate), with 13 more differing by MOVE
-   plus other additions (global-access traffic) — 264 of 277 (95%) in total.
+   the original and the recompiled candidate), with 15 more differing by MOVE
+   plus other additions (global-access traffic) — 268 of 283 (95%) in total.
    That is the signature of a register the printer materialized as a named
    `local` where luac used an expression-stack temporary: calling `f(a, b)`
    through three declared locals needs three `MOVE`s to the top of the stack
@@ -774,9 +826,20 @@ register classification is.
    and fail certification, **108 have their first code divergence at a pc
    before any loop header**. The loop work is not what is failing there.
 
-   The residual 13 are a different, much smaller problem: identical opcode
+   The residual 15 are a different, much smaller problem: identical opcode
    histograms with operand-level differences (9 are a `GETGLOBAL`'s constant
    index, i.e. constant-table ordering; 2 are `NEWTABLE` size hints).
+
+   All 16 corpus protos containing a `TESTSET` land in these two buckets or
+   are still refused by `build_sir`: after M4 task 4, 8 are refused (for
+   if/else shapes, not for TESTSET), 6 fail `_refuse_statements` because
+   `classify_registers` calls the alternative's staging register a local, and
+   2 print and diverge on `code` by extra `MOVE`s ONLY — the recompiled protos
+   carry exactly the same number of `TESTSET`s as the originals. The last two
+   clusters are the same defect as this point's main one. Measured: replacing
+   `_refuse_statements` with unconditional force-temping (which would print
+   output that module cannot justify) moves the count of certifying TESTSET
+   protos from 0 to 0.
 
    Closing the big one needs live-range analysis in `classify_registers` (one
    verdict per register *live range*, not per register number). It is the
@@ -831,8 +894,8 @@ for name, S in (("accepts own body", {h for h, p in uniq.items() if accepts(p)})
 ```
 
 ```
-accepts own body         1435/1478 (97.1%)  1901/1944 (97.8%)
-whole subtree prints     1416/1478 (95.8%)  1882/1944 (96.8%)
+accepts own body         1447/1478 (97.9%)  1913/1944 (98.4%)
+whole subtree prints     1422/1478 (96.2%)  1888/1944 (97.1%)
 ```
 
 Row 3 needs no script: it is the committed ledger. `uv run python
@@ -882,17 +945,17 @@ print(f"  of which are refused              {len(testset & refused)}")
 
 ```
 unique protos                       1478
-build_sir refusals                  43
-  of which carry a back edge        36
-  acyclic refusals                  7
+build_sir refusals                  31
+  of which carry a back edge        26
+  acyclic refusals                  5
 protos with a back edge at all      195
-  back edge but accepted (loop)     159
+  back edge but accepted (loop)     169
 protos containing TESTSET           16
-  of which are refused              16
+  of which are refused              8
 ```
 
-Point 3's opcode-histogram breakdown (251 MOVE-only + 13 MOVE-plus-other =
-264 of 277):
+Point 3's opcode-histogram breakdown (253 MOVE-only + 15 MOVE-plus-other =
+268 of 283):
 
 ```python
 # PYLUADEC_CORPUS_DIR=... uv run python -
@@ -997,22 +1060,22 @@ for k, v in firstop.most_common(6):
 ```
 
 ```
-  251  C. extra MOVEs only
-   62  A. subtree refuses structuring
-   13  B. same opcode histogram, operands differ
-   13  D. extra MOVEs + other additions
+  253  C. extra MOVEs only
+   56  A. subtree refuses structuring
+   15  B. same opcode histogram, operands differ
+   15  D. extra MOVEs + other additions
 
-  226  first differing instruction: C CALL->MOVE
+  228  first differing instruction: C CALL->MOVE
    13  first differing instruction: C LOADK->MOVE
     9  first differing instruction: B GETGLOBAL
+    7  first differing instruction: D CALL->MOVE
     6  first differing instruction: C JMP
-    5  first differing instruction: D CALL->MOVE
     4  first differing instruction: D FORPREP->MOVE
 ```
 
-The 58-residual mismatch histogram in point 3. Self-contained — run it
-verbatim like the two above. This is the only one that spends `luac_sz4`
-subprocesses (58 of them):
+The print-but-do-not-certify mismatch histogram in point 3. Self-contained —
+run it verbatim like the two above. This is the only one that spends
+`luac_sz4` subprocesses (283 of them):
 
 ```python
 # PYLUADEC_CORPUS_DIR=... uv run python -
@@ -1061,11 +1124,11 @@ for field, n in hist.most_common():
 ```
 
 ```
-print but do not certify: 58
-  code             58
-  maxstacksize     24
+print but do not certify: 283
+  code             283
+  maxstacksize     31
+  constants.len    13
   const[i]         11
-  constants.len    11
 ```
 
 Note `is_chunk_root` is matched to each proto's *actual* chunk-root status

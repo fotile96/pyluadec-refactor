@@ -349,7 +349,9 @@ scripts for this table and for the refusal breakdown below are inlined in
 claim (195 unique protos have a back edge at all; 33 of those are recognized as
 `for` loops), and 7 are acyclic refusals. All 16 unique protos containing
 `TESTSET` — the `and`/`or` *value* idiom, deliberately not treated as an
-if-condition (`sir/build.py:16-19`) — are among the refusals.
+if-condition (the note at the top of `sir/build.py`; M4 task 4 has since
+replaced that refusal with `_match_cond_value`/`CondValue`, see
+`structured-pipeline.md`) — are among the refusals.
 
 Note the second row: **139 unique protos build a region tree but still do not
 print, purely because a descendant closure does not.** `print_chunk` inlines
