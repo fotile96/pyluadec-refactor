@@ -58,7 +58,7 @@ ingest -> lift -> cfg -> sir.build -> express.reconstruct -> emit.lua
   `value_claimed`), and `all_claimed(region) -> frozenset[int]`, which folds a
   region tree into the set of pcs it claims and raises `RegionOverlap` if two
   siblings claim the same pc.
-- `sir/build.py` (1115 lines) — `build_sir(fn: LirFunction) -> Region`.
+- `sir/build.py` (1132 lines) — `build_sir(fn: LirFunction) -> Region`.
   Also exports `has_back_edge(fn)` as a cheap pre-check and `StructureError`
   as the refusal signal.
 
@@ -77,6 +77,36 @@ can. Call sites: `sir/build.py:1019`, `:1021` (if/else arms), `:1086`
 (numeric-for body), `:1109` (generic-for body), `:304` (`while <cond>` body),
 `:411` (`repeat` body), `:474` (`while true` body), `:676` (the M4 task-4
 `CondValue` range).
+
+The `:676` call site is NOT covered by the M3-era inertness measurement two
+paragraphs below (that one predates M4 task 3 and was never re-derived for
+it). It has its own, separate proof: fix round 1 of task 4 found it pinned by
+nothing (neutering it, together with `_match_cond_value`'s other guard below,
+left 128/128 tests green and the corpus census unchanged) and added
+`tests/test_express_testset.py::test_reachable_jump_into_the_middle_of_a_cond_value_chain_raises`,
+which routes a self-consistent instruction stream through the real
+`build_sir` with a hand-built, deliberately-impossible-for-luac CFG (the same
+technique task 3's own fix round established for the analogous `_match_while`
+guards) and shows: guard present -> refuses; guard neutered -> `build_sir`
+wrongly succeeds, with the `CondValue` claiming a pc reachable via a path
+that bypasses the chain's own anchor entirely. Load-bearing, with evidence,
+not merely asserted.
+
+`_match_cond_value` also carries a second check with no call-site entry above
+because it isn't a `_verify_single_entry` call: an inline
+`claimed != {p for p in fn.instrs if lo <= p < join}` equality
+(`sir/build.py:679-681`) after `_parse_value` returns. Fix round 1 also found
+this one pinned by nothing, but the two turned out to differ in kind on
+investigation: `_parse_value`'s own recursive descent and `value_claimed`
+(`sir/regions.py:208-220`) are built from the same contiguous sub-ranges by
+construction, so `_parse_value` succeeding provably implies the equality
+holds -- no adversarial bytecode can separate them today. The check only has
+teeth against a FUTURE bug that edits one of the two without the other; fault
+injection (`tests/test_express_testset.py::test_cond_value_claim_check_is_unreachable_from_real_parse_value_but_the_pc_claim_audit_still_catches_a_broken_value_claimed`)
+confirms even that case doesn't ship silently wrong output -- `build_sir`'s
+own top-level pc-claim audit (`sir/build.py:126-129`) independently catches
+it, just with a less specific message. Kept for the clearer, local diagnosis,
+not because removing it would let anything wrong through.
 
 Since M4, dominance is no longer only a post-hoc verifier: the three loop
 recognizers **define a back edge by dominance, not by pc order** (a rotated
@@ -163,6 +193,24 @@ it. `C == 1` is `or` (`luaK_goiffalse` → `jumponcond(e, 1)`), `C == 0` is
 `and`. Every alternative in one chain is patched to the same destination
 register and the same join by `patchlistaux`.
 
+**Erratum in that PDF, p. 37** (found and confirmed 2026-08-11 while
+implementing this recognizer): its own pseudocode (`TESTSET A B C   if (R(B)
+<=> C) then R(A) := R(B) else PC++`), its own `and`/`or` operator-mapping
+line ("The `and` operator uses a C of 0 (false) while `or` uses a C value of
+1 (true)"), and its own worked example (`local a,b,c; c = a and b` →
+`testset 2 0 0` / `jmp -> [4]` / `move 2 1`, where a TRUTHY `a` falls through
+to evaluate `b` and a FALSY one takes the jump with `c := a`) all agree with
+`lvm.c` and with each other. Its PROSE sentence four lines below the
+pseudocode does not: "If R(B) matches C, the next instruction is skipped,
+otherwise R(B) is assigned to R(A) and the VM continues with the next
+instruction" inverts the mapping on both halves (matching C should assign
+and jump, not skip; not matching should fall through, not assign). Discard
+that one sentence; trust the pseudocode, the operator-mapping line, the
+worked example, and `lvm.c`'s `OP_TESTSET`, all four of which already agree
+without it. Recorded here (CLAUDE.md cites this file for the PDF's authority)
+so a reader who follows the PDF citation to p. 37 and reads the prose first
+does not re-derive this.
+
 The chain is parsed **right-nested**, which is the semantics rather than a
 formatting preference: a taken TESTSET short-circuits the entire remainder.
 Measured against `luac_sz4` — `b or c and d` (two ungated TESTSETs, C=1 then
@@ -220,7 +268,7 @@ to advance `pc` raises rather than spinning (`sir/build.py:769-774`).
   `UnExpr`, `CallExpr`, `VarargExpr`, `ClosureExpr`, `TableExpr`.
 - `express/names.py` (516 lines) — `classify_registers(fn) -> RegClass`
   (`locals` / `temps` / `loop_vars`) and `name_for(reg, depth) -> "l{depth}_{reg}"`.
-- `express/reconstruct.py` (722 lines) — the `Reconstructor`: statement nodes
+- `express/reconstruct.py` (909 lines) — the `Reconstructor`: statement nodes
   (`LocalDecl`, `Assign`, `ExprStmt`, `ReturnStmt`) and targets (`LocalTarget`,
   `GlobalTarget`, `IndexTarget`, `UpvalTarget`), plus the API the printer
   drives: `stmts_for(instrs)`, `take_expr(reg)`, `cond_operand(x)`,
@@ -234,7 +282,7 @@ from leaking into the other arm or past the `end`.
 
 ### `pyluadec.emit.lua` — region tree + expression tree to Lua text
 
-`emit/lua.py` (561 lines). Public entry points:
+`emit/lua.py` (669 lines). Public entry points:
 
 - `print_chunk(proto) -> str | None` — prints a whole proto tree as a
   compilable chunk, nested closures inlined at their `CLOSURE` sites. Returns
@@ -274,7 +322,7 @@ debug:
   compile the printed source with the real `luac_sz4` (`strip=True`), load the
   result back through `ingest`, and compare field-by-field against the original
   at each ladder rung in turn.
-- `structure/structured.py` (230 lines) — `certify_proto(proto, *, is_chunk_root)`
+- `structure/structured.py` (262 lines) — `certify_proto(proto, *, is_chunk_root)`
   and `emit_certified_chunk(root) -> ChunkOutcome`.
 
 ## The certification gate is the only landing gate

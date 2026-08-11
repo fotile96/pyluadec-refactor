@@ -371,6 +371,26 @@ class Reconstructor:
         (see its "Modeling limitation"), so a register that is a temp here can
         be a local elsewhere in the same function. Kept as a loud refusal, not
         an assert; the chunk then falls back.
+
+        Scope, precisely (fix round finding F6): this guard inspects `emitted`
+        -- what `_run_isolated` captured in `self._out`, i.e. STATEMENTS. It
+        says nothing about an operand-run instruction whose staged VALUE is
+        never consumed: that instruction's effect lives only in `self.env`
+        (an entry keyed by register, never appended to `self._out`), so its pc
+        is claimed and `emitted` stays empty either way -- this guard cannot
+        see the difference and does not try to. The general property in the
+        first paragraph above ("the audit proves nothing was left unclaimed,
+        never that everything claimed was printed") is about the pc-claim
+        audit, not about this guard; this guard is one, narrower, instance of
+        acting on it, for the statement case specifically. Unreached on this
+        corpus (0 occurrences across the 12 `CondValue`-containing protos and
+        both fuzz runs backing this module) and, if it ever fires, would still
+        be caught downstream -- an unconsumed staged value that carried a real
+        side effect changes `code`/`constants` under certification, so the
+        chunk fails to certify and falls back rather than shipping silently
+        wrong output. Recorded here so a future reader does not read the
+        general framing above as a claim this specific check independently
+        makes true.
         """
         if emitted:
             raise ReconstructError(

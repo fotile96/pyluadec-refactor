@@ -222,6 +222,222 @@ def test_unprovable_testset_shape_still_refuses_loudly():
 
 
 # ---------------------------------------------------------------------------
+# The two guards inside `_match_cond_value` itself (fix round 1, Important 1).
+#
+# `_match_cond_value` carries two checks beyond `_parse_value`'s own recursive
+# descent: the dominance check (`_verify_single_entry` at `sir/build.py:676`)
+# and the claimed-range equality check (`claimed != {...}` at
+# `sir/build.py:679-681`, now parenthesized by F5 below). The review found
+# neither pinned by any fixture: neutering both together left 128/128 tests
+# green and the corpus census unchanged. What follows pins each SEPARATELY,
+# and is honest about the two turning out to be different in kind.
+# ---------------------------------------------------------------------------
+
+def test_reachable_jump_into_the_middle_of_a_cond_value_chain_raises(monkeypatch):
+    """Fix round finding (M4 task 4 review, Important 1, dominance half): the
+    `_verify_single_entry` call inside `_match_cond_value` (`sir/build.py:676`)
+    was pinned by nothing -- the reviewer neutered it (together with the
+    claim-equality check below) and got 128/128 tests passing and corpus
+    behaviour byte-for-byte unchanged (accepts 1447, CondValue protos 12).
+
+    No real (luac-compiled) TESTSET shape can exercise it: every other
+    recognizer's own exact-equality boundary conditions (an if's else-skip, a
+    break, a loop's closing JMP) already prevent a jump from landing strictly
+    INSIDE a sibling construct's interior without first tripping that OTHER
+    construct's own refusal -- confirmed by the reviewer's own attempted
+    construction (`LOADK / EQ / JMP->7 / TESTSET / JMP->8 / LOADK / MOVE /
+    RETURN`, which never reached `_match_cond_value` at all: `_structure_if`
+    claimed the range first and refused with `pc 4: unrecognized transfer
+    TESTSET`, guarded and neutered identically).
+
+    So, exactly like `test_reachable_non_dominating_block_inside_a_while_
+    body_raises` in `tests/test_sir_while.py` (M4 task 3's fix round, the
+    identical problem one level simpler): this fixture's instructions are
+    real (`mk_instr`/`lift_proto`) and drive everything `build_sir` does NOT
+    get from the CFG (opcode dispatch, `_parse_value`'s recursive descent).
+    Only the CFG/dominance machinery is hand-built (`tests/synth.py`'s
+    `mk_cfg`) and substituted via monkeypatch for `build_cfg` /
+    `immediate_dominators` / `_pc_block_map`, so `build_sir` sees a
+    deliberately-impossible-for-luac CFG layered onto a self-consistent
+    instruction stream: an ungated `r1 = r0 or k1` chain (TESTSET at pc 2,
+    JMP->5, VTail at pc 4) where pc 4 -- the second alternative's operand code,
+    i.e. exactly "the middle of what looks like an alternative" the
+    recognizer's own docstring warns about -- is ALSO reachable directly from
+    the function entry, bypassing the TESTSET at pc 2 entirely."""
+    from tests.synth import mk_instr, mk_proto, mk_cfg
+    from pyluadec.lift import lift_proto, Op
+    from pyluadec.cfg import immediate_dominators
+    from pyluadec.ingest.proto import LuaNumber
+    from pyluadec.sir.regions import CondValue
+    import struct
+    import pyluadec.sir.build as build_mod
+
+    words = [
+        mk_instr(Op.LOADK, a=0, bx=0, pc=1).word,        # pc1: r0 = k0
+        mk_instr(Op.TESTSET, a=1, b=0, c=1, pc=2).word,  # pc2: TESTSET r1<-r0 C=1 (lo)
+        mk_instr(Op.JMP, sbx=5 - 3 - 1, pc=3).word,      # pc3: JMP -> 5 (join)
+        mk_instr(Op.LOADK, a=1, bx=1, pc=4).word,        # pc4: r1 = k1 (VTail -- the intruded pc)
+        mk_instr(Op.RETURN, a=1, b=2, pc=5).word,        # pc5: return r1
+    ]
+    p = mk_proto(words, constants=(LuaNumber(1.0, struct.pack("<d", 1.0)),
+                                    LuaNumber(2.0, struct.pack("<d", 2.0))),
+                 maxstacksize=4)
+    fn = lift_proto(p)
+    assert fn.instrs[2].ri.op is Op.TESTSET and fn.instrs[2].successors == (3, 4), \
+        "sanity: TESTSET's real successors are (match-case JMP, no-match rest)"
+
+    edges = {
+        0: (1, 99),   # function entry reaches both the chain AND the intruder
+        1: (2,),      # real: pc1 -> pc2 (lo)
+        2: (3, 4),    # real: TESTSET's own two successors
+        3: (5,),      # real: the TESTSET's JMP -> join
+        4: (5,),      # real: VTail -> join
+        5: (),
+        99: (4,),     # THE INTRUDER: reaches the VTail directly, without going
+                      # through the TESTSET at pc 2 (lo) at all
+    }
+    cfg = mk_cfg(edges, entry=0)
+    idoms = immediate_dominators(cfg)
+    pc2blk = {s: s for s in edges}
+    assert idoms[4] == 0 and not build_mod.dominates(idoms, 2, 4), \
+        "sanity: pc 4 must be reachable but NOT dominated by pc 2's (lo's) block"
+
+    monkeypatch.setattr(build_mod, "build_cfg", lambda fn_: cfg)
+    monkeypatch.setattr(build_mod, "immediate_dominators", lambda cfg_: idoms)
+    monkeypatch.setattr(build_mod, "_pc_block_map", lambda cfg_: pc2blk)
+
+    with pytest.raises(StructureError, match="unrecognized transfer TESTSET"):
+        build_sir(fn)
+
+    monkeypatch.setattr(build_mod, "_verify_single_entry", lambda *a, **k: None)
+    region = build_sir(fn)             # must NOT raise once the guard is neutered
+    (cv,) = [r for r in region.body if isinstance(r, CondValue)]
+    assert 4 in cv.claimed_pcs, \
+        "neutered run did not even claim the intruded pc -- fixture stopped exercising the guard"
+
+
+def test_cond_value_claim_check_is_unreachable_from_real_parse_value_but_the_pc_claim_audit_still_catches_a_broken_value_claimed(monkeypatch):
+    """Fix round finding (M4 task 4 review, Important 1, claim-equality half):
+    the `claimed != {p for p in fn.instrs if lo <= p < join}` check at
+    `sir/build.py:679-681` was likewise pinned by nothing.
+
+    Unlike the dominance guard above, this one is not merely hard to reach --
+    it is PROVABLY unreachable from any input given the current
+    `_parse_value`/`value_claimed` pairing. `_parse_value` walks `pc`
+    monotonically from `lo`, asserts `pc == join` at its own exit (`sir/
+    build.py:625-626`), and every VAlt/VTail it returns is built from
+    CONTIGUOUS sub-ranges of exactly the pcs `_parse_value` itself consumed
+    at each step (gate+gate_jmp, inner_staging, test+test_jmp, staging, then
+    `rest` starting exactly where the previous piece ended). `value_claimed`
+    (`sir/regions.py:208-220`) mirrors that same field-by-field -- so
+    `_parse_value` succeeding implies `value_claimed(node) == {lo..join-1}`
+    by construction, not by luck. No amount of adversarial bytecode can pull
+    the two apart; only a FUTURE bug that edits one without the other could
+    (exactly what `value_claimed`'s own docstring warns against: "a new field
+    cannot be added without this function being the obvious place that has to
+    learn about it").
+
+    So the only way to make this guard decide anything is to fault-inject
+    that future bug directly, the same technique `test_without_the_guard_the_
+    statement_is_silently_dropped` already uses for `_refuse_statements`.
+    Measured here, and the answer is nuanced: even with the check DELETED,
+    `build_sir`'s own top-level pc-claim audit (`sir/build.py:126-129`) still
+    refuses -- just less precisely, with a different message. So the guard
+    buys locality and a clearer diagnosis, not the difference between wrong
+    output and no output; the pipeline's overall soundness does not depend on
+    it. That is a real reason to keep it (a clear, local diagnosis is worth
+    something) and an equally real reason not to claim more for it than that.
+    """
+    from tests.synth import mk_instr, mk_proto
+    from pyluadec.lift import lift_proto, Op
+    from pyluadec.ingest.proto import LuaNumber
+    from pyluadec.sir import regions as regions_mod
+    from pyluadec.sir.regions import CondValue
+    import struct
+    import pyluadec.sir.build as build_mod
+
+    words = [
+        mk_instr(Op.LOADK, a=0, bx=0, pc=1).word,
+        mk_instr(Op.TESTSET, a=1, b=0, c=1, pc=2).word,
+        mk_instr(Op.JMP, sbx=5 - 3 - 1, pc=3).word,
+        mk_instr(Op.LOADK, a=1, bx=1, pc=4).word,
+        mk_instr(Op.RETURN, a=1, b=2, pc=5).word,
+    ]
+    p = mk_proto(words, constants=(LuaNumber(1.0, struct.pack("<d", 1.0)),
+                                    LuaNumber(2.0, struct.pack("<d", 2.0))),
+                 maxstacksize=4)
+    fn = lift_proto(p)
+
+    # Baseline: unmodified, this fixture is an ordinary single-entry chain
+    # and build_sir accepts it (no CFG tampering needed for this half).
+    baseline = build_sir(fn)
+    (cv,) = [r for r in baseline.body if isinstance(r, CondValue)]
+    assert cv.claimed_pcs == frozenset({2, 3, 4})
+
+    real_value_claimed = regions_mod.value_claimed
+
+    def broken_value_claimed(node):
+        # Simulates the future bug the check exists for: value_claimed
+        # under-reports (drops pc 3, the TESTSET's own JMP).
+        return frozenset(pc for pc in real_value_claimed(node) if pc != 3)
+
+    monkeypatch.setattr(build_mod, "value_claimed", broken_value_claimed)
+
+    # With the guard PRESENT and value_claimed broken: the mismatch is
+    # caught locally, `_match_cond_value` returns None ("not this shape"),
+    # and dispatch falls through to the generic downstream refusal.
+    with pytest.raises(StructureError, match="unrecognized transfer TESTSET"):
+        build_sir(fn)
+
+    # Now ALSO neuter the check itself: a verbatim copy of
+    # `_match_cond_value` with exactly the `claimed != {...}` guard deleted
+    # -- the same "minus check" technique
+    # `test_reachable_jump_into_the_middle_of_a_while_header_raises` in
+    # `tests/test_sir_while.py` uses for _match_while_header's inline check.
+    def _match_cond_value_minus_claim_check(fn_, cfg, idoms, pc2blk, lo, hi):
+        li = fn_.instrs[lo]
+        op = li.ri.op
+        if op is Op.TESTSET:
+            t = lo
+        elif op in build_mod._COMPARE:
+            jmp = fn_.instrs.get(lo + 1)
+            if jmp is None or jmp.ri.op is not Op.JMP:
+                return None
+            t = jmp.successors[0] - 2
+            cand = fn_.instrs.get(t)
+            if cand is None or (cand.ri.op is not Op.TESTSET
+                                 and not (cand.ri.op is Op.TEST and cand.ri.b == 0)):
+                return None
+        else:
+            return None
+        test_jmp = fn_.instrs.get(t + 1)
+        if test_jmp is None or test_jmp.ri.op is not Op.JMP:
+            return None
+        join = test_jmp.successors[0]
+        if not (lo < join <= hi):
+            return None
+        target = fn_.instrs[t].ri.a
+        try:
+            node = build_mod._parse_value(fn_, lo, join, target, committed=False)
+            build_mod._verify_single_entry(cfg, idoms, pc2blk, lo, lo, join)
+        except (build_mod._NoValueChain, StructureError):
+            return None
+        claimed = build_mod.value_claimed(node)
+        # claim-equality check DELETED here -- this is the neutered copy.
+        return CondValue(target=target, node=node, claimed_pcs=claimed), join
+
+    monkeypatch.setattr(build_mod, "_match_cond_value",
+                        _match_cond_value_minus_claim_check)
+
+    # Neutered check + broken value_claimed: _match_cond_value now WRONGLY
+    # accepts an under-claiming CondValue (pc 3 missing from claimed_pcs) --
+    # but build_sir's own final pc-claim audit still refuses, just with a
+    # different, less specific message. No silently-wrong output escapes.
+    with pytest.raises(StructureError, match=r"pc-claim audit failed; unclaimed \[3\]"):
+        build_sir(fn)
+
+
+# ---------------------------------------------------------------------------
 # Corpus census (the diagnosis this task started from, committed as a ratchet).
 # ---------------------------------------------------------------------------
 
@@ -275,7 +491,15 @@ def test_corpus_testset_census(corpus_dir):
             assert "TESTSET" not in str(exc), str(exc)
     assert len(ts_protos) == 16
     assert sites == 53
-    assert refused == 8
+    # `refused` is a progress metric, not a fixed fact about the corpus: M4
+    # tasks 5-6 (if/else threading) are expected to close some of the 8
+    # remaining `build_sir` refusals from this set, which would DECREASE this
+    # number. An exact `==` here would go red on that improvement -- the same
+    # measured-minus-slack `>=`-in-the-good-direction protocol
+    # `tests/test_sir_while.py`'s `test_corpus_build_sir_acceptance_floor`
+    # uses for the analogous acceptance-count ratchet. A regression (this
+    # number going UP) is what must fail; a decrease must not.
+    assert refused <= 8, f"regression: {refused} TESTSET protos refused, was 8"
 
 
 # ---------------------------------------------------------------------------

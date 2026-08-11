@@ -648,7 +648,24 @@ def _match_cond_value(fn, cfg, idoms, pc2blk, lo: int, hi: int):
     carries: pc-interval arithmetic alone cannot tell that `[lo, join)` is
     entered only through `lo`. Without it, a jump from earlier code into the
     middle of what looks like an alternative would be silently swallowed into
-    a conditional expression."""
+    a conditional expression. Proven load-bearing, not merely asserted:
+    `tests/test_express_testset.py::
+    test_reachable_jump_into_the_middle_of_a_cond_value_chain_raises` neuters
+    it and shows `build_sir` wrongly succeeds, claiming a pc reachable via a
+    path that bypasses `lo` entirely (fix round 1, M4 task 4 review,
+    Important 1).
+
+    The claim-equality check below (`claimed != {...}`) is different in kind:
+    `_parse_value`'s own recursive descent and `value_claimed` are built from
+    the same contiguous sub-ranges by construction, so success of the former
+    provably implies the latter here -- no adversarial bytecode reaches this
+    check today. It only has teeth against a FUTURE edit that changes one of
+    the two without the other, and even then `build_sir`'s own top-level
+    pc-claim audit independently catches it (less precisely). See
+    `test_cond_value_claim_check_is_unreachable_from_real_parse_value_but_
+    the_pc_claim_audit_still_catches_a_broken_value_claimed` in the same
+    file. Kept for the clearer, local diagnosis -- not because anything wrong
+    would otherwise ship."""
     li = fn.instrs[lo]
     op = li.ri.op
     if op is Op.TESTSET:
@@ -659,8 +676,8 @@ def _match_cond_value(fn, cfg, idoms, pc2blk, lo: int, hi: int):
             return None
         t = jmp.successors[0] - 2
         cand = fn.instrs.get(t)
-        if cand is None or cand.ri.op is not Op.TESTSET \
-                and not (cand.ri.op is Op.TEST and cand.ri.b == 0):
+        if cand is None or (cand.ri.op is not Op.TESTSET
+                             and not (cand.ri.op is Op.TEST and cand.ri.b == 0)):
             return None
     else:
         return None
