@@ -303,6 +303,30 @@ def test_open_region_in_an_earlier_statement_does_not_poison_a_later_one(tmp_pat
     assert certify_proto(fn.proto, is_chunk_root=True).level == "L3"
 
 
+def test_local_released_by_scope_exit_is_not_inlined_as_a_temp(tmp_path):
+    """Pins the CALL/TAILCALL statement boundary's `promote_all()`.
+
+    `do local a = f() g(a) end h()` declares a genuine local that is read
+    exactly once, and whose slot is then handed to the *next* statement --
+    not by a redefinition of `a`, but by SCOPE EXIT: `end` drops `a` from
+    `nactvar`, so `GETGLOBAL h` reuses register 0. luac emits no `CLOSE`
+    for that release (it emits `CLOSE` only when the block captured an
+    upvalue), and no other boundary in the simulation sees it either.
+
+    So the only thing that stops register 0 from looking like a pop-once
+    temp is the `promote_all()` at the CALL-statement boundary (`g(a)`,
+    C==1), which empties the expression stack before the reuse. Neuter that
+    one line and register 0 flips local -> temp, which would inline it as
+    `g(f())` and hoist `GETGLOBAL g` in front of the call to `f` -- an
+    observable reordering under STRICT metamethod semantics.
+    """
+    from pyluadec.express.names import classify_registers
+    fn = _fn("do local a = f() g(a) end h()", tmp_path)
+    rc = classify_registers(fn)
+    assert 0 in rc.locals, "scope-exit-released local inlined as a temp"
+    assert 0 not in rc.temps
+
+
 def test_corpus_no_open_region_in_pre_fix_temp_window(corpus_dir):
     """Empirical invariant, not a correctness proof: across the full 229-file
     corpus, no register that the *pre-open-region-fix* classify_registers

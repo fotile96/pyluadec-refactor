@@ -66,7 +66,7 @@ def main() -> int:
     else:
         print("problem entries")
     if not problems:
-        print("(none)" if not md else "(none)")
+        print("_(none)_" if md else "(none)")
         return 0
     if md:
         print("| shash | file | proto_path | level | compile_ok |\n|---|---|---|---|---|")

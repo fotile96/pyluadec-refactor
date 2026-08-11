@@ -424,21 +424,45 @@ def _stack_discipline(fn: LirFunction, ordered: list[int],
             reg, _dpc, _n = pending.pop()
             mark(reg, False)
 
-    # NOTE on the intermediate `promote_all()` calls below (fault-injection
-    # result, M3 task 8): disabling the one after a `CALL` statement, or the
-    # one after a write to an already-known local, changes NOTHING -- not the
-    # corpus ledger (byte-identical), not any test, and not any shape
-    # constructed by hand to try to separate them. That is not an accident:
-    # the terminal `promote_all()` after the loop disqualifies every register
-    # still pending at the end, and a register that survives an intermediate
-    # boundary survives to that one too unless a later `pop_ge` reaches it --
-    # which only happens when the register is redefined, and a redefinition
-    # gives it a second def that must independently prove itself clean. They
-    # are kept because they state the model (a statement boundary empties the
-    # expression stack) at the point it applies rather than leaving it
-    # implicit, but they are documented here as defensive rather than
-    # load-bearing, so nobody reads their presence as evidence they were
-    # needed.
+    # NOTE on the two intermediate `promote_all()` calls below. They are NOT
+    # interchangeable and were separately fault-injected (M3 task 8, corrected
+    # in round 1 after the original note lumped them together and got the
+    # first one wrong).
+    #
+    # 1. The one after a `CALL`/`TAILCALL` statement is LOAD-BEARING. It is
+    #    what protects a local whose slot is released by SCOPE EXIT rather
+    #    than by a redefinition. In `do local a = f() g(a) end h()`, `end`
+    #    drops `a` from `nactvar` and `GETGLOBAL h` reuses register 0, but
+    #    nothing in the instruction stream marks the release: luac emits
+    #    `CLOSE` only when the block captured an upvalue, so the `CLOSE`
+    #    boundary does not cover this, and no other boundary sees it either.
+    #    Without this line the pending entry for `a` (one def, one read)
+    #    survives to the `pop_ge` of that reuse and is graded a pop-once temp,
+    #    which would inline it as `g(f())` -- hoisting `GETGLOBAL g` in front
+    #    of the call to `f`, an observable reordering under STRICT. Measured:
+    #    neutering it changes classification on 14 of 1944 corpus protos; the
+    #    committed ledger stays byte-identical only because all 14 are already
+    #    `L1` for unrelated reasons, which is luck, not structure. Pinned by
+    #    tests/test_express_names.py::
+    #    test_local_released_by_scope_exit_is_not_inlined_as_a_temp.
+    #
+    # 2. The one after a write to an already-known local is redundant on this
+    #    corpus -- measured separately: 0 of 1944 protos change classification
+    #    when it alone is neutered. Different reason, and a structural one:
+    #    that branch runs `pop_ge(writes[0])` first, and a *live* named local
+    #    sits below every pending temp (pending entries are only pushed at or
+    #    above freereg, which is at or above `nactvar`), so the `pop_ge` has
+    #    already drained the stack and `promote_all()` finds it empty. The
+    #    residual gap is the same one as in (1): `known_locals` is a
+    #    whole-function set, so a slot that was a named local in an exited
+    #    scope is still treated as one here. Should that ever leave a lower
+    #    pending entry behind, this `promote_all()` fires in the SAFE
+    #    direction (promote to local), which is why it is kept rather than
+    #    deleted as dead.
+    #
+    # Both are kept because they state the model (a statement boundary empties
+    # the expression stack) at the point it applies rather than leaving it
+    # implicit. Only (2) is currently documentation; (1) is behaviour.
     for pc in ordered:
         li = fn.instrs[pc]
         ri = li.ri
