@@ -1223,8 +1223,9 @@ constant `"l1_3"` to the pool and five instructions to the body (15 → 20). The
 first *reported* divergence is at pc 13, `LOADK 3 -7` against `LOADK 3 -8`:
 that is only the constant indices shifting by one because of the added
 constant. As with any `code` mismatch, the first differing word is a symptom;
-here the cause is three instructions later and is a **scoping** defect in the
-printer's naming, not an arithmetic one.
+here the cause is one instruction later — the `SETGLOBAL 3 -7` at pc 14, with
+the three added `MOVE`s following at pcs 15-17 — and is a **scoping** defect
+in the printer's naming, not an arithmetic one.
 
 **If you change the exemplar, keep the wrapper intact.** Dropping the `decls`
 line is the classic way to chase a phantom: `snr_memory.lua`'s `subprotos[0]`
