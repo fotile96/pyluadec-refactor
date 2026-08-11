@@ -18,7 +18,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from scripts.probe_behaviour import EXPECTED_DIVERGENCE
+from scripts.probe_behaviour import EXPECTED_DIVERGENCE, PROBE
 from scripts.probe_common import adjudicate_pins
 
 
@@ -66,6 +66,40 @@ end
         b"R|main|ok",
         b"",
     ]
+
+
+def test_every_write_to_a_global_or_stub_field_is_recorded_not_just_the_first():
+    """Lua 5.1 fires `__newindex` only when `rawget(t, k) == nil`, so a naive
+    implementation that `rawset`s the written value onto the real table (as
+    this probe did before the M4 task 10 round-1 fix) observes only the FIRST
+    write to each name -- measured before the fix: `X = 1 X = 2 X = 3`
+    recorded only `G|X|1`, and `sys.f = 1 sys.f = 2 sys.f = 3` recorded only
+    `S|sys.f|1`. `env`'s and the stub proxy's `__newindex` now write into a
+    shadow table (`envfields` / `pfields`) instead of the real table, keeping
+    `rawget` permanently nil so the metamethod fires every time.
+
+    (Measured over the real 229-file corpus: this fix changes 0 recorded
+    events on either side -- no corpus file reassigns a global or a stub
+    field within the reach of an invoked function -- so it is proven here,
+    syntheically, rather than by a corpus-level before/after.)
+    """
+    t = _probe_src(b"""
+X = 1
+X = 2
+X = 3
+A = 1
+function main()
+  A = A + 1
+  sys.f = 1
+  sys.f = 2
+  sys.f = 3
+end
+""")
+    lines = _lines(t)
+    assert b"G|X|1" in lines and b"G|X|2" in lines and b"G|X|3" in lines
+    assert b"G|A|2" in lines
+    assert b"S|sys.f|1" in lines and b"S|sys.f|2" in lines
+    assert b"S|sys.f|3" in lines
 
 
 def test_stub_return_policy_is_the_frozen_one():
@@ -206,13 +240,127 @@ def test_budget_is_an_event_count_not_an_instruction_count():
     assert a == b
 
 
-def test_instruction_backstop_stops_a_loop_that_records_nothing():
+def test_instruction_backstop_stops_a_loop_that_records_nothing(monkeypatch):
     """The event budget cannot see a loop that never records an event. Without
-    the backstop this run does not terminate."""
+    the backstop this run does not terminate.
+
+    Uses `PYLUADEC_PROBE_INSN_BACKSTOP` to shrink the backstop for this
+    process only, so proving the mechanism fires does not cost running the VM
+    for the production 400,000,000-instruction default. Measured this
+    session: the un-shrunk version of this test cost 0.55s -- 27% of this
+    task's entire suite cost, for one assertion. See
+    `test_production_insn_backstop_constant_is_unconditionally_400_million`
+    for the guard that keeps this override from leaking into what ships.
+    """
     from scripts.probe_behaviour import header
+    monkeypatch.setenv("PYLUADEC_PROBE_INSN_BACKSTOP", "2000000")
     t = _probe_src(b"function main() local x = 0 while true do x = x + 1 end end")
     assert header(t) == ("INSN", 3)
     assert b"R|main|INSN" in _lines(t)
+
+
+def test_production_insn_backstop_constant_is_unconditionally_400_million():
+    """Guards the override above from ever becoming the shipped default: the
+    literal in probe_behaviour.lua has to stay a bare, unconditional
+    400000000 -- the env var can only shrink it for a test process that
+    explicitly opts in via PYLUADEC_PROBE_INSN_BACKSTOP, never change what the
+    corpus gate or the CLI run with."""
+    src = PROBE.read_text(encoding="utf-8", errors="replace")
+    assert "local INSN_BACKSTOP = 400000000" in src
+
+
+def test_target_pcall_cannot_defeat_the_event_cap():
+    """A pcall inside the TARGET wrapping a stub call would otherwise catch
+    the `__PLD_CAP__` raise every loop iteration and keep looping forever --
+    measured before the fix in probe_behaviour.lua's `record()`:
+    `while true do pcall(function() tick() end) end` ran past `probe_raw`'s
+    120s timeout with the event count growing unbounded, defeating the cap
+    from the inside. `record()` now hard-exits via the real `os.exit` on
+    re-entry once `stopped` is already set, instead of re-raising into a
+    pcall that will just swallow it again."""
+    from scripts.probe_behaviour import header
+    t = _probe_src(
+        b"function main() while true do pcall(function() tick() end) end end")
+    st, n = header(t)
+    assert st == "CAP"
+    assert n == 3000
+
+
+def test_target_pcall_cannot_defeat_the_instruction_backstop(monkeypatch):
+    """The same defeat, through the instruction-hook path instead of the event
+    cap: a loop with no stub calls at all (so `record()` is never reached)
+    wrapped in a pcall that swallows the hook's `__PLD_INSN__` raise every
+    time it fires. Uses the same test-only backstop shrink as
+    test_instruction_backstop_stops_a_loop_that_records_nothing."""
+    from scripts.probe_behaviour import header
+    monkeypatch.setenv("PYLUADEC_PROBE_INSN_BACKSTOP", "2000000")
+    t = _probe_src(
+        b"function main() local x = 0 "
+        b"while true do pcall(function() x = x + 1 end) end end")
+    st, n = header(t)
+    assert st == "INSN"
+
+
+def test_invocation_gap_flags_a_function_global_never_invoked():
+    """Direct unit test of the Important-2 reach-ratchet helper, independent
+    of a live probe run. A function-valued global written but with no
+    matching `I|` event is flagged; the same name with a matching `I|` event
+    is not; a name overwritten to a non-function after being a function is
+    not (the invocation loop -- which enumerates the LAST value of each name
+    -- correctly never calls it either); and a "CAP"/"INSN" run is exempt (a
+    truncated invocation loop is expected there, not a defect)."""
+    from scripts.probe_behaviour import invocation_gap
+    gap = b"PROBE1|OK|2\nG|main|<function#1>\n"
+    assert invocation_gap(gap) == [b"main"]
+    ok = b"PROBE1|OK|3\nG|main|<function#1>\nI|main\n"
+    assert invocation_gap(ok) == []
+    overwritten = b"PROBE1|OK|2\nG|main|<function#1>\nG|main|5\n"
+    assert invocation_gap(overwritten) == []
+    truncated = b"PROBE1|CAP|1\nG|main|<function#1>\n"
+    assert invocation_gap(truncated) == []
+
+
+def test_invocation_gap_catches_what_the_old_aggregate_thresholds_cannot():
+    """Reproduces, on synthetic data shaped exactly like the real corpus'
+    measured composition, the specific blind spot this ratchet closes: a
+    collapse of the invocation loop that hits ONLY the non-`CAP` files leaves
+    `test_corpus_reach_is_not_vacuous`'s aggregate checks (`events > 300_000`,
+    `statuses["CAP"] > 100`) green, because 396,132 of 398,196 real events
+    (99.5%, measured 2026-08-12) come from the 132 `CAP` files, which such a
+    collapse would not touch (their volume is generated before or independent
+    of any single invocation completing). `invocation_gap` catches it because
+    it is a PER-FILE check, not an aggregate one.
+
+    (An actual neuter/restore against the real probe was tried first and
+    rejected as evidence: blanking `pcall(envfields[k])` to `true, nil` for
+    EVERY file collapses the real corpus to 957 total events, which the OLD
+    aggregate check already catches on its own -- measured this session, this
+    corpus' `CAP` files turn out to depend on invocation succeeding too, so a
+    blanket neuter does not isolate the scenario this test targets. This
+    synthetic construction isolates it precisely instead.)
+    """
+    from scripts.probe_behaviour import header, invocation_gap
+    # 132 synthetic CAP traces, each shaped like the real ones (3001 events),
+    # untouched by the collapse below.
+    cap_traces = [b"PROBE1|CAP|3001\n" + b"C|tick|0|\n" * 3000 for _ in range(132)]
+    # 97 synthetic OK traces: 96 normal, one with the collapse -- a
+    # function-valued global recorded but never invoked.
+    ok_traces = [b"PROBE1|OK|3\nG|main|<function#1>\nI|main\n"] * 96
+    ok_traces.append(b"PROBE1|OK|2\nG|main|<function#1>\n")
+
+    all_traces = cap_traces + ok_traces
+    total_events = sum(header(t)[1] for t in all_traces)
+    cap_count = sum(1 for t in all_traces if header(t)[0] == "CAP")
+
+    # The pre-existing aggregate non-vacuity checks: both comfortably green,
+    # exactly the failure mode Important-2 describes.
+    assert total_events > 300_000
+    assert cap_count > 100
+
+    # The per-file ratchet is what actually catches the one collapsed file.
+    gaps = [invocation_gap(t) for t in all_traces]
+    assert sum(len(g) for g in gaps) == 1
+    assert [b"main"] in gaps
 
 
 def test_probe_result_is_never_silently_decoded():
@@ -350,9 +498,42 @@ def test_corpus_reach_is_not_vacuous(behaviour_traces):
     assert events > 300_000, (
         f"only {events} events recorded across the corpus; the deep probe's "
         "reach has collapsed towards the shallow gate's 452 globals")
-    # Two-thirds of the files run into the event cap: that is the reach
-    # ceiling, recorded so a change in it is visible rather than silent.
+    # 132/229 files run into the event cap: that is the reach ceiling,
+    # recorded so a change in it is visible rather than silent. Reach is
+    # bimodal, not a uniform deepening -- see
+    # test_invocation_loop_covers_every_recorded_function_global's docstring
+    # and the runbook's result table for the split.
     assert statuses["CAP"] > 100
+
+
+def test_invocation_loop_covers_every_recorded_function_global(behaviour_traces):
+    """The reach ratchet for the bimodal-reach finding: 99%+ of recorded
+    events come from the 132 files that hit the 3000-event cap (usually
+    inside the chunk's own game loop, before the invocation loop even runs);
+    the other 97 "OK" files depend entirely on the invocation loop actually
+    calling what it found. For an "OK" run, every top-level global the chunk
+    left holding a function must have a matching `I|` invocation event.
+
+    This is the check `test_corpus_reach_is_not_vacuous`'s `assert n > 0`
+    cannot do: that assertion is satisfied by `config.lua`'s 3 bookkeeping
+    events with no invocation at all (it errors before defining anything), so
+    a bug that silently broke every `pcall(envfields[k])` in the probe's own
+    invocation loop would leave `events > 300_000` and `CAP > 100` both green
+    on all 97 "OK" files at once.
+
+    Falsified by neutering: commenting out the `pcall(envfields[k])` call in
+    `probe_behaviour.lua`'s invocation loop (replacing it with `local okf,
+    errf = true, nil` so nothing is ever actually invoked) and re-running this
+    test alone fails it immediately; restoring the call passes it again. See
+    the M4 task 10 round-1 report for the measured before/after.
+    """
+    from scripts.probe_behaviour import invocation_gap
+    gaps = {}
+    for name, (o, d) in behaviour_traces.items():
+        go, gd = invocation_gap(o), invocation_gap(d)
+        if go or gd:
+            gaps[name] = (go, gd)
+    assert gaps == {}, f"function globals recorded but never invoked: {gaps}"
 
 
 # --------------------------------------------------------------------------

@@ -79,10 +79,10 @@ def probe_raw(payload: bytes, *, is_source: bool, timeout: float = 120.0) -> byt
 
 
 def digest(trace: bytes) -> str:
-    """The comparison unit. A full trace has a median of ~50 KB and the corpus
-    total is over 10 MB, which is not something to hold 458 of in memory or to
-    print into a test failure; the trace itself is only materialised when two
-    digests differ."""
+    """The comparison unit. A full trace has a median of 33,068 B and the
+    corpus total is 13,606,371 B (measured 2026-08-12, both sides), which is
+    not something to hold 458 of in memory or to print into a test failure;
+    the trace itself is only materialised when two digests differ."""
     return hashlib.sha256(trace).hexdigest()
 
 
@@ -96,6 +96,53 @@ def header(trace: bytes) -> tuple[str, int]:
     return parts[1].decode("ascii"), int(parts[2])
 
 
+def invocation_gap(trace: bytes) -> list[bytes]:
+    """Names with a `G|<name>|<function#...>` event whose LAST write leaves
+    them holding a function, but with no matching `I|<name>` event -- i.e. a
+    global the chunk defined as a function that the invocation loop never
+    called, on a run that finished on its own (status "OK").
+
+    Only asserted for "OK" runs: a "CAP"/"INSN" run can legitimately truncate
+    the invocation loop partway through (or before it even starts, if the cap
+    is hit inside the chunk's own top-level body), so a gap there is expected,
+    not a defect.
+
+    Exists to close a real hole in `test_corpus_reach_is_not_vacuous`: that
+    test's `assert n > 0` is satisfied by `config.lua`'s 3 bookkeeping events
+    (it errors before defining anything) with no invocation at all, so a bug
+    that silently broke every `pcall(envfields[k])` in the probe's own
+    invocation loop -- e.g. always short-circuiting to the next name -- would
+    leave `events > 300_000` and `CAP > 100` both green on the 97 files that
+    finish as "OK" (the 132 "CAP" files would not obviously look different
+    either, since most of their events come from inside the chunk body, not
+    the invocation loop). Falsified by neutering the invocation loop in
+    `probe_behaviour.lua` and confirming this check (not the existing
+    non-vacuity assert) is what catches it -- see the M4 task 10 round-1
+    report.
+
+    Only the LAST write per name is consulted (not "any write"): a name
+    written as a function and then overwritten with a non-function before the
+    chunk finishes must not be flagged, since the invocation loop -- which
+    enumerates `envfields` after the chunk runs -- correctly never calls it
+    either.
+    """
+    st, _ = header(trace)
+    if st != "OK":
+        return []
+    last_is_function: dict[bytes, bool] = {}
+    invoked: set[bytes] = set()
+    for line in trace.split(b"\n")[1:]:
+        if not line:
+            continue
+        parts = line.split(b"|")
+        if parts[0] == b"G" and len(parts) >= 3:
+            last_is_function[parts[1]] = parts[2].startswith(b"<function#")
+        elif parts[0] == b"I":
+            invoked.add(parts[1])
+    written = {name for name, is_fn in last_is_function.items() if is_fn}
+    return sorted(written - invoked)
+
+
 def dump_mismatch(name: str, orig: bytes, dec: bytes, where: Path) -> Path:
     """Write both traces side by side for a diverging file and return the
     directory. Only ever called on mismatch -- the traces are large."""
@@ -105,18 +152,28 @@ def dump_mismatch(name: str, orig: bytes, dec: bytes, where: Path) -> Path:
     return where
 
 
-def first_difference(orig: bytes, dec: bytes) -> tuple[int, str, str]:
+def first_difference(orig: bytes, dec: bytes) -> tuple[int, bytes, bytes]:
     """`(line number, original line, decompiled line)` for the first differing
-    trace line, decoded with errors="replace" for display only."""
+    trace line, as raw bytes -- the same type the trace itself is in.
+
+    Pins (`EXPECTED_DIVERGENCE` below) are matched against this return value,
+    so it has to stay bytes: decoding first (as an earlier version of this
+    function did, with errors="replace") would make a pin adjudication-proof
+    against a class of bug where the divergent bytes move but happen to decode
+    to the same replacement text -- e.g. two different undecodable byte runs
+    that both become U+FFFD. Both pins currently in EXPECTED_DIVERGENCE are
+    pure ASCII, so this was never observed, but pinning bytes costs nothing and
+    closes the gap on principle. Decode only at the point of display (see
+    `dump_mismatch`, which writes the full raw traces to files, and the CLI's
+    print statements, which never print this tuple's contents directly)."""
     a = orig.split(b"\n")
     b = dec.split(b"\n")
     for i in range(max(len(a), len(b))):
         la = a[i] if i < len(a) else b"<end of trace>"
         lb = b[i] if i < len(b) else b"<end of trace>"
         if la != lb:
-            return (i + 1, la.decode("utf-8", "replace"),
-                    lb.decode("utf-8", "replace"))
-    return (0, "", "")
+            return (i + 1, la, lb)
+    return (0, b"", b"")
 
 
 # The corpus files whose original and decompiled behaviour traces do NOT agree,
@@ -128,8 +185,10 @@ def first_difference(orig: bytes, dec: bytes) -> tuple[int, str, str]:
 #
 # snr_mainmenu.lua -- the getobjname naming artifact of the fallback's __pld_R
 #   box model, the same class already pinned in probe_global_state.py. Both
-#   sides record the SAME 18 preceding events and then both fail with an
-#   arithmetic-on-nil error; only the noun differs. Instruction-level evidence:
+#   traces are 20 lines (header + 17 preceding events + the differing event +
+#   a trailing blank); both sides record the SAME 17 preceding events and then
+#   both fail with an arithmetic-on-nil error; only the noun differs.
+#   Instruction-level evidence:
 #   the original does `GETTABLE 6 6 "library"` immediately followed by
 #   `ADD 5 5 6` (luac listing pcs 117/118, and identically at 299/300,
 #   518/519, 743/744, 883/884 -- every one of them composes the same message),
@@ -149,13 +208,13 @@ def first_difference(orig: bytes, dec: bytes) -> tuple[int, str, str]:
 #   `NEWTABLE ... 0 0` and the 29 inserts grow the node array by rehash
 #   instead. Different node array, different `next()` order. This is backlog
 #   item 5 (table internal layout), now with runtime evidence.
-EXPECTED_DIVERGENCE: dict[str, tuple[str, str]] = {
+EXPECTED_DIVERGENCE: dict[str, tuple[bytes, bytes]] = {
     "snr_mainmenu.lua": (
-        "R|main|attempt to perform arithmetic on field 'library' (a nil value)",
-        "R|main|attempt to perform arithmetic on field '?' (a nil value)"),
+        b"R|main|attempt to perform arithmetic on field 'library' (a nil value)",
+        b"R|main|attempt to perform arithmetic on field '?' (a nil value)"),
     "snr_novel.lua": (
-        'C|comLayerLoadFalse|2|58,"novel/novel_3_ad.gim"',
-        'C|comLayerLoadFalse|2|64,"novel/novel_3_cb.gim"'),
+        b'C|comLayerLoadFalse|2|58,"novel/novel_3_ad.gim"',
+        b'C|comLayerLoadFalse|2|64,"novel/novel_3_cb.gim"'),
 }
 
 
@@ -179,7 +238,7 @@ def main(argv: list[str] | None = None) -> int:
     corpus = Path(os.environ["PYLUADEC_CORPUS_DIR"])
     scratch = ROOT / "build" / "behaviour-mismatch"
     total = events = 0
-    divergent: dict[str, tuple[str, str]] = {}
+    divergent: dict[str, tuple[bytes, bytes]] = {}
     for name, orig, dec in run_corpus(corpus):
         total += 1
         events += header(orig)[1]

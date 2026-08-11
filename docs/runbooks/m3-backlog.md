@@ -644,6 +644,21 @@ constants that are frequently not UTF-8.
 398,196 recorded events.** Status split on the original side: 97 `OK`,
 132 `CAP` (hit the 3000-event budget), 0 `INSN`.
 
+**Reach is bimodal, not a uniform deepening — read the split, not just the
+total.** The 132 `CAP` files contribute exactly 3001 events each (396,132 of
+398,196, i.e. 99.5%); the other 97 `OK` files contribute a median of just
+**10** events (min 3, max 292; 62 of the 97 at ≤20, 96 of the 97 at ≤100).
+"398,196 compared units" reads as a uniform three-orders-of-magnitude
+deepening over the L1.5 gate's 452 globals; for 97 of the 229 files it is
+closer to "9–10 engine calls where L1.5 saw 1 global". Measured 2026-08-12,
+same session as the table below. `test_invocation_loop_covers_every_recorded_function_global`
+(`tests/test_behaviour_probe.py`) is the cheap ratchet against this: it
+asserts that every function-valued global an `OK`-status run recorded a `G|`
+write for also has a matching `I|` invocation event, which
+`test_corpus_reach_is_not_vacuous`'s bare `assert n > 0` cannot catch (that
+assertion is satisfied by `config.lua`'s 3 bookkeeping events with no
+invocation at all).
+
 Reach against the L1.5 gate it deepens (both columns measured 2026-08-12):
 
 | measure | L1.5 global-state | L1.75 behaviour |
@@ -662,9 +677,11 @@ directionally by `adjudicate_pins` (`scripts/probe_common.py`): a changed
 message, a converged pair or a vanished file all fail the gate.
 
 - **`snr_mainmenu.lua` — the `getobjname` artifact of the `__pld_R` box model**,
-  the same class already pinned in the L1.5 gate. Both sides record the same 18
-  preceding events, then both fail with an arithmetic-on-nil error; exactly one
-  trace line differs (asserted). The original does `GETTABLE 6 6 "library"`
+  the same class already pinned in the L1.5 gate. Both traces are 20 lines
+  (header + 17 preceding events + the differing event + a trailing blank);
+  both sides record the same 17 preceding events, then both fail with an
+  arithmetic-on-nil error; exactly one trace line differs (asserted). The
+  original does `GETTABLE 6 6 "library"`
   immediately followed by `ADD 5 5 6` (luac listing pcs 117/118, and identically
   at 299/300, 518/519, 743/744, 883/884 — every one composes the same message),
   so `kname` finds a *string* constant and says `field 'library'`. Our fallback
