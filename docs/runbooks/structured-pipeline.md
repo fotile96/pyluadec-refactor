@@ -859,13 +859,22 @@ the original instruction stream actually did.
 ### Run the suite
 
 ```bash
-PYLUADEC_CORPUS_DIR=<corpus> uv run pytest              # 285 tests, ~30s
+PYLUADEC_CORPUS_DIR=<corpus> uv run pytest              # 414 tests, ~32s (measured 2026-08-11)
 PYLUADEC_CORPUS_DIR=<corpus> uv run pytest tests/test_effects_emitter_consistency.py -v
 ```
 
 Without `PYLUADEC_CORPUS_DIR` the corpus-gated tests **skip**, including the M2
 and M3 exit gates. `tests/conftest.py` prints a red banner in that case; heed
 it (see CLAUDE.md).
+
+`tests/test_generated_semantic_cases.py` (M4 task 5) only runs
+`DEFAULT_LIMIT` (3) of its `CASE_COUNT` (24) deterministic differential-
+execution cases by default, to keep the standing suite inside its speed
+budget. The full sweep is a manual command, not part of the default run:
+
+```bash
+PYLUADEC_GENERATED_CASE_LIMIT=24 uv run pytest tests/test_generated_semantic_cases.py -v   # 24 tests, ~1.7s
+```
 
 ## Ledger fields added in M3
 
