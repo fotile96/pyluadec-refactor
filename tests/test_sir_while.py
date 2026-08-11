@@ -287,6 +287,191 @@ def test_unreachable_block_inside_a_loop_body_is_still_claimed():
     assert set(dead) <= all_claimed(r)
 
 
+def test_reachable_non_dominating_block_inside_a_while_body_raises(monkeypatch):
+    """Fix round finding (M4 task 3 review, Important 1, first half): the
+    _verify_single_entry call inside _match_while that verifies the BODY
+    (build.py, right after _match_while_header succeeds) was pinned by
+    nothing -- the reviewer neutered it and got 76/76 tests passing and
+    corpus acceptance unchanged at 1435/1478. This is the direct fixture: a
+    block reachable from the function entry, but NOT through the loop
+    header, lands in the MIDDLE of the while body.
+
+    luac cannot emit this (a while body is always single-entry by
+    construction), and unlike the dead-code trick used elsewhere in this file
+    (a RETURN cutting off reachability so the "extra" pcs go UNREACHABLE,
+    which _match_while's own allow_unreachable=True explicitly permits and so
+    would NOT even exercise this guard) there is no way to construct a
+    *reachable* multi-entry body through self-consistent bytecode routed
+    end-to-end through build_sir's own dispatch: every real instruction whose
+    target lands inside [body_lo, S) must itself be recognized by SOME
+    recognizer, and every recognizer that could produce such a jump (an
+    enclosing if's false-exit, a break, a continue) necessarily bounds its
+    own recursive dispatch's `hi` to something <= that target -- too small
+    for _match_while to ever see its own closing JMP S as a candidate, so the
+    shape can never reach a genuinely-recognized While in the first place.
+    (Confirmed by construction while writing this fixture.) This is the same
+    impossibility test_verify_single_entry_catches_block_reachable_via_a_non_
+    dominating_path in test_sir_build_acyclic.py already documents for If,
+    one level simpler -- that test sidesteps it by calling
+    _verify_single_entry directly instead of through build_sir.
+
+    This fixture routes through the REAL build_sir entry point anyway: fn's
+    instructions are real (mk_instr/lift_proto) and drive everything build_sir
+    does NOT get from the CFG (opcode dispatch, straight-run accumulation,
+    _jmp_sites, _exits_only_to). Only the CFG/dominance machinery is
+    hand-built (tests/synth.py's mk_cfg) and substituted via monkeypatch for
+    build_cfg / immediate_dominators / _pc_block_map, so build_sir sees a
+    deliberately-impossible-for-luac CFG layered onto a self-consistent
+    instruction stream.
+    """
+    from tests.synth import mk_instr, mk_proto, mk_cfg
+    from pyluadec.lift import lift_proto, Op
+    from pyluadec.cfg import immediate_dominators
+    import pyluadec.sir.build as build_mod
+
+    words = [
+        mk_instr(Op.LT, a=1, b=0, c=1, pc=1).word,    # cond_pc=1, empty header
+        mk_instr(Op.JMP, sbx=6 - 2 - 1, pc=2).word,    # jmp_pc=2 -> 6 (exit)
+        mk_instr(Op.MOVE, a=0, b=1, pc=3).word,        # body_lo=3
+        mk_instr(Op.MOVE, a=0, b=1, pc=4).word,        # body interior -- the intruded pc
+        mk_instr(Op.JMP, sbx=1 - 5 - 1, pc=5).word,    # closing S=5 -> 1
+        mk_instr(Op.RETURN, a=0, b=1, pc=6).word,      # exit
+    ]
+    fn = lift_proto(mk_proto(words, maxstacksize=4))
+    edges = {
+        0: (1, 99),   # function entry reaches both the loop header and the intruder
+        1: (2, 3),    # cond_pc's real successors (jmp_pc, body_lo)
+        2: (6,),
+        3: (4, 5),    # body_lo -> body interior, AND a synthetic direct edge to
+                      # S (keeps S's own dominance clean of the tainted node
+                      # below -- S must stay a valid back-edge candidate)
+        4: (),        # body interior: a dead end in this synthetic graph
+        5: (),
+        6: (),
+        99: (4,),     # THE INTRUDER: reaches the body interior without going
+                      # through the loop header at all
+    }
+    cfg = mk_cfg(edges, entry=0)
+    idoms = immediate_dominators(cfg)
+    pc2blk = {s: s for s in edges}
+    assert idoms[4] == 0 and not build_mod.dominates(idoms, 1, 4), \
+        "sanity: pc 4 must be reachable but NOT dominated by pc 1's block"
+
+    monkeypatch.setattr(build_mod, "build_cfg", lambda fn_: cfg)
+    monkeypatch.setattr(build_mod, "immediate_dominators", lambda cfg_: idoms)
+    monkeypatch.setattr(build_mod, "_pc_block_map", lambda cfg_: pc2blk)
+
+    with pytest.raises(StructureError, match="not dominated"):
+        build_sir(fn)
+
+    monkeypatch.setattr(build_mod, "_verify_single_entry", lambda *a, **k: None)
+    region = build_sir(fn)             # must NOT raise once the guard is neutered
+    (w,) = _find(region, While)
+    assert 4 in w.body.claimed_pcs, \
+        "neutered run did not even claim the intruded pc -- fixture stopped exercising the guard"
+
+
+def test_reachable_jump_into_the_middle_of_a_while_header_raises(monkeypatch):
+    """Fix round finding (M4 task 3 review, Important 1, second half): the
+    block-uniformity check in _match_while_header (build.py -- "the header is
+    one basic block", the second of its docstring's "two proofs required
+    beyond the opcode pattern") was likewise pinned by nothing -- the
+    reviewer deleted that hunk and got the identical 76/76 passed,
+    1435/1478. Direct fixture: an outside jump lands on the SECOND
+    instruction of a two-instruction while header (the `while f() do ... end`
+    shape, non-empty header), splitting it into two CFG blocks.
+
+    Same impossibility-via-self-consistent-bytecode argument as
+    test_reachable_non_dominating_block_inside_a_while_body_raises applies
+    here (any real recognized construct whose jt lands inside the header
+    entangles the recursive dispatch the same way -- confirmed by
+    construction), so this uses the identical hand-built-CFG-through-
+    build_sir technique.
+
+    The guard itself is inline (`if any(pc2blk[p] != header_blk for p in
+    header_pcs + [cond_pc]): return None`), not a separately-callable
+    function, so "neutered" here is a verbatim copy of _match_while_header
+    with exactly that check deleted -- the same edit the reviewer applied
+    directly to source before rerunning the corpus.
+    """
+    from tests.synth import mk_instr, mk_proto, mk_cfg
+    from pyluadec.lift import lift_proto, Op
+    from pyluadec.cfg import immediate_dominators
+    import pyluadec.sir.build as build_mod
+
+    words = [
+        mk_instr(Op.MOVE, a=0, b=1, pc=1).word,       # header op1, lo=1
+        mk_instr(Op.MOVE, a=0, b=1, pc=2).word,       # header op2 -- the intruded pc
+        mk_instr(Op.LT, a=1, b=0, c=1, pc=3).word,    # cond_pc=3
+        mk_instr(Op.JMP, sbx=7 - 4 - 1, pc=4).word,   # jmp_pc=4 -> 7 (exit)
+        mk_instr(Op.MOVE, a=0, b=1, pc=5).word,       # body_lo=5
+        mk_instr(Op.JMP, sbx=1 - 6 - 1, pc=6).word,   # closing S=6 -> 1
+        mk_instr(Op.RETURN, a=0, b=1, pc=7).word,     # exit
+    ]
+    fn = lift_proto(mk_proto(words, maxstacksize=4))
+    edges = {
+        0: (1, 99),
+        1: (2, 3),    # header op1 -> header op2 (normal), AND a synthetic
+                      # direct edge to cond_pc (keeps everything downstream of
+                      # the tainted node dominated, so ONLY the header check
+                      # -- not the earlier back-edge precondition -- is what
+                      # is on trial)
+        2: (),        # dead end -- doesn't need to forward anywhere for the
+                      # uniformity check to see it as a distinct, reachable block
+        3: (4, 5),
+        4: (7,),
+        5: (6,),
+        6: (1,),
+        7: (),
+        99: (2,),     # THE INTRUDER: lands on the header's second instruction
+    }
+    cfg = mk_cfg(edges, entry=0)
+    idoms = immediate_dominators(cfg)
+    pc2blk = {s: s for s in edges}
+    assert pc2blk[2] != pc2blk[1], "sanity: intruded pc must be a distinct block"
+
+    monkeypatch.setattr(build_mod, "build_cfg", lambda fn_: cfg)
+    monkeypatch.setattr(build_mod, "immediate_dominators", lambda cfg_: idoms)
+    monkeypatch.setattr(build_mod, "_pc_block_map", lambda cfg_: pc2blk)
+
+    with pytest.raises(StructureError):
+        build_sir(fn)
+
+    def _match_while_header_minus_uniformity_check(fn_, pc2blk_, lo, S, hi, continue_target):
+        header, header_pcs = [], []
+        pc = lo
+        while pc < S:
+            li = fn_.instrs[pc]
+            if li.ri.op in build_mod._COMPARE:
+                break
+            if len(li.successors) != 1 or li.successors[0] != pc + 1 + len(li.consumed):
+                return None
+            header.append(li)
+            header_pcs.append(pc)
+            pc += 1 + len(li.consumed)
+        else:
+            return None
+        cond_pc = pc
+        jmp_pc = cond_pc + 1
+        if jmp_pc >= S or jmp_pc not in fn_.instrs or fn_.instrs[jmp_pc].ri.op is not Op.JMP:
+            return None
+        exit_pc = fn_.instrs[jmp_pc].successors[0]
+        if continue_target is not None and exit_pc == continue_target:
+            exit_pc = hi
+        if exit_pc != S + 1:
+            return None
+        # block-uniformity check (build.py's "the header is one basic block"
+        # proof) deliberately omitted -- this is the neutered copy.
+        return tuple(header), tuple(header_pcs), cond_pc, jmp_pc, exit_pc
+
+    monkeypatch.setattr(build_mod, "_match_while_header",
+                        _match_while_header_minus_uniformity_check)
+    region = build_sir(fn)             # must NOT raise once the guard is neutered
+    (w,) = _find(region, While)
+    assert [li.ri.pc for li in w.header] == [1, 2], \
+        "neutered run did not even claim the intruded pc as header -- fixture stopped exercising the guard"
+
+
 def test_nested_loop_backtracking_does_not_blow_up(monkeypatch):
     """`_match_while_true` validates each closing-JMP candidate by structuring
     the body, so nesting multiplies the work unless results are cached. This

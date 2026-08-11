@@ -165,7 +165,7 @@ coverage: `tests/test_sir_build_acyclic.py::test_acyclic_corpus_claims_every_pc`
 and `tests/test_sir_build_loops.py::test_for_corpus_claims_every_pc`.
 
 `_structure_range` also refuses to loop forever: any recognizer path that fails
-to advance `pc` raises rather than spinning (`sir/build.py:113-117`).
+to advance `pc` raises rather than spinning (`sir/build.py:570-574`).
 
 ### `pyluadec.express` — LIR to statement/expression IR
 
@@ -751,13 +751,14 @@ register classification is.
    entire ancestor chain with it. (Was 139 protos before M4 task 3.)
 3. **1416 → 1139: 277 unique protos print but do not certify.** This is now
    the dominant gap by a wide margin, and its cause is measured rather than
-   guessed: **264 of them differ from the original by extra `MOVE`
+   guessed: **251 of them differ from the original by extra `MOVE`
    instructions and by nothing else at all** (opcode-histogram delta between
-   the original and the recompiled candidate), with ~9 more differing only by
-   MOVE plus global-access traffic. That is the signature of a register the
-   printer materialized as a named `local` where luac used an expression-stack
-   temporary: calling `f(a, b)` through three declared locals needs three
-   `MOVE`s to the top of the stack that the original never had.
+   the original and the recompiled candidate), with 13 more differing by MOVE
+   plus other additions (global-access traffic) — 264 of 277 (95%) in total.
+   That is the signature of a register the printer materialized as a named
+   `local` where luac used an expression-stack temporary: calling `f(a, b)`
+   through three declared locals needs three `MOVE`s to the top of the stack
+   that the original never had.
 
    The mechanism is `RegClass`'s own documented limitation
    (`express/names.py`): classification is **whole-function and per register
@@ -890,7 +891,8 @@ protos containing TESTSET           16
   of which are refused              16
 ```
 
-Point 3's opcode-histogram breakdown (264 MOVE-only of 277):
+Point 3's opcode-histogram breakdown (251 MOVE-only + 13 MOVE-plus-other =
+264 of 277):
 
 ```python
 # PYLUADEC_CORPUS_DIR=... uv run python -
