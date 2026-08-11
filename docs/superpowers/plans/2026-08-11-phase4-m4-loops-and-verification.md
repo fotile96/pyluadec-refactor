@@ -33,8 +33,13 @@ Scripts for rows 1–3 are inlined in `docs/runbooks/structured-pipeline.md` § 
 | L3 certified | 1112/1478 unique (75.2%), 1577/1944 occurrences (81.1%) |
 | `build_sir` refusals | 169 unique: **162 with back edges**, 7 acyclic |
 | refusal messages | 139 "else-join out of range", 14 "if targets out of range", 8 "unrecognized transfer TESTSET", 8 "unreachable" |
-| back-edge kind mix (162 protos) | **144 pure unconditional-JMP-back** (`while true` family), 9 pure FORLOOP/TFORLOOP-back (for-shape gaps), 8 mixed for+while, **1 with a conditional-JMP-back** (the corpus's only `repeat`) |
-| `while <cond>` headers (cond+JMP-ending block at back-edge target) | **0** — every unrecognized corpus loop is a condition-free `while true`-style event loop |
+| ~~back-edge kind mix (162 protos)~~ | ~~**144 pure unconditional-JMP-back** (`while true` family)~~ — **RETRACTED 2026-08-11 during Task 1; see the corrected row below** |
+| ~~`while <cond>` headers~~ | ~~**0**~~ — **RETRACTED; it is the DOMINANT form** |
+| **loop KIND mix (corrected, Task 1)** | Of the 169 refused unique protos: **134 contain only `while <cond>`** (214 loop occurrences), **15 only `while true`** (17 occurrences, and all 15 are blocked by unrelated causes — 7 TESTSET, 3 dead code in an if body, 3 threaded conditional break, 1 other), 3 compare-header-exiting-inside, 17 with no JMP dominance back edge. Corroborated by two independent re-derivations; `_match_while_true` measured to fire **0 times** corpus-wide (7888 calls, 0 matches) |
+
+> **Retraction, and why it matters for how you read the rest of this plan.** The two struck rows were mine, and both were wrong the same way: I classified by the back-edge **opcode**, but a `while <cond>` also closes with a plain unconditional `JMP` — only `repeat` closes with a conditional one. The correct discriminator is the instruction at the back edge's **target**, and it must account for the lift layer's `consumed` pseudo-instructions: a compare instruction *swallows* its following `JMP`, so a naive "block ends with cond+JMP" test never matches. That single bug produced both the original census and my first attempt to re-check the implementer who caught it.
+>
+> **Consequence:** Tasks 1 and 2 buy **zero** corpus protos on their own. Nearly all of M4's loop value is in Task 3. The sub-rows 15/17 remain **unreconciled** against two later independent runs that got 23/9 by a different route (recorded honestly in `tests/test_sir_while.py`'s census note); the headline 134/214 and the zero-match result are what three parties agree on, and they are what the re-planning rests on.
 | distinct back-edge targets per refused proto | 116×1, 24×2, 7×3, 5×4, 10 protos with ≥5 (max 16) |
 | "non-natural" pc-retreating edges | 21 protos — **all rotated generic-for shapes** (edge targets the body; the dominating block is the TFORLOOP test). Lua 5.1 has no `goto`; true irreducibility cannot occur in luac output. Back edges must be defined by **dominance**, not pc order |
 | TESTSET protos | 16 unique, **all 16 also carry back edges** — loops gate TESTSET work |
@@ -387,13 +392,16 @@ Check `emit_certified_chunk`'s actual return type name/fields before writing (`C
 - [ ] **Step 4: Green + full suite + corpus checkpoint**
 
 Run: `PYLUADEC_CORPUS_DIR=... uv run pytest` then `PYLUADEC_CORPUS_DIR=... uv run python scripts/run_corpus.py`
-Expected: suite green. **The corpus run now MOVES the ledger** — record the new L3 counts in the commit message. Expected direction (measured ceiling): unique L3 rises from 1112 toward the new printability ceiling; anything *decreasing* is a hard stop (levels ratchet). `uv run python scripts/ledger_dashboard.py` for the summary. Commit the regenerated ledger in this task's commit, reviewed.
+
+**AMENDED 2026-08-11 (Task 1's measurement).** This task was originally written as "the first ledger movement". It is not: `_match_while_true` fires **zero times** corpus-wide (measured, 7888 calls / 0 matches — see the retraction note in the grounding section), so **the ledger is expected NOT to move here**, exactly as in Task 1. That is not a failure of this task — the printer arms are what Task 3's `While(cond, body)` work builds on, and the synthetic fixtures below are the only thing that can exercise them until Task 3 lands. Run `scripts/run_corpus.py` anyway and **verify** the ledger is byte-identical; if it moves, something reached the new nodes that shouldn't have, and that is a finding to report, not a win to bank. `uv run python scripts/ledger_dashboard.py` for the summary either way.
+
+Also note: this task keeps `sir/build.py`'s `_is_generic_for_back_edge` exclusion in place. Task 1's review flagged that the exclusion's only accidental guard was ledger-invariance; since the ledger stays frozen here too, that guard still holds, and the direct fixture `tests/test_sir_while.py::test_generic_for_back_edge_inside_if_stays_refused` now pins it explicitly. Do not flip it in this task.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add -A
-git commit -m "feat: M4 task 2 -- while-true reconstruction+printing, first ledger movement (L3 unique 1112 -> <measured>)"
+git commit -m "feat: M4 task 2 -- while/repeat/enditer printer arms, loop scoping (ledger unchanged by design)"
 ```
 
 ---
@@ -407,7 +415,16 @@ git commit -m "feat: M4 task 2 -- while-true reconstruction+printing, first ledg
 **Interfaces:**
 - Consumes: everything from Tasks 1–2. Produces: no new public names — this task closes recognition gaps inside `build_sir` (and, only if diagnosis demands, minimal printer touches).
 
-**Scope, by measured population:**
+**AMENDED 2026-08-11 — this task is now the milestone's main event, not its long tail.** Task 1's measurement showed `while <cond>` is the dominant corpus loop form (**134 of 169 refused unique protos, 214 loop occurrences**), not the zero my plan asserted. Tasks 1–2 buy nothing on the corpus; essentially all of M4's loop value is here. Two findings from Task 1's implementer, which the review corroborated, bind this task:
+
+**(A) The blocker is ONE shape, and it is shared.** A `while <cond>` header and a mid-body `if <cond> then break end` compile to the *same two instructions*: `<compare>; JMP → loop-exit`. Lua's comparison opcodes carry an inversion flag in `A`, so luac needs no separate jump for the then-arm. Therefore **handling "the `if`'s own jump targets `break_target`" unlocks both at once**, and it is the single highest-value change left in M4. Start here.
+
+**(B) Do NOT represent `while <cond>` as `WhileTrue` + a leading `if not c then break end`.** It is semantically correct and it will **not certify**: recompiling that source emits *three* instructions (`LT` inverted; `JMP` past the break; `JMP` to the exit) where the original has two. This task needs a real `While(cond, negated, body, closing, claimed_pcs)` region node in `sir/regions.py` plus its printer arm (`while <cond> do ... end`) — not a desugaring. Task 1's implementer deliberately declined to let `while <cond>` fall out opportunistically for exactly this reason; do not undo that judgment.
+
+Add `While` beside Task 1's `WhileTrue`/`Repeat`/`EndIter` (same frozen-dataclass + `_CHILDREN` pattern), and give `emit/lua.py` its arm. Keep `WhileTrue` — it is the genuine `while true do ... end` shape and Task 5's semantic regression uses one.
+
+**Scope, by measured population (ordered by value):**
+0. **134 protos, `while <cond>` — finding (A) above. This is the task.** Expect the ledger to move substantially here for the first time in M4; regenerate, review the diff as upgrades-only, and put the measured L3 counts in the commit message.
 1. **9 protos, pure FORLOOP/TFORLOOP back edges, still refused.** Diagnose-first: the plan does NOT assert the cause. Known exemplar: `snr_common.lua:main_24_1` — a generic-for whose entry `JMP@7→17`, body `8..16`, `TFORLOOP@17`, `JMP@18→8`, wrapped in an if whose else-join is the function end. First step is a diagnosis script printing each of the 9 protos' refusal message + instruction window; fix what the diagnosis actually shows (candidates: `_match_generic_for`'s shape window, `_structure_if`'s join handling at range end).
 2. **8 mixed for+while protos** — should mostly fall out of Tasks 1+this task's fixes; verify by census.
 3. **1 repeat proto** — recognize `Repeat`: at range position `L`, a conditional backward jump (comparison/TEST at `S-1`, `JMP@S → L`) with `L` dominating `S`. Body `[L, S-1)`, cond claims `{S-1, S}`. Printer arm already landed in Task 2.
