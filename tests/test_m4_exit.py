@@ -1,5 +1,20 @@
 """M4 exit gate, read off the committed ledger.
 
+**This gate borrows all of its force from `tests/test_ledger_ratchet.py`, and
+is decoration without it.** Everything here reads
+`corpus/ledger.jsonl` and nothing here re-derives it, so on its own it proves
+only that a committed JSON file says the right things -- it runs in
+hundredths of a second and cannot notice a decompiler that stopped working.
+What makes the composite real is the M2-era ratchet test, which re-runs the
+whole corpus pipeline and requires the committed ledger to come back
+byte-identical: a semantic bug in the structured path moves the live rate,
+the regenerated ledger stops matching, and the ratchet fails. Demonstrated at
+the M4 whole-branch review by injecting such a bug -- the live unique-`L3`
+rate fell to 78.1% (100 chunks demoted to fallback) and *this* file stayed
+green. Weakening, skipping or `xfail`ing the ratchet test therefore silently
+reduces this milestone's headline gate to a JSON schema check; treat the two
+as one gate.
+
 Same contract as `tests/test_m3_exit.py` (which this file does not touch and
 does not replace -- M3's `> 0.50` floors stay asserted, so a regression past
 them fails twice): the thresholds are milestone COMMITMENTS, not measurements.

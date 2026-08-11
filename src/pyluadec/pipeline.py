@@ -71,6 +71,19 @@ def decompile_chunk(root: Proto) -> DecompileResult:
     levels = {path: out.certs[path].level for path in protos}
     rungs = {path: out.certs[path].rung for path in protos}
     reasons = {path: out.certs[path].reason for path in protos}
+    # The confession names `structure.fallback` as the pass that emitted this
+    # proto's text, and that is only literally true when the CHUNK shipped
+    # fallback -- i.e. when the root is not `L3`. A non-`L3` proto inside a
+    # chunk whose root DID certify would be stamped with it anyway, and its
+    # text actually came from the structured printer. Measured 2026-08-12 over
+    # all 229 files: **0** such protos, because a root that certifies has had
+    # its whole subtree compared field by field, and the per-proto wrapper
+    # verdict has not yet disagreed with that on this corpus. Left unguarded
+    # rather than made conditional on `levels["main"]`, because adding the
+    # guard would change nothing today and `tests/test_m4_exit.py` asserts the
+    # row-local coupling (non-`L3` => exactly one such confession) that a
+    # conditional would break. If the measurement ever comes back non-zero,
+    # the fix is a second confession `reason`, not dropping this one.
     confessions = {
         path: ([] if levels[path] == "L3" else
                [{"pc_lo": 1, "pc_hi": len(p.code),

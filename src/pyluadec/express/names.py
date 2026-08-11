@@ -630,8 +630,13 @@ def _stack_discipline(fn: LirFunction, ordered: list[int],
             # `freereg - 1` (it asserts exactly that), so discharging a
             # temporary into the next free register finds `reg ==
             # e->u.s.info` and emits nothing at all. A copy from a lower slot
-            # upward is `discharge2reg`'s VLOCAL case: the source is below
-            # `nactvar` and must be preserved, so luac makes a copy.
+            # upward is what luac emits instead: `luaK_dischargevars` turns
+            # `VLOCAL` into `VNONRELOC` carrying the local's own slot
+            # (`lcode.c:306-309`), and `discharge2reg`'s `VNONRELOC` arm then
+            # sees `reg != e->u.s.info` and codes the `MOVE`
+            # (`lcode.c:367-371`). `discharge2reg` itself has no `VLOCAL`
+            # case; the local's slot is below `nactvar` and must be
+            # preserved, so the copy is the only option.
             #
             # Without this, `local n = p  n = string.gsub(n, ...)` inlines the
             # parameter into the call and collapses the whole chain of

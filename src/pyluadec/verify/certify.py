@@ -134,15 +134,31 @@ def certify_l3(original: Proto, structured_src: bytes) -> CertResult:
     has `len(main.locvars) == 0` and still refused, on the subproto's
     `locvars`. Ordinary `luac` output therefore fell back for nearly every
     real function, with `Mismatch(field="locvars")` as the only clue.
-    Re-measured 2026-08-12 with the repo's own `luac_sz4`, before and after:
+    Re-measured 2026-08-12 with the repo's own `luac_sz4`, before and after
+    ("before" = the candidate compiled `-s` whatever the original is; "after" =
+    this function as it stands):
 
         source                            strip  before        after
         b"x = 1\\n"                        -s     L3 rung 0     L3 rung 0
-        b"x = 1\\n"                        --     L3 rung 1     L3 rung 1
+        b"x = 1\\n"                        --     L3 rung 1     L3 rung 0
         b"local a = 1\\nprint(a)\\n"        -s     L3 rung 0     L3 rung 0
-        b"local a = 1\\nprint(a)\\n"        --     L1, locvars   L3 rung 0
+        b"local a = 1\\nprint(a)\\n"        --     L1, locvars   L3 rung 1
         b"for i = 1, 10 do print(i) end"  -s     L3 rung 0     L3 rung 0
-        b"for i = 1, 10 do print(i) end"  --     L1, locvars   L3 rung 0
+        b"for i = 1, 10 do print(i) end"  --     L1, locvars   L3 rung 1
+
+    Read the `after` column's rung this way: an unstripped one-liner that
+    declares no local reproduces `source`/`lineinfo`/`locvars` exactly and
+    lands on rung 0 (row 2, which is why it *drops* a rung -- the always-`-s`
+    candidate could never match `source`). One that declares a local lands on
+    rung 1, because the printer synthesizes the NAME (`l0_0` where the
+    original wrote `a` or `i`) and rung 1 is the rung that blanks names while
+    keeping each locvar's count and pc range. Rows 4 and 6 are that case;
+    measured, their rung-0 mismatch fields are `locvars` for row 4 and
+    `lineinfo` + `locvars` for row 6 (the `for` is printed over three lines
+    where the original was one). `docs/runbooks/structured-pipeline.md`'s
+    30-source table reports the same three unstripped rung-1 -> rung-0 rows
+    (`x = 1`, `print(1)`, `return 1`) -- all three declare nothing, and all
+    three re-measured at rung 0 here.
 
     The direction is **stricter, not "strictly stronger"** -- a distinction
     the M4 task 7 brief got wrong and measurement corrected. The stripped

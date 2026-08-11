@@ -62,16 +62,20 @@ ingest -> lift -> cfg -> sir.build -> express.reconstruct -> emit.lua
 `ingest`, `lift` and `cfg` are unchanged from M2 and are documented in
 `decompile-pipeline.md`. Everything from `sir` onward is M3.
 
+(The per-module line counts below are `wc -l`, re-measured 2026-08-12 at the
+M4 close. They are a sense of scale, not a citation — nothing depends on
+them, and they will drift; re-run `wc -l` rather than trusting them.)
+
 ### `pyluadec.sir` — CFG + dominators to a region tree
 
-- `sir/regions.py` (297 lines) — the frozen region node types:
+- `sir/regions.py` (309 lines) — the frozen region node types:
   `Straight`, `Seq`, `If`, `NumericFor`, `GenericFor`, `Break`, `Return`,
-  `Fallback`, the M4 loop nodes `WhileTrue` / `While` / `Repeat` / `EndIter`,
+  the M4 loop nodes `WhileTrue` / `While` / `Repeat` / `EndIter`,
   the M4 task-4 `CondValue` (plus its internal `VAlt` / `VTail` chain nodes and
   `value_claimed`), and `all_claimed(region) -> frozenset[int]`, which folds a
   region tree into the set of pcs it claims and raises `RegionOverlap` if two
   siblings claim the same pc.
-- `sir/build.py` (1132 lines) — `build_sir(fn: LirFunction) -> Region`.
+- `sir/build.py` (1156 lines) — `build_sir(fn: LirFunction) -> Region`.
   Also exports `has_back_edge(fn)` as a cheap pre-check and `StructureError`
   as the refusal signal.
 
@@ -250,8 +254,11 @@ code must reconstruct to an *expression*. If it reconstructs to a statement,
 printing only the and/or expression would drop that statement silently and the
 pc-claim audit would not notice — the pcs are claimed either way. (The audit
 proves nothing was left unclaimed, never that everything claimed was printed.)
-It fires on 6 corpus protos, always because `classify_registers` calls the
-staging register a local; see "Current capability boundary".
+Re-measured 2026-08-12: it fires on **1** corpus proto, because
+`classify_registers` calls that staging register a local. The ledger shows the
+same one row (`reconstruct: pc N: and/or alternative reconstructs to N
+statement(s) ...`); an earlier "6" here predates M4 task 13. See "Current
+capability boundary".
 
 Threading (`luaK_jump`'s `jpc` concatenation, `vendor/lua-5.1/src/lcode.c`) is
 the mechanism behind most of the special cases in this module: a jump still
@@ -261,8 +268,10 @@ to the ENCLOSING loop's header. `continue_target` is what lets
 `_structure_if` and `_match_while_header` rewrite such a jump back to the end
 of the range it actually belongs to. The same mechanism one level up — an
 `if`'s false-exit threaded onto an enclosing `if`'s else-skip — is **not**
-handled, and is the entire `if targets out of range` refusal cluster (15
-unique protos).
+handled, and is the entire `if targets out of range` refusal cluster
+(re-measured 2026-08-12: **10** unique protos, which is the figure "Current
+capability boundary" point 1 and its verbatim script also give; 15 was the
+pre-task-4 value).
 
 **PC-claim audit.** `build_sir` asserts `all_claimed(region) == set(fn.instrs)`
 at every exit (`sir/build.py:126-129`) and raises `StructureError` naming the
@@ -280,9 +289,9 @@ inside `_structure_range_impl`).
 - `express/expr.py` (73 lines) — the expression nodes, all frozen dataclasses:
   `ConstExpr`, `LocalExpr`, `GlobalExpr`, `UpvalExpr`, `IndexExpr`, `BinExpr`,
   `UnExpr`, `CallExpr`, `VarargExpr`, `ClosureExpr`, `TableExpr`.
-- `express/names.py` (516 lines) — `classify_registers(fn) -> RegClass`
+- `express/names.py` (836 lines) — `classify_registers(fn) -> RegClass`
   (`locals` / `temps` / `loop_vars`) and `name_for(reg, depth) -> "l{depth}_{reg}"`.
-- `express/reconstruct.py` (909 lines) — the `Reconstructor`: statement nodes
+- `express/reconstruct.py` (1143 lines) — the `Reconstructor`: statement nodes
   (`LocalDecl`, `Assign`, `ExprStmt`, `ReturnStmt`) and targets (`LocalTarget`,
   `GlobalTarget`, `IndexTarget`, `UpvalTarget`), plus the API the printer
   drives: `stmts_for(instrs)`, `take_expr(reg)`, `cond_operand(x)`,
@@ -296,7 +305,7 @@ from leaking into the other arm or past the `end`.
 
 ### `pyluadec.emit.lua` — region tree + expression tree to Lua text
 
-`emit/lua.py` (669 lines). Public entry points:
+`emit/lua.py` (707 lines). Public entry points:
 
 - `print_chunk(proto) -> str | None` — prints a whole proto tree as a
   compilable chunk, nested closures inlined at their `CLOSURE` sites. Returns
@@ -362,12 +371,13 @@ So the invariant is:
 > `luac_sz4` into a proto that matches the original under the normalization
 > ladder. No unverified structured code is ever returned.
 
-`emit_certified_chunk` asserts `certs["main"].source is not None` after the root
+`emit_certified_chunk` raises if `certs["main"].source is None` after the root
 certifies, because a root that certified `L3` must by construction have printed
 successfully. Note that the shipped bytes are *reused from* the certification,
 not re-printed: an earlier revision called `print_chunk(root)` a second time
 here, which made "shipped == certified" contingent on `print_chunk` being
-deterministic (it is — 92/92 shipped artifacts re-print identically — but that
+deterministic (it is — re-measured 2026-08-12, **212/212** shipped artifacts
+re-print identically; it was 92/92 at M3 close, before the loop work — but that
 is a property of the printer, not of this gate, and no test would have noticed
 losing it).
 
@@ -762,7 +772,11 @@ pinned by a fixture that fails when it is neutered (see
    `VNONRELOC` expression sitting at `freereg - 1` (it asserts exactly that),
    so discharging a temporary into the next free register finds
    `reg == e->u.s.info` and emits nothing at all. A copy from a lower slot
-   upward is `discharge2reg`'s `VLOCAL` case. Without it,
+   upward is what luac emits instead: `luaK_dischargevars` rewrites `VLOCAL`
+   to `VNONRELOC` carrying the local's own slot (`lcode.c:306-309`), and
+   `discharge2reg`'s `VNONRELOC` arm then finds `reg != e->u.s.info` and codes
+   the `MOVE` (`lcode.c:367-371`). `discharge2reg` has no `VLOCAL` case of its
+   own. Without this rule,
    `local n = p  n = string.gsub(n, ...)` collapses the whole reassignment
    chain into one nested expression and every `MOVE` disappears from the
    recompile (`snr_common.lua:main_77_1`).
@@ -1047,15 +1061,18 @@ An axiom-layer grading change needs the full protocol — an `lvm.c` citation
 got one this round, so neither was touched.
 
 - **`LEN` at `NO_METAMETHOD` is believed wrong: `PURE` should be
-  `READ_HEAP`.** `lvm.c:514-522` takes the table case to
-  `setnvalue(ra, cast_num(luaH_getn(hvalue(rb))))`, and `luaH_getn`
-  binary-searches the table's array part. Removing metamethods does not stop
-  that from reading the table. As graded, a `SETTABLE` could legally be
-  reordered across a `#t` and change its result. 22 `LEN` sites in the corpus,
-  so not vacuous. (`LEN` at `TRUSTING` is fine — `PURE` is precisely what
-  `TRUSTING` licenses; the defect is confined to one column. The string case,
-  `lvm.c:523-526`, really is `PURE`.) This is the one `# UNARGUED` in the
-  `NO_METAMETHOD` column.
+  `READ_HEAP`.** `OP_LEN` is `lvm.c:514-533`; its `LUA_TTABLE` arm,
+  `lvm.c:517-520`, is `setnvalue(ra, cast_num(luaH_getn(hvalue(rb))))`, and
+  `luaH_getn` binary-searches the table's array part. Removing metamethods
+  does not stop that from reading the table. As graded, a `SETTABLE` could
+  legally be reordered across a `#t` and change its result. 22 `LEN` sites in
+  the corpus, so not vacuous. (`LEN` at `TRUSTING` is fine — `PURE` is
+  precisely what `TRUSTING` licenses; the defect is confined to one column.
+  The `LUA_TSTRING` arm, `lvm.c:521-524`, really is `PURE` — it reads
+  `tsvalue(rb)->len` off an immutable string. The arm at `lvm.c:525-530` is
+  the `default:` metamethod case and is emphatically not pure; an earlier
+  draft of this bullet cited `lvm.c:523-526`, which straddles the two.) This
+  is the one `# UNARGUED` in the `NO_METAMETHOD` column.
 - **`NEWTABLE` and `CLOSURE` are graded `PURE`/`may_error=False` at all three
   modes despite being able to run arbitrary Lua.** Both end in
   `Protect(luaC_checkGC(L))` (`lvm.c:461-467`, `lvm.c:723-742`);
@@ -1088,8 +1105,9 @@ print("shipped:", "structured" if out.certs["main"].level == "L3" else "fallback
 PY
 ```
 
-Observed for `snr_memory.lua`: `1/6 protos L3; root=L1` → the fallback chunk
-ships, while one nested proto still records a genuine `L3` proof.
+Observed for `snr_memory.lua` (re-run 2026-08-12): `2/6 protos L3; root=L1` →
+the fallback chunk ships, while two nested protos (`main_0`, `main_1`) still
+record genuine `L3` proofs.
 
 ### Print the structured source for a file whose root certifies
 
@@ -1101,7 +1119,8 @@ from pyluadec.emit.lua import print_chunk
 print(print_chunk(load_file(Path(os.environ['PYLUADEC_CORPUS_DIR'])/'snr_crd_0.lua')))"
 ```
 
-92 of the 229 files have an `L3` root and therefore ship real structured source.
+212 of the 229 files have an `L3` root and therefore ship real structured source
+(92 at M3 close).
 
 ### Run the whole-corpus gate and regenerate the ledger
 
@@ -1142,16 +1161,24 @@ from pyluadec.structure.structured import certify_proto
 from pyluadec.verify.certify import carries_debug
 
 C = Path(os.environ["PYLUADEC_CORPUS_DIR"])
-p = load_file(C / "snr_memory.lua").subprotos[0]        # the proto under test
+p = load_file(C / "snr_novel.lua").subprotos[6]         # the proto under test
 cert = certify_proto(p, is_chunk_root=False)
 print("level", cert.level, "fields", sorted({m.field for m in cert.mismatches}))
 
-body = _print_proto_body(p, depth=1, upval_names=tuple(f"u{i}" for i in range(p.nups)))
-wrapper = f"return function({', '.join(f'l1_{i}' for i in range(p.numparams))})\n{body}end\n"
-# strip mode must match what certify_proto picked, or the locvar/upvalue
-# comparison you are debugging is not the one it made.
+# Rebuild EXACTLY certify_proto's wrapper. Every line below is load-bearing:
+# `decls` because a body that names u0.. compiles those as GLOBALS without it,
+# the `is_vararg & 2` arm because a vararg proto's frame differs, and the strip
+# mode because otherwise the locvar/upvalue comparison you are debugging is not
+# the one certify_proto made.
+upn = tuple(f"u{i}" for i in range(p.nups))
+body = _print_proto_body(p, depth=1, upval_names=upn)
+params = ", ".join(f"l1_{i}" for i in range(p.numparams))
+if p.is_vararg & 2:
+    params += ", ..." if params else "..."
+decls = ("local " + ", ".join(upn) + "\n") if upn else ""
 mine = load_bytes(oracle.compile_source(
-    wrapper.encode(), strip=not carries_debug(p))).subprotos[0]
+    f"{decls}return function({params})\n{body}end\n".encode(),
+    strip=not carries_debug(p))).subprotos[0]
 for i, (x, y) in enumerate(zip(p.code, mine.code)):
     if x != y:
         a, b = decode(x, pc=i + 1), decode(y, pc=i + 1)
@@ -1164,20 +1191,49 @@ print("code len", len(p.code), "vs", len(mine.code),
 PY
 ```
 
-Observed output for that proto:
+Observed output for that proto (run verbatim 2026-08-12):
 
 ```
-level L1 fields ['code']
-first divergence at pc 7:
-  original : FORPREP    4 30
-  ours     : FORPREP    4 32
-code len 39 vs 41 | maxstacksize 15 vs 15
+level L1 fields ['code', 'constants.len']
+first divergence at pc 13:
+  original : LOADK      3 -7
+  ours     : LOADK      3 -8
+code len 15 vs 20 | maxstacksize 7 vs 7
 ```
 
-Read that as: the loop body we printed is two instructions longer than the
-original, so `FORPREP`'s jump offset shifted. The divergence is *downstream* of
-pc 7 — a `FORPREP` offset mismatch is a symptom, not the cause. Cross-check
-against the raw listing with
+`snr_novel.lua:main_6` is the runbook's own cluster-D exemplar (see "Current
+capability boundary"), and the body it prints is:
+
+```lua
+for l1_3 = 0, 20, 1 do
+  layerLoad(l1_3, "")
+end
+local l1_0 = switchScreen
+local l1_1 = 0
+local l1_2 = ""
+l1_3 = 60
+l1_0(l1_1, l1_2, l1_3)
+```
+
+Read that as: register 3 is the numeric `for`'s external index variable, and
+after the loop the original reuses that register for something unrelated. We
+print both as `l1_3` — but a Lua control variable's scope ends at its `end`, so
+the trailing `l1_3 = 60` recompiles as a **`SETGLOBAL`**, which adds the
+constant `"l1_3"` to the pool and five instructions to the body (15 → 20). The
+first *reported* divergence is at pc 13, `LOADK 3 -7` against `LOADK 3 -8`:
+that is only the constant indices shifting by one because of the added
+constant. As with any `code` mismatch, the first differing word is a symptom;
+here the cause is three instructions later and is a **scoping** defect in the
+printer's naming, not an arithmetic one.
+
+**If you change the exemplar, keep the wrapper intact.** Dropping the `decls`
+line is the classic way to chase a phantom: `snr_memory.lua`'s `subprotos[0]`
+has `nups == 1` and *certifies* (`level L3 fields []`, `code len 39 vs 39`),
+but a wrapper without `local u0` compiles the body's `u0` as a global and
+reports a divergence at pc 17, `GETUPVAL 11 0` against `GETGLOBAL 11 -6`, that
+`certify_proto` never saw. Both readings measured 2026-08-12.
+
+Cross-check against the raw listing with
 
 ```bash
 # -o /dev/null: luac DUMPS unless told not to, so a bare -l run
@@ -1192,7 +1248,7 @@ the original instruction stream actually did.
 ### Run the suite
 
 ```bash
-PYLUADEC_CORPUS_DIR=<corpus> uv run pytest              # 414 tests, ~32s (measured 2026-08-11)
+PYLUADEC_CORPUS_DIR=<corpus> uv run pytest              # 512 tests, ~40s (measured 2026-08-12)
 PYLUADEC_CORPUS_DIR=<corpus> uv run pytest tests/test_effects_emitter_consistency.py -v
 ```
 
@@ -1283,12 +1339,16 @@ again the largest single residual cluster.
    `TEST`) and were refused as `if targets out of range`. All 16 protos that
    contain a TESTSET are still non-`L3`, but for reasons downstream of
    structuring — see point 3 and the note after it.
-2. **1447 → 1424: 23 more unique protos build a region tree but do not print,
-   because a descendant closure does not** (or, for 6 of them, because their
-   own `CondValue` operand code reconstructs to a statement — see
-   `_refuse_statements`). `print_chunk` inlines the whole tree at each
-   `CLOSURE` site, so one unstructurable inner function takes its entire
-   ancestor chain with it. (Was 139 protos before M4 task 3.)
+2. **1447 → 1424: 23 more unique protos build a region tree but do not print.**
+   `print_chunk` inlines the whole tree at each `CLOSURE` site, so one
+   unstructurable inner function takes its entire ancestor chain with it.
+   Re-measured 2026-08-12 by asking, for each of the 23, whether every proto
+   in its subtree prints on its own: **18 are descendant-driven and 5 are the
+   proto's own body** — 3 `register N is read again after its staged value was
+   consumed` (read-poisoning), 1 `_refuse_statements` (its own `CondValue`
+   operand code reconstructs to a statement), 1 while-header code that
+   reconstructs to a statement. (Was 139 protos before M4 task 3. An earlier
+   draft said "6 of them" were `_refuse_statements`; that is the 1.)
 3. **1424 → 1389: 35 unique protos print but do not certify.** This was the
    dominant gap until M4 task 13 (283 protos, of which 253 differed from the
    original by extra `MOVE` instructions and by nothing else at all). The
@@ -1524,7 +1584,9 @@ Row 3 needs no script: it is the committed ledger. `uv run python
 scripts/ledger_dashboard.py` prints both bases (`L3 share (unique)` and
 `L3 share (occurrences)`).
 
-The refusal breakdown in point 1 (43 / 36 / 7 / 195 / 159 / 16):
+The refusal breakdown in point 1. Self-contained; re-run 2026-08-12, and the
+eight lines it prints — 1478 / 31 / 26 / 5 / 195 / 169 / 16 / 8 — are the
+output block below verbatim:
 
 ```python
 # PYLUADEC_CORPUS_DIR=... uv run python -

@@ -233,14 +233,16 @@ def _row(ri: RawInstr):
         #      routes the non-number case to Arith(.., TM_UNM)).
         # LEN  nm: PURE -- # UNARGUED, and believed WRONG (finding, not fixed
         #      here: an axiom-layer grading change needs the full protocol).
-        #      lvm.c:514-522 takes the table case to
-        #      `setnvalue(ra, cast_num(luaH_getn(hvalue(rb))))`, and luaH_getn
-        #      (ltable.c) binary-searches the table's array part. Removing
-        #      metamethods does not make that stop reading the table, so
-        #      `#t` under NO_METAMETHOD should be READ_HEAP, not PURE: as
+        #      OP_LEN is lvm.c:514-533; its LUA_TTABLE arm, lvm.c:517-520,
+        #      is `setnvalue(ra, cast_num(luaH_getn(hvalue(rb))))`, and
+        #      luaH_getn (ltable.c) binary-searches the table's array part.
+        #      Removing metamethods does not make that stop reading the table,
+        #      so `#t` under NO_METAMETHOD should be READ_HEAP, not PURE: as
         #      graded, a SETTABLE could legally be reordered across a `#t` and
         #      change its result. 22 LEN sites in the corpus, so not vacuous.
-        #      (The string case, lvm.c:523-526, really is PURE.)
+        #      (The LUA_TSTRING arm, lvm.c:521-524, really is PURE. The arm at
+        #      lvm.c:525-530 is the `default:` metamethod case and is not --
+        #      an earlier draft cited 523-526, which straddles the two.)
         # tr = nm (entailed) for both. For LEN, PURE *is* what TRUSTING's own
         #      assumption licenses, so the defect is confined to NO_METAMETHOD.
         return F({b}), F({a}), 0, 0, ARB, P, P, True

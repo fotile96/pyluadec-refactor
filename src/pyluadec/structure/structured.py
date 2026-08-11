@@ -302,7 +302,14 @@ def emit_certified_chunk(root: Proto) -> ChunkOutcome:
     # losing. Reusing `ProtoCert.source` makes the invariant structural.
     if certs["main"].level == "L3":
         certified = certs["main"].source
-        assert certified is not None      # main certified L3 => print succeeded
+        if certified is None:
+            # main certified L3 => print succeeded, so this is unreachable.
+            # A `raise`, not an `assert`: this is the last check between a
+            # certification verdict and what gets written to
+            # `build/decompiled/`, and `python -O` deletes asserts.
+            raise RuntimeError(
+                "root certified L3 with no source -- certification and "
+                "printing disagree")
         return ChunkOutcome(source=certified, certs=certs)
     return ChunkOutcome(source=emit_chunk(root), certs=certs)
 

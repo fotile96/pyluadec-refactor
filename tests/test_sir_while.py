@@ -188,9 +188,11 @@ def test_while_cond_is_recognized():
 
     Task 1's census also said "corpus has zero of these"; that was the
     measurement its own report retracted. `while <cond>` is the dominant
-    corpus loop form: `_match_while` fires 195 times across 126 unique protos
-    (measured 2026-08-11), and `_match_while_true`/`_match_repeat` fire zero
-    times."""
+    corpus loop form: `_match_while` fires 195 times across 126 unique protos,
+    against `_match_while_true`'s 6 across 6 and `_match_repeat`'s 0
+    (re-measured 2026-08-12; see the census note on
+    `test_corpus_build_sir_acceptance_floor`, which also records that
+    `_match_while_true` read 0 when first measured on 2026-08-11)."""
     fn, r = _sir(b"local i = 1 while i < 10 do i = i + 1 end")
     (w,) = _find(r, While)
     # 1 LOADK  2 LT  3 JMP->6  4 ADD  5 JMP->2  6 RETURN
@@ -544,11 +546,24 @@ def test_corpus_build_sir_acceptance_floor(corpus_dir):
     #     _match_while_true    0 matches
     #     _match_repeat        0 matches
     # (+1 more from removing the generic-for back-edge exclusion:
-    #  snr_common.lua:main_24_1.) So the corpus's loops are `while <cond>`
-    # and nothing else -- task 1's corrected census (134 protos) stands as
-    # the right order of magnitude; the exact figure this recognizer reaches
+    #  snr_common.lua:main_24_1.) Task 1's corrected census (134 protos) stands
+    # as the right order of magnitude; the exact figure this recognizer reaches
     # is 126, and the difference is protos that contain a `while <cond>` AND
     # something else still refused.
+    #
+    # THE "and nothing else" CONCLUSION NO LONGER HOLDS, and was left in the
+    # present tense after it stopped being true. Re-measured 2026-08-12 at
+    # HEAD, by the same instrumentation:
+    #     _match_while       195 matches across 126 unique protos   (unchanged)
+    #     _match_while_true    6 matches across   6 unique protos   (was 0)
+    #     _match_repeat        0 matches across   0 unique protos   (unchanged)
+    # And in the region trees `build_sir` actually publishes for the 1447
+    # accepted protos: 193 `While` nodes across 125 protos, 6 `WhileTrue`
+    # across 6, 0 `Repeat`. (The recognizer-call counts are higher than the
+    # published-node counts because a match inside a proto whose outer
+    # structuring later refuses is still a call that returned non-None.)
+    # So: the corpus's loops are overwhelmingly `while <cond>`, it has a
+    # handful of genuine `while true`, and it has no `repeat` at all.
     #
     # The 43 that remained after task 3 (re-measured 2026-08-11 at the start
     # of task 4; the task-4 prompt quoted 10 TESTSET / 8 else-join, which does

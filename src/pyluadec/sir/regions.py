@@ -67,7 +67,7 @@ class WhileTrue:
 class While:
     """`while <cond> do <body> end` -- a loop with a real header condition.
 
-    luac's layout (`lparser.c:whilestat`, lines 1000-1017, plus `lcode.c`'s
+    luac's layout (`lparser.c:whilestat`, lines 991-1007, plus `lcode.c`'s
     jump patching), with `L` the pc the closing back edge targets:
 
         L .. C-1:   header instructions   -- the condition's operand code
@@ -235,14 +235,17 @@ class Return:
     claimed_pcs: frozenset[int]
 
 
-@dataclass(frozen=True)
-class Fallback:
-    instrs: tuple[LirInstr, ...]
-    claimed_pcs: frozenset[int]
-
-
+# There is deliberately NO `Fallback` region node. The M3 plan sketched one
+# ("whole-function downgrade marker, claims every pc"), it was defined here
+# through M4, and it was never constructed by anything -- `build_sir` raises
+# `StructureError` instead and the *caller* decides, which is the discipline
+# CLAUDE.md states as "识别或 StructureError，绝不猜结构". A node that no
+# recognizer builds and that `emit.lua` would raise on is exactly the kind of
+# dead layer the predecessor accumulated; removed at the M4 whole-branch
+# review. Degrading to the M2 state machine is `structure.fallback`'s job, at
+# chunk granularity, and it does not go through the region tree at all.
 Region = (Straight | Seq | If | NumericFor | GenericFor | WhileTrue | While
-          | Repeat | EndIter | Break | Return | CondValue | Fallback)
+          | Repeat | EndIter | Break | Return | CondValue)
 
 _CHILDREN = {
     Seq: lambda r: r.body,

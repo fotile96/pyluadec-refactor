@@ -1174,6 +1174,33 @@ measured-minus-10, so a 9-proto recognizer regression is green; and
 gaps are deliberate (a floor set at the measurement is a tripwire), and both
 are closed by the same instrument: a baseline diff.
 
+**Fold in with it: the ledger's grouping key is unsound, though vacuously so
+today.** `scripts/run_corpus.py` groups rows by `structural_hash` **alone**
+and resolves any disagreement by taking the higher level, on the stated
+assumption that one structural hash implies one verdict.
+`structure.structured._memo_key` deliberately does *not* make that assumption
+— it keys the certification memo on `(structural_hash, _debug_fingerprint)`,
+because `structural_hash` drops `source`, `linedefined`/`lastlinedefined`,
+`lineinfo`, `locvars` and upvalue names, every one of which `compare_protos`
+checks. Measured 2026-08-12: **16 of the 1478 shash groups carry more than one
+debug fingerprint**, and **0** groups disagree on level or rung, so the
+max-by-rank is vacuous on this corpus and nothing asserts that it is. Two
+things to do here, and they belong to this item because both move the
+committed artifact: split the ledger key (or add a test pinning "no shash
+group disagrees"), and do it in the same change that lands the baseline diff,
+so the one-off ledger movement is reviewed as a key change rather than as a
+regression. The stale claim in `run_corpus.py`'s comment was corrected at the
+M4 whole-branch review; the behaviour was deliberately left alone.
+
+**Also fold in: `tests/test_generated_semantic_cases.py` runs 1/8 of itself by
+default.** `DEFAULT_LIMIT = 3` against `CASE_COUNT = 24`, so the standing suite
+exercises 3 of the 24 ported differential-execution cases; the full sweep is a
+manual `PYLUADEC_GENERATED_CASE_LIMIT=24` run. That was a deliberate
+suite-budget choice (the full sweep costs ~1.7s, but the budget was tight at
+the time), and it means the ported fuzz harness is mostly *available* rather
+than *standing*. A ratchet CI is the natural place to run the full 24 —
+nightly or on the baseline-diff job — rather than in the per-commit suite.
+
 ## 3. The 89 non-`L3` unique protos, and the 17 files still on fallback
 
 The structuring residual after M4. `structured-pipeline.md` → "Current

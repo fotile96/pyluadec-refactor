@@ -86,13 +86,25 @@ def main() -> int:
                 e = by_hash[h]
                 e.occurrences.append(occ)
                 e.compile_ok = e.compile_ok and compile_ok
-                # Levels only ever go up. Two occurrences of one structural
-                # hash certify identically by construction (certification is a
-                # function of the proto's own subtree, and structural_hash
-                # covers code/constants/subprotos), so a disagreement means a
-                # bug rather than a real difference -- take the higher level
-                # and keep its evidence rather than silently keeping whichever
-                # file happened to be walked first.
+                # Levels only ever go up: take the higher level and keep its
+                # evidence rather than silently keeping whichever file happened
+                # to be walked first.
+                #
+                # KNOWN GAP, deliberately not closed here (M5 item; see
+                # `docs/runbooks/m3-backlog.md`). The ledger groups by
+                # `structural_hash` ALONE, and that key is NOT sufficient to
+                # imply an equal verdict -- `structure.structured._memo_key`
+                # keys its certification memo on `(structural_hash,
+                # _debug_fingerprint)` precisely because `structural_hash`
+                # drops `source`/`linedefined`/`lineinfo`/`locvars`/upvalue
+                # names, all of which `compare_protos` checks (see
+                # `_debug_fingerprint`'s docstring). So "a disagreement means a
+                # bug" is an assumption this script makes and does not check.
+                # Measured 2026-08-12: 16 of the 1478 shash groups contain more
+                # than one debug fingerprint, and 0 groups disagree on level or
+                # rung -- the max-by-rank above is vacuous today. Splitting the
+                # ledger key would MOVE `corpus/ledger.jsonl`, so it is an M5
+                # change made together with the ratchet CI, not a drive-by one.
                 if _RANK[level] > _RANK[e.level]:
                     e.level = level
                     e.l3_level = res.rungs[path]

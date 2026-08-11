@@ -324,8 +324,9 @@ def test_cond_value_claim_check_is_unreachable_from_real_parse_value_but_the_pc_
     Unlike the dominance guard above, this one is not merely hard to reach --
     it is PROVABLY unreachable from any input given the current
     `_parse_value`/`value_claimed` pairing. `_parse_value` walks `pc`
-    monotonically from `lo`, asserts `pc == join` at its own exit (`sir/
-    build.py:625-626`), and every VAlt/VTail it returns is built from
+    monotonically from `lo`, and refuses with `_NoValueChain` unless
+    `pc == join` at its own exit (`sir.build._parse_value`'s closing
+    `if pc != join`), and every VAlt/VTail it returns is built from
     CONTIGUOUS sub-ranges of exactly the pcs `_parse_value` itself consumed
     at each step (gate+gate_jmp, inner_staging, test+test_jmp, staging, then
     `rest` starting exactly where the previous piece ended).

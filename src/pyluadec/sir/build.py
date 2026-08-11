@@ -437,8 +437,17 @@ def _match_while_true(fn, cfg, idoms, pc2blk, sites, memo, lo: int, hi: int):
     least one JMP targeting `lo` must live in a block that `lo`'s block
     dominates. pc-retreating edges alone do not qualify -- a rotated
     generic-for re-enters its body with a pc-retreating JMP whose target does
-    not dominate it (measured on the corpus 2026-08-11: 21 protos), and
-    treating those as while headers would mis-claim them.
+    not dominate it, and treating those as while headers would mis-claim them.
+
+    Re-measured on the corpus 2026-08-12: **7** unique protos carry such an
+    edge, 7 occurrences, 7 edges -- the same 7 on every basis, one edge each.
+    They are exactly the 7 protos that contain a `TFORLOOP` at all (7/1478
+    unique, 7/1944 occurrences), which also caps the figure: the corpus cannot
+    hold more rotated generic-for shapes than it holds generic `for`s. An
+    earlier "21 protos" here was a planner's figure that survived M4 task 1
+    and every later review; it does not reproduce on any basis. The
+    qualitative point is unaffected -- it holds at 7, and the counterexample
+    set is exactly the shape the argument names.
 
     The *closing* JMP is then the LAST site in range, which is not required
     to be a dominance back edge itself: luac emits a closing JMP for a `while
@@ -491,6 +500,29 @@ def _match_while_true(fn, cfg, idoms, pc2blk, sites, memo, lo: int, hi: int):
         return (WhileTrue(body=body, closing=fn.instrs[S],
                           claimed_pcs=frozenset({S})), S + 1)
     return None
+
+
+def _match_loop(fn, cfg, idoms, pc2blk, sites, memo, pc: int, hi: int,
+                break_target, continue_target):
+    """The loop-recognizer cascade: `(region, next pc)` for the first shape
+    that proves out at `pc`, else None.
+
+    The ORDER is load-bearing and is argued in `_match_while`'s docstring:
+    `_match_while` before `_match_while_true` because both can match a
+    `while <cond>` and only the former's shape certifies. It lives in one
+    function because `_structure_range_impl` needs it at two different
+    dispatch points -- once at the top of the range loop and once mid-`Straight`
+    when a JMP site turns out to be a header -- and the two were previously
+    verbatim copies with nothing asserting they agreed. A cascade duplicated
+    at two call sites is precisely the shape that grew into the predecessor's
+    `structure.py`; one definition means "which recognizer wins" cannot be
+    answered differently depending on where structuring happened to be.
+    """
+    return (_match_while(fn, cfg, idoms, pc2blk, sites, memo, pc, hi,
+                         break_target, continue_target)
+            or _match_while_true(fn, cfg, idoms, pc2blk, sites, memo, pc, hi)
+            or _match_repeat(fn, cfg, idoms, pc2blk, sites, memo, pc, hi,
+                             break_target, continue_target))
 
 
 class _NoValueChain(Exception):
@@ -801,13 +833,8 @@ def _structure_range_impl(fn, cfg, idoms, pc2blk, lo: int, hi: int,
         op = li.ri.op
         # Tried first: a loop header is a header whatever instruction sits on
         # it, and the for recognizers below key off the instruction alone.
-        # `_match_while` before `_match_while_true` -- see its docstring: both
-        # can match a `while <cond>`, but only the former's shape certifies.
-        w = _match_while(fn, cfg, idoms, pc2blk, sites, memo, pc, hi,
-                         break_target, continue_target) \
-            or _match_while_true(fn, cfg, idoms, pc2blk, sites, memo, pc, hi) \
-            or _match_repeat(fn, cfg, idoms, pc2blk, sites, memo, pc, hi,
-                             break_target, continue_target)
+        w = _match_loop(fn, cfg, idoms, pc2blk, sites, memo, pc, hi,
+                        break_target, continue_target)
         if w is not None:
             parts.append(w[0])
             pc = w[1]
@@ -893,11 +920,8 @@ def _structure_range_impl(fn, cfg, idoms, pc2blk, lo: int, hi: int,
                 # precondition that then fails to recognize would split one
                 # Straight into two for shapes M3 already accepts, changing
                 # their printed output for no reason.
-                w = _match_while(fn, cfg, idoms, pc2blk, sites, memo, pc, hi,
-                                 break_target, continue_target) \
-                    or _match_while_true(fn, cfg, idoms, pc2blk, sites, memo, pc, hi) \
-                    or _match_repeat(fn, cfg, idoms, pc2blk, sites, memo, pc, hi,
-                                     break_target, continue_target)
+                w = _match_loop(fn, cfg, idoms, pc2blk, sites, memo, pc, hi,
+                                break_target, continue_target)
                 if w is not None:
                     pending = w
                     break
