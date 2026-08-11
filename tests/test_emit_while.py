@@ -26,10 +26,17 @@ from pyluadec.sir.regions import (EndIter, Repeat, Return, Seq, Straight,
 from pyluadec.structure.structured import certify_proto, emit_certified_chunk
 from pyluadec.verify.normalize import NORMALIZATIONS, compare_protos
 
-# Every one of these certifies L3 (measured 2026-08-11, M4 task 2). The list
-# deliberately avoids `local NAME = <call>` -- see
-# `test_local_bound_to_a_call_is_a_pre_existing_gap_not_a_loop_defect` for why
-# two of the brief's proposed fixtures were replaced rather than chased.
+# Every one of these certifies L3 (measured 2026-08-11, M4 tasks 2 and 13).
+#
+# The last two entries were originally excluded. `local NAME = <call>` did not
+# certify -- with or without a loop -- because `classify_registers` was
+# whole-function and per register *number*, so the register luac writes twice
+# (GETGLOBAL then CALL in place) came out a local and the printer emitted
+# `local l0_0 = h` + `l0_0 = l0_0()`, four instructions where the original had
+# two. M4 task 13 made classification per definition and both shapes certify,
+# so they are folded back in here as the test that used to record the gap
+# instructed (`test_local_bound_to_a_call_is_a_pre_existing_gap_not_a_loop_defect`,
+# deleted with its EXPIRY condition met).
 CASES = [
     b"while true do print(1) end",                                    # unreachable RETURN after loop
     b"while true do end",                                             # empty body
@@ -49,6 +56,9 @@ CASES = [
     # loop -- the direct regression for close_scope; see
     # test_body_local_register_reused_after_the_loop.
     b"while true do local x = 1 f(x, x) if b then break end end local y = 2 f(y, y)",
+    # Formerly the two "pre-existing gap" shapes; see the note above.
+    b"local a = f() print(a)",                                        # no loop at all
+    b"while true do local x = h() if x then break end end",
 ]
 
 
@@ -92,27 +102,6 @@ def test_body_local_register_reused_after_the_loop():
     assert text.count("local ") == 2
     assert text.index("local ") > text.index("while true do")
     assert text.rindex("local ") > text.index("\nend")
-
-
-def test_local_bound_to_a_call_is_a_pre_existing_gap_not_a_loop_defect():
-    """Two of the brief's proposed while fixtures used `local x = h()`. That
-    shape does not certify -- and it does not certify **without any loop
-    either**, so replacing those fixtures (rather than "fixing" the loop
-    printer) is the right call and this test is the evidence.
-
-    `classify_registers` calls the register local (luac writes it twice:
-    GETGLOBAL then CALL in place), so the printer emits `local l0_0 = h` +
-    `l0_0 = l0_0()`, which recompiles to four instructions instead of two.
-
-    EXPIRY: this is an M3 reconstruction gap, not an M4 loop one. If a later
-    task teaches `express` to fold a call into its own destination local,
-    these become L3 and this test should be deleted (and the two shapes folded
-    back into CASES), not patched.
-    """
-    for src in (b"local a = f() print(a)",                      # no loop at all
-                b"while true do local x = h() if x then break end end"):
-        p = load_bytes(compile_source(src, strip=True))
-        assert certify_proto(p, is_chunk_root=True).level == "L1", src
 
 
 # ---- EndIter -------------------------------------------------------------

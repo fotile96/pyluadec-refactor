@@ -526,10 +526,12 @@ def test_operand_code_that_needs_a_statement_is_refused():
     Unreachable from real luac output on this corpus -- `lparser.c` reads an
     `and`/`or` operand with `fs->freereg == fs->nactvar`, so every register it
     writes is above every live local and classifies temp -- but
-    `classify_registers` is a whole-function, per-register-NUMBER analysis
-    (see its docstring's "Modeling limitation"), so a register that is a temp
-    here can be a local elsewhere in the same function. Demoting register 3
-    (the `LOADK 1` that feeds the TESTSET) is exactly that situation."""
+    `classify_registers` is a heuristic reconstruction of luac's input, and
+    since M4 task 13 it answers per DEFINITION rather than per register
+    number -- which removed the whole-function bleed this used to describe,
+    but not the possibility of a definition its barriers grade local.
+    Demoting register 3 (the `LOADK 1` that feeds the TESTSET) is exactly
+    that situation."""
     fn = lift_proto(_proto(_GUARDED))
     region = build_sir(fn)
     with pytest.raises(ReconstructError, match="statement"):

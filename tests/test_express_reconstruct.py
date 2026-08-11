@@ -294,7 +294,7 @@ def test_self_dynamic_key_falls_back_to_index_expr_without_duplicating_receiver(
     rc = RegClass(locals=frozenset({9}), temps=frozenset({5, 6, 7}), loop_vars=frozenset())
     rec = Reconstructor(fn, rc, depth=0)
     receiver_call = CallExpr(GlobalExpr(b"getObj"), ())
-    rec.env[5] = receiver_call            # reg 5 already holds a staged (effectful) call
+    rec.stage(5, receiver_call)            # reg 5 already holds a staged (effectful) call
 
     stmts = rec.stmts_for((instrs[1],))
 
@@ -461,7 +461,7 @@ def test_self_receiver_not_duplicated_across_stmts_for_boundary():
     rc = RegClass(locals=frozenset(), temps=frozenset({5, 6, 7}), loop_vars=frozenset())
     rec = Reconstructor(fn, rc, depth=0)
     receiver_call = CallExpr(GlobalExpr(b"getObj"), ())
-    rec.env[5] = receiver_call                              # reg 5 already holds a staged call
+    rec.stage(5, receiver_call)                              # reg 5 already holds a staged call
 
     chunk1 = rec.stmts_for((instrs[1],))                     # SELF only
     chunk2 = rec.stmts_for((instrs[2],))                     # its CALL, a separate stmts_for() call
@@ -702,39 +702,53 @@ def test_table_close_is_not_deferred_past_a_reassignment_of_an_array_item_regist
     this file's own (narrower, straight-run-only) Step-1 validation -- see
     task-6-report.md.
 
-    `local t = {10, 20, 30} local sum = 0 for i, v in ipairs(t) do end`:
-    luac stages the array literal's three values into registers 1/2/3, then
-    (once they're fully consumed by SETLIST) reuses those exact same
-    register numbers for `sum` and the generic-for's iterator staging. The
-    NEWTABLE/SETLIST fold captures the array items as `LocalExpr(1/2/3)` --
-    live references, not value snapshots -- and `_close_table_ctx` doesn't
-    actually run (emitting the table's own `local t = {...}` statement)
-    until something later reads register 0 (here, the generic-for's `MOVE
-    3, 0` staging `t` as ipairs' argument). Before this fix, `_dispatch`'s
-    close-triggering check only watched the table's OWN register (0) for
-    reads/writes; it never noticed that registers 1 and 2 got reassigned
-    (to `sum`'s `0` and to `ipairs`) in between -- so by the time the
-    deferred TableExpr's LocalDecl was finally emitted, the array items
-    printed as `l0_1, l0_2, l0_3` referred to `sum`/`ipairs`/`t`'s CURRENT
-    values, not the `10, 20, 30` that were live when the array was actually
-    built. Pinned at the Stmt-order level here (not just "compiles", which
-    this bug doesn't break -- it silently changes the table's contents):
-    the table's LocalDecl must appear BEFORE any statement that reassigns
-    register 1 or 2.
+    `_close_table_ctx` does not run -- emitting the table's own
+    `local t = {...}` statement -- until something later touches the
+    constructor's register, so a NEWTABLE/SETLIST fold that captured its array
+    items as `LocalExpr` (live references, not value snapshots) is exposed to
+    anything that reassigns those item registers in the meantime. Before this
+    fix, `_dispatch`'s close-triggering check only watched the table's OWN
+    register; it never noticed an item register being reassigned, so by the
+    time the deferred TableExpr's LocalDecl was finally emitted its items
+    printed the item registers' CURRENT values rather than the ones that were
+    live when the array was built. Pinned at the Stmt-order level here (not
+    just "compiles", which this bug does not break -- it silently changes the
+    table's contents): the table's LocalDecl must appear BEFORE any statement
+    that redefines register 0 or 1.
+
+    Source: `a` and `b` are read twice each after the constructor, which keeps
+    them declared locals, so `{a, b}` folds to `LocalExpr(0)`/`LocalExpr(1)`
+    and `a = 99` is exactly the reassignment the hazard set exists to catch.
+    The original source was `local t = {10, 20, 30} local sum = 0 for i, v in
+    ipairs(t) do end`, whose items were `LocalExpr` only because
+    classification was whole-function and per register *number*; M4 task 13
+    made it per definition, those staging writes are now temps, and the items
+    fold to bare `ConstExpr`s with no live reference left to hazard.
+    Re-derived rather than patched.
     """
     from pyluadec.express.reconstruct import Assign, LocalDecl
     from pyluadec.express.expr import TableExpr
     p, fn = _proto_and_fn(
-        "local t = {10, 20, 30}\nlocal sum = 0\nfor i, v in ipairs(t) do end\n",
+        "local a = f()\nlocal b = g()\nlocal t = {a, b}\n"
+        "h(a) h(b)\na = 99\nh(t[1]) h(a)\n",
         tmp_path)
     rc, stmts = _all_stmts(fn)
     table_idx = next(i for i, s in enumerate(stmts)
                      if isinstance(s, LocalDecl) and s.exprs
                      and isinstance(s.exprs[0], TableExpr))
-    reassign_idx = next(i for i, s in enumerate(stmts)
-                        if isinstance(s, Assign)
-                        and any(t.reg in (1, 2) for t in s.targets
-                                if hasattr(t, "reg")))
+    # "Redefines register 0 or 1" covers BOTH statement forms: an `Assign`
+    # back to an already-declared slot and a fresh `LocalDecl` of it. The
+    # hazard is the same either way -- the deferred TableExpr holds live
+    # `LocalExpr` references, so ANY statement that gives those registers a
+    # new value before the table's own decl is emitted rewrites its contents.
+    def _redefines(st) -> bool:
+        if isinstance(st, LocalDecl):
+            return any(r in (0, 1) for r in st.regs)
+        return isinstance(st, Assign) and any(
+            t.reg in (0, 1) for t in st.targets if hasattr(t, "reg"))
+
+    reassign_idx = next(i for i, s in enumerate(stmts) if _redefines(s)
+                        and i > table_idx)
     assert table_idx < reassign_idx, (
         "table LocalDecl must be emitted before any reassignment of the "
         f"registers its array items reference; stmts={stmts}")

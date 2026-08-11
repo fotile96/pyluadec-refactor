@@ -166,25 +166,55 @@ def test_while_header_that_would_need_a_statement_is_refused_not_dropped():
     because the pcs are claimed either way. This is Task 1's lesson applied to
     the new node: ask what it could silently drop, then guard it.
 
-    Reproduced here rather than argued: in `while a do for i = 1, 10 do f(i)
-    end end`, register 0 is both the condition's slot and the numeric for's
-    control base, so `classify_registers` -- a whole-function, per-register-
-    NUMBER analysis -- calls it a local, and the header's `GETGLOBAL a`
-    reconstructs to `local l0_0 = a`. `build_sir` accepts the shape; the
-    printer refuses it, so the chunk falls back rather than shipping a loop
-    whose condition is never evaluated.
+    Pinned by INJECTION, not by a compiled source. Until M4 task 13 this shape
+    came straight out of `luac`: in `while a do for i = 1, 10 do f(i) end end`
+    register 0 is both the condition's slot and the numeric for's control
+    base, and `classify_registers` -- whole-function and per register *number*
+    -- called it a local, so the header's `GETGLOBAL a` reconstructed to
+    `local l0_0 = a`. Per-definition classification now gets that register
+    right and the fixture certifies `L3` (it is in `test_emit_while.py`'s
+    `CASES`), so there is no longer a known luac output that reaches the
+    guard. Rather than delete the guard or leave it unpinned, the register
+    classification is demoted by hand here: `rc` with every definition of
+    register 0 forced local is exactly what the printer would receive if a
+    future classification change regressed, and the guard must still refuse
+    rather than drop the header's statement. (Register 0 is still in
+    `rc.locals` for real -- it is a control slot the `while` condition also
+    uses, so no single whole-register verdict fits it; what changed is that
+    its individual definitions now carry their own.)
+
+    Neuter check (M4 task 13): deleting the `if stmts:` raise in
+    `emit.lua`'s `While` arm makes this test fail with the header statement
+    silently gone from the output.
     """
-    from pyluadec.express.names import classify_registers
+    from pyluadec.emit.lua import print_function
+    from pyluadec.express.names import RegClass, classify_registers
     src = b"while a do for i = 1, 10 do f(i) end end"
     fn, r = _sir(src)                            # structure is fine...
     assert _find(r, While) and _find(r, NumericFor)
-    assert 0 in classify_registers(fn).locals    # ...but reg 0 is a local
-    p = load_bytes(compile_source(src, strip=True))
+    rc = classify_registers(fn)
+    header_pc = min(pc for pc in fn.instrs if 0 in fn.instrs[pc].effects.writes)
+    assert (header_pc, 0) in rc.temp_defs, \
+        "fixture no longer stages the while condition"
+    demoted = RegClass(locals=rc.locals | {0}, temps=rc.temps - {0},
+                       loop_vars=rc.loop_vars,
+                       temp_defs=frozenset((pc, g) for pc, g in rc.temp_defs
+                                           if g != 0))
     with pytest.raises(StructureError, match="while header"):
-        from pyluadec.emit.lua import _print_proto_body
-        _print_proto_body(p, depth=0, upval_names=())
-    assert print_chunk(p) is None                # -> chunk falls back
-    assert certify_proto(p, is_chunk_root=True).level == "L1"
+        print_function(fn, r, demoted, depth=0)
+
+
+def test_while_header_fixture_certifies_with_real_classification():
+    """The other half of the test above: with the classification
+    `classify_registers` actually produces, the same source certifies `L3`.
+    Without this, demoting register 0 by hand could be pinning a guard against
+    a shape the pipeline can no longer produce OR against one it produces all
+    the time, and the two are not distinguishable from the injection alone.
+    """
+    src = b"while a do for i = 1, 10 do f(i) end end"
+    p = load_bytes(compile_source(src, strip=True))
+    assert print_chunk(p) is not None
+    assert certify_proto(p, is_chunk_root=True).level == "L3"
 
 
 # -------------------------------------------------------------------- repeat

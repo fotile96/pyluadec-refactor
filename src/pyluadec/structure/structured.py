@@ -18,12 +18,15 @@ is a proof record, the artifact is a conservative file-level choice.
 
 The ceiling that per-proto certification actually has is **printability**:
 1170/1478 unique proto shapes (79.16%) and 1636/1944 occurrences (84.16%)
-print their whole subtree, and only a proto that prints can certify. Achieved
-at M3 exit: 1112/1478 (75.2%) unique, 1577/1944 (81.12%) occurrences. (An
-earlier planning estimate of "~80.3%" was quoted here as the ceiling; it
-reproduces on neither basis, and 81.12% occurrences already exceeds it. The
-measurement scripts for all three rows are inlined in
-`docs/runbooks/structured-pipeline.md`, "Current capability boundary".)
+print their whole subtree, and only a proto that prints can certify -- those
+were the M3-exit figures; after M4 tasks 1-4 and 13 printability is 1424/1478
+(96.3%) and 1890/1944 (97.2%). Achieved at M3 exit: 1112/1478 (75.2%) unique,
+1577/1944 (81.12%) occurrences; achieved after M4 task 13: 1389/1478 (94.0%)
+unique, 1855/1944 (95.4%) occurrences. (An earlier planning estimate of
+"~80.3%" was quoted here as the ceiling; it reproduces on neither basis, and
+even 81.12% occurrences already exceeded it. The measurement scripts for all
+three rows are inlined in `docs/runbooks/structured-pipeline.md`, "Current
+capability boundary".)
 
 ## Memoization key (round-1 fix, superseded in M3 task 8)
 

@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import bisect
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from pyluadec.cfg import build_cfg
 from pyluadec.lift.lift import LirFunction
-from pyluadec.lift.opcodes import Op
+from pyluadec.lift.opcodes import OP_SPECS, ArgMode, Fmt, Op, isk
 
 from pyluadec.lift import LUA_KEYWORDS
 
@@ -19,10 +20,16 @@ from pyluadec.lift import LUA_KEYWORDS
 # to be wrong.
 _MAX_STAGING_STEPS = 64
 
+# lopcodes.h's `MAXINDEXRK` (`BITRK - 1`, BITRK = 1 << (SIZE_B - 1) = 256):
+# the largest constant-table index that fits in an RK operand. Past it
+# `luaK_exp2RK` gives up and loads the constant into a register instead.
+_MAXINDEXRK = 255
+
 
 @dataclass(frozen=True)
 class RegClass:
-    """Local/temp/loop-var partition of a function's registers.
+    """Local/temp/loop-var partition of a function's registers, plus the
+    per-*definition* refinement of it (`temp_defs`).
 
     Only covers registers with at least one *tracked* (explicit, present in
     an instruction's .writes/.reads) def or use. A register classify_registers
@@ -33,23 +40,45 @@ class RegClass:
     range(fn.proto.maxstacksize) is classified; a register missing from all
     three sets is untracked, not "temp by default."
 
-    Modeling limitation: this is a whole-function, per-register-*number*
-    classification, but luac freely reuses a register number for different,
-    lexically disjoint local variables across a single function (once one
-    variable's scope ends, the compiler is free to hand that slot to the
-    next). classify_registers has no live-range/scope model, so any verdict
-    it gives is necessarily an approximation for a register reused this way
-    -- the `controls` handling below is the one place this project has
-    already had to correct for it (a register can be a control slot for one
-    loop's range and an ordinary, multiply-written/read local everywhere
-    else in the same function; see that code's comment). A future
-    consumer that needs more precision than "one verdict per register
-    number for the whole function" will need actual live-range analysis,
-    which this module does not attempt (M3 task-5 round-2 review).
+    ## `locals`/`temps`/`loop_vars` are per register *number*
+
+    These three fields are a whole-function partition, and luac freely reuses
+    one register number for a declared local in one statement and an
+    expression-stack temporary in the next (`lparser.c` resets
+    `fs->freereg = fs->nactvar` at the end of every statement, so every slot
+    at or above `nactvar` is scratch that is reallocated statement by
+    statement). A register used both ways therefore cannot have a single
+    honest verdict here, and `temps` keeps its strict meaning: **every**
+    tracked definition of the register is a temporary. A register with even
+    one surviving definition lands in `locals`.
+
+    ## `temp_defs` is the (register, definition-pc) refinement
+
+    `temp_defs` holds one entry per *definition site* -- `(pc, reg)` is
+    present iff the value written into `reg` at `pc` is consumed before the
+    end of the statement that produced it, i.e. iff luac's parser had no
+    active local variable in that slot at that pc. This is the field a
+    reconstructor should consult when it is deciding what to do with one
+    particular write; `temps` answers only the much weaker whole-function
+    question. The two agree by construction: for every `r in temps`, every
+    tracked def `(pc, r)` is in `temp_defs`, so a consumer that switches from
+    one to the other can only ever *gain* staging decisions, never lose one.
+
+    Registers whose verdict does not come from the freereg simulation at all
+    (parameters, closure-captured slots, `for` loop variables, and loop
+    control slots) are handled exactly as before and contribute all-or-nothing
+    to `temp_defs`: a control triple that passes `_control_lifetime_ok`
+    contributes every one of its defs, everything else in that group
+    contributes none.
     """
     locals: frozenset[int]
     temps: frozenset[int]
     loop_vars: frozenset[int]    # declared by the for statement itself, never by LocalDecl
+    # (pc, reg) for every definition that is a luac expression-stack
+    # temporary. Defaults to empty so the many hand-built RegClass fixtures
+    # that predate this field keep constructing; a caller that wants the
+    # per-def refinement must go through classify_registers.
+    temp_defs: frozenset[tuple[int, int]] = frozenset()
 
 
 def name_for(reg: int, depth: int) -> str:
@@ -259,16 +288,54 @@ def classify_registers(fn: LirFunction) -> RegClass:
             for pc in extra)
 
     regs = set(defs) | set(uses) | controls | loop_vars
+    # Control slots whose ENTIRE def/use census belongs to the loop headers
+    # that claim them -- i.e. the ones that really are dedicated loop control
+    # registers rather than a number some `for` header happens to share with
+    # an unrelated ordinary local.
+    dedicated_controls = {r for r in sorted(controls) if _control_lifetime_ok(r)}
     # Registers already known to be real, named locals before the freereg
     # simulation runs: parameters, closure-captured slots, and every slot a
-    # `for` header owns (its control triple and its visible loop variables).
-    # Seeding them keeps the simulation from ever pushing them as temps and
-    # from treating a read of one as a read of a consumed temp.
-    stack_temps = _stack_discipline(
+    # `for` header genuinely owns (a dedicated control triple and the visible
+    # loop variables). Seeding them keeps the simulation from ever pushing
+    # them as temps and from treating a read of one as a read of a consumed
+    # temp.
+    #
+    # A control slot that FAILED `_control_lifetime_ok` is deliberately not
+    # seeded: it is, by that verdict, an ordinary register that a loop header
+    # merely reuses, and seeding it would leave the simulation with no opinion
+    # at all about its non-control definitions. The whole-register verdict for
+    # it is `local` either way (the `controls` branch below), but its
+    # individual definitions still deserve the per-def answer -- without this,
+    # every register number a `for` header touches loses `temp_defs` entirely,
+    # and a `for k, v in pairs(x)` at the end of a function retroactively
+    # materializes every temporary that ever used slots a/a+1/a+2 anywhere
+    # before it (measured: this alone is the difference between `local l0_1 =
+    # g  l0_1 = l0_1()` and `local l0_1 = g()` in
+    # `if x then local y = g() print(y) end for k, v in pairs(x) do ... end`).
+    stack_temps, stack_temp_defs = _stack_discipline(
         fn, ordered,
-        controls | loop_vars | set(range(fn.proto.numparams)) | set(fn.captured_regs))
+        dedicated_controls | loop_vars | set(range(fn.proto.numparams))
+        | set(fn.captured_regs),
+        frozenset(controls),
+        frozenset(loop_vars) | frozenset(range(fn.proto.numparams))
+        | frozenset(fn.captured_regs),
+        _block_floor)
     locals_: set[int] = set()
     temps: set[int] = set()
+    # (pc, reg) definitions the reconstructor may stage instead of
+    # materializing. Assembled alongside the per-register verdict below so the
+    # two can never disagree about a register the whole-function rules decide:
+    # each branch either contributes every one of the register's defs or none
+    # of them, and only the `stack_temps` branch -- the freereg simulation,
+    # the one rule that is genuinely per definition -- contributes a subset.
+    temp_defs: set[tuple[int, int]] = set()
+    sim_by_reg: dict[int, set[tuple[int, int]]] = {}
+    for key in stack_temp_defs:
+        sim_by_reg.setdefault(key[1], set()).add(key)
+
+    def all_defs_of(r: int) -> set[tuple[int, int]]:
+        return {(pc, r) for pc in defs.get(r, ())}
+
     for r in sorted(regs):
         # Parameters and closure-captured registers are named, live locals by
         # construction -- checked FIRST so that the `controls` branch cannot
@@ -281,26 +348,43 @@ def classify_registers(fn: LirFunction) -> RegClass:
         if r < fn.proto.numparams or r in fn.captured_regs:
             locals_.add(r); continue
         if r in controls:
-            if _control_lifetime_ok(r):
+            if r in dedicated_controls:
                 temps.add(r)
+                temp_defs |= all_defs_of(r)
             else:
                 locals_.add(r)
+                temp_defs |= sim_by_reg.get(r, frozenset())
             continue
         if r in loop_vars:
             locals_.add(r); continue
+        temp_defs |= sim_by_reg.get(r, frozenset())
         if r in stack_temps:
             temps.add(r)
         else:
             locals_.add(r)
     return RegClass(locals=frozenset(locals_), temps=frozenset(temps),
-                    loop_vars=frozenset(loop_vars))
+                    loop_vars=frozenset(loop_vars),
+                    temp_defs=frozenset(temp_defs))
 
 
 def _stack_discipline(fn: LirFunction, ordered: list[int],
-                      known_locals: set[int]) -> set[int]:
-    """Registers whose EVERY definition in this function is a luac *temporary*
-    -- a value pushed onto the expression stack and consumed again before the
-    statement that produced it ends.
+                      known_locals: set[int],
+                      loop_control_regs: frozenset[int],
+                      named_locals: frozenset[int],
+                      block_floor: Callable[[int], int],
+                      ) -> tuple[set[int], set[tuple[int, int]]]:
+    """`(registers whose EVERY definition is a luac temporary, the set of
+    individual `(def_pc, reg)` definitions that are temporaries)`.
+
+    A luac *temporary* is a value pushed onto the expression stack and
+    consumed again before the statement that produced it ends.
+
+    The second element is the primary result and the first is a projection of
+    it (`{r : r has defs and all of them are in the second}` plus the
+    read-poisoning below); they are returned together because both are cheap
+    once the walk has run and `RegClass` publishes both. The per-definition
+    answer is the one that matches luac: `nactvar` changes from statement to
+    statement, so "is slot r a local?" is only ever well posed at a given pc.
 
     ## Why this replaced the old def/use "adjacent pure" barrier (M3 task 8)
 
@@ -348,7 +432,10 @@ def _stack_discipline(fn: LirFunction, ordered: list[int],
         own results;
       * a statement-ending instruction (`CALL` with C==1, `TAILCALL`,
         `RETURN`, `SETGLOBAL`, `SETUPVAL`, `FORPREP`, `CLOSE`, or a write
-        whose target is already a known local) pops its own operands and then
+        whose target is already a NAMED local -- `named_locals`: a parameter,
+        a closure-captured slot, or a `for` variable, but deliberately NOT a
+        `for` header's control triple, whose staging writes happen mid
+        -statement) pops its own operands and then
         **promotes everything still pending to local** -- surviving a
         statement boundary is the definition of being one;
       * `SETTABLE`/`SETLIST` pop only above the table's own register, leaving
@@ -376,10 +463,27 @@ def _stack_discipline(fn: LirFunction, ordered: list[int],
     ever ships unless L3 certification recompiles the printed source back to
     the original proto under the normalization ladder, which is strictly
     stronger than any register model. Being wrong here costs certifications,
-    never correctness. The verdict is aggregated per register number and any
-    single disqualified definition makes the whole register local, so the
-    approximation is one-directional: a register the simulation is unsure
-    about becomes a named local, which is always printable.
+    never correctness.
+
+    The approximation is still one-directional -- every way of being unsure
+    (a definition read zero times or twice, a definition still pending at a
+    statement boundary, a read of a slot with nothing pending, a jump the
+    pc-linear walk models as fall-through) drives the answer toward "local",
+    which is always printable. What changed in M4 task 13 is only the
+    *granularity* of that answer: an unsure definition no longer drags every
+    other definition of the same register number down with it.
+
+    ## Why the per-definition answer cannot clobber a live local
+
+    `lparser.c:1333` asserts `fs->freereg >= fs->nactvar` at every statement
+    boundary, and `luaK_reserveregs`/`freereg` maintain it in between: an
+    expression-stack temporary is always allocated at or above every active
+    local. So a slot can only be handed to a temporary once the local that
+    held it has left scope, and a definition graded a temporary here is never
+    a write over a still-live named local. (The walk has no control-flow
+    model, so this is a statement about real luac output, which is what the
+    reconstruction is for; anything else drifts local, per the paragraph
+    above.)
 
     Known approximation (unchanged in kind from the previous rule): the walk
     is pc-linear and has no control-flow model, so a `pending` value that is
@@ -388,24 +492,202 @@ def _stack_discipline(fn: LirFunction, ordered: list[int],
     branches at statement boundaries, this is exact for real luac output; on
     anything else it drifts toward "promote to local", the safe direction.
     """
-    pending: list[list[int]] = []           # [reg, def_pc, n_reads], reg-ascending
+    # Back-edge spans `[target, source]`. luac's loops are natural and its
+    def _same_block(d: int, r: int) -> bool:
+        """True iff pcs `d` and `r` are in the same CFG basic block.
+
+        THE control-flow requirement on per-definition staging. A staged
+        definition is not a statement: it lives only in the reconstructor's
+        register environment until a read pops and inlines it. Two things
+        follow, and both are violated as soon as a definition and its read
+        sit in different blocks.
+
+        1. **Execution counts must match.** `local i = 0 repeat i = i + 1
+           until i > 5` defines register 0 once, before the loop, and reads it
+           once per iteration; the pc-linear walk below sees exactly one read
+           and would call the definition a temporary, which moves `local i =
+           0` inside the body and the program never terminates. The mirror
+           image -- defined in a loop body, read after the loop -- hoists work
+           out of the loop.
+
+        2. **Block scoping must match.** `emit.lua` wraps every `if` arm and
+           loop body in `Reconstructor.open_scope`/`close_scope`, which
+           snapshot and restore the staging environment because a `local`
+           declared in one Lua block is out of scope in the next. A value
+           staged *before* a block and popped *inside* it has its pop rolled
+           back at `close_scope`, so whatever the block computed from it
+           disappears from the output entirely; a value staged *inside* a
+           block and read *after* it is discarded by the same rollback.
+           Measured on `snr_common.lua:main_77_20`, whose `if` arm's whole
+           `CONCAT` statement vanished from the printed function (M4 task 13;
+           the certification gate refused the result so it never shipped, but
+           the proto dropped from `L3` to `L1`, which is what caught it).
+
+        A basic block cannot span a branch or a jump target, so "same block"
+        gives both properties at once. It is stronger than either strictly
+        needs -- `f(a or b)` stages the callee in one block and calls it in
+        another -- and the cost of that strictness was measured rather than
+        assumed (see the task report). Erring here materializes a named local,
+        which is always printable; the alternative is silently dropped code.
+        """
+        return block_floor(d) == block_floor(r)
+    def _pending_def(r: int):
+        for ent in pending:
+            if ent[0] == r:
+                return ent
+        return None
+
+    def _renders_as_literal(ent) -> bool:
+        """True iff this pending definition would be printed as a Lua *literal*
+        (`1`, `"s"`, `nil`, `true`) rather than as a name or a compound
+        expression -- i.e. iff `lparser.c` would read it back as VKNUM/VK/
+        VNIL/VTRUE/VFALSE.
+        """
+        d = fn.instrs[ent[1]].ri
+        if d.op is Op.LOADK:
+            k = fn.proto.constants[d.bx]
+            if isinstance(k, bytes):
+                # A string literal is already `VK` when `luaK_exp2RK` sees it
+                # (`codestring` interns it through `luaK_stringK` at parse
+                # time), so lcode.c's test is on its INDEX: `e->u.s.info <=
+                # MAXINDEXRK`. Past that luac loads it into a register
+                # instead, which is exactly the shape being examined, so the
+                # barrier must not fire. The original proto's index is a proxy
+                # for the recompiled one -- being wrong costs a certification,
+                # never correctness.
+                return d.bx <= _MAXINDEXRK
+            # A NUMBER literal is `VKNUM` -- it is not in the constant table
+            # yet, and `luaK_exp2RK` tests `fs->nk <= MAXINDEXRK`, the table's
+            # SIZE, before interning it. So in a proto with more than 256
+            # constants luac loads even `1` into a register, however low the
+            # index it would eventually get. Using the index here instead
+            # (which this did in its first draft) declared that `LOADK` a
+            # local and cost `snr_crd_15.lua:main_1` and
+            # `snr_crd_20.lua:main_1` their certification -- both have >400
+            # constants, and both compare against a small integer near the
+            # end of the function.
+            return len(fn.proto.constants) <= _MAXINDEXRK
+        if d.op is Op.LOADNIL or (d.op is Op.LOADBOOL and d.c == 0):
+            # VNIL/VTRUE/VFALSE, same as VKNUM: interned at exp2RK time, so
+            # the test is on the table's size.
+            return len(fn.proto.constants) <= _MAXINDEXRK
+        return False
+
+    def _bar_literal_operands(li) -> None:
+        """Disqualify pending definitions that this instruction reads in a
+        position where luac would never have used a register at all.
+
+        Two ways that happens, both of them in `lcode.c`:
+
+        * an **RK operand** (`OP_SPECS`' `ArgMode.K` slots, transcribed from
+          `lopcodes.c`): `luaK_exp2RK` encodes a literal straight into B/C
+          with the K bit set. So `EQ 0 R0 K"x"` proves R0 held something that
+          was *not* a literal at that point -- a local. Inlining a staged
+          `LOADK` there prints `if 1 == 2 then`, which recompiles to
+          `EQ 0 K1 K2` with no `LOADK` and a different constant table.
+        * a **unary fold**: `luaK_prefix` runs `codearith(OP_UNM)`/`codenot`,
+          and both fold a literal operand at parse time (`constfolding`,
+          `codenot`). `-1` and `not 1` never emit `UNM`/`NOT`, so an `UNM`/
+          `NOT` reading a register proves that register was not a literal.
+
+        Binary arithmetic needs no separate fold rule: its operands are RK
+        slots, so the first bullet already covers `LOADK 0 K1; ADD 0 0 K1`
+        (which is `local a = 1  a = a + 1`, the shape that made this barrier
+        necessary -- without it the two statements collapse into
+        `local a = 1 + 1`, which luac folds back to a single `LOADK`).
+        """
+        ri = li.ri
+        if ri.op is Op.MOVE and ri.b < ri.a:
+            # `MOVE d, s` with `s < d` proves `s` held a NAMED LOCAL, not a
+            # temporary. `luaK_exp2nextreg` runs `freeexp` first, and
+            # `freeexp` only releases a VNONRELOC expression sitting at
+            # `freereg - 1` (it asserts exactly that), so discharging a
+            # temporary into the next free register finds `reg ==
+            # e->u.s.info` and emits nothing at all. A copy from a lower slot
+            # upward is `discharge2reg`'s VLOCAL case: the source is below
+            # `nactvar` and must be preserved, so luac makes a copy.
+            #
+            # Without this, `local n = p  n = string.gsub(n, ...)` inlines the
+            # parameter into the call and collapses the whole chain of
+            # reassignments into one nested expression -- semantically fine,
+            # but it deletes a local the original declared and the recompile
+            # loses every `MOVE`. Measured on `snr_common.lua:main_77_1`.
+            ent = _pending_def(ri.b)
+            if ent is not None:
+                ent[3] = 1
+        spec = OP_SPECS[ri.op]
+        slots: list[int] = []
+        if spec.fmt is Fmt.iABC:
+            if spec.bmode is ArgMode.K and not isk(ri.b):
+                slots.append(ri.b)
+            if spec.cmode is ArgMode.K and not isk(ri.c):
+                slots.append(ri.c)
+        if ri.op in (Op.UNM, Op.NOT):
+            slots.append(ri.b)
+        for r in slots:
+            ent = _pending_def(r)
+            if ent is not None and _renders_as_literal(ent):
+                ent[3] = 1
+
+    # [reg, def_pc, n_reads, disqualified], reg-ascending. `disqualified` is
+    # set by a read this definition cannot legally be inlined into even though
+    # the read count is right (see _same_block and the constant-folding
+    # barrier below); it is carried on the entry rather than applied
+    # immediately so that a single pop site stays the one place a verdict is
+    # recorded.
+    # `block_floor` is `classify_registers._block_floor`: the first pc of the
+    # basic block containing a pc. It is required, not defaulted -- a default
+    # would have to be either "everything is one block" (silently unsound: it
+    # turns _same_block into a tautology) or an eager `build_cfg` (which a
+    # hand-built LirFunction whose successors point past its own last
+    # instruction cannot survive). Passing the caller's lazy one gets both:
+    # sound, and no CFG is built for a function whose staging never crosses a
+    # block boundary.
+    pending: list[list[int]] = []
     verdict: dict[int, bool] = {}
+    def_verdict: dict[tuple[int, int], bool] = {}
+    last_def: dict[int, int] = {}           # reg -> pc of its most recent push
 
     def mark(reg: int, ok: bool) -> None:
         verdict[reg] = verdict.get(reg, True) and ok
 
-    def do_read(r: int) -> None:
+    def mark_def(pc: int, reg: int, ok: bool) -> None:
+        key = (pc, reg)
+        def_verdict[key] = def_verdict.get(key, True) and ok
+
+    def do_read(r: int, at: int) -> None:
         for ent in pending:
             if ent[0] == r:
                 ent[2] += 1
+                if not _same_block(ent[1], at):
+                    ent[3] = 1
                 return
-        if r not in known_locals:
+        if r not in known_locals and r not in loop_control_regs:
             # Not pending and not a known local: either a slot this function
             # never defines, or a second read of an already-consumed temp.
             # Either way it cannot be a pop-once inlinable binding.
+            #
+            # `loop_control_regs` is exempted from the poisoning but NOT from
+            # being pushed (that is `known_locals`' job). A `for` header's own
+            # FORLOOP/TFORLOOP re-reads its control slots on every iteration,
+            # long after FORPREP consumed the staged values; those reads are
+            # the loop's own bookkeeping, not a decompiler-visible second use,
+            # and blaming the staging definition for them would materialize
+            # `for i = 1, 10` as `local l0_0 = 1  for i = l0_0, 10, 1`.
             mark(r, False)
+            # Per-definition, blame the definition that produced the value
+            # being re-read -- the most recent push into this slot, which the
+            # walk has already popped. Grading THAT def local is what makes
+            # the reconstructor materialize it as a named local, so the
+            # second read has a name to refer to instead of an expression
+            # that was already inlined somewhere else. A slot with no
+            # preceding def in this function (an uninitialised read) has
+            # nothing to blame and simply contributes no `temp_defs` entry,
+            # which is the local direction anyway.
+            if r in last_def:
+                mark_def(last_def[r], r, False)
 
-    def read_open(base: int) -> None:
+    def read_open(base: int, at: int) -> None:
         """An `R[base..top)` read (CALL/TAILCALL B==0, RETURN B==0, SETLIST
         B==0) consumes every pending value from `base` upwards. Counting
         those reads is what lets `print(string.format(...))` keep its two
@@ -413,16 +695,20 @@ def _stack_discipline(fn: LirFunction, ordered: list[int],
         for ent in pending:
             if ent[0] >= base:
                 ent[2] += 1
+                if not _same_block(ent[1], at):
+                    ent[3] = 1
 
     def pop_ge(base: int) -> None:
         while pending and pending[-1][0] >= base:
-            reg, _dpc, n = pending.pop()
-            mark(reg, n == 1)
+            reg, dpc, n, bad = pending.pop()
+            mark(reg, n == 1 and not bad)
+            mark_def(dpc, reg, n == 1 and not bad)
 
     def promote_all() -> None:
         while pending:
-            reg, _dpc, _n = pending.pop()
+            reg, dpc, _n, _bad = pending.pop()
             mark(reg, False)
+            mark_def(dpc, reg, False)
 
     # NOTE on the two intermediate `promote_all()` calls below. They are NOT
     # interchangeable and were separately fault-injected (M3 task 8, corrected
@@ -471,12 +757,14 @@ def _stack_discipline(fn: LirFunction, ordered: list[int],
         def push(regs) -> None:
             for r in regs:
                 if r not in known_locals:
-                    pending.append([r, pc, 0])
+                    pending.append([r, pc, 0, 0])
+                    last_def[r] = pc
 
+        _bar_literal_operands(li)
         for r in sorted(li.effects.reads):
-            do_read(r)
+            do_read(r, pc)
         if li.effects.reads_open:
-            read_open(a if op is Op.RETURN else a + 1)
+            read_open(a if op is Op.RETURN else a + 1, pc)
 
         if op in (Op.CALL, Op.TAILCALL):
             pop_ge(a)
@@ -508,9 +796,10 @@ def _stack_discipline(fn: LirFunction, ordered: list[int],
             writes = sorted(li.effects.writes)
             if writes:
                 pop_ge(writes[0])
-                if writes[0] in known_locals:
+                if writes[0] in named_locals:
                     promote_all()                  # assignment to a named local
                 else:
                     push(writes)
     promote_all()
-    return {r for r, ok in verdict.items() if ok}
+    return ({r for r, ok in verdict.items() if ok},
+            {key for key, ok in def_verdict.items() if ok})

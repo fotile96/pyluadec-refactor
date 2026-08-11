@@ -514,9 +514,15 @@ class Printer:
                 # register the condition writes is above every live local and
                 # is classified a temp (staged, never a statement). Kept as a
                 # loud refusal rather than an assert because
-                # `classify_registers` is a whole-function analysis -- a
-                # register that is a temp here can be a local elsewhere in the
-                # same function, and then the header really would emit one.
+                # `classify_registers` is a heuristic reconstruction of luac's
+                # input, not a proof: since M4 task 13 it answers per
+                # DEFINITION rather than per register number, which removed
+                # the shape that used to reach this from compiled source
+                # (`while a do for i = 1, 10 do f(i) end end`, now `L3`), but
+                # its own barriers and the whole-function `declared` set can
+                # still grade a header definition local. Pinned by injection:
+                # tests/test_sir_loops_longtail.py::
+                # test_while_header_that_would_need_a_statement_is_refused_not_dropped.
                 raise StructureError(
                     f"pc {r.cond.ri.pc}: while-header code reconstructs to "
                     f"{len(stmts)} statement(s), which a Lua while header "

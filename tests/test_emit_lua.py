@@ -210,20 +210,32 @@ def test_bare_local_decl_has_no_trailing_equals(tmp_path):
     """A LocalDecl with an empty exprs tuple (a bare `local a, b` from a
     mixed multi-result write, see Task 5's report) must print without a
     trailing `=` -- `local a, b = ` is a syntax error. Fault-injection
-    target (b). Source: `local function f() return 1, 2 end` followed by
-    `local ok, a = f()` then a later use of `a` makes classify_registers
-    treat `a`'s slot as an ordinary local while `ok`'s slot is genuinely
-    single-use -- reconstruct.py's `_emit_multi` mixed case (confirmed by
-    inspecting the printed source below: it contains a bare `local l0_2`
-    line with no initialiser) declares the fresh one bare, then assigns the
-    whole tuple. f() returns (1, 2), so the observable result of running
-    this is deterministic: ok=1, a=2+1=3.
+    target (b).
+
+    Source: a generic `for` whose iterator staging (`CALL` with three result
+    registers) lands on register numbers where one -- the table literal's
+    slot, materialized as `local l0_2 = {l0_0}` a statement earlier -- is
+    already in `declared`. `_emit_multi` then sees a MIXED tuple (one target
+    declared, two fresh) and must bring the fresh ones into scope with a bare
+    `local l0_1, l0_3` before assigning the whole tuple, because a second
+    `local` of an existing name would shadow rather than assign. Confirmed by
+    inspecting the printed source below: it contains a bare local line with
+    no initialiser.
+
+    The original source here was `local ok, a = f()` with a later use of `a`.
+    That stopped reaching the mixed branch in M4 task 13: with per-definition
+    classification neither result register is declared before the `CALL`, so
+    the all-fresh branch handles it. Re-derived rather than patched -- the
+    mixed branch is still reached by 4 corpus protos (measured), all of them
+    this generic-for shape. `f`/`g` return constants, so the observable
+    result is deterministic: `8`, then `1  7` from the one loop iteration.
     """
     from pyluadec.emit.lua import print_chunk
-    src = ("local function f() return 1, 2 end\n"
-          "local ok, a = f()\n"
-          "a = a + 1\n"
-          "print(ok, a)\n")
+    src = ("function f() return 7 end\n"
+          "function g() return 8 end\n"
+          "local x = f()\n"
+          "if x then local y = g() print(y) end\n"
+          "for k, v in pairs({x}) do print(k, v) end\n")
     printed = print_chunk(_proto(src, tmp_path))
     assert printed is not None
     assert any(line.strip().startswith("local ") and "=" not in line
@@ -232,7 +244,7 @@ def test_bare_local_decl_has_no_trailing_equals(tmp_path):
     for line in printed.splitlines():
         stripped = line.rstrip()
         assert not stripped.endswith("="), f"trailing bare '=' in: {line!r}"
-    assert _run(printed, tmp_path).strip() == "1\t3"
+    assert _run(printed, tmp_path).split() == ["8", "1", "7"]
 
 
 def test_closure_captures_outer_local_and_returns_it(tmp_path):

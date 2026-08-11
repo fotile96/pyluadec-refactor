@@ -408,8 +408,8 @@ examines, so equal keys imply equal verdicts by construction
 | `L3.1` | `strip-lineinfo` | `source`, `linedefined`, `lastlinedefined`, `lineinfo`, `LocVar.name`, upvalue names |
 
 `certify_l3` tries rungs in ascending order and records the first that passes as
-`rung` / ledger `l3_level`. **Measured: 0 of the 1112 `L3` ledger entries
-certify at rung 0; all 1112 are at rung 1.** That is not a slack ladder, it is
+`rung` / ledger `l3_level`. **Measured: 0 of the `L3` ledger entries certify at
+rung 0; all 1389 of them are at rung 1.** That is not a slack ladder, it is
 arithmetic: every corpus chunk carries `source = b"=?"` while a
 `luac_sz4 -s` recompile produces `source = None`, and the 1715 non-main corpus
 protos kept their original file's `linedefined`/`lastlinedefined`, which a
@@ -481,11 +481,26 @@ the committed ledger, so it was not made in the M3 merge-readiness round.
 `express/names.py::_stack_discipline`. This is M3's central analytical idea and
 the one worth understanding before touching anything in `express/`.
 
-Every register is classified `local` (gets a real `local l0_7 = ...`
-declaration) or `temp` (its defining expression is inlined into its single
-consumer). Getting this wrong does not produce wrong code — certification
-catches it — but it is what decides the L3 rate, because a `local` that luac
-never allocated changes `maxstacksize` and the whole register numbering.
+Every register **definition** is classified `local` (gets a real
+`local l0_7 = ...` declaration) or `temp` (its defining expression is inlined
+into its single consumer). Getting this wrong does not produce wrong code —
+certification catches it — but it is what decides the L3 rate, because a
+`local` that luac never allocated changes `maxstacksize` and the whole
+register numbering.
+
+**Per definition, not per register (M4 task 13).** `RegClass.locals`/`temps`
+remain a whole-function partition per register *number* and keep their strict
+meaning (`temps` = *every* definition of this register is a temporary); the
+field consumers should read is `RegClass.temp_defs`, a set of `(pc, reg)`
+pairs, one entry per definition site. `reconstruct.write_reg` keys on it.
+Why it has to: `lparser.c:1334` resets `fs->freereg = fs->nactvar` at the end
+of every statement and `:1333` asserts `freereg >= nactvar` throughout, so one
+slot is routinely a declared local in one statement and expression-stack
+scratch in the next, and no single whole-function verdict fits it. The
+conservative whole-function answer — `local` — materialized luac's expression
+stack as named locals and emitted the `MOVE`s that copy into it: **253 of the
+1478 corpus protos differed from the original by extra `MOVE`s and nothing
+else** before this change, and 4 do after.
 
 ### What was there before, and why it was replaced
 
@@ -545,9 +560,75 @@ A pending value must be read exactly **once** before it is popped or the
 register is disqualified: zero reads would silently drop a statement, more than
 one would inline — and re-evaluate — the same expression tree twice.
 
-The verdict is aggregated per register number and any single disqualified
-definition makes the whole register local, so the approximation is
-one-directional: unsure ⇒ named local ⇒ always printable.
+Every way of being unsure drives the answer toward "local", which is always
+printable — the approximation is one-directional. Since M4 task 13 the
+granularity is per definition, so an unsure definition no longer drags every
+other definition of the same register number down with it.
+
+### The four barriers on top of the pop-once rule
+
+The pop-once accounting alone is not sufficient once verdicts are per
+definition; four extra rules disqualify definitions the walk would otherwise
+grade temporaries. Each was found by a *measured* regression, and each is
+pinned by a fixture that fails when it is neutered (see
+`tests/test_express_liverange.py`).
+
+1. **`_same_block`** — a definition and its read must be in the same CFG basic
+   block. Two properties depend on it. Execution counts: `local i = 0 repeat
+   i = i + 1 until i > 5` defines register 0 once and reads it once per
+   iteration, so the pc-linear walk sees one read and inlining moves
+   `local i = 0` into the body — the program never terminates. Block scoping:
+   `emit.lua` wraps every `if` arm and loop body in `open_scope`/`close_scope`,
+   which roll back the staging environment at `end`, so a value staged before
+   a block and popped inside it has its pop undone and **whatever the block
+   computed from it disappears from the output**. Measured on
+   `snr_common.lua:main_77_20`, whose `if` arm's whole `CONCAT` statement
+   vanished. Stricter than either property needs (`f(a or b)` stages the
+   callee in one block and calls it in another); the cost was measured, not
+   assumed.
+2. **The RK/literal barrier (`_bar_literal_operands`)** — a definition that
+   would print as a Lua literal must not be inlined into an operand slot where
+   `lcode.c` would have used a constant instead of a register. `luaK_exp2RK`
+   encodes literals straight into B/C for the `ArgMode.K` slots (`OP_SPECS`,
+   transcribed from `lopcodes.c`), so the original's use of a *register* there
+   proves the slot held a local: `local a = 1  a = a + 1` inlines to
+   `local a = 1 + 1`, which luac folds back into one `LOADK`. `luaK_prefix`'s
+   `codearith(OP_UNM)`/`codenot` fold a literal operand the same way, so
+   `UNM`/`NOT` get the rule too even though their B is `ArgArgR`.
+   **`MAXINDEXRK` matters and the test differs by constant type**: a *string*
+   literal is already `VK` when `exp2RK` sees it, so the check is on its index
+   (`e->u.s.info <= 255`); a *number*, nil or boolean is `VKNUM`/`VNIL`/
+   `VTRUE`/`VFALSE` and is interned only at `exp2RK` time, so the check is on
+   the table's SIZE (`fs->nk <= 255`). Using the index for numbers cost
+   `snr_crd_15.lua:main_1` and `snr_crd_20.lua:main_1` — both >400 constants —
+   their certification; dropping the `MAXINDEXRK` refinement entirely cost 11
+   more and 12 downgrades.
+3. **`MOVE d, s` with `s < d` proves `s` held a named local.**
+   `luaK_exp2nextreg` runs `freeexp` first, and `freeexp` only releases a
+   `VNONRELOC` expression sitting at `freereg - 1` (it asserts exactly that),
+   so discharging a temporary into the next free register finds
+   `reg == e->u.s.info` and emits nothing at all. A copy from a lower slot
+   upward is `discharge2reg`'s `VLOCAL` case. Without it,
+   `local n = p  n = string.gsub(n, ...)` collapses the whole reassignment
+   chain into one nested expression and every `MOVE` disappears from the
+   recompile (`snr_common.lua:main_77_1`).
+4. **Read-poisoning blames the last definition.** A read of a slot with
+   nothing pending is a second read of an already-consumed temporary; it
+   disqualifies *that* definition (`last_def`), which is what gives the second
+   read a name to refer to. Loop control slots are exempt from the poisoning
+   but not from being pushed: a `for` header's own `FORLOOP`/`TFORLOOP`
+   re-reads its control triple every iteration, and blaming the staging for
+   that turns `for i = 1, 10` into `local l0_0 = 1  for i = l0_0, 10, 1`.
+
+Two seed sets that used to be one, for the same reason (M4 task 13): a
+control slot that fails `_control_lifetime_ok` is by that verdict an ordinary
+register a loop header merely reuses, so it is no longer seeded as a known
+local — otherwise a `for k, v in pairs(x)` at the end of a function
+retroactively materializes every temporary that ever used slots `a`/`a+1`/
+`a+2` anywhere before it. And the "write to a named local is a statement
+boundary" rule now consults `named_locals` (parameters, captured slots, `for`
+variables) rather than the no-push seed, because a `for` header's staging
+writes happen *mid*-statement.
 
 ### The two `promote_all()` calls are not interchangeable
 
@@ -698,9 +779,10 @@ a fresh run to reproduce it byte for byte.
 uv run python scripts/ledger_dashboard.py            # or --markdown
 ```
 
-Current output: 1478 unique protos / 1944 occurrences / 229 files,
-`compile_ok 1478/1478`, `level L3 1112`, `level L1 366`, L3 share 75.2% unique
-/ 81.1% occurrences, `L3 rung 1: 1112`, `ladder l3-ladder-v1`.
+Current output (M4 task 13): 1478 unique protos / 1944 occurrences / 229
+files, `compile_ok 1478/1478`, `level L3 1389`, `level L1 89`, L3 share 94.0%
+unique / 95.4% occurrences, `L3 rung 1: 1389`, `ladder l3-ladder-v1`. (At M3
+close it was `level L3 1112` / `level L1 366`, 75.2% / 81.1%.)
 
 ### Debug one function that refuses to certify
 
@@ -822,13 +904,15 @@ occurrences.
 | stage | unique | occurrences |
 | --- | --- | --- |
 | `build_sir` accepts the proto's own body | 1447 (97.9%) | 1913 (98.4%) |
-| whole subtree prints (proto **and** every descendant) | 1422 (96.2%) | 1888 (97.1%) |
-| certifies `L3` | **1139 (77.1%)** | **1604 (82.5%)** |
+| whole subtree prints (proto **and** every descendant) | 1424 (96.3%) | 1890 (97.2%) |
+| certifies `L3` | **1389 (94.0%)** | **1855 (95.4%)** |
 
-Three different numbers, three different causes. **M4 tasks 3 and 4 moved the
-top two rows and did not move the third at all, and that is the single most
-important fact about the current state**: structure recognition is no longer
-the bottleneck; register classification is.
+Three different numbers, three different causes. M4 tasks 3 and 4 moved the
+top two rows and did not move the third at all; **task 13 moved only the
+third**, from 1139/1604 to the figures above, by making register
+classification per definition rather than per register number. 212 of the 229
+files now ship structured source (92 at M3 close). Structuring refusals are
+again the largest single residual cluster.
 
 1. **1478 → 1447: `build_sir` refuses 31 unique protos** (169 before M4 task
    3, 43 after it, 31 after task 4). 26 carry a back edge it will not claim,
@@ -844,57 +928,48 @@ the bottleneck; register classification is.
    `TEST`) and were refused as `if targets out of range`. All 16 protos that
    contain a TESTSET are still non-`L3`, but for reasons downstream of
    structuring — see point 3 and the note after it.
-2. **1447 → 1422: 25 more unique protos build a region tree but do not print,
+2. **1447 → 1424: 23 more unique protos build a region tree but do not print,
    because a descendant closure does not** (or, for 6 of them, because their
    own `CondValue` operand code reconstructs to a statement — see
    `_refuse_statements`). `print_chunk` inlines the whole tree at each
    `CLOSURE` site, so one unstructurable inner function takes its entire
    ancestor chain with it. (Was 139 protos before M4 task 3.)
-3. **1422 → 1139: 283 unique protos print but do not certify.** This is now
-   the dominant gap by a wide margin, and its cause is measured rather than
-   guessed: **253 of them differ from the original by extra `MOVE`
-   instructions and by nothing else at all** (opcode-histogram delta between
-   the original and the recompiled candidate), with 15 more differing by MOVE
-   plus other additions (global-access traffic) — 268 of 283 (95%) in total.
-   That is the signature of a register the printer materialized as a named
-   `local` where luac used an expression-stack temporary: calling `f(a, b)`
-   through three declared locals needs three `MOVE`s to the top of the stack
-   that the original never had.
+3. **1424 → 1389: 35 unique protos print but do not certify.** This was the
+   dominant gap until M4 task 13 (283 protos, of which 253 differed from the
+   original by extra `MOVE` instructions and by nothing else at all). The
+   cause was `RegClass`'s whole-function, per-register-*number* verdict, and
+   the measured exemplar was `snr_crd_10.lua:main_2`: registers 0/1/2 are
+   call-argument temps in its first six instructions and declared locals in
+   the same slots before its `while` loop, `classify_registers` had to give
+   one verdict, picked `local`, and the first six instructions came back with
+   `MOVE`s. Task 13 made classification per definition and that cluster went
+   from 253 to **4**.
 
-   The mechanism is `RegClass`'s own documented limitation
-   (`express/names.py`): classification is **whole-function and per register
-   *number***, but luac reuses one slot for a temporary in one statement and a
-   declared local in another. Measured exemplar: `snr_crd_10.lua:main_2` uses
-   registers 0/1/2 as call-argument temps in its first six instructions and
-   then declares three locals into the same slots before its `while` loop;
-   `classify_registers` must give one verdict for the whole function, picks
-   `local`, and the first six instructions come back with MOVEs. Its first
-   divergence is at pc 6 — long before any loop.
+   What is left, re-measured 2026-08-11 with the script below (89 unique
+   protos below `L3` in total; the 54 in the first row belong to point 1's
+   and point 2's causes rather than to this one):
 
-   Generalizing: of the 109 protos that contain a recognized `While`, print,
-   and fail certification, **108 have their first code divergence at a pc
-   before any loop header**. The loop work is not what is failing there.
+   | cluster | unique |
+   | --- | --- |
+   | A. subtree refuses structuring | 54 |
+   | D. extra `MOVE`s **plus** other additions | 16 |
+   | B. same opcode histogram, operands differ | 14 |
+   | C. extra `MOVE`s only | 4 |
+   | E. other delta | 1 |
 
-   The residual 15 are a different, much smaller problem: identical opcode
-   histograms with operand-level differences (9 are a `GETGLOBAL`'s constant
-   index, i.e. constant-table ordering; 2 are `NEWTABLE` size hints).
+   The first differing instruction is a `GETGLOBAL` for 10 of the B cluster
+   (constant-table ordering) and a `LOADK` for 10 of the D cluster. `NEWTABLE`
+   size hints account for 3. These are three genuinely different problems and
+   none of them is register classification; they are Task 6's re-census
+   material.
 
-   All 16 corpus protos containing a `TESTSET` land in these two buckets or
-   are still refused by `build_sir`: after M4 task 4, 8 are refused (for
-   if/else shapes, not for TESTSET), 6 fail `_refuse_statements` because
-   `classify_registers` calls the alternative's staging register a local, and
-   2 print and diverge on `code` by extra `MOVE`s ONLY — the recompiled protos
-   carry exactly the same number of `TESTSET`s as the originals. The last two
-   clusters are the same defect as this point's main one. Measured: replacing
-   `_refuse_statements` with unconditional force-temping (which would print
-   output that module cannot justify) moves the count of certifying TESTSET
-   protos from 0 to 0.
-
-   Closing the big one needs live-range analysis in `classify_registers` (one
-   verdict per register *live range*, not per register number). It is the
-   single highest-value item remaining in M4: on the arithmetic above it is
-   worth up to ~264 unique protos, which would put L3 near 95% on the unique
-   basis. Nothing in the loop layer can substitute for it.
+   Two known-residual shapes are fixtured in
+   `tests/test_express_liverange.py::KNOWN_RESIDUAL` with their causes:
+   `_emit_multi`'s all-or-nothing materialization of a multi-result `CALL`
+   (a generic `for` over `pairs(t)` prints `local l0_1, l0_2, l0_3 =
+   pairs(l0_0)` where luac left the triple in the control slots), and
+   `NEWTABLE`'s size hints (the constructor fold turns a following `t.k = s`
+   statement into `{["k"] = s}`).
 
 ### Re-deriving the three rows
 
@@ -944,7 +1019,7 @@ for name, S in (("accepts own body", {h for h, p in uniq.items() if accepts(p)})
 
 ```
 accepts own body         1447/1478 (97.9%)  1913/1944 (98.4%)
-whole subtree prints     1422/1478 (96.2%)  1888/1944 (97.1%)
+whole subtree prints     1424/1478 (96.3%)  1890/1944 (97.2%)
 ```
 
 Row 3 needs no script: it is the committed ledger. `uv run python
@@ -1003,8 +1078,9 @@ protos containing TESTSET           16
   of which are refused              8
 ```
 
-Point 3's opcode-histogram breakdown (253 MOVE-only + 15 MOVE-plus-other =
-268 of 283):
+Point 3's opcode-histogram breakdown (re-run 2026-08-11 after M4 task 13; it
+produced the 253/56/15/15 split quoted above as this task's baseline on
+`dec379e`, and the 54/16/14/4/1 split below afterwards):
 
 ```python
 # PYLUADEC_CORPUS_DIR=... uv run python -
@@ -1109,22 +1185,23 @@ for k, v in firstop.most_common(6):
 ```
 
 ```
-  253  C. extra MOVEs only
-   56  A. subtree refuses structuring
-   15  B. same opcode histogram, operands differ
-   15  D. extra MOVEs + other additions
+   54  A. subtree refuses structuring
+   16  D. extra MOVEs + other additions
+   14  B. same opcode histogram, operands differ
+    4  C. extra MOVEs only
+    1  E. other delta
 
-  228  first differing instruction: C CALL->MOVE
-   13  first differing instruction: C LOADK->MOVE
-    9  first differing instruction: B GETGLOBAL
-    7  first differing instruction: D CALL->MOVE
-    6  first differing instruction: C JMP
-    4  first differing instruction: D FORPREP->MOVE
+   10  first differing instruction: B GETGLOBAL
+   10  first differing instruction: D LOADK
+    2  first differing instruction: B NEWTABLE
+    2  first differing instruction: C JMP
+    2  first differing instruction: D JMP
+    1  first differing instruction: C NEWTABLE
 ```
 
 The print-but-do-not-certify mismatch histogram in point 3. Self-contained —
 run it verbatim like the two above. This is the only one that spends
-`luac_sz4` subprocesses (283 of them):
+`luac_sz4` subprocesses (35 of them):
 
 ```python
 # PYLUADEC_CORPUS_DIR=... uv run python -
@@ -1173,10 +1250,10 @@ for field, n in hist.most_common():
 ```
 
 ```
-print but do not certify: 283
-  code             283
-  maxstacksize     31
-  constants.len    13
+print but do not certify: 35
+  code             35
+  maxstacksize     20
+  constants.len    16
   const[i]         11
 ```
 
@@ -1212,7 +1289,7 @@ strong evidence: for 222 of 229 files the entire compared payload is
 `docs/runbooks/decompile-pipeline.md` documents the M2 fallback path and stays
 authoritative for it. The fallback is **not** deprecated and is not going away:
 it is the floor. Every file whose root does not certify still ships fallback
-source, and today that is 137 of 229 files.
+source, and today that is 17 of 229 files (137 at M3 close).
 
 Practical division of labour:
 
