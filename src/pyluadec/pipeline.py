@@ -20,6 +20,12 @@ class DecompileResult:
     confessions_by_proto: dict[str, list[dict]]
     levels: dict[str, str] = field(default_factory=dict)      # proto_path -> "L3" | "L1"
     rungs: dict[str, int | None] = field(default_factory=dict)
+    # proto_path -> why it is not L3 (None for the L3 ones). The generic
+    # `fallback-state-machine` confession says only THAT a proto fell back;
+    # this says why -- a `build_sir` refusal and a print-then-reject used to be
+    # indistinguishable in the ledger. Vocabulary and payload rules:
+    # `structure.structured.ProtoCert.reason`.
+    reasons: dict[str, str | None] = field(default_factory=dict)
 
 
 def walk_proto_paths(path: str, p: Proto, out: dict[str, Proto]) -> None:
@@ -64,6 +70,7 @@ def decompile_chunk(root: Proto) -> DecompileResult:
     out = emit_certified_chunk(root)
     levels = {path: out.certs[path].level for path in protos}
     rungs = {path: out.certs[path].rung for path in protos}
+    reasons = {path: out.certs[path].reason for path in protos}
     confessions = {
         path: ([] if levels[path] == "L3" else
                [{"pc_lo": 1, "pc_hi": len(p.code),
@@ -71,7 +78,7 @@ def decompile_chunk(root: Proto) -> DecompileResult:
         for path, p in protos.items()
     }
     return DecompileResult(source=out.source, confessions_by_proto=confessions,
-                           levels=levels, rungs=rungs)
+                           levels=levels, rungs=rungs, reasons=reasons)
 
 
 def decompile_file(path) -> DecompileResult:

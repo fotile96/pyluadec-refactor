@@ -71,6 +71,16 @@ class LedgerEntry:
     occurrences: list[dict]
     oracle: str
     ladder: str
+    # Why this proto is not `L3`; `None` exactly when it is (M4 task 6). The
+    # `confessions` list says only THAT a proto fell back -- every non-`L3` row
+    # carries the same whole-range `fallback-state-machine` entry -- which was
+    # enough while a refusal was the only way to miss `L3`, and stopped being
+    # enough once M4 produced protos that structure and print cleanly and then
+    # fail the comparison. Produced by `structure.structured.ProtoCert.reason`;
+    # its vocabulary, and the rule that it never carries bytecode-derived
+    # payload, are documented there. Defaulted so that a ledger written before
+    # this field existed still loads through `read_ledger`.
+    refusal_reason: str | None = None
 
 
 def write_ledger(entries: list[LedgerEntry], path: Path) -> None:

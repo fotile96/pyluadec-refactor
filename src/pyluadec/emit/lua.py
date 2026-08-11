@@ -116,13 +116,30 @@ def _ident(name: bytes) -> str:
     No regex (forbidden in this package -- see module docstring): Python's
     `str.isidentifier()` covers the same character class as Lua's
     `[A-Za-z_][A-Za-z0-9_]*` once the string is known to be pure ASCII.
+
+    ## Why the rejected constant is NOT in the message (M4 task 6)
+
+    These two messages travel: a `ReconstructError` raised here is caught by
+    `structure.structured.certify_proto`, and its text is written verbatim
+    into the committed ledger as the row's `refusal_reason`. `name` is a
+    bytecode-derived string -- a global's name, a table key -- straight out of
+    the corpus's constant pool, so interpolating it would put corpus payload
+    (this corpus is a Japanese visual novel's script) into a checked-in file,
+    and `{name!r}` on non-ASCII bytes would put its hex escapes there. The
+    project rule is that bytecode-derived strings stay `bytes` and are never
+    decoded into diagnostics; a refusal message may name opcodes, pcs and
+    registers, never data. The length is enough to find the constant in
+    `luac_sz4 -l -l` output. Pinned by
+    `tests/test_emit_lua.py::test_ident_refusal_messages_do_not_quote_the_constant`.
     """
     try:
         s = name.decode("ascii")
     except UnicodeDecodeError as exc:
-        raise ReconstructError(f"identifier {name!r} is not ASCII") from exc
+        raise ReconstructError(
+            f"identifier constant ({len(name)} bytes) is not ASCII") from exc
     if not s.isidentifier() or s in LUA_KEYWORDS:
-        raise ReconstructError(f"identifier {name!r} not emittable as a Lua name")
+        raise ReconstructError(f"identifier constant ({len(name)} bytes) "
+                               "is not emittable as a Lua name")
     return s
 
 
@@ -659,6 +676,21 @@ def _print_proto_body(proto: Proto, depth: int, upval_names: tuple[str, ...]) ->
     return print_function(fn, region, rc, depth, upval_names)
 
 
+def print_chunk_or_raise(proto: Proto) -> str:
+    """`print_chunk`, but letting the refusal propagate instead of turning it
+    into `None`.
+
+    Both forms exist because two callers want different things out of the same
+    computation. `print_chunk`'s `None` says *that* the tree was refused;
+    `structure.structured.certify_proto` needs to know *why*, because the
+    refusal message becomes the non-`L3` ledger row's `refusal_reason` (M4
+    task 6). A `None` cannot carry that message, and re-deriving it by calling
+    the printer a second time inside an `except` would be both wasteful and a
+    lie waiting to happen if the two calls ever disagreed.
+    """
+    return _print_proto_body(proto, depth=0, upval_names=())
+
+
 def print_chunk(proto: Proto) -> str | None:
     """Structurally print an entire proto tree (this proto and, inline at
     their CLOSURE sites, every descendant) as a compilable Lua chunk.
@@ -670,6 +702,6 @@ def print_chunk(proto: Proto) -> str | None:
     this printer or an upstream layer, not a legitimate refusal.
     """
     try:
-        return _print_proto_body(proto, depth=0, upval_names=())
+        return print_chunk_or_raise(proto)
     except (StructureError, ReconstructError):
         return None

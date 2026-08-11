@@ -92,3 +92,64 @@ def test_oracle_version_is_hexish():
     from pyluadec.verify.ledger import oracle_version
     v = oracle_version()
     assert v == "unknown" or (len(v) == 40 and all(ch in "0123456789abcdef" for ch in v))
+
+
+def _run_corpus_module():
+    """scripts/run_corpus.py is a script, not a package module; load it the
+    same way tests/test_ledger_ratchet.py does."""
+    import importlib.util
+    from pathlib import Path
+    path = Path(__file__).resolve().parents[1] / "scripts" / "run_corpus.py"
+    spec = importlib.util.spec_from_file_location("run_corpus_under_test", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _entry(**kw):
+    from pyluadec.verify.ledger import LedgerEntry
+    base = dict(shash="ff" * 32, level="L3", l3_level=1, compile_ok=False,
+                fallback=False, n_insns=9, confessions=[],
+                occurrences=[{"file": "a.lua", "proto_path": "main_0"}],
+                oracle="deadbeef", ladder="l3-ladder-v1")
+    base.update(kw)
+    return LedgerEntry(**base)
+
+
+def test_forced_l0_entry_is_confessed():
+    """A proto can certify L3 on its own while its FILE fails the whole-chunk
+    compile check; the chunk is what ships, so the row is forced to L0. That
+    path used to rewrite level/l3_level/fallback and keep `confessions`, which
+    for an individually-L3 proto is `[]` -- so an L0 row could ship
+    unconfessed, which "confess, don't guess" forbids and
+    tests/test_m3_exit.py::test_non_l3_entries_confess would (loudly, and only
+    after the fact) fail on.
+
+    Load-bearing check: deleting `_force_l0`'s confession block makes this
+    test fail on the `confessions` assertion; deleting its `refusal_reason`
+    line makes it fail on the next one. Verified by neutering both,
+    2026-08-11. Not reachable from the corpus today (229/229 files compile),
+    which is exactly why it needs a unit test rather than a corpus run.
+    """
+    mod = _run_corpus_module()
+    e = _entry()
+    mod._force_l0(e)
+    assert e.level == "L0" and e.l3_level is None and e.fallback is True
+    assert [c["reason"] for c in e.confessions] == ["fallback-state-machine"]
+    assert e.confessions[0]["pc_lo"] == 1 and e.confessions[0]["pc_hi"] == 9
+    assert e.refusal_reason == "compile: shipped chunk did not compile"
+
+
+def test_forced_l0_keeps_an_existing_confession():
+    """The demotion must not overwrite a real confession with a synthetic
+    whole-range one: a proto that was already L1 arrives here with the
+    fallback state machine's own confession, and that is the more specific
+    record of what shipped."""
+    mod = _run_corpus_module()
+    existing = [{"pc_lo": 1, "pc_hi": 9, "reason": "fallback-state-machine",
+                 "pass": "structure.fallback"}]
+    e = _entry(level="L1", l3_level=None, fallback=True, confessions=existing,
+               refusal_reason="structure: pc 3: if targets out of range")
+    mod._force_l0(e)
+    assert e.confessions is existing
+    assert e.refusal_reason == "compile: shipped chunk did not compile"

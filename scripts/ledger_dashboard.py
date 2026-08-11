@@ -7,6 +7,40 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def _refusal_key(reason: str) -> str:
+    """Collapse a row's `refusal_reason` to its cluster.
+
+    The reason is per-proto and carries positions (`structure: pc 41: if
+    targets out of range`, `structure: pc 4: branch body block at pc 702 is
+    unreachable`, `mismatch: const[7]`); a histogram over the raw strings has
+    nearly as many buckets as rows, which defeats the point of putting it on
+    the dashboard. Every varying part of the current vocabulary
+    (`structure.structured.ProtoCert.reason`) is a NUMBER -- a pc, a register,
+    a statement count, a constant index -- so the normalisation is simply
+    "replace every decimal token with `N`", plus `const[7]` -> `const[i]`
+    (an index inside a bracket, not a standalone token).
+
+      "structure: pc 41: if targets out of range"
+        -> "structure: pc N: if targets out of range"
+      "mismatch: const[7]"      -> "mismatch: const[i]"
+
+    Cosmetic only: this function exists for the dashboard's histogram. The
+    ledger keeps the exact reason, and `tests/test_m4_exit.py` asserts on
+    that, not on this.
+    """
+    out = []
+    for tok in reason.split(" "):
+        core = tok.rstrip(":,;")
+        tail = tok[len(core):]
+        if core.isdigit():
+            out.append("N" + tail)
+        elif core.startswith("const[") and core.endswith("]"):
+            out.append("const[i]" + tail)
+        else:
+            out.append(tok)
+    return " ".join(out)
+
+
 def main() -> int:
     md = "--markdown" in sys.argv[1:]
     path = ROOT / "corpus" / "ledger.jsonl"
@@ -15,6 +49,8 @@ def main() -> int:
         return 1
     entries = [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
     levels = Counter(e["level"] for e in entries)
+    refusals = Counter(_refusal_key(e.get("refusal_reason")) for e in entries
+                       if e.get("refusal_reason"))
     reasons = Counter(c["reason"] for e in entries for c in e["confessions"])
     n_occ = sum(len(e["occurrences"]) for e in entries)
     n_files = len({o["file"] for e in entries for o in e["occurrences"]})
@@ -39,8 +75,19 @@ def main() -> int:
         *[(f"level {k}", v) for k, v in sorted(levels.items())],
         ("L3 share (unique)", f"{l3}/{len(entries)} ({l3 / len(entries):.1%})"),
         ("L3 share (occurrences)", f"{occ_l3}/{n_occ} ({occ_l3 / n_occ:.1%})"),
-        *[(f"L3 rung {k}", v) for k, v in sorted(rungs.items(), key=lambda kv: kv[0])],
+        # `(kv[0] is None, kv[0])`, not `kv[0]`: an `L3` row is supposed to
+        # carry a rung, but if one ever did not, plain `sorted` would raise
+        # `TypeError: '<' not supported between 'NoneType' and 'int'` -- and
+        # this dashboard is precisely the tool you reach for when that
+        # invariant has broken. Sorting Nones last keeps it printable.
+        *[(f"L3 rung {k}", v)
+          for k, v in sorted(rungs.items(), key=lambda kv: (kv[0] is None, kv[0]))],
         *[(f"confession: {k}", v) for k, v in reasons.most_common(10)],
+        # Standing residual census: `refusal_reason` is the field that says
+        # WHY a row is not L3 (M4 task 6). Truncated to the kind + first line
+        # so the histogram clusters rather than listing 89 distinct strings.
+        *[(f"refusal: {k[:68] + '...' if len(k) > 71 else k}", v)
+          for k, v in refusals.most_common(12)],
         ("oracle", ", ".join(sorted(oracle_v))),
         ("ladder", ", ".join(sorted(ladder_v))),
     ]
