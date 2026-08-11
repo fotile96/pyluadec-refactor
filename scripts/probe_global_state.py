@@ -10,6 +10,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PROBE = ROOT / "scripts" / "probe_global_state.lua"
 
+# Every result the probe script is allowed to produce starts with one of these.
+# Anything else means the probe itself did not run to completion, and comparing
+# two such results would be comparing two failures, not two program states.
+_MARKERS = (b"OK|", b"ERR|", b"LOADFAIL")
+
+
+class ProbeError(RuntimeError):
+    """The probe did not produce a usable result (crash, non-zero exit, or
+    unrecognisable stdout). Never silently turned into a comparable value:
+    every probe-side failure used to yield "" on both sides, so a completely
+    dead probe compared equal for all 229 corpus files and the gate passed."""
+
 
 def probe(payload: bytes, *, is_source: bool, timeout: float = 30.0) -> str:
     from pyluadec import oracle
@@ -18,11 +30,24 @@ def probe(payload: bytes, *, is_source: bool, timeout: float = 30.0) -> str:
         f.write_bytes(payload)
         r = subprocess.run([str(oracle.lua_sz4()), str(PROBE), str(f)],
                            capture_output=True, timeout=timeout, cwd=td)
+        if r.returncode != 0:
+            raise ProbeError(
+                f"probe exited {r.returncode} (is_source={is_source}, "
+                f"probe={PROBE}); stderr="
+                f"{r.stderr.decode('utf-8', 'replace')!r}; stdout="
+                f"{r.stdout[:400].decode('utf-8', 'replace')!r}")
+        if not r.stdout.startswith(_MARKERS):
+            raise ProbeError(
+                f"probe produced an unrecognisable result (is_source="
+                f"{is_source}); expected one of "
+                f"{[m.decode() for m in _MARKERS]}; stdout="
+                f"{r.stdout[:400].decode('utf-8', 'replace')!r}; stderr="
+                f"{r.stderr.decode('utf-8', 'replace')!r}")
         # The probe's stdout is a deterministic ASCII/UTF-8 serialisation format
-        # (see probe_global_state.lua: sorted keys via tostring(), "%.17g" numbers,
-        # "<type>" placeholders) that we only ever compare for equality or search
-        # for known ASCII markers ("OK|", "X="). It is not a bytecode-derived
-        # string kept on the Python side (that constraint is about Proto string
+        # (see probe_global_state.lua: sorted "type:key" keys, "%.17g" numbers,
+        # "<type>" placeholders) that we only ever compare for equality or
+        # search for known ASCII markers. It is not a bytecode-derived string
+        # kept on the Python side (that constraint is about Proto string
         # constants, not this probe's own output format), so decoding it for
         # comparison is safe. errors="replace" is deliberate: a corpus file's
         # Japanese string constants are not guaranteed UTF-8, and if such a byte
@@ -33,6 +58,19 @@ def probe(payload: bytes, *, is_source: bool, timeout: float = 30.0) -> str:
         # non-UTF-8 corpus file into a spurious probe crash rather than a real
         # semantic finding.
         return r.stdout.decode("utf-8", "replace")
+
+
+def payload_of(result: str) -> str:
+    """The serialised global-state delta, with the OK|/ERR|/LOADFAIL marker
+    stripped -- i.e. the part that is actual observed program state."""
+    if result.startswith("OK|"):
+        return result[3:].strip()
+    if result.startswith("ERR|"):
+        # "ERR|<stripped error message>|<globals written before the error>"
+        rest = result[4:]
+        bar = rest.find("|")
+        return rest[bar + 1:].strip() if bar >= 0 else ""
+    return ""
 
 
 def main() -> int:

@@ -15,6 +15,34 @@ def corpus_dir() -> Path:
     return Path(p)
 
 
+@pytest.fixture(scope="session")
+def decompiled(corpus_dir):
+    """Session-scoped, lazy `path -> DecompileResult` cache.
+
+    `decompile_file` is by far the most expensive thing the corpus tests do
+    (~7.6s for all 229 files), and several tests need the same 229 results:
+    test_corpus_compile.py recompiles them, test_global_state_probe.py probes
+    them. Without sharing, each test pays the full pass again. Returns a
+    callable rather than a prebuilt dict so a test that needs one file
+    (e.g. the probe sensitivity tests) does not trigger a whole-corpus
+    decompile when run on its own.
+
+    Deliberately NOT used by test_ledger_ratchet.py: that test's whole point
+    is that a *fresh* run of scripts/run_corpus.py reproduces the committed
+    ledger, so it must not consume anything another test already computed.
+    """
+    cache: dict[Path, object] = {}
+
+    def get(path: Path):
+        from pyluadec.pipeline import decompile_file
+        p = Path(path)
+        if p not in cache:
+            cache[p] = decompile_file(p)
+        return cache[p]
+
+    return get
+
+
 def _corpus_dir_missing() -> bool:
     p = os.environ.get("PYLUADEC_CORPUS_DIR")
     return not p or not Path(p).is_dir()
