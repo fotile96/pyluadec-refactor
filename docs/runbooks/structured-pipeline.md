@@ -51,12 +51,13 @@ ingest -> lift -> cfg -> sir.build -> express.reconstruct -> emit.lua
 
 ### `pyluadec.sir` — CFG + dominators to a region tree
 
-- `sir/regions.py` (85 lines) — the frozen region node types:
+- `sir/regions.py` (211 lines) — the frozen region node types:
   `Straight`, `Seq`, `If`, `NumericFor`, `GenericFor`, `Break`, `Return`,
-  `Fallback`, and `all_claimed(region) -> frozenset[int]`, which folds a
+  `Fallback`, the M4 loop nodes `WhileTrue` / `While` / `Repeat` / `EndIter`,
+  and `all_claimed(region) -> frozenset[int]`, which folds a
   region tree into the set of pcs it claims and raises `RegionOverlap` if two
   siblings claim the same pc.
-- `sir/build.py` (311 lines) — `build_sir(fn: LirFunction) -> Region`.
+- `sir/build.py` (904 lines) — `build_sir(fn: LirFunction) -> Region`.
   Also exports `has_back_edge(fn)` as a cheap pre-check and `StructureError`
   as the refusal signal.
 
@@ -66,18 +67,30 @@ There is no "best effort" branch anywhere in this module.
 
 Dominators are genuinely consumed, not built and ignored (the predecessor
 project built a CFG and then wrote `_ = cfg`). `build_sir` computes
-`immediate_dominators(cfg)` at `sir/build.py:79` and every branch/loop body
-range goes through `_verify_single_entry` (`sir/build.py:43-68`), which refuses
+`immediate_dominators(cfg)` at `sir/build.py:109` and every branch/loop body
+range goes through `_verify_single_entry` (`sir/build.py:58-98`), which refuses
 unless every CFG block starting inside the claimed pc range is dominated by the
 block containing the condition. The pc-interval arithmetic alone cannot see a
 jump from unrelated code into the middle of a "then" body; the dominator check
-can. Call sites: `sir/build.py:224`, `:226` (if/else arms), `:287` (numeric-for
-body), `:306` (generic-for body).
+can. Call sites: `sir/build.py:808`, `:810` (if/else arms), `:875` (numeric-for
+body), `:898` (generic-for body), `:294` (`while <cond>` body), `:401`
+(`repeat` body), `:464` (`while true` body).
 
-**But do not read that as "dominance drives the structuring."** The recognizer
-is pc-interval-driven; the dominator tree is a **post-hoc verifier** sitting on
-top of it, and on today's corpus it is nearly inert. Measured 2026-08-11 over
-all 1944 protos: `_verify_single_entry` is reached 1115 times; its
+Since M4, dominance is no longer only a post-hoc verifier: the three loop
+recognizers **define a back edge by dominance, not by pc order** (a rotated
+generic-for re-enters its body with a pc-retreating JMP whose target does not
+dominate it), so `dominates` is load-bearing in `_match_while` /
+`_match_repeat` / `_match_while_true` before any interval arithmetic runs.
+
+**Do not read the acyclic part as "dominance drives the structuring."** For
+`Straight`/`Seq`/`If`/`for` the recognizer is pc-interval-driven and the
+dominator tree is a **post-hoc verifier** sitting on top of it. (The loop
+recognizers added in M4 are the exception noted above -- there, dominance is
+what defines a back edge in the first place.) The figures below are an M3-era
+measurement of the verifier's inertness, taken BEFORE M4 task 3 changed which
+shapes reach it; they have not been re-derived since and should be treated as
+history rather than as a current claim. Measured 2026-08-11 over all 1944
+protos, at commit 2a759a8: `_verify_single_entry` is reached 1115 times; its
 `dominates()` rejection branch — the multi-entry-branch case — fires **0**
 times, and its "block unreachable from entry" branch fires 8 times but changes
 the accept/refuse verdict for only **1** proto (`snr_common.lua:main_29_0`),
@@ -95,8 +108,57 @@ be constructible, and that is when this check stops being free insurance and
 starts being load-bearing. Keep it; just do not cite it as evidence that
 dominators are doing the recognition.
 
+#### The four loop recognizers (M4)
+
+`_structure_range_impl` tries them in a fixed order at every dispatch
+position, plus once more inside the straight-run accumulator (a loop header
+can be an ordinary fall-through instruction, so nothing else would stop the
+run at it). Each returns `(region, next pc)` or `None` — **never** raises: a
+shape one cannot prove is simply not its loop, and the caller goes on to the
+next and ultimately refuses.
+
+| order | recognizer | closing edge | claims |
+| --- | --- | --- | --- |
+| 1 | `_match_while` | `JMP -> lo`, condition at the TOP | header instrs + cond + exit-JMP + closing JMP |
+| 2 | `_match_while_true` | `JMP -> lo`, no condition | the closing JMP only |
+| 3 | `_match_repeat` | `JMP -> lo` gated by a compare at `S-1` | cond + closing JMP |
+| — | `_match_generic_for` / FORPREP | `TFORLOOP`+`JMP` / `FORLOOP` | the header instructions |
+
+Three facts about that table are load-bearing and were each measured rather
+than assumed:
+
+- **`_match_while` goes first on purpose.** `while <cond>` can also be read as
+  `while true do ... if c then <body> else break end ... end`, which is
+  semantically identical and recompiles to *three* instructions where the
+  original has two — it can never certify. Recognizing the real shape first is
+  what keeps the desugaring from being what ships.
+- **`_match_while`/`_match_repeat` try exactly ONE candidate closing JMP: the
+  last one targeting `lo` in range.** Every jump back to `lo` is by definition
+  inside `lo`'s loop, so the closing JMP — the loop's lexically last
+  instruction — is the last of them. Trying candidates last-first the way
+  `_match_while_true` does made `while true do if f() then g() else h() end
+  end` match as a `While` that amputated the else block. (`while true` loops
+  genuinely CAN share a header, which is why that one keeps the search.)
+- **`_match_while`/`_match_repeat` refuse any body containing an `EndIter` of
+  their own**, which is stricter than `_match_while_true`'s tail-position
+  rule. An `EndIter` prints as nothing and always recompiles one JMP short
+  (M4 task 2 measured 9 of 9 such shapes at L1), so accepting one here would
+  preempt a reading that can certify. `_match_while_true` runs last and
+  preempts nothing, so it keeps the weaker rule.
+
+Threading (`luaK_jump`'s `jpc` concatenation, `vendor/lua-5.1/src/lcode.c`) is
+the mechanism behind most of the special cases in this module: a jump still
+pending when luac emits another JMP is concatenated onto that JMP's list and
+patched wherever it ends up, so a nested loop's false-exit surfaces as a jump
+to the ENCLOSING loop's header. `continue_target` is what lets
+`_structure_if` and `_match_while_header` rewrite such a jump back to the end
+of the range it actually belongs to. The same mechanism one level up — an
+`if`'s false-exit threaded onto an enclosing `if`'s else-skip — is **not**
+handled, and is the entire `if targets out of range` refusal cluster (15
+unique protos).
+
 **PC-claim audit.** `build_sir` asserts `all_claimed(region) == set(fn.instrs)`
-at every exit (`sir/build.py:86-89`) and raises `StructureError` naming the
+at every exit (`sir/build.py:116-119`) and raises `StructureError` naming the
 unclaimed pcs otherwise. A region tree that silently drops instructions is the
 classic decompiler failure; this makes it impossible to return one. Corpus-wide
 coverage: `tests/test_sir_build_acyclic.py::test_acyclic_corpus_claims_every_pc`
@@ -664,33 +726,62 @@ occurrences.
 
 | stage | unique | occurrences |
 | --- | --- | --- |
-| `build_sir` accepts the proto's own body | 1309 (88.6%) | 1775 (91.3%) |
-| whole subtree prints (proto **and** every descendant) | 1170 (79.2%) | 1636 (84.2%) |
-| certifies `L3` | **1112 (75.2%)** | **1577 (81.1%)** |
+| `build_sir` accepts the proto's own body | 1435 (97.1%) | 1901 (97.8%) |
+| whole subtree prints (proto **and** every descendant) | 1416 (95.8%) | 1882 (96.8%) |
+| certifies `L3` | **1139 (77.1%)** | **1604 (82.5%)** |
 
-Three different numbers, three different causes, and the gap between each pair
-is the honest M4 agenda:
+Three different numbers, three different causes. **M4 task 3 moved the top two
+rows and barely moved the third, and that is the single most important fact
+about the current state**: structure recognition is no longer the bottleneck;
+register classification is.
 
-1. **1478 → 1309: `build_sir` refuses 169 unique protos.** 162 of them carry a
-   back edge the recognizer will not claim — `while`, `repeat`, and mixed or
-   irreducible loops. (195 unique protos have a back edge at all; 33 of those
-   are recognized as `for` loops.) The remaining 7 are acyclic refusals. All 16
-   unique protos containing `TESTSET` — the `and`/`or` *value* idiom, which is
-   deliberately not treated as an if-condition (`sir/build.py:16-19`) — are
-   among the refusals.
-2. **1309 → 1170: 139 more unique protos build a region tree but do not print,
+1. **1478 → 1435: `build_sir` refuses 43 unique protos** (was 169 before M4
+   task 3). 36 carry a back edge it will not claim, 7 are acyclic refusals.
+   By message: 15 `if targets out of range` (in **every** case the if's
+   false-exit was threaded onto an *enclosing if's* else-skip by the same
+   `luaK_jump` jpc concat `_structure_if` already unwinds for loop headers —
+   not one is `jt == break_target`), 10 `else-join out of range`, 8
+   `unrecognized transfer TESTSET` (the `and`/`or` *value* idiom, deliberately
+   not an if-condition — `sir/build.py:16-19`; all 16 protos containing a
+   TESTSET are refused, 8 of them with that message and 8 blocked earlier),
+   10 `branch body block ... is unreachable`.
+2. **1435 → 1416: 19 more unique protos build a region tree but do not print,
    because a descendant closure does not.** `print_chunk` inlines the whole
    tree at each `CLOSURE` site, so one unstructurable inner function takes its
-   entire ancestor chain with it. This is the "ancestor closure" effect; it is
-   why the subtree-closed ceiling is well below the own-body one.
-3. **1170 → 1112: 58 unique protos print but do not certify.** All 58 differ on
-   `code`; 24 also on `maxstacksize`, 11 on `constants.len`, 11 on an
-   individual constant. This is the residual approximation in the freereg
-   simulation — statement grouping and register allocation that do not quite
-   match luac's. (Round 1: dropped a basis-dependent "1 on `is_vararg`" entry
-   here — certifying all 58 with `is_chunk_root` matched correctly to each
-   proto's actual chunk-root status yields zero `is_vararg` mismatches; see
-   `docs/runbooks/m3-backlog.md` §2 for the measurement.)
+   entire ancestor chain with it. (Was 139 protos before M4 task 3.)
+3. **1416 → 1139: 277 unique protos print but do not certify.** This is now
+   the dominant gap by a wide margin, and its cause is measured rather than
+   guessed: **264 of them differ from the original by extra `MOVE`
+   instructions and by nothing else at all** (opcode-histogram delta between
+   the original and the recompiled candidate), with ~9 more differing only by
+   MOVE plus global-access traffic. That is the signature of a register the
+   printer materialized as a named `local` where luac used an expression-stack
+   temporary: calling `f(a, b)` through three declared locals needs three
+   `MOVE`s to the top of the stack that the original never had.
+
+   The mechanism is `RegClass`'s own documented limitation
+   (`express/names.py`): classification is **whole-function and per register
+   *number***, but luac reuses one slot for a temporary in one statement and a
+   declared local in another. Measured exemplar: `snr_crd_10.lua:main_2` uses
+   registers 0/1/2 as call-argument temps in its first six instructions and
+   then declares three locals into the same slots before its `while` loop;
+   `classify_registers` must give one verdict for the whole function, picks
+   `local`, and the first six instructions come back with MOVEs. Its first
+   divergence is at pc 6 — long before any loop.
+
+   Generalizing: of the 109 protos that contain a recognized `While`, print,
+   and fail certification, **108 have their first code divergence at a pc
+   before any loop header**. The loop work is not what is failing there.
+
+   The residual 13 are a different, much smaller problem: identical opcode
+   histograms with operand-level differences (9 are a `GETGLOBAL`'s constant
+   index, i.e. constant-table ordering; 2 are `NEWTABLE` size hints).
+
+   Closing the big one needs live-range analysis in `classify_registers` (one
+   verdict per register *live range*, not per register number). It is the
+   single highest-value item remaining in M4: on the arithmetic above it is
+   worth up to ~264 unique protos, which would put L3 near 95% on the unique
+   basis. Nothing in the loop layer can substitute for it.
 
 ### Re-deriving the three rows
 
@@ -739,15 +830,15 @@ for name, S in (("accepts own body", {h for h, p in uniq.items() if accepts(p)})
 ```
 
 ```
-accepts own body         1309/1478 (88.6%)  1775/1944 (91.3%)
-whole subtree prints     1170/1478 (79.2%)  1636/1944 (84.2%)
+accepts own body         1435/1478 (97.1%)  1901/1944 (97.8%)
+whole subtree prints     1416/1478 (95.8%)  1882/1944 (96.8%)
 ```
 
 Row 3 needs no script: it is the committed ledger. `uv run python
 scripts/ledger_dashboard.py` prints both bases (`L3 share (unique)` and
 `L3 share (occurrences)`).
 
-The refusal breakdown in point 1 (169 / 162 / 7 / 195 / 33 / 16):
+The refusal breakdown in point 1 (43 / 36 / 7 / 195 / 159 / 16):
 
 ```python
 # PYLUADEC_CORPUS_DIR=... uv run python -
@@ -783,20 +874,138 @@ print(f"build_sir refusals                  {len(refused)}")
 print(f"  of which carry a back edge        {len(refused & back)}")
 print(f"  acyclic refusals                  {len(refused - back)}")
 print(f"protos with a back edge at all      {len(back)}")
-print(f"  back edge but accepted (for loop) {len(back - refused)}")
+print(f"  back edge but accepted (loop)     {len(back - refused)}")
 print(f"protos containing TESTSET           {len(testset)}")
 print(f"  of which are refused              {len(testset & refused)}")
 ```
 
 ```
 unique protos                       1478
-build_sir refusals                  169
-  of which carry a back edge        162
+build_sir refusals                  43
+  of which carry a back edge        36
   acyclic refusals                  7
 protos with a back edge at all      195
-  back edge but accepted (for loop) 33
+  back edge but accepted (loop)     159
 protos containing TESTSET           16
   of which are refused              16
+```
+
+Point 3's opcode-histogram breakdown (264 MOVE-only of 277):
+
+```python
+# PYLUADEC_CORPUS_DIR=... uv run python -
+# For every non-L3 unique proto, find the proto where compare_protos actually
+# diverges (it RECURSES -- a root's own code often matches while a descendant's
+# does not, so comparing only the top-level code arrays undercounts badly), and
+# subtract the original's opcode histogram from the candidate's there. A delta
+# of nothing but positive MOVE entries is the over-materialized-local
+# signature.
+import collections, os
+from pathlib import Path
+from pyluadec import oracle
+from pyluadec.emit.lua import _print_proto_body, print_chunk
+from pyluadec.express.reconstruct import ReconstructError
+from pyluadec.ingest import load_file, load_bytes
+from pyluadec.lift.opcodes import decode
+from pyluadec.pipeline import walk_proto_paths
+from pyluadec.sir.build import StructureError
+from pyluadec.structure.structured import certify_proto
+from pyluadec.verify.ledger import structural_hash
+
+uniq, isroot = {}, {}
+for f in sorted(Path(os.environ["PYLUADEC_CORPUS_DIR"]).glob("*.lua")):
+    protos = {}
+    walk_proto_paths("main", load_file(f), protos)
+    for path, p in protos.items():
+        h = structural_hash(p)
+        if h not in uniq:
+            uniq[h], isroot[h] = p, path == "main"
+
+def ops(code):
+    c = collections.Counter()
+    for w in code:
+        c[decode(w, 0).op.name] += 1
+    return c
+
+def candidate(p, root):
+    """Exactly the proto certify_proto compares against, or None if it refuses."""
+    if root:
+        src = print_chunk(p)
+        return None if src is None else load_bytes(
+            oracle.compile_source(src.encode(), strip=True))
+    upn = tuple(f"u{i}" for i in range(p.nups))
+    try:
+        body = _print_proto_body(p, depth=1, upval_names=upn)
+    except (StructureError, ReconstructError):
+        return None
+    params = ", ".join(f"l1_{i}" for i in range(p.numparams))
+    if p.is_vararg & 2:
+        params += ", ..." if params else "..."
+    decls = ("local " + ", ".join(upn) + "\n") if upn else ""
+    r = load_bytes(oracle.compile_source(
+        f"{decls}return function({params})\n{body}end\n".encode(), strip=True))
+    return r.subprotos[0] if len(r.subprotos) == 1 else None
+
+def nav(p, path):                      # paths are "root", "root/0", "root/0/1"
+    for part in path.split("/")[1:]:
+        if int(part) >= len(p.subprotos):
+            return None
+        p = p.subprotos[int(part)]
+    return p
+
+b, firstop = collections.Counter(), collections.Counter()
+for h, p in uniq.items():
+    cert = certify_proto(p, is_chunk_root=isroot[h])
+    if cert.level == "L3":
+        continue
+    rec = candidate(p, isroot[h])
+    if rec is None:
+        b["A. subtree refuses structuring"] += 1
+        continue
+    path = cert.mismatches[0].path
+    oa, ob = nav(p, path), nav(rec, path)
+    if oa is None or ob is None:
+        b["F. proto-tree shape differs"] += 1
+        continue
+    d = ops(ob.code)
+    d.subtract(ops(oa.code))
+    extra = {k: v for k, v in d.items() if v}
+    if not extra:
+        k = "B. same opcode histogram, operands differ"
+    elif set(extra) == {"MOVE"}:
+        k = "C. extra MOVEs only"
+    elif extra.get("MOVE", 0) > 0 and all(v > 0 for v in extra.values()):
+        k = "D. extra MOVEs + other additions"
+    else:
+        k = "E. other delta"
+    b[k] += 1
+    aa, bb = oa.code, ob.code
+    j = 0
+    while j < min(len(aa), len(bb)) and aa[j] == bb[j]:
+        j += 1
+    if j < min(len(aa), len(bb)):
+        ra, rb = decode(aa[j], 0), decode(bb[j], 0)
+        firstop[k[0] + " " + (ra.op.name if ra.op is rb.op
+                              else ra.op.name + "->" + rb.op.name)] += 1
+for k, v in b.most_common():
+    print(f"{v:5d}  {k}")
+print()
+for k, v in firstop.most_common(6):
+    print(f"{v:5d}  first differing instruction: {k}")
+```
+
+```
+  251  C. extra MOVEs only
+   62  A. subtree refuses structuring
+   13  B. same opcode histogram, operands differ
+   13  D. extra MOVEs + other additions
+
+  226  first differing instruction: C CALL->MOVE
+   13  first differing instruction: C LOADK->MOVE
+    9  first differing instruction: B GETGLOBAL
+    6  first differing instruction: C JMP
+    5  first differing instruction: D CALL->MOVE
+    4  first differing instruction: D FORPREP->MOVE
 ```
 
 The 58-residual mismatch histogram in point 3. Self-contained — run it

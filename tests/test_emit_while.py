@@ -224,10 +224,18 @@ def test_enditer_shape_does_not_certify_and_therefore_ships_fallback():
     The invariant still holds and is what this test really guards: the
     uncertified structured print does NOT ship -- the M2 fallback does.
 
-    EXPIRY: Task 3's `while <cond>` loops thread jumps differently and may
-    well produce an EndIter that certifies. When one does, this test's L1
-    assertion is the thing to revisit; the fallback-shipping assertion below
-    is permanent.
+    EXPIRY DISCHARGED, NOT LIFTED (M4 task 3). The expiry note here said
+    task 3's `while <cond>` loops "may well produce an EndIter that
+    certifies". They do not, and the evidence went the other way: measured on
+    `while true do while true do if a then f() else break end end end`, a
+    `While` whose body ends in an EndIter recompiles one JMP short and drops
+    that fixture from L3 to L1, exactly as this test's mechanism predicts.
+    `_match_while` therefore REFUSES any body with an EndIter of its own
+    (stricter than `_match_while_true`'s tail-position rule) rather than
+    preempt a reading that can certify. So the L1 assertion below stands on
+    strictly more evidence than before; the next thing that could lift it is
+    an emitter that can express the extra threaded jump, not another loop
+    recognizer. The fallback-shipping assertion is permanent.
     """
     p = load_bytes(compile_source(_ENDITER_SRC, strip=True))
     cert = certify_proto(p, is_chunk_root=True)
