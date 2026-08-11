@@ -90,13 +90,19 @@ def test_repeat_is_recognized(tmp_path):
     assert _find(r, Repeat)
 
 
-def test_testset_still_raises(tmp_path):
+def test_boolean_value_expression_still_raises(tmp_path):
     """The remaining acyclic refusal family, kept as the "build_sir really
     does still refuse things" anchor the two tests above used to be.
-    EXPIRY: M4 task 4 reconstructs TESTSET."""
+
+    Was the and/or VALUE idiom until M4 task 4 reconstructed it. A COMPARISON
+    used as a value is a different animal: `lcode.c:exp2reg`'s `need_value` is
+    true (the jump list's control instruction is an EQ, not a TESTSET), so it
+    materialises a `LOADBOOL`/`LOADBOOL` pair whose skip-next form has no
+    straight-line reading at all.
+    EXPIRY: whichever task reconstructs LOADBOOL value expressions."""
     from pyluadec.sir.build import StructureError, build_sir
-    fn = _fn("local a, b local x = a or b return x", tmp_path)
-    with pytest.raises(StructureError, match="TESTSET"):
+    fn = _fn("local a, b = 1, 2 local x = (a or b) == 1 return x", tmp_path)
+    with pytest.raises(StructureError, match="LOADBOOL"):
         build_sir(fn)
 
 

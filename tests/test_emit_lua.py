@@ -69,13 +69,21 @@ def test_closure_prints_compilable(tmp_path):
 def test_unstructurable_chunk_returns_none(tmp_path):
     from pyluadec.emit.lua import print_chunk
     # `print_chunk` returns None (caller falls back) for anything build_sir
-    # refuses. M4 task 3 structures `while`, so the sample here is now the
-    # and/or VALUE idiom, which compiles to TESTSET and is still refused.
-    # EXPIRY: M4 task 4 reconstructs TESTSET; when it lands, this needs a
-    # different still-unstructurable sample (or deleting, if none remains).
-    assert print_chunk(_proto("local a, b local x = a or b return x", tmp_path)) is None
-    # ...and the shape it used to use now prints.
+    # refuses. The sample has moved twice: `while` (structured by M4 task 3),
+    # then the and/or VALUE idiom (reconstructed by M4 task 4). It is now the
+    # BOOLEAN-value family -- a comparison used as a value rather than as a
+    # branch condition, which `lcode.c:exp2reg` materialises with a LOADBOOL
+    # pair (`need_value` is true because the jump list's control instruction
+    # is not a TESTSET). Nothing in M4 recognizes that.
+    # EXPIRY: whichever task reconstructs LOADBOOL value expressions; when it
+    # lands this needs a different still-unstructurable sample (or deleting,
+    # if none remains).
+    assert print_chunk(_proto("local a, b = 1, 2 local x = (a or b) == 1 return x",
+                              tmp_path)) is None
+    # ...and both shapes it used to use now print.
     assert print_chunk(_proto("local i=0 while i<3 do i=i+1 end return i",
+                              tmp_path)) is not None
+    assert print_chunk(_proto("local a, b = 1, 2 local x = a or b return x",
                               tmp_path)) is not None
 
 

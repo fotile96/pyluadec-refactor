@@ -201,11 +201,13 @@ def test_while_cond_is_recognized():
 
 
 def test_refusals_still_refuse():
-    # `repeat` is recognized as of M4 task 3 (see test_sir_loops_longtail.py);
-    # the acyclic TESTSET family stays refused until task 4.
+    # `repeat` is recognized as of M4 task 3 (see test_sir_loops_longtail.py)
+    # and the acyclic TESTSET family as of task 4 (test_express_testset.py).
+    # The boolean-VALUE family -- a comparison used as a value, which
+    # `lcode.c:exp2reg` materialises with a LOADBOOL pair -- is still refused.
     fn = lift_proto(load_bytes(compile_source(
-        b"local a, b local x = a or b return x", strip=True)))
-    with pytest.raises(StructureError, match="TESTSET"):
+        b"local a, b = 1, 2 local x = (a or b) == 1 return x", strip=True)))
+    with pytest.raises(StructureError, match="LOADBOOL"):
         build_sir(fn)
 
 
@@ -529,10 +531,11 @@ def test_corpus_build_sir_acceptance_floor(corpus_dir):
         except StructureError:
             pass
     print(f"build_sir accepts {ok}/{len(uniq)} unique protos")
-    # M4 TASK 3 MOVED THIS. History and the measurements behind it:
+    # M4 TASK 4 MOVED THIS. History and the measurements behind it:
     #   M3 baseline / after task 1 / after task 2:  1309
     #   after task 3 (`While` + `Repeat` recognition, generic-for back-edge
     #   exclusion removed, dead-closing-JMP relaxation):  1435
+    #   after task 4 (`CondValue`, the and/or VALUE idiom):  1447
     #
     # Where the 126 came from, measured 2026-08-11 by instrumenting the three
     # loop recognizers inside real `build_sir` runs over all 1478 unique
@@ -547,16 +550,29 @@ def test_corpus_build_sir_acceptance_floor(corpus_dir):
     # is 126, and the difference is protos that contain a `while <cond>` AND
     # something else still refused.
     #
-    # The 43 that remain refuse for reasons this task did not address:
+    # The 43 that remained after task 3 (re-measured 2026-08-11 at the start
+    # of task 4; the task-4 prompt quoted 10 TESTSET / 8 else-join, which does
+    # NOT reproduce -- it is 8 and 10, as this comment already had it):
     #     15  "if targets out of range", ALL of them jt > hi -- an `if` whose
     #         false-exit was threaded onto an enclosing `if`'s else-skip
     #         (the same luaK_jump jpc mechanism `_structure_if` already
     #         handles for loop headers, one level up). NOT one of them is
     #         `jt == break_target`.
     #     10  "else-join out of range"
-    #      8  "unrecognized transfer TESTSET"   (M4 task 4)
+    #      8  "unrecognized transfer TESTSET"   <- closed by task 4
     #     10  "branch body block ... is unreachable"
+    #
+    # Task 4 took 12 of those 43: the 8 TESTSET refusals, plus 4 protos that
+    # contain NO TESTSET at all and were refused as "if targets out of range"
+    # -- their chain is `(<gate> and X) or Y` where X's staging register is
+    # also the destination, so `lcode.c:patchtestreg` rewrote the TESTSET to a
+    # bare `TEST`. The 31 that remain:
+    #     11  "else-join out of range"
+    #     10  "if targets out of range"
+    #     10  "branch body block ... is unreachable"
+    # (one proto moved from the if-targets bucket to the else-join bucket:
+    # the chain it now claims was what the `if` reader tripped over first.)
     #
     # Floor is measured-minus-10, a ratchet against regression rather than a
     # claim of growth (same protocol as the previous value).
-    assert ok >= 1425   # measured after task 3: 1435
+    assert ok >= 1437   # measured after task 4: 1447

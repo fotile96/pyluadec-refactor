@@ -27,14 +27,17 @@ def test_decompile_chunk_records_levels():
 
 
 # A chunk `build_sir` still refuses, used throughout this module as the
-# "falls back" sample. Was `local i = 0 while i < 3 do i = i + 1 end return i`
-# until M4 task 3 structured `while`; the and/or VALUE idiom compiles to
-# TESTSET, which is still refused.
-# EXPIRY: M4 task 4 reconstructs TESTSET. When it lands, every use of this
-# constant needs a different still-unstructurable sample -- and if none
-# remains, these tests have lost their subject and should be re-thought
-# rather than patched.
-_UNSTRUCTURABLE = b"local a, b local x = a or b return x"
+# "falls back" sample. It has moved twice: `local i = 0 while i < 3 do ... end`
+# until M4 task 3 structured `while`, then the and/or VALUE idiom until M4
+# task 4 reconstructed TESTSET. It is now the BOOLEAN-value family -- a
+# comparison used as a value, which `lcode.c:exp2reg` materialises with a
+# LOADBOOL pair (`need_value` is true when the jump list's control instruction
+# is not a TESTSET), and which `build_sir` refuses as an unrecognized transfer.
+# EXPIRY: whichever task reconstructs LOADBOOL value expressions. When it
+# lands, every use of this constant needs a different still-unstructurable
+# sample -- and if none remains, these tests have lost their subject and
+# should be re-thought rather than patched.
+_UNSTRUCTURABLE = b"local a, b = 1, 2 local x = (a or b) == 1 return x"
 
 
 def test_fallback_chunk_still_confesses():
@@ -56,7 +59,7 @@ def test_mixed_chunk_levels_are_per_proto():
     from pyluadec.pipeline import decompile_chunk
     bc = oracle.compile_source(
         b"local f = function(a, b) return a + b end\n"
-        b"local p, q local x = p or q return f(x, 1)", strip=True)
+        b"local p, q = 1, 2 local x = (p or q) == 1 return f(x, 1)", strip=True)
     res = decompile_chunk(load_bytes(bc))
     assert res.levels["main"] == "L1"
     assert res.levels["main_0"] == "L3"

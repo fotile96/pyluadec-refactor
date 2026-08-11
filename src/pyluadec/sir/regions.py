@@ -135,6 +135,92 @@ class EndIter:
 
 
 @dataclass(frozen=True)
+class VTail:
+    """The last alternative of a short-circuit value chain: a straight run
+    whose net effect is to write the chain's target register.
+
+    May be EMPTY, and that is not a degenerate case to guard against -- it is
+    `lcode.c:discharge2reg` emitting nothing because the final operand is
+    already sitting in the destination register (`x = <cond> and 9 or x`,
+    measured on `snr_graphic.lua:main_3` pc 39). The value on that path is
+    then the target register's INCOMING value, which is exactly what an empty
+    run reconstructs to."""
+    instrs: tuple[LirInstr, ...]
+
+
+@dataclass(frozen=True)
+class VAlt:
+    """One short-circuiting alternative of an `and`/`or` value chain.
+
+    Layout, with `join` the chain's single exit and `A` its target register:
+
+        staging...                    -- operand code for `gate` (may be empty)
+        gate  ; JMP -> E              -- OPTIONAL; E == test_pc + 2
+        inner_staging...              -- operand code for the tested value
+        test  = TESTSET A B C
+                JMP -> join
+        <rest continues at test_pc + 2>
+
+    Ungated, the alternative reads `R[B] or <rest>` when `C == 1` and
+    `R[B] and <rest>` when `C == 0` -- directly from `lvm.c`'s
+    `l_isfalse(rb) != C` (see tests/test_express_testset.py's module
+    docstring).
+
+    Gated, it reads `(<gate> and R[B]) or <rest>`, and ONLY that: the gate is
+    `lcode.c:luaK_patchtohere` retargeting a pending jump list with `NO_REG`,
+    which happens for the left operand of an `or` whose own left operand is an
+    `and`. `luaK_goiftrue`'s inversion is already accounted for by reading the
+    gate with FALL-THROUGH polarity (`Reconstructor.condition_expr`), the same
+    single source of truth `If`/`While`/`Repeat` use. A gate whose alternative
+    carries `C == 0` is a different shape (`(<gate> or R[B]) and <rest>`) and
+    `sir.build` refuses it rather than guessing its source form."""
+    staging: tuple[LirInstr, ...]
+    gate: LirInstr | None
+    gate_jmp_pc: int | None
+    inner_staging: tuple[LirInstr, ...]
+    test: LirInstr                   # TESTSET
+    test_jmp_pc: int
+    rest: "VNode"
+
+
+VNode = VAlt | VTail
+
+
+@dataclass(frozen=True)
+class CondValue:
+    """`R[target] = <short-circuit and/or expression>` -- luac's VALUE idiom.
+
+    Deliberately NOT an `If`: a TESTSET *assigns* on the branch it takes, so
+    there is no if-statement reading of it (which is why M3 refused it
+    outright). It is also not a `Straight`: the alternatives are conditionally
+    evaluated, so their operand code must reconstruct to expressions, never to
+    statements -- see `Reconstructor._refuse_statements`, the guard that keeps
+    this node from claiming pcs whose work it would then never print.
+
+    `claimed_pcs` covers the WHOLE chain (every alternative's staging, gate,
+    gate JMP, test, test JMP, and the tail run), so `_CHILDREN` deliberately
+    has no entry for this node."""
+    target: int
+    node: VNode
+    claimed_pcs: frozenset[int]
+
+
+def value_claimed(node: VNode) -> frozenset[int]:
+    """Every pc a VNode chain occupies. Kept next to the node definitions so a
+    new field cannot be added without this function being the obvious place
+    that has to learn about it."""
+    if isinstance(node, VTail):
+        return frozenset(li.ri.pc for li in node.instrs)
+    acc = {node.test.ri.pc, node.test_jmp_pc}
+    acc |= {li.ri.pc for li in node.staging}
+    acc |= {li.ri.pc for li in node.inner_staging}
+    if node.gate is not None:
+        assert node.gate_jmp_pc is not None
+        acc |= {node.gate.ri.pc, node.gate_jmp_pc}
+    return frozenset(acc) | value_claimed(node.rest)
+
+
+@dataclass(frozen=True)
 class Return:
     instr: LirInstr
     claimed_pcs: frozenset[int]
@@ -147,7 +233,7 @@ class Fallback:
 
 
 Region = (Straight | Seq | If | NumericFor | GenericFor | WhileTrue | While
-          | Repeat | EndIter | Break | Return | Fallback)
+          | Repeat | EndIter | Break | Return | CondValue | Fallback)
 
 _CHILDREN = {
     Seq: lambda r: r.body,

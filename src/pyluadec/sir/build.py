@@ -9,15 +9,25 @@ from pyluadec.cfg import build_cfg, dominates, immediate_dominators
 from pyluadec.lift.lift import LirFunction
 from pyluadec.lift.opcodes import Op
 
-from .regions import (Break, EndIter, GenericFor, If, NumericFor, Region,
-                      RegionOverlap, Repeat, Return, Seq, Straight, While,
-                      WhileTrue, all_claimed, _own_enditers, _tail_enditers)
+from .regions import (Break, CondValue, EndIter, GenericFor, If, NumericFor,
+                      Region, RegionOverlap, Repeat, Return, Seq, Straight,
+                      VAlt, VTail, While, WhileTrue, all_claimed,
+                      value_claimed, _own_enditers, _tail_enditers)
 
 _COMPARE = frozenset({Op.EQ, Op.LT, Op.LE, Op.TEST})
-# TESTSET is deliberately NOT an if-condition: it is the and/or VALUE idiom
-# (assigns on one branch). Reconstructing it is M4; in M3 a TESTSET reaches the
-# unrecognized-transfer check (it has two successors) and the function falls back.
-# Corpus impact: 16/1478 unique protos (1.1%).
+# TESTSET is still NOT an if-condition -- it ASSIGNS on the branch it takes, so
+# no if-statement reading of it exists. M3 therefore refused it outright (it
+# has two successors and reached the unrecognized-transfer check). As of M4
+# task 4 it is recognized for what it is: the and/or VALUE idiom, claimed by
+# `_match_cond_value` as a `CondValue` region whose whole chain reconstructs to
+# one assignment. A bare `TEST` is deliberately NOT claimed as a value test
+# even though `lcode.c:patchtestreg` produces one whenever the destination
+# register equals the tested one -- `x = x or 1` and `if not x then x = 1 end`
+# are then the same bytecode, so the incumbent `if` reading is kept (the same
+# ambiguity tie-break `_match_repeat` documents). `TEST` IS accepted as a
+# chain's *gate*, where no `if` reading survives structuring anyway.
+# Corpus impact of TESTSET, re-measured 2026-08-11: 16/1478 unique protos
+# (1.1%), 53 TESTSET sites, every one of them C == 1 (`or`).
 
 
 class StructureError(Exception):
@@ -483,6 +493,195 @@ def _match_while_true(fn, cfg, idoms, pc2blk, sites, memo, lo: int, hi: int):
     return None
 
 
+class _NoValueChain(Exception):
+    """Internal: `_parse_value` found a shape it cannot prove. Never escapes
+    `_match_cond_value`, which turns it into a plain `None` -- the caller then
+    goes on to the other recognizers and ultimately refuses loudly with its
+    own message, exactly like `_match_while`."""
+
+
+def _straight_step(fn, pc: int) -> int | None:
+    """`pc`'s successor if `pc` is an ordinary fall-through instruction, else
+    None. Advances past the pseudo-instruction pcs a CLOSURE consumes, which
+    `fn.instrs` does not contain (and which the pc-claim audit therefore never
+    asks anyone to claim)."""
+    li = fn.instrs[pc]
+    nxt = pc + 1 + len(li.consumed)
+    return nxt if li.successors == (nxt,) else None
+
+
+def _is_value_test(li, target: int, *, committed: bool) -> bool:
+    """True iff `li` is a value test for register `target` -- the instruction
+    that short-circuits one alternative of an `and`/`or` chain.
+
+    `TESTSET A B C` is one whenever A is the chain's target; every TESTSET in a
+    chain is patched to the same destination by `lcode.c:patchlistaux`.
+
+    A bare `TEST A 0 C` is `lcode.c:patchtestreg`'s rewrite of a TESTSET whose
+    destination register IS the tested one -- `CREATE_ABC(OP_TEST,
+    GETARG_B(*i), 0, GETARG_C(*i))`, hence A == target and B == 0 exactly.
+    It is accepted ONLY once the chain is `committed` (some earlier
+    alternative already carried a real TESTSET, or a gate anchored it),
+    because an UNcommitted one is genuinely ambiguous: `x = x or 1` and
+    `if not x then x = 1 end` compile to the same bytecode, and M3's `if`
+    reading of that shape is the incumbent. Inside a committed chain the
+    ambiguity is gone -- everything between an alternative's JMP and the join
+    is that alternative's right operand, and a Lua expression cannot contain
+    an `if` statement.
+    """
+    if li is None:
+        return False
+    if li.ri.op is Op.TESTSET:
+        return li.ri.a == target
+    if li.ri.op is Op.TEST:
+        return committed and li.ri.a == target and li.ri.b == 0
+    return False
+
+
+def _parse_value(fn, lo: int, join: int, target: int, *, committed: bool):
+    """Parse `[lo, join)` as one `and`/`or` value chain writing `R[target]`,
+    where every short-circuit JMP inside targets `join`. Returns a VNode.
+
+    Right-nested by construction, and that is the semantics rather than a
+    formatting choice: a TESTSET short-circuits the ENTIRE remainder of the
+    chain, so `A1 <op1> (A2 <op2> (... An))` is what the jump structure says.
+    Left-nesting would be wrong the moment the operators differ -- `b or c and
+    d` and `(b or c) and d` compile to visibly different bytecode (measured
+    against luac_sz4 2026-08-11), and the former is the two-ungated-TESTSET
+    shape this parser produces.
+
+    Raises `_NoValueChain` for anything it cannot prove.
+    """
+    staging: list = []
+    pc = lo
+    while pc < join:
+        li = fn.instrs.get(pc)
+        if li is None:
+            raise _NoValueChain
+        op = li.ri.op
+        if _is_value_test(li, target, committed=committed):
+            jp = pc + 1
+            jmp = fn.instrs.get(jp)
+            if jp >= join or jmp is None or jmp.ri.op is not Op.JMP \
+                    or jmp.successors != (join,):
+                raise _NoValueChain
+            if op is Op.TEST and not staging:
+                # The TEST variant's operand is whatever `staging` left in
+                # `target`; with no staging there is nothing that produced it,
+                # so the shape is not understood. Refuse rather than read the
+                # register and hope.
+                raise _NoValueChain
+            return VAlt(staging=tuple(staging), gate=None, gate_jmp_pc=None,
+                        inner_staging=(), test=li, test_jmp_pc=jp,
+                        rest=_parse_value(fn, jp + 1, join, target,
+                                          committed=True))
+        if op is Op.TESTSET:
+            raise _NoValueChain            # a TESTSET writing some OTHER register
+        if op in _COMPARE:
+            jp = pc + 1
+            jmp = fn.instrs.get(jp)
+            if jp >= join or jmp is None or jmp.ri.op is not Op.JMP:
+                raise _NoValueChain
+            nxt_alt = jmp.successors[0]
+            # `(<gate> and R[B]) or <rest>`: `luaK_patchtohere` retargets the
+            # gate's jump at the pc where the NEXT alternative starts, which is
+            # exactly two past the alternative's own TESTSET (test + its JMP).
+            # Requiring that equality -- rather than merely "somewhere inside"
+            # -- is what makes this recognition instead of a heuristic.
+            t = nxt_alt - 2
+            test = fn.instrs.get(t)
+            test_jmp = fn.instrs.get(t + 1)
+            if not (pc + 2 <= t and nxt_alt <= join) \
+                    or not _is_value_test(test, target, committed=True) \
+                    or test.ri.c != 1 \
+                    or test_jmp is None or test_jmp.ri.op is not Op.JMP \
+                    or test_jmp.successors != (join,):
+                # `test.ri.c != 1` refuses `(<gate> or R[B]) and <rest>`, the
+                # mirror shape: it is emitted (goiffalse leaves the gate
+                # un-inverted, so the printed condition would need a `not` that
+                # `codenot` then folds back into the comparison) and this
+                # project has not derived its source form. Refuse, do not guess.
+                raise _NoValueChain
+            inner: list = []
+            q = pc + 2
+            while q < t:
+                nq = _straight_step(fn, q)
+                if nq is None:
+                    raise _NoValueChain
+                inner.append(fn.instrs[q])
+                q = nq
+            if q != t or (test.ri.op is Op.TEST and not inner):
+                raise _NoValueChain
+            return VAlt(staging=tuple(staging), gate=li, gate_jmp_pc=jp,
+                        inner_staging=tuple(inner), test=test,
+                        test_jmp_pc=t + 1,
+                        rest=_parse_value(fn, nxt_alt, join, target,
+                                          committed=True))
+        nxt = _straight_step(fn, pc)
+        if nxt is None:
+            raise _NoValueChain
+        staging.append(li)
+        pc = nxt
+    if pc != join:
+        raise _NoValueChain                  # a run stepped past the join
+    return VTail(instrs=tuple(staging))
+
+
+def _match_cond_value(fn, cfg, idoms, pc2blk, lo: int, hi: int):
+    """Recognize luac's `and`/`or` VALUE idiom opening at range position `lo`.
+
+    Returns `(CondValue region, next pc)` or None; never raises.
+
+    Only two openings can start a chain, and both are read straight off the
+    instruction at `lo` rather than searched for:
+
+      * `lo` is the chain's first TESTSET, or
+      * `lo` is a gate (`EQ`/`LT`/`LE`/`TEST`) whose JMP lands two past a
+        TESTSET -- the `(<gate> and X) or Y` shape.
+
+    That is sufficient because `_structure_range_impl`'s straight-run
+    accumulator breaks on both `_COMPARE` and on any non-fall-through
+    successor, so the dispatch position always lands exactly on the
+    construct's first instruction and never inside its operand staging.
+
+    The dominance check is the same obligation every other recognizer here
+    carries: pc-interval arithmetic alone cannot tell that `[lo, join)` is
+    entered only through `lo`. Without it, a jump from earlier code into the
+    middle of what looks like an alternative would be silently swallowed into
+    a conditional expression."""
+    li = fn.instrs[lo]
+    op = li.ri.op
+    if op is Op.TESTSET:
+        t = lo
+    elif op in _COMPARE:
+        jmp = fn.instrs.get(lo + 1)
+        if jmp is None or jmp.ri.op is not Op.JMP:
+            return None
+        t = jmp.successors[0] - 2
+        cand = fn.instrs.get(t)
+        if cand is None or cand.ri.op is not Op.TESTSET \
+                and not (cand.ri.op is Op.TEST and cand.ri.b == 0):
+            return None
+    else:
+        return None
+    test_jmp = fn.instrs.get(t + 1)
+    if test_jmp is None or test_jmp.ri.op is not Op.JMP:
+        return None
+    join = test_jmp.successors[0]
+    if not (lo < join <= hi):
+        return None
+    target = fn.instrs[t].ri.a
+    try:
+        node = _parse_value(fn, lo, join, target, committed=False)
+        _verify_single_entry(cfg, idoms, pc2blk, lo, lo, join)
+    except (_NoValueChain, StructureError):
+        return None
+    claimed = value_claimed(node)
+    if claimed != {p for p in fn.instrs if lo <= p < join}:
+        return None                          # under/over-claimed: not this shape
+    return CondValue(target=target, node=node, claimed_pcs=claimed), join
+
+
 def _structure_range(fn, cfg, idoms, pc2blk, lo: int, hi: int,
                      break_target: int | None = None,
                      continue_target: int | None = None, sites=None,
@@ -612,6 +811,18 @@ def _structure_range_impl(fn, cfg, idoms, pc2blk, lo: int, hi: int,
         if op in (Op.RETURN, Op.TAILCALL):
             parts.append(Return(instr=li, claimed_pcs=frozenset({pc})))
             pc += 1 + len(li.consumed)
+            continue
+        # Tried BEFORE `_structure_if`, and the order is load-bearing for the
+        # gated shape: `(<gate> and X) or Y` opens on a compare, and reading
+        # that compare as an `if` puts the chain's TESTSET inside a branch
+        # body, where `_structure_range` refuses it. Trying the value chain
+        # first can therefore only turn refusals into acceptances -- it never
+        # takes a shape away from `_structure_if`, because no shape this
+        # matches survives `_structure_if` at all.
+        cv = _match_cond_value(fn, cfg, idoms, pc2blk, pc, hi)
+        if cv is not None:
+            parts.append(cv[0])
+            pc = cv[1]
             continue
         if op in _COMPARE:
             region, nxt = _structure_if(fn, cfg, idoms, pc2blk, pc, hi,

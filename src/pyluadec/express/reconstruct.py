@@ -32,6 +32,7 @@ from dataclasses import dataclass
 from pyluadec.ingest.proto import LuaNumber
 from pyluadec.lift.lift import LirFunction, LirInstr
 from pyluadec.lift.opcodes import Op, indexk, isk
+from pyluadec.sir.regions import CondValue, VAlt, VNode, VTail
 
 from .expr import (BinExpr, CallExpr, ClosureExpr, ConstExpr, Expr, GlobalExpr,
                    IndexExpr, LocalExpr, TableExpr, UnExpr, UpvalExpr, VarargExpr)
@@ -94,6 +95,7 @@ class ReconstructError(Exception):
 
 
 _ARITH = {Op.ADD: "+", Op.SUB: "-", Op.MUL: "*", Op.DIV: "/", Op.MOD: "%", Op.POW: "^"}
+_CMP_SYM = {Op.EQ: "==", Op.LT: "<", Op.LE: "<="}
 
 
 def _local_regs_in(e: Expr) -> frozenset[int]:
@@ -209,6 +211,12 @@ class Reconstructor:
         # register conflict (the new NEWTABLE reuses the top context's own
         # register) closes anything (see _dispatch).
         self._table_ctx_stack: list[dict] = []
+        # Registers `write_reg` must stage into `env` instead of materializing,
+        # regardless of `rc`. Held only for the duration of one `_value_run`
+        # (see it): a short-circuit alternative's final value is an EXPRESSION
+        # feeding an `and`/`or`, so the instruction that computes it must not
+        # emit the `local ... = ...` statement `rc` would otherwise ask for.
+        self._force_temp: set[int] = set()
         self._out: list[Stmt] = []
 
     # ---- public API (spec) --------------------------------------------
@@ -263,6 +271,162 @@ class Reconstructor:
         """
         return self.rk(x)
 
+    def condition_expr(self, cond: LirInstr) -> Expr:
+        """A comparison/`TEST` instruction as the boolean expression that is
+        true exactly when control **falls through** past the JMP following it.
+
+        The single source of truth for condition polarity in this project:
+        `emit.lua`'s `Printer.condition` (used by `If`/`While`/`Repeat`) is a
+        thin `self.expr(...)` around this, and `_value_expr` needs the same
+        thing as an Expr rather than as text so it can nest a gate inside a
+        `BinExpr("and", ...)` with correct precedence.
+
+        Polarity (empirically measured against real `luac_sz4` output and
+        `lvm.c`'s dojump mechanics -- see `emit.lua`'s module docstring "Brief
+        defects" #1): for `EQ`/`LT`/`LE` the jump fires when the comparison
+        result equals A, so A==0 means the fall-through is the un-negated
+        comparison and A==1 means it is its negation. For `TEST A _ C` the
+        fall-through is taken when `l_isfalse(R(A)) == C`, so C==0 means R(A)
+        itself and C==1 means `not R(A)`.
+
+        `not` is built as a real `UnExpr` rather than formatted as text so the
+        expression printer adds exactly the parentheses precedence requires
+        (`not (a + b)`, never `not a + b`).
+        """
+        ri = cond.ri
+        if ri.op in _CMP_SYM:
+            base = BinExpr(_CMP_SYM[ri.op], self.cond_operand(ri.b),
+                           self.cond_operand(ri.c))
+            return base if ri.a == 0 else UnExpr("not", base)
+        if ri.op is Op.TEST:
+            operand = self.cond_operand(ri.a)
+            return operand if ri.c == 0 else UnExpr("not", operand)
+        raise ReconstructError(f"pc {ri.pc}: {ri.op.name} is not a condition")
+
+    # ---- the and/or VALUE idiom (sir.regions.CondValue) --------------------
+    def cond_value(self, cv: CondValue) -> tuple[Stmt, ...]:
+        """Reconstruct a whole short-circuit value chain as ONE assignment to
+        its target register (or, when the target is an inlinable temp, as zero
+        statements plus a staged expression the consumer inlines)."""
+        self._out = []
+        expr = self._value_expr(cv.node, cv.target)
+        self.write_reg(cv.target, expr)
+        self._finalize_pending()
+        return tuple(self._out)
+
+    def _value_expr(self, node: VNode, target: int) -> Expr:
+        """The Expr for one VNode chain. Every sub-part is reconstructed in
+        PROGRAM order -- staging, then gate, then inner staging, then the
+        tested operand, then the rest -- because reading a temp register pops
+        it out of `self.env`, so evaluating out of order would hand one
+        alternative another's staged expression."""
+        if isinstance(node, VTail):
+            return self._value_run(node.instrs, target)
+        if node.gate is not None:
+            self._stage_run(node.staging)
+            cond = self.condition_expr(node.gate)
+            # `sir.build._parse_value` proved node.test.ri.c == 1 for a gated
+            # alternative, so the outer operator is `or` and the gate binds to
+            # the tested value with `and`.
+            left: Expr = BinExpr("and", cond,
+                                 self._tested_value(node, node.inner_staging, target))
+            op = "or"
+        else:
+            left = self._tested_value(node, node.staging, target)
+            op = "or" if node.test.ri.c == 1 else "and"
+        return BinExpr(op, left, self._value_expr(node.rest, target))
+
+    def _tested_value(self, node: VAlt, staging: tuple[LirInstr, ...],
+                      target: int) -> Expr:
+        """The value one alternative short-circuits on.
+
+        `TESTSET A B C` tests a register B distinct from the destination, so
+        `staging` merely stages operands and the value is `R[B]`.
+
+        A bare `TEST A 0 C` is `lcode.c:patchtestreg`'s rewrite for the case
+        where the destination register IS the tested one (A == target); the
+        value is then exactly what `staging` computes into `target`, so it goes
+        through `_value_run` -- which also carries the "no statements" guard.
+        """
+        if node.test.ri.op is Op.TESTSET:
+            self._stage_run(staging)
+            return self._read_reg(node.test.ri.b)
+        return self._value_run(staging, target)
+
+    def _refuse_statements(self, emitted: list[Stmt], where: str) -> None:
+        """THE guard for `CondValue`. A short-circuit alternative's operand
+        code is reconstructed as an expression; if it reconstructs to a
+        *statement* instead, printing only the `and`/`or` expression would
+        DROP that statement silently -- and the pc-claim audit would not
+        notice, because the pcs are claimed by the CondValue either way (the
+        audit proves nothing was left unclaimed, never that everything claimed
+        was printed). Worse than dead output: the dropped statement is
+        typically a `local` the surviving expression still references, which
+        Lua then resolves as a GLOBAL.
+
+        It should be unreachable on real luac output -- `lparser.c` reads an
+        `and`/`or` operand with `fs->freereg == fs->nactvar`, so every register
+        it writes sits above every live local and classifies temp -- but
+        `classify_registers` is a whole-function, per-register-NUMBER analysis
+        (see its "Modeling limitation"), so a register that is a temp here can
+        be a local elsewhere in the same function. Kept as a loud refusal, not
+        an assert; the chunk then falls back.
+        """
+        if emitted:
+            raise ReconstructError(
+                f"{where} reconstructs to {len(emitted)} statement(s), which an "
+                "and/or expression cannot carry")
+
+    def _run_isolated(self, instrs: tuple[LirInstr, ...]) -> list[Stmt]:
+        """Dispatch `instrs` with `self._out` swapped out, returning whatever
+        statements they produced instead of appending them."""
+        saved = self._out
+        self._out = []
+        try:
+            for li in instrs:
+                self._dispatch(li)
+            self._finalize_pending()
+            return self._out
+        finally:
+            self._out = saved
+
+    def _stage_run(self, instrs: tuple[LirInstr, ...]) -> None:
+        """Reconstruct operand code that only stages values into `self.env`."""
+        if not instrs:
+            return
+        self._refuse_statements(
+            self._run_isolated(instrs),
+            f"pc {instrs[0].ri.pc}: and/or operand code")
+
+    def _value_run(self, instrs: tuple[LirInstr, ...], reg: int) -> Expr:
+        """The value an alternative's straight run leaves in `reg`, as an Expr.
+
+        An EMPTY run is not a failure: `lcode.c:discharge2reg` emits nothing
+        when the operand already sits in the destination register, so the value
+        on that path is `reg`'s incoming value -- which `_read_reg` is exactly
+        the right way to obtain (it pops a still-pending temp, or yields the
+        live local's name). Measured on the corpus at
+        `snr_graphic.lua:main_3` pc 39, `x = <cond> and 9 or x`.
+        """
+        if not instrs:
+            return self._read_reg(reg)
+        if not any(reg in li.effects.writes for li in instrs):
+            raise ReconstructError(
+                f"pc {instrs[0].ri.pc}: and/or alternative does not write "
+                f"register {reg}")
+        self._force_temp.add(reg)
+        try:
+            emitted = self._run_isolated(instrs)
+        finally:
+            self._force_temp.discard(reg)
+        self._refuse_statements(
+            emitted, f"pc {instrs[0].ri.pc}: and/or alternative")
+        if reg not in self.env:
+            raise ReconstructError(
+                f"pc {instrs[0].ri.pc}: and/or alternative left no expression "
+                f"in register {reg}")
+        return self.env.pop(reg)
+
     # ---- operand helpers -------------------------------------------------
     def rk(self, x: int) -> Expr:
         if isk(x):
@@ -308,6 +472,9 @@ class Reconstructor:
         # local from here on -- a fresh write to it is a reassignment
         # (force_materialize's Assign branch), never a re-inlinable temp
         # binding, regardless of rc.temps.
+        if reg in self._force_temp:
+            self.env[reg] = e
+            return
         if reg not in self.declared and reg in self.rc.temps:
             self.env[reg] = e
         else:

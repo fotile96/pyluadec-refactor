@@ -69,8 +69,9 @@ from pyluadec.express.reconstruct import (Assign, AssignTarget, ExprStmt,
 from pyluadec.ingest.proto import Proto
 from pyluadec.lift import LUA_KEYWORDS, Op
 from pyluadec.lift.lift import LirFunction, LirInstr, lift_proto
-from pyluadec.sir import (Break, EndIter, GenericFor, If, NumericFor, Region,
-                          Repeat, Return, Seq, Straight, While, WhileTrue)
+from pyluadec.sir import (Break, CondValue, EndIter, GenericFor, If,
+                          NumericFor, Region, Repeat, Return, Seq, Straight,
+                          While, WhileTrue)
 from pyluadec.sir.build import StructureError, build_sir
 from pyluadec.structure.fallback import const_lit
 
@@ -353,13 +354,16 @@ class Printer:
             the JMP, out of the loop -- is exactly the `until` condition. So
             `until <this expression>` is right, un-negated.
 
-        Polarity (empirically measured against real `luac_sz4` output and
-        lvm.c's dojump mechanics -- see module docstring "Brief defects" #1):
-        for EQ/LT/LE, the fallthrough is taken when the comparison result is
-        UNEQUAL to A; so A==0 means fallthrough is the un-negated comparison,
-        A==1 means it is its negation. For TEST A C, the fallthrough is taken
-        when `l_isfalse(R(A)) == C`; so C==0 means it is R(A) itself
-        (truthy-tested), C==1 means it is `not R(A)`.
+        Polarity, and the reason it is not decided here: it lives in
+        `Reconstructor.condition_expr`, which returns the same condition as a
+        typed Expr. `CondValue` (M4 task 4) needs it as an Expr rather than as
+        text -- an `and`/`or` gate nests the condition inside a
+        `BinExpr("and", ...)` and lets the expression printer decide the
+        parentheses -- and two independent copies of a polarity rule this
+        project has already gotten backwards once (see module docstring "Brief
+        defects" #1) is exactly the drift worth designing out. This method is
+        now a `self.expr(...)` around that single source of truth; the
+        rendered text is unchanged.
 
         `If.negated`/`Repeat.negated` are deliberately NOT consulted: the
         polarity is derived from the instruction's own A/C field, which is the
@@ -367,26 +371,14 @@ class Printer:
         always been informational in this printer; `Repeat.negated` is defined
         the same way so the two cannot drift apart.)
         """
-        ri = cond.ri
-        op = ri.op
-        if op in (Op.EQ, Op.LT, Op.LE):
-            sym = {Op.EQ: "==", Op.LT: "<", Op.LE: "<="}[op]
-            lhs = self.expr(self.recon.cond_operand(ri.b))
-            rhs = self.expr(self.recon.cond_operand(ri.c))
-            base = f"{lhs} {sym} {rhs}"
-            return base if ri.a == 0 else f"not ({base})"
-        if op is Op.TEST:
-            operand = self.recon.cond_operand(ri.a)
-            if ri.c == 0:
-                return self.expr(operand)
-            # Delegate to UnExpr's own precedence-correct printing rather
-            # than hand-formatting "not {text}" here: the brief's skeleton
-            # did the latter, which is wrong whenever `operand` itself binds
-            # looser than unary `not` (e.g. `if not (a + b) then` would
-            # print as "not a + b", reparsing as "(not a) + b"; see module
-            # docstring "Brief defects" #2).
-            return self.expr(UnExpr("not", operand))
-        raise StructureError(f"unprintable condition {op.name}")
+        try:
+            return self.expr(self.recon.condition_expr(cond))
+        except ReconstructError as exc:
+            # Region-level refusal, as before: a region whose condition slot
+            # holds a non-condition opcode is an unstructurable shape, not a
+            # reconstruction accident. `print_chunk` catches both, but the
+            # distinction is what the callers' own tests assert on.
+            raise StructureError(str(exc)) from exc
 
     # ---- regions --------------------------------------------------------
     def region(self, r: Region, indent: int) -> list[str]:
@@ -414,6 +406,12 @@ class Printer:
             return [pad + self.stmt(s) for s in self.recon.stmts_for((r.instr,))]
         if isinstance(r, Break):
             return [pad + "break"]
+        if isinstance(r, CondValue):
+            # The whole and/or chain is ONE assignment (or, when the target is
+            # an inlinable temp, zero statements plus a staged expression the
+            # consumer inlines). All the structure lives in the Expr tree
+            # `Reconstructor.cond_value` builds; this arm stays a fold.
+            return [pad + self.stmt(s) for s in self.recon.cond_value(r)]
         if isinstance(r, If):
             cond = self.condition(r.cond)
             out = [f"{pad}if {cond} then"]
