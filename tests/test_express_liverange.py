@@ -91,8 +91,31 @@ LOCAL_CASES = [
     (b"local x = 1 print(x) print(x)", [b"1", b"1"]),
     # Defined OUTSIDE a loop, read INSIDE it: the pc-linear walk sees exactly
     # one read and would call it a temporary, which moves `local i = 0` into
-    # the loop body and never terminates. Pinned by `_same_loops`.
+    # the loop body and never terminates.
+    #
+    # Re-attributed (fix round 1, F4): the docstring pin here used to say
+    # "Pinned by `_same_loops`" -- no such symbol exists in `src/` or
+    # `tests/`; the guard is `_same_block`. The attribution was also wrong.
+    # Measured this session by neutering guards directly in
+    # `src/pyluadec/express/names.py` and reverting: `_same_block` alone
+    # neutered leaves this `repeat` case (index 2) certifying `L3` -- it only
+    # drops to `L1` when `_same_block` AND `_bar_literal_operands` (which also
+    # carries the `MOVE d, s` rule) are BOTH neutered together.
     (b"local i = 0 repeat i = i + 1 until i > 5 print(i)", [b"6"]),
+    # `while i < 4 do i = i + 1 end` (index 3) stays `L3` even with BOTH of
+    # those barriers neutered -- traced the bytecode directly (`LOADK 0;
+    # LT 0<K; JMP; ADD 0,0,K; JMP back; ...; MOVE 2,0; CALL print`): the
+    # `i = 0` definition is disqualified by the ordinary multi-read rule
+    # alone (its one textual read at the `LT` test AND its reuse as the
+    # `ADD`'s own operand are two reads of the same pending entry, so `n==1`
+    # already fails before either barrier's `bad` flag would matter), and the
+    # post-increment definition is disqualified because it survives pending
+    # all the way to the function's trailing `RETURN`, which unconditionally
+    # promotes whatever is still pending. So this case is pinned by
+    # `_stack_discipline`'s baseline read-count/statement-boundary
+    # accounting, not by anything M4 task 13 added -- nothing in
+    # `TEMP_CASES`/`LOCAL_CASES` currently isolates `_same_block` or
+    # `_bar_literal_operands` as load-bearing for this specific shape.
     (b"local i = 0 while i < 4 do i = i + 1 end print(i)", [b"4"]),
     # Defined INSIDE a loop, read AFTER it: the mirror image. Inlining hoists
     # the work out of the loop.
@@ -259,13 +282,30 @@ def test_reading_a_consumed_staging_register_again_is_refused():
     A definition graded a temporary is staged, not emitted; the first read
     pops and inlines it. A SECOND read has nothing to name -- `LocalExpr(reg)`
     would print an identifier this function never declares, which Lua resolves
-    as a *global*. `_stack_discipline` only grades a definition a temporary
-    when its value is read exactly once before the statement ends, so this is
-    unreachable whenever that accounting is right; it is the refusal that
-    converts a mistake in the accounting from silent wrongness into a
-    fallback. Driven by hand with a `RegClass` that claims a definition is a
-    temporary while the instruction stream reads it twice -- 0 of 1478 corpus
-    protos reach it.
+    as a *global*. `_stack_discipline`'s pop-once accounting is a heuristic
+    (see that module's docstring, "Soundness"), and it mis-grades real luac
+    output: this refusal is reachable from the committed corpus, not merely a
+    defensive check for a hypothetical mistake in the accounting.
+
+    Reachability, re-measured this session (fix round 1) by instrumenting
+    `_read_reg`'s exact branch predicate (`reg not in self._pending and reg
+    not in self.declared and reg in self._consumed`) and walking every
+    occurrence `emit_certified_chunk` reconstructs across the full 229-file
+    corpus: **3 named protos** reach it -- `snr_common.lua:main_69`,
+    `snr_s5_10_s.lua:main_42`, `snr_s5_10_s.lua:main_43` -- all three still
+    `L1` after this refusal drops them to fallback (neutering it, in the real
+    source, lets all three print instead of raising). `snr_s5_10_s.lua`'s own
+    chunk root does NOT reach this guard, despite also being `L1`: its
+    `_print_proto_body` raises a `StructureError` ("else-join out of range")
+    from `sir.build`, unrelated to register classification, before printing
+    ever reaches this branch -- confirmed by tracing the failure directly.
+    (An earlier draft of this measurement, re-derived independently rather
+    than transcribed, counted a fourth "reached" proto by conflating that
+    unrelated `StructureError` with this refusal; walking the two apart is
+    what the corrected count above reflects.) Also driven by hand below, with
+    a `RegClass` that claims a definition is a temporary while the
+    instruction stream reads it twice, for a minimal, unconditional pin
+    independent of what the corpus happens to contain.
 
     Neuter check (M4 task 13): replacing the `if reg in self._consumed:`
     refusal with `if False and ...` makes this test fail with `DID NOT RAISE`,

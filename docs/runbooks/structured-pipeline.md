@@ -574,16 +574,28 @@ pinned by a fixture that fails when it is neutered (see
 `tests/test_express_liverange.py`).
 
 1. **`_same_block`** — a definition and its read must be in the same CFG basic
-   block. Two properties depend on it. Execution counts: `local i = 0 repeat
-   i = i + 1 until i > 5` defines register 0 once and reads it once per
-   iteration, so the pc-linear walk sees one read and inlining moves
-   `local i = 0` into the body — the program never terminates. Block scoping:
+   block. Two properties depend on it. Execution counts: a definition read
+   once per loop iteration but written once before the loop must not be
+   popped on its first textual read. **`local i = 0 repeat i = i + 1 until
+   i > 5` is not a live example of this** (fix round 1, F5(a), re-measured
+   2026-08-11: neutering `_same_block` alone still certifies it `L3` — the
+   ordinary pop-once accounting already disqualifies `i`'s definition on its
+   own, since it is read twice textually, once by the `until` test and once
+   by the body's own `i = i + 1`). The shape that DOES need `_same_block` for
+   execution-count correctness: `local b, c = 1, 2  local a = b or c
+   while a do a = b or c end print(a)` — neutering the guard silently turns
+   the loop body's reassignment of `a` into a fresh unrelated local instead
+   of a write to the outer `a`; certification refuses it (never ships), and
+   it is pinned as `tests/test_express_liverange.py::
+   LOCAL_CASES_CERT_ONLY[0]`. Block scoping:
    `emit.lua` wraps every `if` arm and loop body in `open_scope`/`close_scope`,
    which roll back the staging environment at `end`, so a value staged before
    a block and popped inside it has its pop undone and **whatever the block
-   computed from it disappears from the output**. Measured on
-   `snr_common.lua:main_77_20`, whose `if` arm's whole `CONCAT` statement
-   vanished. Stricter than either property needs (`f(a or b)` stages the
+   computed from it disappears from the output**. `snr_common.lua:main_77_20`
+   motivated this rule during the task's development, but does **not**
+   reproduce it at HEAD (fix round 1, F5(b), re-measured 2026-08-11: printing
+   it with and without the guard is byte-identical) — historical, not a live
+   pin. Stricter than either property needs (`f(a or b)` stages the
    callee in one block and calls it in another); the cost was measured, not
    assumed.
 2. **The RK/literal barrier (`_bar_literal_operands`)** — a definition that

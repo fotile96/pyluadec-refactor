@@ -502,13 +502,32 @@ def _stack_discipline(fn: LirFunction, ordered: list[int],
         follow, and both are violated as soon as a definition and its read
         sit in different blocks.
 
-        1. **Execution counts must match.** `local i = 0 repeat i = i + 1
-           until i > 5` defines register 0 once, before the loop, and reads it
-           once per iteration; the pc-linear walk below sees exactly one read
-           and would call the definition a temporary, which moves `local i =
-           0` inside the body and the program never terminates. The mirror
-           image -- defined in a loop body, read after the loop -- hoists work
-           out of the loop.
+        1. **Execution counts must match.** A definition read once per loop
+           iteration but written only once before the loop must not be popped
+           on its first textual read -- that would move the definition inside
+           the loop body and change how often it runs.
+           `local i = 0 repeat i = i + 1 until i > 5` is NOT a working example
+           of this on its own (fix round 1, F5(a), re-measured 2026-08-11):
+           neutering `_same_block` alone still certifies this shape `L3`,
+           because `i`'s definition is *already* disqualified by the ordinary
+           pop-once accounting before `_same_block` gets a say -- it is read
+           once by the `until` test AND once by the body's `i = i + 1`, two
+           textual reads of the same pending entry, which fails the "read
+           exactly once" rule regardless of blocks (see
+           `tests/test_express_liverange.py::LOCAL_CASES[2]`'s docstring for
+           the traced-through account, including what DOES require both
+           `_same_block` and the RK/literal barrier to fail this fixture).
+           The concrete shape that DOES need `_same_block` for execution-count
+           correctness, reproduced this session:
+           `local b, c = 1, 2  local a = b or c  while a do a = b or c end
+           print(a)` -- neutering `_same_block` prints
+           `while l0_0 or l0_1 do local l0_2 = l0_0 or l0_1 end
+           print(l0_0 or l0_1)`, silently turning the reassignment to `a`
+           into a fresh, unrelated local `l0_2` inside the loop rather than a
+           write to the outer `a`. Certification refuses this (a `code`/
+           `maxstacksize` mismatch), so it never ships, but it is a genuinely
+           different program, not merely an unfaithful one -- pinned as
+           `tests/test_express_liverange.py::LOCAL_CASES_CERT_ONLY[0]`.
 
         2. **Block scoping must match.** `emit.lua` wraps every `if` arm and
            loop body in `Reconstructor.open_scope`/`close_scope`, which
@@ -518,10 +537,17 @@ def _stack_discipline(fn: LirFunction, ordered: list[int],
            back at `close_scope`, so whatever the block computed from it
            disappears from the output entirely; a value staged *inside* a
            block and read *after* it is discarded by the same rollback.
-           Measured on `snr_common.lua:main_77_20`, whose `if` arm's whole
-           `CONCAT` statement vanished from the printed function (M4 task 13;
-           the certification gate refused the result so it never shipped, but
-           the proto dropped from `L3` to `L1`, which is what caught it).
+           `snr_common.lua:main_77_20` was the shape that motivated this rule
+           during M4 task 13's development (its `if` arm's whole `CONCAT`
+           statement vanished with `_same_block` neutered at that point in the
+           change). It does NOT reproduce against the code at HEAD (fix round
+           1, F5(b), re-measured 2026-08-11: printing `main_77_20` with and
+           without the guard gives byte-identical bodies) -- some other
+           change in the same task's fix history (plausibly the RK/literal
+           barrier, added afterward) came to cover this specific shape too.
+           Historical, not a live pin; kept as the motivating example for
+           *why* the block-scoping property must hold, not as a claim this
+           exact proto currently demonstrates the failure.
 
         A basic block cannot span a branch or a jump target, so "same block"
         gives both properties at once. It is stronger than either strictly

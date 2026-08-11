@@ -225,10 +225,17 @@ def test_bare_local_decl_has_no_trailing_equals(tmp_path):
     The original source here was `local ok, a = f()` with a later use of `a`.
     That stopped reaching the mixed branch in M4 task 13: with per-definition
     classification neither result register is declared before the `CALL`, so
-    the all-fresh branch handles it. Re-derived rather than patched -- the
-    mixed branch is still reached by 4 corpus protos (measured), all of them
-    this generic-for shape. `f`/`g` return constants, so the observable
-    result is deterministic: `8`, then `1  7` from the one loop iteration.
+    the all-fresh branch handles it. Re-derived rather than patched.
+
+    The mixed branch is reached by 0 corpus protos (measured this session by
+    instrumenting `_emit_multi` over every occurrence `emit_certified_chunk`
+    reconstructs on the full 229-file corpus: 12 distinct multi-register call
+    sites, 10 all-fresh, 2 all-declared, 0 mixed). This fixture is therefore
+    a **synthetic pin**, not a corpus-reached shape -- still the right reason
+    to keep it, since the branch is real code with its own failure mode
+    (`local a, b = ` is a syntax error) that nothing else in this suite drives.
+    `f`/`g` return constants, so the observable result is deterministic: `8`,
+    then `1  7` from the one loop iteration.
     """
     from pyluadec.emit.lua import print_chunk
     src = ("function f() return 7 end\n"

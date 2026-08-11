@@ -752,3 +752,64 @@ def test_table_close_is_not_deferred_past_a_reassignment_of_an_array_item_regist
     assert table_idx < reassign_idx, (
         "table LocalDecl must be emitted before any reassignment of the "
         f"registers its array items reference; stmts={stmts}")
+
+
+def test_close_scope_restores_pending_and_consumed_not_just_env():
+    """M4 task 13 fix round 1, Important 3(a): `close_scope` restoring
+    `_pending`/`_consumed` alongside `env`/`declared` is load-bearing, proven
+    by neutering it in the real source rather than assumed from its
+    docstring.
+
+    Scenario, driven directly against the Reconstructor API rather than real
+    luac output (no real `if`/loop body stages a temp it never reads before
+    `end` -- this is the "IR luac never would produce, but the code must
+    still not silently mishandle" category, same as
+    `test_self_receiver_not_duplicated_across_stmts_for_boundary` above):
+    `open_scope()` snapshots empty `_pending`; inside the "block", `stage()`
+    puts register 5's expression into BOTH `env` and `_pending`; `close_scope`
+    rolls `env` back to the snapshot (register 5 removed) but -- if the
+    `_pending`/`_consumed` restore is neutered -- leaves register 5 in
+    `_pending`. A later `_read_reg(5)` then takes the "still pending" branch
+    and calls `self.env.pop(5)` on a register `env` no longer has, raising a
+    bare `KeyError` instead of the correct, controlled `ReconstructError`
+    ("temp register 5 read before it was staged") the fully-restored code
+    gives.
+
+    Neuter check (fix round 1), verbatim:
+
+        === close_scope's _pending/_consumed restore neutered ===
+        (direct repro, not this test) pending after close_scope: {5}, env: {}
+        read after close_scope -> KeyError: 5
+        === this test against the neutered source ===
+        FAILED test_close_scope_restores_pending_and_consumed_not_just_env
+          - AssertionError / KeyError, not the expected ReconstructError
+        === restored ===
+        1 passed
+    """
+    from pyluadec.express.names import RegClass
+    from pyluadec.express.reconstruct import ReconstructError, Reconstructor
+    from pyluadec.express.expr import ConstExpr
+    from pyluadec.lift import LirFunction
+    from tests.synth import mk_proto
+
+    proto = mk_proto((0,), constants=(), numparams=0, maxstacksize=8)
+    fn = LirFunction(proto=proto, instrs={}, n_pcs=0,
+                     captured_regs=frozenset(), closure_pseudo={})
+    rc = RegClass(locals=frozenset(), temps=frozenset({5}), loop_vars=frozenset())
+    rec = Reconstructor(fn, rc, depth=0)
+
+    snap = rec.open_scope()
+    rec.stage(5, ConstExpr(None))
+    assert rec._pending == {5} and rec.env == {5: ConstExpr(None)}
+    rec.close_scope(snap)
+    # Both env AND the staging bookkeeping must be rolled back together --
+    # a register no longer in scope must be neither pending nor consumed.
+    assert rec._pending == set(), "close_scope did not restore _pending"
+    assert rec._consumed == set(), "close_scope did not restore _consumed"
+    assert rec.env == {}
+    # 5 is untracked here (no def/use census reaches this hand-built fn), so
+    # the correct outcome is the ordinary "temp read before staged" refusal,
+    # not a KeyError -- proving the restore actually rolled BOTH structures
+    # back into agreement rather than just avoiding a crash by accident.
+    with pytest.raises(ReconstructError, match="read before it was staged"):
+        rec._read_reg(5)

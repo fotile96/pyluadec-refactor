@@ -355,13 +355,38 @@ class Reconstructor:
         The chain writes `cv.target` once per alternative, but only the LAST
         of those writes -- in pc order, the one belonging to the fall-through
         tail -- is the definition whose value leaves the region, so that is
-        the definition site the temp/local decision keys on. Using the whole
-        register's verdict instead would materialize every chain whose target
-        register is a declared local somewhere else in the function, and using
-        an earlier alternative's would consult a definition `_stack_discipline`
-        grades by how the *next* alternative overwrote it (a `TESTSET`'s write
-        is popped with zero reads by the alternative that follows it, so it
-        always grades local) rather than by how the chain's result is used.
+        the definition site `write_reg`'s temp/local decision is passed
+        (`pc=self._last_target_def(cv)`) rather than left to default (which
+        would key on `self._pc`, whatever instruction the shared dispatch
+        loop last processed -- not necessarily anything to do with this
+        chain). Using an earlier alternative's write instead of the last one
+        would consult a definition `_stack_discipline` grades by how the
+        *next* alternative overwrote it (a `TESTSET`'s write is popped with
+        zero reads by the alternative that follows it, so it always grades
+        local) rather than by how the chain's result is actually used.
+
+        **Status (fix round 1, M4 task 13, Important 3(b)): defensive, not
+        proven load-bearing.** The paragraph above states the reasoning that
+        motivated passing an explicit `pc` rather than defaulting; it is not
+        a claim that a reaching fixture exists. Measured this session:
+        replacing `pc=self._last_target_def(cv)` with no `pc` argument (so
+        `write_reg` falls back to `self._pc`) changes nothing observable --
+        the full `test_express_*`/`test_emit_*`/`test_sir_loops_longtail.py`
+        suite (162 tests, including `LOCAL_CASES_CERT_ONLY[0]`, the one
+        fixture whose `CondValue` target register -- `a` in `local b, c = 1,
+        2 local a = b or c while a do a = b or c end print(a)` -- is also a
+        declared local elsewhere in the function, exactly the shape the
+        first paragraph's "declared local somewhere else" scenario
+        describes) stays green, and the full corpus's `L3` count stays
+        1389/1478 unique, byte-for-byte, with the explicit `pc` removed. No
+        fixture in this codebase currently distinguishes the two. Kept
+        because the reasoning above is still sound as far as it goes (a
+        default `self._pc` is a stale, arbitrary value with no defined
+        relationship to `cv` at all, so relying on it would be an accident
+        even where it happens not to matter today) and because deleting it
+        would silently reintroduce exactly the dependency on dispatch-loop
+        ordering the explicit `pc` was written to avoid -- but the docstring
+        no longer claims this is proven necessary by any test in the suite.
         """
         self._out = []
         expr = self._value_expr(cv.node, cv.target)
@@ -371,7 +396,11 @@ class Reconstructor:
 
     def _last_target_def(self, cv: CondValue) -> int | None:
         """The highest pc in `cv.claimed_pcs` that writes `cv.target`, or None
-        (no such instruction -> no `temp_defs` entry -> materialize)."""
+        (no such instruction -> no `temp_defs` entry -> materialize).
+
+        See `cond_value`'s docstring, "Status" -- defensive rather than
+        proven load-bearing by any fixture in this suite as of fix round 1.
+        """
         writes = [pc for pc in cv.claimed_pcs
                   if pc in self.fn.instrs
                   and cv.target in self.fn.instrs[pc].effects.writes]
