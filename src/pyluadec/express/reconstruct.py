@@ -13,16 +13,24 @@ a `for` loop's init/limit/step, computed in the region immediately before the
 loop) is still in `self.env` when the loop header (built by Task 6/7) calls
 `take_expr` on it.
 
-Reading a *temp* register pops its staged definition out of the environment.
-Single-use is what `express.names._stack_discipline` proves before a register
-is ever classified `temp`: it simulates `lparser.c`'s `freereg = nactvar`
-allocation discipline and disqualifies any register with a definition that is
-read zero times or more than once (see that module's docstring -- this used to
-cite `_adjacent_pure`, the effect-based barrier the freereg simulation replaced
-in M3 task 8). Reading a *local* register never pops; it always yields a fresh
-`LocalExpr(reg)` reference, which is safe to embed more than once (printing a
-variable name twice has no evaluation-order consequence, unlike printing a
-pending expression tree twice).
+Reading a *staged* register pops its definition out of the environment.
+Single-use is what `express.names._stack_discipline` proves before a
+definition is ever classified a temporary: it simulates `lparser.c`'s
+`freereg = nactvar` allocation discipline and disqualifies any definition
+read zero times or more than once (see that module's docstring -- this used
+to cite `_adjacent_pure`, the effect-based barrier the freereg simulation
+replaced in M3 task 8). Reading a *materialized* register never pops; it
+yields a fresh `LocalExpr(reg)` reference, which is safe to embed more than
+once (printing a variable name twice has no evaluation-order consequence,
+unlike printing a pending expression tree twice).
+
+The question "is this register staged or materialized?" is answered per
+DEFINITION, not per register number (M4 task 13): `write_reg` keys on
+`(pc, reg)` against `RegClass.temp_defs`, and `self._pending` records what
+each write decided so `_read_reg` can act on it. One register number is
+routinely a declared local in one statement and expression-stack scratch in
+the next, because `lparser.c` resets `freereg = nactvar` at every statement
+boundary.
 """
 from __future__ import annotations
 
@@ -32,6 +40,7 @@ from dataclasses import dataclass
 from pyluadec.ingest.proto import LuaNumber
 from pyluadec.lift.lift import LirFunction, LirInstr
 from pyluadec.lift.opcodes import Op, indexk, isk
+from pyluadec.sir.regions import CondValue, VAlt, VNode, VTail
 
 from .expr import (BinExpr, CallExpr, ClosureExpr, ConstExpr, Expr, GlobalExpr,
                    IndexExpr, LocalExpr, TableExpr, UnExpr, UpvalExpr, VarargExpr)
@@ -94,6 +103,7 @@ class ReconstructError(Exception):
 
 
 _ARITH = {Op.ADD: "+", Op.SUB: "-", Op.MUL: "*", Op.DIV: "/", Op.MOD: "%", Op.POW: "^"}
+_CMP_SYM = {Op.EQ: "==", Op.LT: "<", Op.LE: "<="}
 
 
 def _local_regs_in(e: Expr) -> frozenset[int]:
@@ -209,6 +219,24 @@ class Reconstructor:
         # register conflict (the new NEWTABLE reuses the top context's own
         # register) closes anything (see _dispatch).
         self._table_ctx_stack: list[dict] = []
+        # Registers `write_reg` must stage into `env` instead of materializing,
+        # regardless of `rc`. Held only for the duration of one `_value_run`
+        # (see it): a short-circuit alternative's final value is an EXPRESSION
+        # feeding an `and`/`or`, so the instruction that computes it must not
+        # emit the `local ... = ...` statement `rc` would otherwise ask for.
+        self._force_temp: set[int] = set()
+        # Registers whose `env` entry is an UNCONSUMED staged temp expression
+        # (as opposed to the `LocalExpr(reg)` placeholder force_materialize
+        # leaves behind). Made explicit because classification is now per
+        # definition: the same register number can hold a staged temp at one
+        # pc and a materialized local at another, so "is env[reg] poppable?"
+        # can no longer be answered from `rc`/`declared` alone.
+        self._pending: set[int] = set()
+        # Registers that have had a staged temp popped and inlined and have
+        # not been re-staged or materialized since. Reading one again would
+        # print a name that was never declared -- see _read_reg.
+        self._consumed: set[int] = set()
+        self._pc: int | None = None
         self._out: list[Stmt] = []
 
     # ---- public API (spec) --------------------------------------------
@@ -219,7 +247,7 @@ class Reconstructor:
         self._finalize_pending()
         return tuple(self._out)
 
-    def open_scope(self) -> tuple[frozenset[int], dict[int, Expr]]:
+    def open_scope(self) -> tuple[frozenset[int], dict[int, Expr], frozenset[int], frozenset[int]]:
         """Snapshot the declaration/staging state before walking a nested Lua
         block (an `if` arm, a loop body).
 
@@ -241,12 +269,58 @@ class Reconstructor:
         `force_materialize` writes `env[reg] = LocalExpr(reg)` when it
         declares, and rolling back one without the other would leave a
         placeholder `LocalExpr` for a name that is no longer in scope.
+        `_pending`/`_consumed` are restored for the same reason: they index
+        into `env` and would otherwise describe entries the rollback removed.
         """
-        return frozenset(self.declared), dict(self.env)
+        return (frozenset(self.declared), dict(self.env),
+                frozenset(self._pending), frozenset(self._consumed))
 
-    def close_scope(self, snap: tuple[frozenset[int], dict[int, Expr]]) -> None:
+    def close_scope(self, snap: tuple[frozenset[int], dict[int, Expr], frozenset[int], frozenset[int]]) -> None:
+        """Roll `declared`/`env`/`_pending`/`_consumed` back to `snap`.
+
+        **The one hazard this rollback could create, argued in BOTH
+        directions** (M3 left a deferred minor here because only the forward
+        half was written down). Restoring `env` and `_pending` wholesale can in
+        principle RESURRECT a staged expression: if register R is pending when
+        the block opens, the block consumes it (pops and inlines it), and a
+        read after the `end` pops it a second time, one effectful expression
+        gets printed twice.
+
+        Forward: it does not happen, because a region's condition and control
+        operands are consumed *before* `open_scope` is called (see
+        `sir.build`'s region construction and `emit.lua.Printer.region`), so
+        nothing that a block body could consume is pending across the
+        snapshot boundary.
+
+        Backward, which is what was missing: measured over the whole corpus
+        (M4 task 12), **0 of 1853 `open_scope`/`close_scope` pairs re-added any
+        register to `_pending`**, so the antecedent of the hazard never once
+        arises on real bytecode -- not merely "the consequent was never
+        observed". Re-derive by wrapping these two methods and diffing
+        `self._pending` across `orig_close`. This is a measurement, not a
+        guarantee: a future region type that stages an operand and then opens a
+        scope before consuming it would create the antecedent, and the fix then
+        is to consume before snapshotting rather than to weaken the rollback.
+        """
         self.declared = set(snap[0])
         self.env = dict(snap[1])
+        self._pending = set(snap[2])
+        self._consumed = set(snap[3])
+
+    def stage(self, reg: int, e: Expr) -> None:
+        """Put `e` into `reg` as an UNCONSUMED expression-stack temporary: the
+        next read of `reg` pops it and inlines it, and nothing is emitted as a
+        statement.
+
+        The one supported way to seed staged state, for `write_reg` and for
+        tests that drive this class directly. Assigning to `self.env` is not
+        equivalent -- `env` also holds the `LocalExpr` placeholders
+        `force_materialize` leaves for declared locals, so `_pending` is what
+        separates "poppable temp" from "name of a live local".
+        """
+        self.env[reg] = e
+        self._pending.add(reg)
+        self._consumed.discard(reg)
 
     def take_expr(self, reg: int) -> Expr:
         """Pop a control slot's staged definition (NumericFor init/limit/step,
@@ -255,6 +329,9 @@ class Reconstructor:
         """
         if reg not in self.env:
             raise ReconstructError(f"register {reg} has no staged expression to take")
+        if reg in self._pending:
+            self._pending.discard(reg)
+            self._consumed.add(reg)
         return self.env.pop(reg)
 
     def cond_operand(self, x: int) -> Expr:
@@ -263,6 +340,235 @@ class Reconstructor:
         """
         return self.rk(x)
 
+    def condition_expr(self, cond: LirInstr) -> Expr:
+        """A comparison/`TEST` instruction as the boolean expression that is
+        true exactly when control **falls through** past the JMP following it.
+
+        The single source of truth for condition polarity in this project:
+        `emit.lua`'s `Printer.condition` (used by `If`/`While`/`Repeat`) is a
+        thin `self.expr(...)` around this, and `_value_expr` needs the same
+        thing as an Expr rather than as text so it can nest a gate inside a
+        `BinExpr("and", ...)` with correct precedence.
+
+        Polarity (empirically measured against real `luac_sz4` output and
+        `lvm.c`'s dojump mechanics -- see `emit.lua`'s module docstring "Brief
+        defects" #1): for `EQ`/`LT`/`LE` the jump fires when the comparison
+        result equals A, so A==0 means the fall-through is the un-negated
+        comparison and A==1 means it is its negation. For `TEST A _ C` the
+        fall-through is taken when `l_isfalse(R(A)) == C`, so C==0 means R(A)
+        itself and C==1 means `not R(A)`.
+
+        `not` is built as a real `UnExpr` rather than formatted as text so the
+        expression printer adds exactly the parentheses precedence requires
+        (`not (a + b)`, never `not a + b`).
+        """
+        ri = cond.ri
+        if ri.op in _CMP_SYM:
+            base = BinExpr(_CMP_SYM[ri.op], self.cond_operand(ri.b),
+                           self.cond_operand(ri.c))
+            return base if ri.a == 0 else UnExpr("not", base)
+        if ri.op is Op.TEST:
+            operand = self.cond_operand(ri.a)
+            return operand if ri.c == 0 else UnExpr("not", operand)
+        raise ReconstructError(f"pc {ri.pc}: {ri.op.name} is not a condition")
+
+    # ---- the and/or VALUE idiom (sir.regions.CondValue) --------------------
+    def cond_value(self, cv: CondValue) -> tuple[Stmt, ...]:
+        """Reconstruct a whole short-circuit value chain as ONE assignment to
+        its target register (or, when the target is an inlinable temp, as zero
+        statements plus a staged expression the consumer inlines).
+
+        The chain writes `cv.target` once per alternative, but only the LAST
+        of those writes -- in pc order, the one belonging to the fall-through
+        tail -- is the definition whose value leaves the region, so that is
+        the definition site `write_reg`'s temp/local decision is passed
+        (`pc=self._last_target_def(cv)`) rather than left to default (which
+        would key on `self._pc`, whatever instruction the shared dispatch
+        loop last processed -- not necessarily anything to do with this
+        chain). Using an earlier alternative's write instead of the last one
+        would consult a definition `_stack_discipline` grades by how the
+        *next* alternative overwrote it (a `TESTSET`'s write is popped with
+        zero reads by the alternative that follows it, so it always grades
+        local) rather than by how the chain's result is actually used.
+
+        **Status (fix round 1, M4 task 13, Important 3(b)): defensive, not
+        proven load-bearing.** The paragraph above states the reasoning that
+        motivated passing an explicit `pc` rather than defaulting; it is not
+        a claim that a reaching fixture exists. Measured this session:
+        replacing `pc=self._last_target_def(cv)` with no `pc` argument (so
+        `write_reg` falls back to `self._pc`) changes nothing observable --
+        the full `test_express_*`/`test_emit_*`/`test_sir_loops_longtail.py`
+        suite (162 tests, including `LOCAL_CASES_CERT_ONLY[0]`, the one
+        fixture whose `CondValue` target register -- `a` in `local b, c = 1,
+        2 local a = b or c while a do a = b or c end print(a)` -- is also a
+        declared local elsewhere in the function, exactly the shape the
+        first paragraph's "declared local somewhere else" scenario
+        describes) stays green, and the full corpus's `L3` count stays
+        1389/1478 unique, byte-for-byte, with the explicit `pc` removed. No
+        fixture in this codebase currently distinguishes the two. Kept
+        because the reasoning above is still sound as far as it goes (a
+        default `self._pc` is a stale, arbitrary value with no defined
+        relationship to `cv` at all, so relying on it would be an accident
+        even where it happens not to matter today) and because deleting it
+        would silently reintroduce exactly the dependency on dispatch-loop
+        ordering the explicit `pc` was written to avoid -- but the docstring
+        no longer claims this is proven necessary by any test in the suite.
+        """
+        self._out = []
+        expr = self._value_expr(cv.node, cv.target)
+        self.write_reg(cv.target, expr, pc=self._last_target_def(cv))
+        self._finalize_pending()
+        return tuple(self._out)
+
+    def _last_target_def(self, cv: CondValue) -> int | None:
+        """The highest pc in `cv.claimed_pcs` that writes `cv.target`, or None
+        (no such instruction -> no `temp_defs` entry -> materialize).
+
+        See `cond_value`'s docstring, "Status" -- defensive rather than
+        proven load-bearing by any fixture in this suite as of fix round 1.
+        """
+        writes = [pc for pc in cv.claimed_pcs
+                  if pc in self.fn.instrs
+                  and cv.target in self.fn.instrs[pc].effects.writes]
+        return max(writes) if writes else None
+
+    def _value_expr(self, node: VNode, target: int) -> Expr:
+        """The Expr for one VNode chain. Every sub-part is reconstructed in
+        PROGRAM order -- staging, then gate, then inner staging, then the
+        tested operand, then the rest -- because reading a temp register pops
+        it out of `self.env`, so evaluating out of order would hand one
+        alternative another's staged expression."""
+        if isinstance(node, VTail):
+            return self._value_run(node.instrs, target)
+        if node.gate is not None:
+            self._stage_run(node.staging)
+            cond = self.condition_expr(node.gate)
+            # `sir.build._parse_value` proved node.test.ri.c == 1 for a gated
+            # alternative, so the outer operator is `or` and the gate binds to
+            # the tested value with `and`.
+            left: Expr = BinExpr("and", cond,
+                                 self._tested_value(node, node.inner_staging, target))
+            op = "or"
+        else:
+            left = self._tested_value(node, node.staging, target)
+            op = "or" if node.test.ri.c == 1 else "and"
+        return BinExpr(op, left, self._value_expr(node.rest, target))
+
+    def _tested_value(self, node: VAlt, staging: tuple[LirInstr, ...],
+                      target: int) -> Expr:
+        """The value one alternative short-circuits on.
+
+        `TESTSET A B C` tests a register B distinct from the destination, so
+        `staging` merely stages operands and the value is `R[B]`.
+
+        A bare `TEST A 0 C` is `lcode.c:patchtestreg`'s rewrite for the case
+        where the destination register IS the tested one (A == target); the
+        value is then exactly what `staging` computes into `target`, so it goes
+        through `_value_run` -- which also carries the "no statements" guard.
+        """
+        if node.test.ri.op is Op.TESTSET:
+            self._stage_run(staging)
+            return self._read_reg(node.test.ri.b)
+        return self._value_run(staging, target)
+
+    def _refuse_statements(self, emitted: list[Stmt], where: str) -> None:
+        """THE guard for `CondValue`. A short-circuit alternative's operand
+        code is reconstructed as an expression; if it reconstructs to a
+        *statement* instead, printing only the `and`/`or` expression would
+        DROP that statement silently -- and the pc-claim audit would not
+        notice, because the pcs are claimed by the CondValue either way (the
+        audit proves nothing was left unclaimed, never that everything claimed
+        was printed). Worse than dead output: the dropped statement is
+        typically a `local` the surviving expression still references, which
+        Lua then resolves as a GLOBAL.
+
+        It should be unreachable on real luac output -- `lparser.c` reads an
+        `and`/`or` operand with `fs->freereg == fs->nactvar`, so every register
+        it writes sits above every live local and classifies temp -- and since
+        M4 task 13 `classify_registers` answers per DEFINITION rather than per
+        register number, so a slot that is a local elsewhere in the function
+        no longer drags this operand's definition down with it. What can still
+        reach here is a definition one of `_stack_discipline`'s own barriers
+        refuses (`_same_block`, the RK/literal barrier, the `MOVE`-from-a
+        -lower-slot rule) or that `declared` already holds from an exited
+        scope. Kept as a loud refusal, not an assert; the chunk then falls
+        back.
+
+        Scope, precisely (fix round finding F6): this guard inspects `emitted`
+        -- what `_run_isolated` captured in `self._out`, i.e. STATEMENTS. It
+        says nothing about an operand-run instruction whose staged VALUE is
+        never consumed: that instruction's effect lives only in `self.env`
+        (an entry keyed by register, never appended to `self._out`), so its pc
+        is claimed and `emitted` stays empty either way -- this guard cannot
+        see the difference and does not try to. The general property in the
+        first paragraph above ("the audit proves nothing was left unclaimed,
+        never that everything claimed was printed") is about the pc-claim
+        audit, not about this guard; this guard is one, narrower, instance of
+        acting on it, for the statement case specifically. Unreached on this
+        corpus (0 occurrences across the 12 `CondValue`-containing protos and
+        both fuzz runs backing this module) and, if it ever fires, would still
+        be caught downstream -- an unconsumed staged value that carried a real
+        side effect changes `code`/`constants` under certification, so the
+        chunk fails to certify and falls back rather than shipping silently
+        wrong output. Recorded here so a future reader does not read the
+        general framing above as a claim this specific check independently
+        makes true.
+        """
+        if emitted:
+            raise ReconstructError(
+                f"{where} reconstructs to {len(emitted)} statement(s), which an "
+                "and/or expression cannot carry")
+
+    def _run_isolated(self, instrs: tuple[LirInstr, ...]) -> list[Stmt]:
+        """Dispatch `instrs` with `self._out` swapped out, returning whatever
+        statements they produced instead of appending them."""
+        saved = self._out
+        self._out = []
+        try:
+            for li in instrs:
+                self._dispatch(li)
+            self._finalize_pending()
+            return self._out
+        finally:
+            self._out = saved
+
+    def _stage_run(self, instrs: tuple[LirInstr, ...]) -> None:
+        """Reconstruct operand code that only stages values into `self.env`."""
+        if not instrs:
+            return
+        self._refuse_statements(
+            self._run_isolated(instrs),
+            f"pc {instrs[0].ri.pc}: and/or operand code")
+
+    def _value_run(self, instrs: tuple[LirInstr, ...], reg: int) -> Expr:
+        """The value an alternative's straight run leaves in `reg`, as an Expr.
+
+        An EMPTY run is not a failure: `lcode.c:discharge2reg` emits nothing
+        when the operand already sits in the destination register, so the value
+        on that path is `reg`'s incoming value -- which `_read_reg` is exactly
+        the right way to obtain (it pops a still-pending temp, or yields the
+        live local's name). Measured on the corpus at
+        `snr_graphic.lua:main_3` pc 39, `x = <cond> and 9 or x`.
+        """
+        if not instrs:
+            return self._read_reg(reg)
+        if not any(reg in li.effects.writes for li in instrs):
+            raise ReconstructError(
+                f"pc {instrs[0].ri.pc}: and/or alternative does not write "
+                f"register {reg}")
+        self._force_temp.add(reg)
+        try:
+            emitted = self._run_isolated(instrs)
+        finally:
+            self._force_temp.discard(reg)
+        self._refuse_statements(
+            emitted, f"pc {instrs[0].ri.pc}: and/or alternative")
+        if reg not in self.env:
+            raise ReconstructError(
+                f"pc {instrs[0].ri.pc}: and/or alternative left no expression "
+                f"in register {reg}")
+        return self.env.pop(reg)
+
     # ---- operand helpers -------------------------------------------------
     def rk(self, x: int) -> Expr:
         if isk(x):
@@ -270,19 +576,40 @@ class Reconstructor:
         return self._read_reg(x)
 
     def _read_reg(self, reg: int) -> Expr:
-        # `declared` wins over rc's static classification: once a register has
-        # been force-materialized (a real `local`/reassignment statement was
-        # emitted for it -- see force_materialize), it is a stable, reread-many
-        # -times reference forever after, regardless of what rc.temps says.
-        # This matters for the few opcodes (SELF, the SETLIST degrade path)
-        # that deliberately force-materialize a register rc.temps still calls
-        # temp, so it can be safely referenced more than once.
+        # A register with an unconsumed staged temp pops, whatever else is
+        # true of it: `_pending` records what the WRITE decided (see
+        # write_reg), and that decision is per definition-pc now, so neither
+        # `declared` nor `rc.temps` can answer this on their own. A register
+        # can be a materialized local at one pc and hold a staged temp at a
+        # later one, once luac has released the slot.
+        if reg in self._pending:
+            self._pending.discard(reg)
+            self._consumed.add(reg)
+            return self.env.pop(reg)
+        # `declared` otherwise wins over rc's static classification: once a
+        # register has been force-materialized (a real `local`/reassignment
+        # statement was emitted for it -- see force_materialize), it is a
+        # stable, reread-many-times reference. This matters for the few
+        # opcodes (SELF, the SETLIST degrade path) that deliberately
+        # force-materialize a register rc still calls temp.
         if reg in self.declared:
             return self.env.get(reg, LocalExpr(reg))
+        if reg in self._consumed:
+            # THE guard for per-definition staging. The value staged into
+            # `reg` was inlined into some earlier expression and popped; there
+            # is no `local` carrying it, so emitting `LocalExpr(reg)` here
+            # would print a name this function never declares -- which Lua
+            # resolves as a GLOBAL read, silently. `_stack_discipline` only
+            # grades a definition a temp when its value is read exactly once
+            # before the statement ends, so a second read means the pc-linear
+            # simulation mismodelled this shape (its own documented
+            # approximation: it has no control-flow model). Refuse loudly and
+            # let the chunk fall back rather than ship a global reference.
+            raise ReconstructError(
+                f"register {reg} is read again after its staged value was "
+                "consumed; classification called that definition a temporary")
         if reg in self.rc.temps:
-            if reg not in self.env:
-                raise ReconstructError(f"temp register {reg} read before it was staged")
-            return self.env.pop(reg)
+            raise ReconstructError(f"temp register {reg} read before it was staged")
         return self.env.get(reg, LocalExpr(reg))
 
     def _stable_ref(self, reg: int) -> Expr:
@@ -299,17 +626,52 @@ class Reconstructor:
         force_materialize(reg, LocalExpr(reg)) -- emitting a do-nothing
         `vN = vN` self-reassignment statement.
         """
-        if reg not in self.declared and reg in self.rc.temps and reg in self.env:
+        if reg in self._pending:
+            self._pending.discard(reg)
             self.force_materialize(reg, self.env.pop(reg))
         return LocalExpr(reg)
 
-    def write_reg(self, reg: int, e: Expr) -> None:
-        # Symmetric with _read_reg: a register already `declared` is a stable
-        # local from here on -- a fresh write to it is a reassignment
-        # (force_materialize's Assign branch), never a re-inlinable temp
-        # binding, regardless of rc.temps.
-        if reg not in self.declared and reg in self.rc.temps:
-            self.env[reg] = e
+    def write_reg(self, reg: int, e: Expr, pc: int | None = None) -> None:
+        """Stage `e` into `reg` if the definition at `pc` is a luac expression
+        -stack temporary, otherwise emit it as a real statement.
+
+        `pc` is the definition site, and it is what the decision keys on --
+        `rc.temp_defs` is a set of `(pc, reg)` pairs. Consulting the
+        whole-function `rc.temps` instead (what this did before M4 task 13)
+        forced every definition of a register down to the most conservative
+        verdict any one of them earned, which materialized luac's expression
+        stack as named locals and emitted the `MOVE`s that copy into it: 253
+        of the 1478 corpus protos differed from the original by extra `MOVE`s
+        and nothing else. `pc` defaults to the instruction currently being
+        dispatched; callers whose write belongs to an *earlier* instruction
+        (a deferred table constructor, a pending SELF receiver) pass that
+        instruction's pc explicitly.
+
+        The `rc.temps` disjunct is `RegClass`'s own documented invariant read
+        directly ("for every `r in temps`, every tracked def `(pc, r)` is in
+        `temp_defs`") rather than relied upon: it is redundant for anything
+        `classify_registers` produces, and it keeps a hand-built `RegClass`
+        -- which gets `temp_defs=frozenset()` from the field default -- meaning
+        what its `temps` field says.
+
+        `declared` still wins: once a register has been materialized as a
+        named local, a later write to it is a reassignment. That is
+        deliberately more conservative than `temp_defs` alone -- `declared` is
+        a whole-function set outside of the block scopes `open_scope`/
+        `close_scope` model, so a slot luac released at a scope exit this
+        module cannot see is still treated as holding a live local. Being
+        wrong that way costs certifications; staging over a live local would
+        cost correctness (the local's later reads would silently see the wrong
+        value), so the asymmetry is on purpose.
+        """
+        if reg in self._force_temp:
+            self.stage(reg, e)
+            return
+        if pc is None:
+            pc = self._pc
+        if reg not in self.declared and (reg in self.rc.temps
+                                         or (pc, reg) in self.rc.temp_defs):
+            self.stage(reg, e)
         else:
             self.force_materialize(reg, e)
 
@@ -321,12 +683,50 @@ class Reconstructor:
         re-referenceable more than once -- inlining a pending temp expr into
         two tree positions would print (and re-evaluate) it twice.
         """
+        self._refuse_stale_reference(reg)
         if reg in self.declared:
             self._out.append(Assign((LocalTarget(reg),), (e,)))
         else:
             self._out.append(LocalDecl((reg,), (e,)))
             self.declared.add(reg)
         self.env[reg] = LocalExpr(reg)
+        self._pending.discard(reg)
+        self._consumed.discard(reg)
+
+    def _refuse_stale_reference(self, reg: int) -> None:
+        """Refuse to give `reg` a new value while a still-staged expression
+        refers to its old one by name.
+
+        `_read_reg` hands out `LocalExpr(reg)` -- a NAME, not a value snapshot
+        -- for a materialized register, and a staged expression is not printed
+        until whatever finally consumes it is. So if `reg` is reassigned in
+        between, the staged tree silently prints the new value. Two
+        materializations into one slot inside a single emitted statement is
+        the shape that does it: `gameSave[k1][k2][k3] = v`, staged through one
+        register, printed as `gameSave[l1_1][l1_1][l1_1] = l1_2`.
+
+        This is the same hazard `_dispatch`'s table-constructor `hazard` set
+        handles for a deferred `TableExpr`, generalized to every staged
+        expression -- and unlike that one it cannot be repaired by emitting
+        earlier, because the staged tree may already be half-built. Refusing
+        drops the chunk to fallback, which is the correct trade: the
+        alternative is output that is not merely unfaithful but wrong.
+
+        Reachability, measured 2026-08-11: 0 of 1478 unique corpus protos
+        reach this. It was reached before this task's `VKNUM`/`MAXINDEXRK`
+        correction (`snr_crd_15.lua:main_1` printed exactly the line above),
+        so it is a live hazard of the per-definition classification rather
+        than a hypothetical, and it is pinned by injection in
+        tests/test_express_liverange.py::
+        test_reassigning_a_register_a_staged_expression_names_is_refused.
+        """
+        for other, staged in self.env.items():
+            if other != reg and other in self._pending \
+                    and reg in _local_regs_in(staged):
+                raise ReconstructError(
+                    f"register {reg} is being given a new value while the "
+                    f"expression staged in register {other} still refers to "
+                    "it by name")
 
     def _emit_assign(self, targets: tuple[AssignTarget, ...], exprs: tuple[Expr, ...]) -> None:
         self._out.append(Assign(targets, exprs))
@@ -375,6 +775,8 @@ class Reconstructor:
             self._out.append(Assign(tuple(LocalTarget(r) for r in regs), (expr,)))
         for r in regs:
             self.env[r] = LocalExpr(r)
+            self._pending.discard(r)
+            self._consumed.discard(r)
 
     def _consume_open(self, start: int) -> tuple[Expr, ...]:
         """Build the expression tuple for an open range [start, dynamic top):
@@ -416,7 +818,9 @@ class Reconstructor:
             return
         ctx = self._table_ctx_stack.pop()
         table = TableExpr(array=tuple(ctx["array"]), hash=tuple(ctx["hash"]))
-        self.write_reg(ctx["reg"], table)
+        # The table's definition site is its NEWTABLE, not whatever
+        # instruction happened to force this context closed.
+        self.write_reg(ctx["reg"], table, pc=ctx["pc"])
 
     def _setlist_batch_offset(self, li: LirInstr) -> int:
         """The 1-based starting array index this SETLIST's b elements land
@@ -490,7 +894,7 @@ class Reconstructor:
         obj = self._read_reg(b)
         if isk(c) and isinstance(self.proto.constants[indexk(c)], bytes):
             name = self.proto.constants[indexk(c)]
-            self._self_pending = (a, a + 1, obj, name)
+            self._self_pending = (a, a + 1, obj, name, self._pc)
         else:
             # Dynamic (register) method key: cannot use `:` sugar -- fall
             # back to plain indexing, but still avoid embedding `obj` twice
@@ -508,12 +912,12 @@ class Reconstructor:
         pending = self._self_pending
         if pending is not None:
             self._self_pending = None
-            a, a1, obj, name = pending
+            a, a1, obj, name, self_pc = pending
             self.force_materialize(a1, obj)
             # Reference the just-materialized register, not the raw `obj`
             # tree -- same duplicate-evaluation hazard as the dynamic-key
             # branch of _self above.
-            self.write_reg(a, IndexExpr(LocalExpr(a1), ConstExpr(name)))
+            self.write_reg(a, IndexExpr(LocalExpr(a1), ConstExpr(name)), pc=self_pc)
 
     # ---- calls / returns / vararg ------------------------------------------
     def _call(self, li: LirInstr, tail: bool) -> None:
@@ -522,7 +926,7 @@ class Reconstructor:
         pending = self._self_pending
         if pending is not None and pending[0] == a:
             self._self_pending = None
-            _, _a1, obj, name = pending
+            _, _a1, obj, name, _self_pc = pending
             fn_expr, is_method, method, arg_start = obj, True, name, a + 2
         else:
             fn_expr, is_method, method, arg_start = self._read_reg(a), False, None, a + 1
@@ -590,6 +994,12 @@ class Reconstructor:
     def _dispatch(self, li: LirInstr) -> None:
         ri = li.ri
         op, a = ri.op, ri.a
+        # The definition site every write_reg below keys its temp/local
+        # decision on. Set here rather than passed down through a dozen
+        # helpers; the two writes that belong to an EARLIER instruction (a
+        # deferred table constructor's NEWTABLE, a pending SELF's receiver)
+        # carry their own pc and pass it explicitly.
+        self._pc = ri.pc
 
         if op is Op.NEWTABLE:
             # Only a genuine register conflict (this NEWTABLE reuses the
@@ -599,7 +1009,8 @@ class Reconstructor:
             # TableExpr rather than degrading the outer constructor too.
             if self._table_ctx_stack and self._table_ctx_stack[-1]["reg"] == a:
                 self._close_table_ctx()
-            self._table_ctx_stack.append({"reg": a, "array": [], "hash": [], "hazard": frozenset()})
+            self._table_ctx_stack.append({"reg": a, "pc": ri.pc, "array": [],
+                                          "hash": [], "hazard": frozenset()})
             return
 
         if self._table_ctx_stack:
@@ -626,6 +1037,16 @@ class Reconstructor:
             # were live at fold time -- reading only fx.writes/fx.reads for
             # the ctx's own base register never caught a write to one of the
             # *item* registers.
+            # `fx.reads_open`/`fx.writes_open` close unconditionally: an open
+            # region's extent is `L->top` at runtime, so neither `reg` nor
+            # anything in `hazard` can be proved outside it. THIS IS
+            # `writes_open`'s SECOND CONSUMER (named here because it kept
+            # getting missed): the other is `express.names.classify_registers`,
+            # which folds `writes_open` pcs into `open_write_pcs` and uses them
+            # as a barrier in `_staging_slice`. Any change to which opcodes
+            # carry an open region has to be swept over both -- see M4 task 8,
+            # where adding `writes_open` to TAILCALL needed a differential run
+            # precisely because of these two.
             if (reg in fx.reads or fx.writes & ({reg} | ctx["hazard"])
                    or fx.reads_open or fx.writes_open):
                 # This instruction interacts with the innermost pending

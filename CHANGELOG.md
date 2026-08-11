@@ -1,5 +1,111 @@
 # Changelog
 
+## 2026-08-12 — M4: loops, and verification hardening
+
+- **Loops recovered.** `while <cond>`, `while true`, `repeat`, threaded
+  end-of-iteration jumps and the `and`/`or` *value* idiom are now region kinds
+  (`sir/regions.py`: `While`, `WhileTrue`, `Repeat`, `EndIter`, `CondValue`;
+  recognizers in `sir/build.py`). `build_sir` acceptance went **1309 -> 1447**
+  of 1478 unique proto shapes. Measured against the predecessor's shipped
+  output on the 212 files we structure, our line-leading `while` and `break`
+  counts match it **exactly** (190/190 and 175/175) —
+  `docs/reports/m4-readability.md`. **`repeat` is recognized but this corpus
+  contains none** (0 `repeat`/`until` lines in all 229 decompiled files
+  against 971 `while`), so its only evidence is synthetic; corpus green says
+  nothing about it.
+- **The real bottleneck was register classification, not loops.** `RegClass`
+  gave one verdict per register *number* per function; task 13 made it per
+  `(register, definition)`. That single change took the print-but-do-not-
+  certify residual from 283 unique protos to **35**, and the "differs from the
+  original only by extra `MOVE`s" cluster inside it from 253 to **4**. The
+  three loop tasks before it moved the top two capability rows and the `L3`
+  rate not at all.
+- **`L3` is 1389/1478 unique (94.0%) and 1855/1944 occurrences (95.4%)**, from
+  1112 (75.2%) / 1577 (81.1%) at M3 close, against an M4 exit floor of 85% on
+  both bases (`tests/test_m4_exit.py`, which also pins the denominator at
+  `== 1944`). **212 of 229 files ship structured source**, up from 92. The
+  floors are milestone commitments and are deliberately ~9 points below the
+  achievement: a floor set at the measurement is a tripwire, and the standard
+  repair for a tripwire is to edit the threshold.
+- **The ledger now says WHY a proto is not `L3`.** New `refusal_reason` field,
+  four committed kinds (`structure:` / `reconstruct:` / `compile:` /
+  `mismatch: <field>`), coupled to `level` in both directions and asserted as
+  such. The residual census in `docs/runbooks/structured-pipeline.md` is
+  derived from this field rather than from a scratch script, and
+  `scripts/ledger_dashboard.py` prints its histogram. Two deliberate
+  exclusions keep corpus payload out of a checked-in file: the reason carries a
+  `Mismatch`'s field NAME and never its values, and never `luac`'s error text.
+- **A behavioural probe (L1.75) is a standing gate.** `tests/test_behaviour_probe.py`
+  loads each chunk under a stubbing environment, **invokes every global
+  function it defined**, and compares a deterministic event trace between the
+  original bytecode and our output: **229 files, 227 byte-identical, 2 pinned
+  divergences, 0 probe failures, 398196 recorded events.** Read the reach split
+  before over-crediting it — the 3000-event cap truncates 132 of 229 files, and
+  those contribute 99.5% of the events while the other 97 contribute a median
+  of **10** each. One feasibility claim carried into it was measured false: the
+  stub-return policy is **not** agreement-invariant (227/227/226/226 across four
+  policies).
+- **Semantic-regression port.** The predecessor's 5 named semantic cases and 6
+  roundtrip cases are ported, plus a generated differential harness; **3 of
+  the 5 named cases ship structured, 2 ship the M2 fallback** —
+  `test_counter_closure_and_dispatch_mix` and
+  `test_if_and_elseif_conjunctions_preserved`, each pinned by an `== "L1"`
+  assertion and a `b"__pld_pc" in out.source` check in
+  `tests/test_semantic_regressions.py`, with the cause named in that case's
+  own docstring (the "prints but does not certify" `mismatch` residual, and
+  `build_sir`'s "if targets out of range" refusal, respectively — both in the
+  M5 agenda's residual clusters).
+- **Certification got stricter, not just wider.** `certify_l3` now compiles the
+  candidate with `strip=not carries_debug(original)`, so rung 1 compares real
+  locvar scope ranges on unstripped input. The corpus did not move (all 1944
+  protos read as stripped). "Stricter" is the accurate word, not "strictly
+  stronger": a gate that starts examining a dimension cannot also promise never
+  to reject on it, and a reconstruction that materializes a `local` the
+  original never declared is now refused.
+- **`TAILCALL` gained `writes_open` in the axiom layer**, with the differential
+  run CLAUDE.md requires: `classify_registers`' four fields plus every proto's
+  level/rung/reason swept over all 1944 occurrences before and after —
+  byte-identical, and `corpus/ledger.jsonl` reproduced byte-for-byte. The reason
+  it moved nothing is structural (`effects.successors(TAILCALL) == ()`, so a
+  `TAILCALL` always ends its basic block), now pinned by a test rather than
+  left as prose. A knock-on: the effects–emitter consistency gate's blanket
+  open-region skip was removed rather than accepted, taking it from 207214 to
+  **all 214192** corpus instructions checked.
+- **A second consistency gate**, `tests/test_effects_reconstructor_consistency.py`,
+  reconciles `lift/effects.py` against the *structured* path
+  (`express/reconstruct.py` -> `emit/lua.py`) — a third independent hand
+  transcription of `lvm.c` that nothing had been checking. **0 violations**, by
+  instrumentation rather than by a fourth transcription. Its own docstring
+  records what it does NOT assert, including that `FORPREP`'s row backs no
+  checked touch.
+- **Effect-lattice calibration done.** `STRICT` stays the pipeline-wide default
+  and is the only mode any `src/` code selects (enforced by a test).
+  `NO_METAMETHOD` is a permitted per-pass opt-in **scoped to script-constructed
+  tables** — the census finds 0 metamethod-related constants in 71414, but 56
+  of the 164 global names the corpus reads are never written by it and come
+  from the engine, where the census is blind. `TRUSTING` is recommended against
+  for any pass: its whole delta is three rows and the corpus falsifies all
+  three. `lift/effects.py`'s behaviour is unchanged (replayed identical over
+  82080 comparisons). Two rows were found under-graded and left alone pending
+  the full axiom protocol; the `LEN` one is a real defect and is M5 agenda
+  item 1.
+- **Readability evaluated honestly** against the predecessor's shipped
+  localization input, in `docs/reports/m4-readability.md`. Structured output is
+  0.98× the predecessor's line count in aggregate with all 212 files inside
+  0.78×–1.03×, and carries **zero** `__pld_*` artifacts. It reads *worse* in
+  five named printer-level places — non-ASCII strings as decimal escapes, no
+  `elseif` (208 of them become nested `if`s, worst case 61 levels of nesting
+  against 5), no dot sugar for string keys, un-indented function bodies, unary
+  minus printing as `(-1)` — plus a sixth, structural one: the 17 files still
+  on fallback are 47.6% of the corpus **by line volume**, so "212 of 229 files" is
+  the flattering way to count.
+- **Not done in M4, and now the M5 agenda** (`docs/runbooks/m3-backlog.md`):
+  full ratchet CI (baseline diff, downgrade = fail) — M4 delivered the field
+  that makes it cluster usefully but not the CI; the `LEN` regrade; the 89
+  remaining uncertified proto occurrences, which are all inside those 17 files
+  and hold 692 individually-certified siblings hostage; L2 differential
+  certification and the key-sequence harness.
+
 ## 2026-08-11 — M3: structured backbone
 
 - **Structural recovery online.** Three new packages replace the fallback path

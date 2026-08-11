@@ -327,7 +327,7 @@ def test_local_released_by_scope_exit_is_not_inlined_as_a_temp(tmp_path):
     assert 0 not in rc.temps
 
 
-def test_corpus_no_open_region_in_pre_fix_temp_window(corpus_dir):
+def test_corpus_no_open_region_in_pre_fix_temp_window(lifted_corpus):
     """Empirical invariant, not a correctness proof: across the full 229-file
     corpus, no register that the *pre-open-region-fix* classify_registers
     would have called temp (single explicit def, single explicit use,
@@ -353,9 +353,17 @@ def test_corpus_no_open_region_in_pre_fix_temp_window(corpus_dir):
     If this ever fails, it means a real corpus function's *old-style*
     temp-eligible register now depends on the open-region guard for
     correctness, which is worth knowing on its own.
+
+    Round-1 fold-in (2026-08-12): shares `conftest.py`'s session-scoped
+    `lifted_corpus` fixture instead of its own `load_file`+`lift_proto`
+    walk. The `try/except Exception` around the old walk's own `lift_proto`
+    call is dropped along with it: `lifted_corpus` calls `lift_proto`
+    unconditionally and is consumed by several other corpus tests
+    (`test_corpus_every_temp_write_has_exactly_one_consumer` below among
+    them) with no failure ever observed across all 1944 proto occurrences,
+    so the `except` was defensive dead code, not a load-bearing skip.
     """
-    from pyluadec.ingest import load_file
-    from pyluadec.lift import Effect, lift_proto
+    from pyluadec.lift import Effect
 
     def old_adjacent_pure(fn, dp, up, ordered) -> bool:
         dli = fn.instrs[dp]
@@ -372,38 +380,28 @@ def test_corpus_no_open_region_in_pre_fix_temp_window(corpus_dir):
 
     hits = []
 
-    def walk(proto):
-        try:
-            fn = lift_proto(proto)
-        except Exception:
-            fn = None
-        if fn is not None:
-            defs: dict[int, list[int]] = {}
-            uses: dict[int, list[int]] = {}
-            ordered = sorted(fn.instrs)
+    for _fname, _path, proto, fn in lifted_corpus:
+        defs: dict[int, list[int]] = {}
+        uses: dict[int, list[int]] = {}
+        ordered = sorted(fn.instrs)
+        for pc in ordered:
+            li = fn.instrs[pc]
+            for r in li.effects.writes:
+                defs.setdefault(r, []).append(pc)
+            for r in li.effects.reads:
+                uses.setdefault(r, []).append(pc)
+        for r in sorted(set(defs) & set(uses)):
+            d, u = defs[r], uses[r]
+            if len(d) != 1 or len(u) != 1:
+                continue
+            dp, up = d[0], u[0]
+            if dp >= up or not old_adjacent_pure(fn, dp, up, ordered):
+                continue
             for pc in ordered:
-                li = fn.instrs[pc]
-                for r in li.effects.writes:
-                    defs.setdefault(r, []).append(pc)
-                for r in li.effects.reads:
-                    uses.setdefault(r, []).append(pc)
-            for r in sorted(set(defs) & set(uses)):
-                d, u = defs[r], uses[r]
-                if len(d) != 1 or len(u) != 1:
-                    continue
-                dp, up = d[0], u[0]
-                if dp >= up or not old_adjacent_pure(fn, dp, up, ordered):
-                    continue
-                for pc in ordered:
-                    if dp < pc < up:
-                        oe = fn.instrs[pc].effects
-                        if oe.reads_open or oe.writes_open:
-                            hits.append((proto.source, r, dp, up, pc))
-        for sp in proto.subprotos:
-            walk(sp)
-
-    for f in sorted(corpus_dir.glob("*.lua")):
-        walk(load_file(f))
+                if dp < pc < up:
+                    oe = fn.instrs[pc].effects
+                    if oe.reads_open or oe.writes_open:
+                        hits.append((proto.source, r, dp, up, pc))
 
     assert hits == [], f"open-region instruction inside a pre-fix temp window: {hits[:5]}"
 
@@ -745,18 +743,26 @@ def _temp_write_violations(fn, rc):
             reads.setdefault(r, []).append(pc)
         if li.effects.reads_open:
             open_reads.append((pc, li.ri.a if li.ri.op is Op.RETURN else li.ri.a + 1))
-        if li.effects.writes_open or li.ri.op is Op.TAILCALL:
-            # TAILCALL is listed here even though lift/effects.py does not set
-            # writes_open on it. When its callee is not a Lua function,
-            # OP_TAILCALL leaves the results at R[a..top) and the RETURN that
-            # luac always emits directly after it returns exactly that open
-            # range -- so `return f(a, b, c, "k")` has TAILCALL read a..a+4
-            # explicitly and then RETURN read the same slots open, which
-            # without this looks like a second consumer of the *staging*
-            # writes. Modelled here in the oracle rather than in the effect
-            # table, which is this project's axiom layer and out of scope for
-            # this task (CLAUDE.md: changing it needs an lvm.c/PDF citation
-            # and a full differential run).
+        if li.effects.writes_open:
+            # `or li.ri.op is Op.TAILCALL` used to be spelled out here: when
+            # its callee is not a Lua function, OP_TAILCALL leaves the results
+            # at R[a..top) and the RETURN luac always emits directly after it
+            # returns exactly that open range -- so `return f(a, b, c, "k")`
+            # has TAILCALL read a..a+4 explicitly and then RETURN read the
+            # same slots open, which without the extra term looks like a
+            # second consumer of the *staging* writes. It was modelled in this
+            # oracle rather than in the effect table because the table is the
+            # axiom layer and changing it needs an lvm.c citation plus a full
+            # differential run (CLAUDE.md).
+            #
+            # M4 task 8 did exactly that (lvm.c:630-632; the differential over
+            # all 1944 protos moved nothing -- see tests/test_effects_tailcall.py),
+            # so `analyze()` now returns writes_open=True for EVERY TAILCALL
+            # operand form, unconditionally. The special case is therefore
+            # exactly redundant, not merely usually redundant:
+            # test_effects_tailcall.py::
+            # test_tailcall_declares_an_open_write_region_for_every_operand_form
+            # is the standing proof of the equivalence.
             open_writes.append((pc, li.ri.a))
 
     bad = []
@@ -775,7 +781,7 @@ def _temp_write_violations(fn, rc):
     return bad
 
 
-def test_corpus_every_temp_write_has_exactly_one_consumer(corpus_dir):
+def test_corpus_every_temp_write_has_exactly_one_consumer(lifted_corpus):
     """Standing corpus gate for RegClass.temps (M3 task-5 round-5 review).
 
     Runs _temp_write_violations over every proto of all 229 corpus files.
@@ -792,26 +798,22 @@ def test_corpus_every_temp_write_has_exactly_one_consumer(corpus_dir):
     also scores zero here. The teeth are demonstrated by the injection test
     below and by the case-A/case-C tests above; this gate is the standing
     guard against the next regression, not the evidence for the last one.
+
+    Round-1 fold-in (2026-08-12): shares `conftest.py`'s session-scoped
+    `lifted_corpus` fixture instead of its own `load_file`+`lift_proto`
+    walk (this file used to pay for that walk twice -- see the sibling
+    test above).
     """
     from pyluadec.express.names import classify_registers
-    from pyluadec.ingest import load_file
-    from pyluadec.lift import lift_proto
 
     hits = []
     n = 0
 
-    def walk(proto, path):
-        nonlocal n
+    for fname, path, _proto, fn in lifted_corpus:
         n += 1
-        fn = lift_proto(proto)
         bad = _temp_write_violations(fn, classify_registers(fn))
         if bad:
-            hits.append((path, bad))
-        for i, sp in enumerate(proto.subprotos):
-            walk(sp, path + (i,))
-
-    for f in sorted(corpus_dir.glob("*.lua")):
-        walk(load_file(f), (f.name,))
+            hits.append(((fname,) + path, bad))
 
     assert n > 1900, f"corpus looks truncated: only {n} protos"
     assert hits == [], f"temp register whose write has != 1 consumer: {hits[:5]}"

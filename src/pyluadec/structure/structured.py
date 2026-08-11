@@ -18,12 +18,15 @@ is a proof record, the artifact is a conservative file-level choice.
 
 The ceiling that per-proto certification actually has is **printability**:
 1170/1478 unique proto shapes (79.16%) and 1636/1944 occurrences (84.16%)
-print their whole subtree, and only a proto that prints can certify. Achieved
-at M3 exit: 1112/1478 (75.2%) unique, 1577/1944 (81.12%) occurrences. (An
-earlier planning estimate of "~80.3%" was quoted here as the ceiling; it
-reproduces on neither basis, and 81.12% occurrences already exceeds it. The
-measurement scripts for all three rows are inlined in
-`docs/runbooks/structured-pipeline.md`, "Current capability boundary".)
+print their whole subtree, and only a proto that prints can certify -- those
+were the M3-exit figures; after M4 tasks 1-4 and 13 printability is 1424/1478
+(96.3%) and 1890/1944 (97.2%). Achieved at M3 exit: 1112/1478 (75.2%) unique,
+1577/1944 (81.12%) occurrences; achieved after M4 task 13: 1389/1478 (94.0%)
+unique, 1855/1944 (95.4%) occurrences. (An earlier planning estimate of
+"~80.3%" was quoted here as the ceiling; it reproduces on neither basis, and
+even 81.12% occurrences already exceeded it. The measurement scripts for all
+three rows are inlined in `docs/runbooks/structured-pipeline.md`, "Current
+capability boundary".)
 
 ## Memoization key (round-1 fix, superseded in M3 task 8)
 
@@ -51,13 +54,13 @@ import hashlib
 import json
 from dataclasses import dataclass
 
-from pyluadec.emit.lua import print_chunk, _print_proto_body
+from pyluadec.emit.lua import print_chunk_or_raise, _print_proto_body
 from pyluadec.express.reconstruct import ReconstructError
 from pyluadec.ingest import Proto, load_bytes
 from pyluadec import oracle
 from pyluadec.sir.build import StructureError
 from pyluadec.structure.fallback import emit_chunk
-from pyluadec.verify.certify import certify_l3
+from pyluadec.verify.certify import carries_debug, certify_l3, debug_view
 from pyluadec.verify.ledger import structural_hash
 from pyluadec.verify.normalize import Mismatch, NORMALIZATIONS, compare_protos
 
@@ -82,6 +85,28 @@ class ProtoCert:
     # "shipped == certified" holds by construction rather than by the
     # printer happening to be deterministic.
     source: bytes | None = None
+    # Why this proto is not `L3`, or `None` when it is (M4 task 6). This is
+    # the string `scripts/run_corpus.py` writes into the ledger row's
+    # `refusal_reason` field, so its vocabulary is a committed interface:
+    # `tests/test_m4_exit.py` asserts every non-`L3` row carries one and that
+    # its kind is one of the four below. Four kinds, in the order the
+    # certification pipeline can reach them:
+    #
+    #   "structure: <StructureError message>"    the region builder refused
+    #   "reconstruct: <ReconstructError message>" the expression layer refused
+    #   "compile: <fixed phrase>"                 the printed candidate did not
+    #                                             recompile, or the wrapper
+    #                                             came back the wrong shape
+    #   "mismatch: <field>"                       it printed and recompiled,
+    #                                             but `compare_protos` differed
+    #
+    # Two deliberate exclusions. The `Mismatch`'s `a`/`b` reprs are NOT in the
+    # reason -- they hold the actual constants and code words, i.e. corpus
+    # payload -- only the field name is. And `oracle.LuaCompileError`'s text is
+    # not either: `luac` echoes the offending source line, which for this
+    # corpus is bytecode-derived string data. See `emit.lua._ident` for the one
+    # raise site that used to interpolate a constant and no longer does.
+    reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -90,12 +115,33 @@ class ChunkOutcome:
     certs: dict[str, ProtoCert]
 
 
-_L1 = ProtoCert(level="L1", rung=None, mismatches=())
+def _refused(exc: Exception) -> ProtoCert:
+    """An `L1` verdict from a printer refusal, carrying the refusal's own
+    message as the ledger reason. `StructureError` and `ReconstructError` are
+    distinguished because they are different failures: the first means no
+    region tree could be built, the second that a region printed but an
+    expression under it could not be reconstructed."""
+    kind = "structure" if isinstance(exc, StructureError) else "reconstruct"
+    return ProtoCert(level="L1", rung=None, mismatches=(),
+                     reason=f"{kind}: {exc}")
+
+
+def _rejected(mismatches: tuple[Mismatch, ...]) -> ProtoCert:
+    """An `L1` verdict from the comparison: the candidate recompiled but did
+    not match at any rung. The reason names the FIRST differing field only --
+    never the values, which are corpus payload (see `ProtoCert.reason`)."""
+    return ProtoCert(level="L1", rung=None, mismatches=mismatches,
+                     reason=f"mismatch: {mismatches[0].field}")
 
 
 def _debug_fingerprint(p: Proto) -> str:
     """Hash of exactly the fields `compare_protos` checks that
     `structural_hash` omits, recursively over the subtree.
+
+    The field enumeration itself lives in `verify.certify.debug_view`, whose
+    other consumer is `carries_debug` (the candidate's strip-mode decision,
+    M4 task 7). Sharing it is deliberate: a debug field that matters to the
+    comparison matters to both, and splitting the list would let one drift.
 
     `structural_hash` is a *code-shape* key (see its own docstring): it folds
     in numparams/is_vararg/nups/maxstacksize/code/constants/subprotos and the
@@ -127,18 +173,7 @@ def _debug_fingerprint(p: Proto) -> str:
     always used). Keying the memo correctly removes both the false positive
     and the underlying unsoundness, rather than trading one for the other.
     """
-    def view(q: Proto) -> dict:
-        return {
-            "source": q.source.hex() if q.source is not None else None,
-            "linedefined": q.linedefined,
-            "lastlinedefined": q.lastlinedefined,
-            "lineinfo": list(q.lineinfo),
-            "locvars": [[v.name.hex() if v.name is not None else None,
-                         v.startpc, v.endpc] for v in q.locvars],
-            "upvalues": [u.hex() if u is not None else None for u in q.upvalues],
-            "subprotos": [view(s) for s in q.subprotos],
-        }
-    blob = json.dumps(view(p), sort_keys=True, separators=(",", ":"))
+    blob = json.dumps(debug_view(p), sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(blob.encode()).hexdigest()
 
 
@@ -147,7 +182,8 @@ def certify_proto(proto: Proto, *, is_chunk_root: bool) -> ProtoCert:
 
     `is_chunk_root=True`: the proto IS the chunk main -- its structured print
     already is a complete compilable chunk, so it is compiled and compared
-    directly (via `certify_l3`, `strip=True` to match the golden dump path).
+    directly (via `certify_l3`, which picks the candidate's strip mode from
+    the original's own debug-completeness; `-s` for this corpus).
 
     `is_chunk_root=False`: the proto is nested. It is printed as its own
     subtree (`_print_proto_body`, depth=1, synthetic upvalue names `u0..u{n-1}`)
@@ -168,30 +204,42 @@ def certify_proto(proto: Proto, *, is_chunk_root: bool) -> ProtoCert:
     out for code that isn't itself inside the printer.
     """
     if is_chunk_root:
-        src = print_chunk(proto)
-        if src is None:
-            return _L1
+        try:
+            src = print_chunk_or_raise(proto)
+        except (StructureError, ReconstructError) as exc:
+            return _refused(exc)
         payload = src.encode()
         cert = certify_l3(proto, payload)
-        return ProtoCert(cert.level, cert.rung, cert.mismatches,
-                         payload if cert.level == "L3" else None)
+        if cert.level == "L3":
+            return ProtoCert(cert.level, cert.rung, cert.mismatches, payload)
+        # `certify_l3` reports a compile failure as `L1` with no mismatches --
+        # it never got as far as comparing anything.
+        if not cert.mismatches:
+            return ProtoCert(level="L1", rung=None, mismatches=(),
+                             reason="compile: candidate chunk did not recompile")
+        return _rejected(cert.mismatches)
 
     upval_names = tuple(f"u{i}" for i in range(proto.nups))
     try:
         body = _print_proto_body(proto, depth=1, upval_names=upval_names)
-    except (StructureError, ReconstructError):
-        return _L1
+    except (StructureError, ReconstructError) as exc:
+        return _refused(exc)
     params = ", ".join(f"l1_{i}" for i in range(proto.numparams))
     if proto.is_vararg & 2:
         params = params + (", ..." if params else "...")
     decls = ("local " + ", ".join(upval_names) + "\n") if upval_names else ""
     wrapper = f"{decls}return function({params})\n{body}end\n"
     try:
-        recompiled = load_bytes(oracle.compile_source(wrapper.encode(), strip=True))
+        recompiled = load_bytes(oracle.compile_source(
+            wrapper.encode(), strip=not carries_debug(proto)))
     except oracle.LuaCompileError:
-        return _L1
+        return ProtoCert(level="L1", rung=None, mismatches=(),
+                         reason="compile: candidate wrapper did not recompile")
     if len(recompiled.subprotos) != 1:
-        return _L1
+        return ProtoCert(
+            level="L1", rung=None, mismatches=(),
+            reason=f"compile: wrapper yielded {len(recompiled.subprotos)} "
+                   "nested functions, expected 1")
     candidate = recompiled.subprotos[0]
     last: tuple[Mismatch, ...] = ()
     for k in range(len(NORMALIZATIONS) + 1):
@@ -199,7 +247,7 @@ def certify_proto(proto: Proto, *, is_chunk_root: bool) -> ProtoCert:
         if not diffs:
             return ProtoCert("L3", k, ())
         last = tuple(diffs)
-    return ProtoCert("L1", None, last)
+    return _rejected(last)
 
 
 def emit_certified_chunk(root: Proto) -> ChunkOutcome:
@@ -248,12 +296,20 @@ def emit_certified_chunk(root: Proto) -> ChunkOutcome:
     # Ship the very bytes certification compiled and compared, NOT a second
     # `print_chunk(root)` call. Re-printing would make "shipped == certified"
     # depend on `print_chunk` being deterministic -- true today, and measured
-    # (92/92 shipped artifacts re-print identically), but a property of the
+    # (M4 task 12: 212/212 shipped artifacts re-print identically; it was
+    # 92/92 at M3 close, before the loop work), but a property of the
     # printer rather than of this gate, and one no test here would notice
     # losing. Reusing `ProtoCert.source` makes the invariant structural.
     if certs["main"].level == "L3":
         certified = certs["main"].source
-        assert certified is not None      # main certified L3 => print succeeded
+        if certified is None:
+            # main certified L3 => print succeeded, so this is unreachable.
+            # A `raise`, not an `assert`: this is the last check between a
+            # certification verdict and what gets written to
+            # `build/decompiled/`, and `python -O` deletes asserts.
+            raise RuntimeError(
+                "root certified L3 with no source -- certification and "
+                "printing disagree")
         return ChunkOutcome(source=certified, certs=certs)
     return ChunkOutcome(source=emit_chunk(root), certs=certs)
 

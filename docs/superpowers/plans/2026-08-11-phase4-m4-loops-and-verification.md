@@ -33,10 +33,15 @@ Scripts for rows 1–3 are inlined in `docs/runbooks/structured-pipeline.md` § 
 | L3 certified | 1112/1478 unique (75.2%), 1577/1944 occurrences (81.1%) |
 | `build_sir` refusals | 169 unique: **162 with back edges**, 7 acyclic |
 | refusal messages | 139 "else-join out of range", 14 "if targets out of range", 8 "unrecognized transfer TESTSET", 8 "unreachable" |
-| back-edge kind mix (162 protos) | **144 pure unconditional-JMP-back** (`while true` family), 9 pure FORLOOP/TFORLOOP-back (for-shape gaps), 8 mixed for+while, **1 with a conditional-JMP-back** (the corpus's only `repeat`) |
-| `while <cond>` headers (cond+JMP-ending block at back-edge target) | **0** — every unrecognized corpus loop is a condition-free `while true`-style event loop |
+| ~~back-edge kind mix (162 protos)~~ | ~~**144 pure unconditional-JMP-back** (`while true` family)~~ — **RETRACTED 2026-08-11 during Task 1; see the corrected row below** |
+| ~~`while <cond>` headers~~ | ~~**0**~~ — **RETRACTED; it is the DOMINANT form** |
+| **loop KIND mix (corrected, Task 1)** | Of the 169 refused unique protos: **134 contain only `while <cond>`** (214 loop occurrences), **15 only `while true`** (17 occurrences, and all 15 are blocked by unrelated causes — 7 TESTSET, 3 dead code in an if body, 3 threaded conditional break, 1 other), 3 compare-header-exiting-inside, 17 with no JMP dominance back edge. Corroborated by two independent re-derivations; `_match_while_true` measured to fire **0 times** corpus-wide (7888 calls, 0 matches) |
+
+> **Retraction, and why it matters for how you read the rest of this plan.** The two struck rows were mine, and both were wrong the same way: I classified by the back-edge **opcode**, but a `while <cond>` also closes with a plain unconditional `JMP` — only `repeat` closes with a conditional one. The correct discriminator is the instruction at the back edge's **target**, and it must account for the lift layer's `consumed` pseudo-instructions: a compare instruction *swallows* its following `JMP`, so a naive "block ends with cond+JMP" test never matches. That single bug produced both the original census and my first attempt to re-check the implementer who caught it.
+>
+> **Consequence:** Tasks 1 and 2 buy **zero** corpus protos on their own. Nearly all of M4's loop value is in Task 3. The sub-rows 15/17 remain **unreconciled** against two later independent runs that got 23/9 by a different route (recorded honestly in `tests/test_sir_while.py`'s census note); the headline 134/214 and the zero-match result are what three parties agree on, and they are what the re-planning rests on.
 | distinct back-edge targets per refused proto | 116×1, 24×2, 7×3, 5×4, 10 protos with ≥5 (max 16) |
-| "non-natural" pc-retreating edges | 21 protos — **all rotated generic-for shapes** (edge targets the body; the dominating block is the TFORLOOP test). Lua 5.1 has no `goto`; true irreducibility cannot occur in luac output. Back edges must be defined by **dominance**, not pc order |
+| "non-natural" pc-retreating edges | ~~21 protos~~ — **RETRACTED 2026-08-12 at the M4 whole-branch review: it is 7**, on every basis (7 unique protos, 7 occurrences, 7 edges), and 7 is also the ceiling because only 7 protos in the corpus contain a `TFORLOOP` at all. The characterization is right — they *are* all rotated generic-for shapes (edge targets the body; the dominating block is the TFORLOOP test) — and so is the conclusion: Lua 5.1 has no `goto`, true irreducibility cannot occur in luac output, and back edges must be defined by **dominance**, not pc order. Only the count was wrong. Live figure: `sir/build.py::_match_while_true`'s docstring |
 | TESTSET protos | 16 unique, **all 16 also carry back edges** — loops gate TESTSET work |
 | blocked only by a descendant | 139 unique protos build a region tree but fail because a descendant closure doesn't — loop recognition pays super-linearly |
 | printed-but-uncertified residual | 58 unique (all differ on `code`; 24 also `maxstacksize`, 11 `constants.len`, 11 a constant; 9 differ **only** in constant-pool order) |
@@ -111,7 +116,7 @@ Task order: 1→2→3→4 (structuring, strictly ordered), 5 (semantic gates, ne
   - `build_sir` recognizes single- and multi-back-edge `while true` loops; `_structure_range` gains a `continue_target: int | None` parameter threaded exactly like `break_target`.
 
 **Binding invariants (govern over any code sketch below):**
-1. A back edge is an edge `S → H` where `H` **dominates** `S` (CHK idoms; walk the idom chain, terminating at entry whose idom is itself). pc-retreating order is NOT the definition — the corpus's 21 rotated generic-for shapes are pc-retreating edges that are *not* dominance back edges to their target (measured 2026-08-11; the true header is the TFORLOOP block).
+1. A back edge is an edge `S → H` where `H` **dominates** `S` (CHK idoms; walk the idom chain, terminating at entry whose idom is itself). pc-retreating order is NOT the definition — the corpus's rotated generic-for shapes are pc-retreating edges that are *not* dominance back edges to their target (the true header is the TFORLOOP block). ~~21~~ **7 protos**, re-measured 2026-08-12; see the retraction in the grounding table above. The invariant is unchanged by the correction.
 2. A `WhileTrue` loop is recognized at range position `L` only when: at least one `JMP` at some `S ∈ [L, hi)` has target `L`; `L`'s block dominates `S`'s block; the loop body `[L, S)` is single-entry (reusing `_verify_single_entry`); and every jump leaving `[L, S]` targets either `S+1` (break) or a `RETURN`/`TAILCALL` inside. `S` is the **last** such JMP; earlier JMP→L sites inside the body become `EndIter`.
 3. pc-claim exactness is unchanged: `all_claimed(region) == set(fn.instrs)` at every `build_sir` exit. `WhileTrue` claims `{S}`, `EndIter` claims its own pc, the body claims everything else in `[L, S)`.
 4. Anything that fails these conditions **raises `StructureError`** — no best-effort branch. The 7 acyclic refusals and TESTSET stay refused after this task.
@@ -387,13 +392,16 @@ Check `emit_certified_chunk`'s actual return type name/fields before writing (`C
 - [ ] **Step 4: Green + full suite + corpus checkpoint**
 
 Run: `PYLUADEC_CORPUS_DIR=... uv run pytest` then `PYLUADEC_CORPUS_DIR=... uv run python scripts/run_corpus.py`
-Expected: suite green. **The corpus run now MOVES the ledger** — record the new L3 counts in the commit message. Expected direction (measured ceiling): unique L3 rises from 1112 toward the new printability ceiling; anything *decreasing* is a hard stop (levels ratchet). `uv run python scripts/ledger_dashboard.py` for the summary. Commit the regenerated ledger in this task's commit, reviewed.
+
+**AMENDED 2026-08-11 (Task 1's measurement).** This task was originally written as "the first ledger movement". It is not: `_match_while_true` fires **zero times** corpus-wide (measured, 7888 calls / 0 matches — see the retraction note in the grounding section), so **the ledger is expected NOT to move here**, exactly as in Task 1. That is not a failure of this task — the printer arms are what Task 3's `While(cond, body)` work builds on, and the synthetic fixtures below are the only thing that can exercise them until Task 3 lands. Run `scripts/run_corpus.py` anyway and **verify** the ledger is byte-identical; if it moves, something reached the new nodes that shouldn't have, and that is a finding to report, not a win to bank. `uv run python scripts/ledger_dashboard.py` for the summary either way.
+
+Also note: this task keeps `sir/build.py`'s `_is_generic_for_back_edge` exclusion in place. Task 1's review flagged that the exclusion's only accidental guard was ledger-invariance; since the ledger stays frozen here too, that guard still holds, and the direct fixture `tests/test_sir_while.py::test_generic_for_back_edge_inside_if_stays_refused` now pins it explicitly. Do not flip it in this task.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add -A
-git commit -m "feat: M4 task 2 -- while-true reconstruction+printing, first ledger movement (L3 unique 1112 -> <measured>)"
+git commit -m "feat: M4 task 2 -- while/repeat/enditer printer arms, loop scoping (ledger unchanged by design)"
 ```
 
 ---
@@ -407,7 +415,16 @@ git commit -m "feat: M4 task 2 -- while-true reconstruction+printing, first ledg
 **Interfaces:**
 - Consumes: everything from Tasks 1–2. Produces: no new public names — this task closes recognition gaps inside `build_sir` (and, only if diagnosis demands, minimal printer touches).
 
-**Scope, by measured population:**
+**AMENDED 2026-08-11 — this task is now the milestone's main event, not its long tail.** Task 1's measurement showed `while <cond>` is the dominant corpus loop form (**134 of 169 refused unique protos, 214 loop occurrences**), not the zero my plan asserted. Tasks 1–2 buy nothing on the corpus; essentially all of M4's loop value is here. Two findings from Task 1's implementer, which the review corroborated, bind this task:
+
+**(A) The blocker is ONE shape, and it is shared.** A `while <cond>` header and a mid-body `if <cond> then break end` compile to the *same two instructions*: `<compare>; JMP → loop-exit`. Lua's comparison opcodes carry an inversion flag in `A`, so luac needs no separate jump for the then-arm. Therefore **handling "the `if`'s own jump targets `break_target`" unlocks both at once**, and it is the single highest-value change left in M4. Start here.
+
+**(B) Do NOT represent `while <cond>` as `WhileTrue` + a leading `if not c then break end`.** It is semantically correct and it will **not certify**: recompiling that source emits *three* instructions (`LT` inverted; `JMP` past the break; `JMP` to the exit) where the original has two. This task needs a real `While(cond, negated, body, closing, claimed_pcs)` region node in `sir/regions.py` plus its printer arm (`while <cond> do ... end`) — not a desugaring. Task 1's implementer deliberately declined to let `while <cond>` fall out opportunistically for exactly this reason; do not undo that judgment.
+
+Add `While` beside Task 1's `WhileTrue`/`Repeat`/`EndIter` (same frozen-dataclass + `_CHILDREN` pattern), and give `emit/lua.py` its arm. Keep `WhileTrue` — it is the genuine `while true do ... end` shape and Task 5's semantic regression uses one.
+
+**Scope, by measured population (ordered by value):**
+0. **134 protos, `while <cond>` — finding (A) above. This is the task.** Expect the ledger to move substantially here for the first time in M4; regenerate, review the diff as upgrades-only, and put the measured L3 counts in the commit message.
 1. **9 protos, pure FORLOOP/TFORLOOP back edges, still refused.** Diagnose-first: the plan does NOT assert the cause. Known exemplar: `snr_common.lua:main_24_1` — a generic-for whose entry `JMP@7→17`, body `8..16`, `TFORLOOP@17`, `JMP@18→8`, wrapped in an if whose else-join is the function end. First step is a diagnosis script printing each of the 9 protos' refusal message + instruction window; fix what the diagnosis actually shows (candidates: `_match_generic_for`'s shape window, `_structure_if`'s join handling at range end).
 2. **8 mixed for+while protos** — should mostly fall out of Tasks 1+this task's fixes; verify by census.
 3. **1 repeat proto** — recognize `Repeat`: at range position `L`, a conditional backward jump (comparison/TEST at `S-1`, `JMP@S → L`) with `L` dominating `S`. Body `[L, S-1)`, cond claims `{S-1, S}`. Printer arm already landed in Task 2.
@@ -481,6 +498,8 @@ def _roundtrip(src: str, expected_stdout: str, expected_rc: int = 0):
 - Create: `tests/test_m4_exit.py` (draft thresholds; finalized Task 12)
 
 **This is M3-Task-8's shape again: measure first, fix the top clusters, never touch the gate.** After Tasks 2–4 the printed-but-uncertified population has changed completely (new loop bodies bring new statement/register patterns). Do not assume the old 58-residual breakdown still holds.
+
+**ADDED 2026-08-11 (Task 2's review).** The ledger cannot currently distinguish *why* a proto is `L1`: a `build_sir` refusal (`StructureError`, with a reason) and a print-then-reject (structured fine, failed certification on a named field) both land as the same generic `fallback-state-machine` confession. That was harmless while nothing structured-then-failed; Task 2 created the first such shapes (`EndIter`), and Task 3 will create many more. **Add a refusal/failure reason to the non-`L3` ledger rows** — the `StructureError` message for refusals, the first mismatch field for print-then-reject — and assert in `tests/test_m4_exit.py` that every non-`L3` row carries one. This is also what makes the M5 ratchet CI able to say *which* regression happened, and it turns Step 1's clustering from a scratch script into standing data.
 
 - [ ] **Step 1: Re-cluster.** Sweep all unique protos: printable-but-L1, first-mismatch field histogram, per-cluster exemplars (smallest proto per cluster, with `luac_sz4 -o /dev/null -l` diff of original vs recompiled). Write the table into the task report.
 - [ ] **Step 2: Fix the top clusters** in `names.py`/`reconstruct.py`, one commit per cluster, each with its own oracle fixture pinning the shape (TDD: fixture red → fix → green → corpus number moves).
@@ -616,6 +635,54 @@ def test_m4_exit_occurrence_l3_rate(ledger_rows):
 - [ ] Milestone wrap via superpowers flow (final whole-branch review + finishing-a-development-branch) — the controller's step, listed for completeness.
 
 - [ ] Commit (`docs: M4 wrap -- readability evaluation, minors, exit gates`).
+
+---
+
+### Task 13: Live-range register classification — the bottleneck M4 actually has
+
+> **ADDED 2026-08-11, after Task 3.** Executes **immediately after Task 4**, before Task 5. It is numbered 13 only so the earlier task numbers keep pointing at the same text; read the order as 1, 2, 3, 4, **13**, 5, 6, 7…
+
+**Files:**
+- Modify: `src/pyluadec/express/names.py` (`classify_registers` / `_stack_discipline`)
+- Modify (only if the diagnosis demands): `src/pyluadec/express/reconstruct.py`
+- Test: `tests/test_express_liverange.py`
+
+**Interfaces:**
+- Consumes: `classify_registers(fn: LirFunction) -> RegClass` (fields `locals`, `temps`, `loop_vars`); `certify_proto(proto, *, is_chunk_root) -> ProtoCert`.
+- Produces: no new public names. `RegClass`'s contract is unchanged; what changes is which registers land in `locals` vs `temps`.
+
+**Why this task exists.** Task 3 raised `build_sir` acceptance from 1309 to **1435/1478** but L3 only from 1112 to **1139** — the bottleneck moved. Measured after Task 3 (script committed in `docs/runbooks/structured-pipeline.md`, re-run and reproduced byte-for-byte by the task reviewer): of the **339** unique protos still below `L3`, **251 differ from the original by extra `MOVE` instructions and nothing else**, **13** by `MOVE` plus other traffic, 13 have the same histogram, and only **62** are structuring refusals. Of the 264, **226 first diverge at a `CALL` in the original where ours has a `MOVE`**.
+
+Diagnosis, verified by the reviewer on the exemplar `snr_crd_10.lua:main_2`: pcs 1–6 stage a two-argument call in registers 0/1/2; `classify_registers(fn).locals` is `[0, 1, 2, 3]`; the printer therefore emits
+
+```lua
+local l1_0 = comSectionCardStart
+local l1_1 = ...
+local l1_2 = ...
+l1_0(l1_1, l1_2)          -- luac: comSectionCardStart(<a>, <b>) with no MOVEs
+```
+
+**`classify_registers` decides per register *number*, whole-function.** A register that is a genuine `local` in one statement and a call-staging temp in another is classified once, for the whole function, and the conservative answer (`local`) wins — materializing luac's expression stack as named locals and emitting the `MOVE`s that copy into it.
+
+**This is the same class of defect M3 Task 8 fixed once already** — and worth remembering how that went: I identified an effect-based inlining barrier as "the pre-identified lever", it moved **+0.0** protos, and simulating `lparser.c`'s own `freereg = nactvar` discipline moved **+63.6 points**. The rule was per-register-number and whole-function then, too. Task 8 fixed the *allocation* half; the *lifetime* half is still whole-function. Do not repeat my mistake of naming the lever before measuring it.
+
+**The property to satisfy (not a mechanism — pick whatever achieves it):**
+
+> A register is materialized as a named `local` **iff luac's parser would have had an active local variable in that slot at that pc.** Equivalently: classification must be a function of (register, pc-range), not of register alone. A slot that is a live local across statements *n..m* and a call-staging temp at statement *m+1* must be both, in its own ranges.
+
+Wrong in either direction still breaks certification, so both directions need fixtures. Ground truth is `lparser.c`'s `nactvar`/`freereg` bookkeeping and `lcode.c`'s expression-stack discharge — read them; the certification gate adjudicates every answer.
+
+- [ ] **Step 1: Measure before touching anything.** Re-run the committed residual script; produce the current split and a per-cluster exemplar list (smallest proto per cluster, with `luac_sz4 -o /dev/null -l` of original vs recompiled side by side). Put the table in the report — this is the task's baseline and the reviewer will check your final numbers against it.
+
+- [ ] **Step 2: Write the failing fixtures first**, from the exemplars, smallest-first. Each is oracle-compiled and asserts `certify_proto(p, is_chunk_root=True).level == "L3"`. Include at minimum: a bare two-argument global call (`f(a, b)` with `a`/`b` locals); a call whose arguments are themselves calls; a call in a loop body where the same registers are reused across iterations; and a genuine local that must NOT be demoted to a temp (the opposite-direction guard — `local x = f() g(x) h(x)` reads `x` twice, so it must stay a local). Run them: expect `L1` with `code` mismatches, never wrong output.
+
+- [ ] **Step 3: Implement**, guided by Step 1's clusters. Commit per cluster, each with its fixture going red→green and the corpus number re-measured.
+
+- [ ] **Step 4: Corpus + ledger.** `scripts/run_corpus.py`; the diff must be **upgrades only** (no `L3`→`L1`, no `L0`). Put before/after counts on both bases in the commit message. **If a proto downgrades, stop** — a classification that improves the aggregate while breaking a previously-certifying shape is exactly the trade this project does not make.
+
+- [ ] **Step 5: Report the residual honestly.** Whatever remains below `L3` gets the same cluster treatment, and the numbers go into Task 6's re-census rather than being quietly rolled forward.
+
+**Constraints beyond the global ones:** do not touch the certification gate; do not widen `build_sir` (structuring refusals are the other 62 and belong to Task 6); the standing engineering-practice rule applies — the suite is at ~30s against a 45s ceiling, and any per-proto certification you add to the committed suite must be justified.
 
 ---
 

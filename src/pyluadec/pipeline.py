@@ -20,6 +20,12 @@ class DecompileResult:
     confessions_by_proto: dict[str, list[dict]]
     levels: dict[str, str] = field(default_factory=dict)      # proto_path -> "L3" | "L1"
     rungs: dict[str, int | None] = field(default_factory=dict)
+    # proto_path -> why it is not L3 (None for the L3 ones). The generic
+    # `fallback-state-machine` confession says only THAT a proto fell back;
+    # this says why -- a `build_sir` refusal and a print-then-reject used to be
+    # indistinguishable in the ledger. Vocabulary and payload rules:
+    # `structure.structured.ProtoCert.reason`.
+    reasons: dict[str, str | None] = field(default_factory=dict)
 
 
 def walk_proto_paths(path: str, p: Proto, out: dict[str, Proto]) -> None:
@@ -64,6 +70,20 @@ def decompile_chunk(root: Proto) -> DecompileResult:
     out = emit_certified_chunk(root)
     levels = {path: out.certs[path].level for path in protos}
     rungs = {path: out.certs[path].rung for path in protos}
+    reasons = {path: out.certs[path].reason for path in protos}
+    # The confession names `structure.fallback` as the pass that emitted this
+    # proto's text, and that is only literally true when the CHUNK shipped
+    # fallback -- i.e. when the root is not `L3`. A non-`L3` proto inside a
+    # chunk whose root DID certify would be stamped with it anyway, and its
+    # text actually came from the structured printer. Measured 2026-08-12 over
+    # all 229 files: **0** such protos, because a root that certifies has had
+    # its whole subtree compared field by field, and the per-proto wrapper
+    # verdict has not yet disagreed with that on this corpus. Left unguarded
+    # rather than made conditional on `levels["main"]`, because adding the
+    # guard would change nothing today and `tests/test_m4_exit.py` asserts the
+    # row-local coupling (non-`L3` => exactly one such confession) that a
+    # conditional would break. If the measurement ever comes back non-zero,
+    # the fix is a second confession `reason`, not dropping this one.
     confessions = {
         path: ([] if levels[path] == "L3" else
                [{"pc_lo": 1, "pc_hi": len(p.code),
@@ -71,7 +91,7 @@ def decompile_chunk(root: Proto) -> DecompileResult:
         for path, p in protos.items()
     }
     return DecompileResult(source=out.source, confessions_by_proto=confessions,
-                           levels=levels, rungs=rungs)
+                           levels=levels, rungs=rungs, reasons=reasons)
 
 
 def decompile_file(path) -> DecompileResult:

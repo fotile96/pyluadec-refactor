@@ -66,11 +66,26 @@ def test_straight_chunk_certifies_l3(tmp_path):
     assert c.level == "L3" and c.rung is not None
 
 
-def test_while_chunk_is_l1(tmp_path):
+def test_unstructurable_chunk_is_l1(tmp_path):
+    """A chunk `print_chunk` refuses outright is L1 with no rung -- it never
+    reaches the `certify_l3` comparison at all.
+
+    Was `test_while_chunk_is_l1` until M4 task 3 structured `while`, then the
+    and/or VALUE idiom until M4 task 4 reconstructed TESTSET -- both asserted
+    below, so this test also pins those two gains. The sample is now the
+    boolean-VALUE family (a comparison used as a value, materialised by
+    `lcode.c:exp2reg` as a LOADBOOL pair).
+    EXPIRY: whichever task reconstructs LOADBOOL value expressions."""
     from pyluadec.structure.structured import certify_proto
-    c = certify_proto(_proto("local i = 0 while i < 3 do i = i + 1 end return i", tmp_path),
-                      is_chunk_root=True)
+    c = certify_proto(_proto("local a, b = 1, 2 local x = (a or b) == 1 return x",
+                             tmp_path), is_chunk_root=True)
     assert c.level == "L1" and c.rung is None
+    w = certify_proto(_proto("local i = 0 while i < 3 do i = i + 1 end return i",
+                             tmp_path), is_chunk_root=True)
+    assert w.level == "L3"
+    v = certify_proto(_proto("local a, b = 1, 2 local x = a or b return x",
+                             tmp_path), is_chunk_root=True)
+    assert v.level == "L3"
 
 
 def test_printable_but_shape_mismatched_chunk_is_l1(tmp_path):
@@ -128,14 +143,17 @@ def test_nested_proto_certifies_via_wrapper(tmp_path):
     assert c.level == "L3", c.mismatches
 
 
-def test_straight_child_certifies_even_when_parent_has_while(tmp_path):
-    """The decoupling this design exists for: a while-y main must not poison its children."""
+def test_straight_child_certifies_even_when_parent_is_unstructurable(tmp_path):
+    """The decoupling this design exists for: an unstructurable main must not
+    poison its children. (Was `..._when_parent_has_while`, then TESTSET; the
+    parent's blocker is now the boolean-VALUE family's LOADBOOL pair.
+    EXPIRY: whichever task reconstructs LOADBOOL value expressions.)"""
     from pyluadec.structure.structured import emit_certified_chunk
     root = _proto(
         "local f = function(a, b) return a + b end\n"
-        "local i = 0 while i < 3 do i = i + f(1, 0) end return i", tmp_path)
+        "local p, q = 1, 2 local x = (p or q) == 1 return f(x, 1)", tmp_path)
     out = emit_certified_chunk(root)
-    assert out.certs["main"].level == "L1"          # while -> main falls back
+    assert out.certs["main"].level == "L1"          # LOADBOOL -> main falls back
     assert out.certs["main_0"].level == "L3"        # straight child certifies independently
     assert b"__pld_pc" in out.source                # artifact is the fallback chunk (root L1)
 
@@ -316,3 +334,104 @@ def test_identical_protos_still_share_one_memo_entry(tmp_path):
 
     out = emit_certified_chunk(synthetic_root)
     assert out.certs["main_0_0"] is out.certs["main_0_1"]
+
+
+def test_refusal_and_rejection_carry_distinguishable_reasons(tmp_path):
+    """The M4 task 6 field: a non-`L3` verdict must say WHY, and a printer
+    refusal must not read the same as a comparison rejection.
+
+    Before this field the ledger recorded both as the same generic
+    `fallback-state-machine` confession, which was harmless only while
+    "printed fine, failed the comparison" did not happen; M4's loop work
+    made it the second-largest residual cluster. The two fixtures below are
+    the same ones `test_unstructurable_chunk_is_l1` and
+    `test_printable_but_shape_mismatched_chunk_is_l1` use, so the shapes are
+    already pinned -- what is new is that their reasons differ in KIND.
+    """
+    from pyluadec.structure.structured import certify_proto
+
+    ok = certify_proto(_proto("local a = 1 return a", tmp_path), is_chunk_root=True)
+    assert ok.level == "L3" and ok.reason is None
+
+    refused = certify_proto(
+        _proto("local a, b = 1, 2 local x = (a or b) == 1 return x", tmp_path),
+        is_chunk_root=True)
+    assert refused.level == "L1"
+    assert refused.reason.startswith("structure: "), refused.reason
+
+    rejected = certify_proto(_proto("local t = {} t[1] = 2 return t", tmp_path),
+                             is_chunk_root=True)
+    assert rejected.level == "L1"
+    # `NEWTABLE`'s array/hash size hints differ -> the first mismatch is on
+    # `code`. The field NAME is the whole reason: the mismatch's `a`/`b`
+    # reprs hold the actual instruction words and constants, which are
+    # bytecode-derived payload and must not reach the committed ledger.
+    assert rejected.reason == "mismatch: code", rejected.reason
+    assert repr(rejected.mismatches[0].a) not in rejected.reason
+
+
+def test_nested_refusal_also_carries_a_reason(tmp_path):
+    """The wrapper path (`is_chunk_root=False`) has its own refusal/rejection
+    returns; a reason added only to the chunk-root path would leave every
+    nested proto's ledger row blank, which is 1715 of the corpus's 1944."""
+    from pyluadec.structure.structured import certify_proto
+    root = _proto(
+        "local f = function(p, q) local x = (p or q) == 1 return x end return f",
+        tmp_path)
+    c = certify_proto(root.subprotos[0], is_chunk_root=False)
+    assert c.level == "L1"
+    assert c.reason.startswith("structure: ") or c.reason.startswith("reconstruct: "), c.reason
+
+
+def test_table_constructor_fold_reorders_statements_but_cannot_ship(tmp_path):
+    """A real, pre-existing evaluation-order defect in the constructor fold,
+    pinned as the census entry it is (M4 task 6; the defect predates M4 task
+    13 -- verified against `dec39c5`-era behaviour by the task 13 reviewer).
+
+    `express.reconstruct` folds a table's later field assignments back into
+    its constructor, and prints the constructor at the position of the LAST
+    folded assignment. Any effectful statement that stood between the first
+    folded item and that position is therefore printed BEFORE that item is
+    evaluated. Measured here: the original prints `1 x 2`, the structured
+    print prints `x 1 2`.
+
+    Two things this test asserts, and one it deliberately does not:
+
+    * the reordering is real and observable (the two stdouts differ);
+    * it is UNSHIPPABLE -- the root does not certify, so `emit_certified_chunk`
+      ships the fallback chunk, whose stdout matches the original exactly.
+      This is the whole point of the certification gate: a reconstruction bug
+      can only ever cost L3 rate, never correctness.
+    * it does NOT assert the reordering is fixed. When someone does fix it,
+      the `!=` below starts failing, which is the intended notification.
+
+    (The brief's own one-liner repro, `local t = {} print(1)`, does reorder
+    the statements -- the `local` moves after the `print` -- but is NOT
+    observable: the only statement that moves there is a pure `NEWTABLE`.
+    Making the divergence observable needs two folded items straddling an
+    effectful statement, which is what this fixture is.)
+    """
+    from pyluadec import oracle
+    from pyluadec.emit.lua import print_chunk
+    from pyluadec.structure.structured import emit_certified_chunk
+
+    src = ("local function s(n) print(n) return n end\n"
+           "local t = {}\n"
+           "t.a = s(1)\n"
+           'print("x")\n'
+           "t.b = s(2)\n"
+           "print(t.a, t.b)\n")
+    root = _proto(src, tmp_path)
+
+    printed = print_chunk(root)
+    assert printed is not None                      # it prints...
+    original_out = oracle.run_bytes(src.encode(), is_source=True).stdout
+    printed_out = oracle.run_bytes(printed.encode(), is_source=True).stdout
+    assert original_out == b"1\nx\n2\n1\t2\n"
+    assert printed_out == b"x\n1\n2\n1\t2\n"
+    assert printed_out != original_out              # ...wrongly
+
+    out = emit_certified_chunk(root)
+    assert out.certs["main"].level == "L1"          # ...and does not certify
+    assert b"__pld_pc" in out.source                # ...so the fallback ships
+    assert oracle.run_bytes(out.source, is_source=True).stdout == original_out

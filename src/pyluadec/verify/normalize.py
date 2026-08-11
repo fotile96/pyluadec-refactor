@@ -73,7 +73,7 @@ def _strip_lineinfo(p: Proto) -> Proto:
     and the 1715 non-main corpus protos kept their ORIGINAL file's
     `linedefined`/`lastlinedefined`, which a re-printed source with a different
     line layout cannot reproduce. Measured over `corpus/ledger.jsonl`: 0 of the
-    1112 `L3` entries certify at rung 0, all 1112 are at rung 1. Without this
+    `L3` entries certify at rung 0, all 1389 of them are at rung 1. Without this
     rung the L3 rate on this corpus would be exactly zero.
     """
     import dataclasses

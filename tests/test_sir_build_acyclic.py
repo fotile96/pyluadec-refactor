@@ -134,7 +134,9 @@ def test_dead_code_inside_a_claimed_then_range_raises():
 
 def test_dead_code_inside_a_claimed_else_range_raises():
     # Fix round 2 finding: the else-body _verify_single_entry call
-    # (build.py:162-163) had no test coverage in either direction -- deleting
+    # (`sir/build.py::_structure_if`, the second of its two
+    # `_verify_single_entry` calls -- the one passing `jt, join`) had no test
+    # coverage in either direction -- deleting
     # it left accepted/rejected corpus counts and the full suite completely
     # unchanged. This mirrors test_dead_code_inside_a_claimed_then_range_raises
     # exactly, but on the else side: an if-WITH-else where the else-range

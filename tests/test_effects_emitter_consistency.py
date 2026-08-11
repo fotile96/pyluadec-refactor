@@ -19,21 +19,32 @@ derived from `structure/fallback.py`'s per-opcode templates (`_emit_simple`,
 the tree where every opcode has an explicit, hand-written register list, so it
 is the honest reference for "which registers does emission touch".
 
-**This gate does not cover the structured path, and that is its most
-important remaining blind spot.** `express/names.py`'s register
-*classification* (`classify_registers`) does consume `effects` -- but the
-structured *reconstructor*'s per-opcode operand decoding does not.
-`express/reconstruct.py` reads `ri.a`/`ri.b`/`ri.c` directly, independently of
-`effects`, at 9 call sites (`:434, :444, :455, :456, :469, :521, :592, :611,
-:648` as of this commit) and mentions `effects` exactly once in the whole
-file (`:614`, a hazard check on `reads_open`/`writes_open` when closing a
-folded table literal -- not an operand source). `emit/lua.py` reaches operand
-fields through `ri.` 16 times in its non-docstring code and never references
-`effects` at all. So `express/reconstruct.py` -> `emit/lua.py` is a **third**
-independent hand-transcription of `lvm.c`'s per-opcode semantics, sitting
-right next to the two this gate does reconcile, and nothing here would catch
-it drifting. Extending this gate to cover the structured reconstructor is
-real M4 work (`docs/runbooks/m3-backlog.md`), not a footnote.
+**This gate does not cover the structured path** -- `express/reconstruct.py`
+-> `emit/lua.py` is a **third** independent hand-transcription of `lvm.c`'s
+per-opcode semantics, sitting right next to the two this gate reconciles.
+`express/names.py`'s register *classification* (`classify_registers`) does
+consume `effects`, but the reconstructor's per-opcode operand decoding does
+not: as re-measured at M4 task 9, `reconstruct.py` reads `ri.a`/`ri.b`/`ri.c`
+directly 23 times on 16 lines and reaches `.effects` 3 times (`:406`, `:529`,
+`:999`), none of them an operand source; `emit/lua.py` reaches `ri.<field>`
+11 times and `effects` 0 times.
+
+**That blind spot is now covered by
+`tests/test_effects_reconstructor_consistency.py`** (M4 task 9), which
+instruments the reconstructor's real accessors and `name_for` rather than
+transcribing anything, and reports 0 violations over the corpus and over the
+grid below. This module is still the only thing reconciling
+`structure/fallback.py`, and the `_registers_touched` caveat at the end of
+this docstring still applies to it.
+
+(Historical note, kept because this project treats retracted numbers as
+load-bearing: the paragraph this replaces said "9 call sites (`:434, :444,
+:455, :456, :469, :521, :592, :611, :648`)", "mentions `effects` exactly
+once (`:614`)" and "`ri.` 16 times" in the printer. All three were measured
+false at M4 task 9 -- the first two because M4 added `condition_expr` and the
+whole `CondValue` reconstructor after they were counted, the third because it
+over-counted and simultaneously missed the `ps.b` decode at `emit/lua.py:287`,
+which is a register index that never goes through an `ri`.)
 
 ## What it does NOT assert
 
@@ -43,16 +54,35 @@ real M4 work (`docs/runbooks/m3-backlog.md`), not a footnote.
   the following MOVE pseudo-instructions, and `FORLOOP`'s `may_error` is a
   documented over-approximation). A row that lists registers no emitter touches
   is safe; a row that omits one an emitter touches is not.
-- **Open regions are skipped.** `reads_open`/`writes_open` describe
+- **The open part of an open region.** `reads_open`/`writes_open` describe
   `R[base..top)`, which is `__pld_top`-relative at run time and has no static
-  register set to compare against. Measured on the corpus: 6978 of 214192
-  instructions are skipped for this reason (6949 `CALL`, 26 `VARARG`, 3
-  `RETURN`).
+  register set to compare against, so nothing here reconciles it.
+
+  Rows carrying one are nevertheless **checked, not skipped**, for their
+  static part (M4 task 8). They used to be skipped outright, on the reading
+  that an open region makes the comparison ill-posed. It does not: every
+  `_registers_touched` branch that could name an open region's registers is
+  guarded by `if b` / `if c` and degenerates to the empty set at exactly the
+  operand values that open the region (`CALL B==0` -> no argument range,
+  `CALL C==0` -> no result range, `RETURN`/`VARARG`/`SETLIST B==0` -> empty),
+  so `touched` never contains a register only the open region reaches and the
+  subset assertion stays both well-posed and non-vacuous for these rows. What
+  the skip actually discarded was the *static* half of the check --
+  `CALL A B==0`'s callee slot, `TAILCALL`'s explicit argument range -- for
+  6981 of 214192 corpus instructions (6949 `CALL`, 26 `VARARG`, 3 `RETURN`,
+  3 `TAILCALL`). Measured with the skip removed: 0 violations on either arm.
+
+  The immediate cause was M4 task 8 giving `TAILCALL` its `writes_open`
+  (`lvm.c:630-632`): with a blanket skip, every `TAILCALL` in the corpus and
+  in the grid silently dropped out of this gate, which is precisely the
+  "invisible loss of coverage" `_NO_REGISTER_OPCODES` below exists to
+  prevent.
 - **The corpus does not reach every opcode.** Of the 38 opcodes, 33 occur in
-  the corpus at all, and `VARARG`'s 26 occurrences are all `B == 0` (open), so
-  the corpus arm of this gate checks 32 opcodes. `SELF`, `POW`, `UNM`, `NOT`
-  and `CLOSE` never occur. That is why the synthetic arm below exists: it runs
-  the same invariant over an exhaustive operand grid and reaches 38/38.
+  the corpus at all, and the corpus arm now checks all 33 (before M4 task 8's
+  skip removal it checked 32 -- `VARARG`'s 26 occurrences are all `B == 0`,
+  so it was skipped away entirely). `SELF`, `POW`, `UNM`, `NOT` and `CLOSE`
+  never occur. That is why the synthetic arm below exists: it runs the same
+  invariant over an exhaustive operand grid and reaches 38/38.
 - **`_registers_touched` is a frozen hand-copy of `structure/fallback.py`'s
   templates, not a live reference to them.** If `fallback.py` changes which
   registers a template touches and this copy is not updated to match, the
@@ -88,14 +118,17 @@ def _registers_touched(ri: RawInstr) -> set[int]:
       only ever rewrites a `VCALL` into `OP_TAILCALL` after `luaK_setmultret`,
       which is what forces C to 0. `fallback.py::_emit_terminator`'s TAILCALL
       arm accordingly emits a bare `return <call>` and never mentions C.
-      Grouping them made the synthetic grid below fail on 48 rows (measured by
-      temporarily restoring the brief's grouping over the committed grid): not
-      every `TAILCALL` with `C != 0` fails (144 grid rows have `B != 0 and
-      C != 0`; `B == 0` rows are skipped as an open region before the
-      comparison runs), only the 48 where `C > B + 1` -- the 12 `(b, c)` pairs
-      in the operand grid satisfying that inequality, times the grid's 4
-      `a`-values. The helper was the wrong side and was fixed rather than the
-      assertion relaxed.
+      Grouping them makes the synthetic grid below fail on **64** of its 196
+      `TAILCALL` rows (re-measured M4 task 8 by temporarily restoring the
+      brief's grouping over the committed grid). Not every `TAILCALL` with
+      `C != 0` fails: 48 of the 64 are the `B != 0` rows where `C > B + 1`
+      -- the 12 `(b, c)` pairs in the operand grid satisfying that
+      inequality, times the grid's 4 `a`-values -- and the other 16 are
+      `B == 0` rows with `C >= 3`, where the fixed argument range is empty
+      so only `{a}` is covered. (The 48/16 split is new: before M4 task 8
+      removed the blanket open-region skip, the `B == 0` rows never reached
+      the comparison at all and the measured total was 48.) The helper was
+      the wrong side and was fixed rather than the assertion relaxed.
     - `CLOSURE` lists only `{a}`. `fallback.py` also emits
       `__pld_R[ps.b]` for each captured register, but those are supplied to the
       effects table by `lift.py` (`fx.reads | moved`), so the subset holds with
@@ -165,51 +198,48 @@ _CORPUS_CHECKED_OPCODES = frozenset({
     Op.ADD, Op.SUB, Op.MUL, Op.DIV, Op.MOD, Op.LEN, Op.CONCAT, Op.JMP,
     Op.EQ, Op.LT, Op.LE, Op.TEST, Op.TESTSET, Op.CALL, Op.TAILCALL,
     Op.RETURN, Op.FORLOOP, Op.FORPREP, Op.TFORLOOP, Op.SETLIST, Op.CLOSURE,
+    Op.VARARG,
 })
 
 
 @pytest.fixture(scope="module")
-def corpus_scan(corpus_dir):
+def corpus_scan(lifted_corpus):
     """One pass over the whole corpus, shared by every corpus-gated test here.
 
-    Walking 229 files and lifting all 1944 protos costs ~0.9s; doing it once
-    per assertion instead of once per test keeps this gate off the suite's
-    critical path (standing directive: a slow suite blocks development).
+    Round-1 fold-in (2026-08-12, M4 task 9 suite-budget recovery): the
+    ingest+lift walk itself now comes from `conftest.py`'s session-scoped
+    `lifted_corpus` fixture rather than a module-local repeat of it (this
+    fixture's own walk used to be one of several files in the suite each
+    paying their own ~0.9s pass over the same 229 files). Only the
+    effects/emitter comparison below is local to this module.
     """
-    from pyluadec.ingest import load_file
-    from pyluadec.lift import lift_proto
-
     t0 = time.perf_counter()
     violations: list[str] = []
     checked = 0
-    skipped = 0
+    open_rows = 0
     total = 0
     ops_checked: set[Op] = set()
     protos = 0
-    for f in sorted(corpus_dir.glob("*.lua")):
-        stack = [load_file(f)]
-        while stack:
-            p = stack.pop()
-            stack.extend(p.subprotos)
-            protos += 1
-            fn = lift_proto(p)
-            for li in fn.instrs.values():
-                total += 1
-                fx = li.effects
-                if fx.reads_open or fx.writes_open:
-                    skipped += 1
-                    continue
-                touched = _registers_touched(li.ri)
-                covered = fx.reads | fx.writes
-                if not touched <= covered:
-                    violations.append(
-                        f"{f.name} pc {li.ri.pc} {li.ri.op.name}: "
-                        f"touches {sorted(touched - covered)} "
-                        f"outside effects {sorted(covered)}")
-                ops_checked.add(li.ri.op)
-                checked += 1
+    for fname, _path, _proto, fn in lifted_corpus:
+        protos += 1
+        for li in fn.instrs.values():
+            total += 1
+            fx = li.effects
+            if fx.reads_open or fx.writes_open:
+                # Counted, not skipped -- see the module docstring's
+                # "open part of an open region" bullet (M4 task 8).
+                open_rows += 1
+            touched = _registers_touched(li.ri)
+            covered = fx.reads | fx.writes
+            if not touched <= covered:
+                violations.append(
+                    f"{fname} pc {li.ri.pc} {li.ri.op.name}: "
+                    f"touches {sorted(touched - covered)} "
+                    f"outside effects {sorted(covered)}")
+            ops_checked.add(li.ri.op)
+            checked += 1
     return {
-        "violations": violations, "checked": checked, "skipped": skipped,
+        "violations": violations, "checked": checked, "open_rows": open_rows,
         "total": total, "ops_checked": ops_checked, "protos": protos,
         "seconds": time.perf_counter() - t0,
     }
@@ -219,23 +249,29 @@ def test_effects_cover_registers_touched_by_reconstruction(corpus_scan):
     """effects.reads|writes must be a superset of the registers reconstruction touches.
 
     Guards against drift between lift/effects.py and the emitters -- two
-    independent hand-transcriptions of lvm.c. Open regions (reads_open/
-    writes_open) are skipped: they are __pld_top-relative and not statically
-    bounded.
+    independent hand-transcriptions of lvm.c. The unbounded `R[base..top)`
+    part of an open region is outside what this can reconcile, but the rows
+    carrying one are still checked for their static part (M4 task 8; see the
+    module docstring).
     """
     assert not corpus_scan["violations"], (
         f"{len(corpus_scan['violations'])} effects/emitter disagreements:\n"
         + "\n".join(corpus_scan["violations"][:20]))
-    # Measured: 207214 of 214192 corpus instructions are checked (the other
-    # 6978 carry an open region). The floor is deliberately well below the
-    # measured value so it fails on a collapse (an exception swallowed, a
-    # corpus that stopped loading) rather than on ordinary drift.
+    # Measured (M4 task 8): all 214192 corpus instructions are checked, 6981
+    # of them carrying an open region. The equality is the load-bearing one --
+    # it is what stops a future blanket skip from silently shrinking this gate
+    # again. The two floors are deliberately well below the measured values so
+    # they fail on a collapse (an exception swallowed, a corpus that stopped
+    # loading) rather than on ordinary drift.
+    assert corpus_scan["checked"] == corpus_scan["total"], (
+        corpus_scan["checked"], corpus_scan["total"])
     assert corpus_scan["checked"] > 100_000, corpus_scan["checked"]
+    assert corpus_scan["open_rows"] > 5_000, corpus_scan["open_rows"]
     assert corpus_scan["protos"] == 1944, corpus_scan["protos"]
 
 
 def test_corpus_arm_still_reaches_the_opcodes_it_claims_to(corpus_scan):
-    """The corpus arm's reach is 32/38 opcodes -- pin it so it cannot shrink.
+    """The corpus arm's reach is 33/38 opcodes -- pin it so it cannot shrink.
 
     `checked > 100_000` alone would stay green if a whole opcode family
     stopped being reached (e.g. a lift-layer change that started marking
@@ -273,14 +309,18 @@ def test_effects_cover_registers_touched_over_a_synthetic_operand_grid():
     Operand combinations luac would never produce (a `CONCAT` with `B > C`, a
     `LOADNIL` with `B < A`) are deliberately left in: the invariant must hold
     for them too, and both sides degenerate to the same empty range.
+
+    Rows carrying an open region are checked here too, for their static part
+    (M4 task 8). Skipping them used to cost this arm every `TAILCALL` row the
+    moment `TAILCALL` gained its unconditional `writes_open`, i.e. 196 of the
+    grid's rows and one whole opcode of the `ops_checked == set(Op)`
+    assertion below.
     """
     violations = []
     ops_checked: set[Op] = set()
     rows = 0
     for ri in _grid_instrs():
         fx = analyze(ri, EffectMode.STRICT)
-        if fx.reads_open or fx.writes_open:
-            continue
         touched = _registers_touched(ri)
         covered = fx.reads | fx.writes
         if not touched <= covered:

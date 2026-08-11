@@ -66,10 +66,25 @@ def test_closure_prints_compilable(tmp_path):
     assert src is not None and _compiles(src)
 
 
-def test_while_returns_none(tmp_path):
+def test_unstructurable_chunk_returns_none(tmp_path):
     from pyluadec.emit.lua import print_chunk
-    # while is not structured in M3 -> print_chunk returns None (caller falls back)
-    assert print_chunk(_proto("local i=0 while i<3 do i=i+1 end return i", tmp_path)) is None
+    # `print_chunk` returns None (caller falls back) for anything build_sir
+    # refuses. The sample has moved twice: `while` (structured by M4 task 3),
+    # then the and/or VALUE idiom (reconstructed by M4 task 4). It is now the
+    # BOOLEAN-value family -- a comparison used as a value rather than as a
+    # branch condition, which `lcode.c:exp2reg` materialises with a LOADBOOL
+    # pair (`need_value` is true because the jump list's control instruction
+    # is not a TESTSET). Nothing in M4 recognizes that.
+    # EXPIRY: whichever task reconstructs LOADBOOL value expressions; when it
+    # lands this needs a different still-unstructurable sample (or deleting,
+    # if none remains).
+    assert print_chunk(_proto("local a, b = 1, 2 local x = (a or b) == 1 return x",
+                              tmp_path)) is None
+    # ...and both shapes it used to use now print.
+    assert print_chunk(_proto("local i=0 while i<3 do i=i+1 end return i",
+                              tmp_path)) is not None
+    assert print_chunk(_proto("local a, b = 1, 2 local x = a or b return x",
+                              tmp_path)) is not None
 
 
 # ---- semantic tests: not just "compiles", but "runs to the right answer" --
@@ -195,20 +210,39 @@ def test_bare_local_decl_has_no_trailing_equals(tmp_path):
     """A LocalDecl with an empty exprs tuple (a bare `local a, b` from a
     mixed multi-result write, see Task 5's report) must print without a
     trailing `=` -- `local a, b = ` is a syntax error. Fault-injection
-    target (b). Source: `local function f() return 1, 2 end` followed by
-    `local ok, a = f()` then a later use of `a` makes classify_registers
-    treat `a`'s slot as an ordinary local while `ok`'s slot is genuinely
-    single-use -- reconstruct.py's `_emit_multi` mixed case (confirmed by
-    inspecting the printed source below: it contains a bare `local l0_2`
-    line with no initialiser) declares the fresh one bare, then assigns the
-    whole tuple. f() returns (1, 2), so the observable result of running
-    this is deterministic: ok=1, a=2+1=3.
+    target (b).
+
+    Source: a generic `for` whose iterator staging (`CALL` with three result
+    registers) lands on register numbers where one -- the table literal's
+    slot, materialized as `local l0_2 = {l0_0}` a statement earlier -- is
+    already in `declared`. `_emit_multi` then sees a MIXED tuple (one target
+    declared, two fresh) and must bring the fresh ones into scope with a bare
+    `local l0_1, l0_3` before assigning the whole tuple, because a second
+    `local` of an existing name would shadow rather than assign. Confirmed by
+    inspecting the printed source below: it contains a bare local line with
+    no initialiser.
+
+    The original source here was `local ok, a = f()` with a later use of `a`.
+    That stopped reaching the mixed branch in M4 task 13: with per-definition
+    classification neither result register is declared before the `CALL`, so
+    the all-fresh branch handles it. Re-derived rather than patched.
+
+    The mixed branch is reached by 0 corpus protos (measured this session by
+    instrumenting `_emit_multi` over every occurrence `emit_certified_chunk`
+    reconstructs on the full 229-file corpus: 12 distinct multi-register call
+    sites, 10 all-fresh, 2 all-declared, 0 mixed). This fixture is therefore
+    a **synthetic pin**, not a corpus-reached shape -- still the right reason
+    to keep it, since the branch is real code with its own failure mode
+    (`local a, b = ` is a syntax error) that nothing else in this suite drives.
+    `f`/`g` return constants, so the observable result is deterministic: `8`,
+    then `1  7` from the one loop iteration.
     """
     from pyluadec.emit.lua import print_chunk
-    src = ("local function f() return 1, 2 end\n"
-          "local ok, a = f()\n"
-          "a = a + 1\n"
-          "print(ok, a)\n")
+    src = ("function f() return 7 end\n"
+          "function g() return 8 end\n"
+          "local x = f()\n"
+          "if x then local y = g() print(y) end\n"
+          "for k, v in pairs({x}) do print(k, v) end\n")
     printed = print_chunk(_proto(src, tmp_path))
     assert printed is not None
     assert any(line.strip().startswith("local ") and "=" not in line
@@ -217,7 +251,7 @@ def test_bare_local_decl_has_no_trailing_equals(tmp_path):
     for line in printed.splitlines():
         stripped = line.rstrip()
         assert not stripped.endswith("="), f"trailing bare '=' in: {line!r}"
-    assert _run(printed, tmp_path).strip() == "1\t3"
+    assert _run(printed, tmp_path).split() == ["8", "1", "7"]
 
 
 def test_closure_captures_outer_local_and_returns_it(tmp_path):
@@ -450,3 +484,42 @@ def test_non_ascii_string_constant_survives_print_certify_and_execution(tmp_path
     r = oracle.run_bytes(payload, is_source=True)
     assert r.returncode == 0, r.stderr.decode(errors="replace")
     assert r.stdout == RAW
+
+
+def test_ident_refusal_messages_do_not_quote_the_constant():
+    """`_ident`'s two refusal messages must not carry the rejected constant.
+
+    They travel: `structure.structured.certify_proto` catches the
+    `ReconstructError` and writes its text into `corpus/ledger.jsonl` as the
+    row's `refusal_reason`, so anything interpolated here ends up in a
+    checked-in file. `name` is bytecode-derived string data (a global's name, a
+    table key) out of a Japanese visual novel's script; the project rule is
+    that such strings stay `bytes` and never reach a diagnostic. The messages
+    carry the byte LENGTH instead, which is enough to find the constant in
+    `luac_sz4 -l -l` output.
+
+    Load-bearing check: restoring either message to its pre-M4-task-6 form
+    (`f"identifier {name!r} ..."`) makes this test fail on the `"\\x93"` /
+    `"world"` assertions -- verified by neutering both, 2026-08-11.
+    """
+    from pyluadec.emit.lua import _ident
+    from pyluadec.express.reconstruct import ReconstructError
+
+    assert _ident(b"hello") == "hello"
+
+    RAW = b"\x93\xfa\x96\x7b"                          # Shift-JIS, not ASCII
+    try:
+        _ident(RAW)
+        raise AssertionError("expected a refusal")
+    except ReconstructError as exc:
+        msg = str(exc)
+    assert "4 bytes" in msg and "not ASCII" in msg
+    assert "\\x93" not in msg and "\x93" not in msg
+
+    try:
+        _ident(b"hello world")                          # ASCII, not an identifier
+        raise AssertionError("expected a refusal")
+    except ReconstructError as exc:
+        msg = str(exc)
+    assert "11 bytes" in msg
+    assert "world" not in msg
