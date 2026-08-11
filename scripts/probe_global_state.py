@@ -8,6 +8,14 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+# Run as `uv run python scripts/probe_global_state.py`, sys.path[0] is
+# scripts/, not the repo root, so `scripts.probe_common` would not resolve.
+# Imported as a module by the tests it already resolves and this is a no-op.
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.probe_common import adjudicate_pins  # noqa: E402
+
 PROBE = ROOT / "scripts" / "probe_global_state.lua"
 
 # Every result the probe script is allowed to produce starts with one of these.
@@ -73,17 +81,66 @@ def payload_of(result: str) -> str:
     return ""
 
 
+# The corpus files whose ORIGINAL bytecode and DECOMPILED output both fail, at
+# the same point and with the same error class, but whose error text carries a
+# different variable name.
+#
+# Lua 5.1 builds "attempt to index <kind> '<name>'" / "bad argument #n to
+# '<name>'" from ldebug.c's getobjname(), which names a value by the BYTECODE
+# SHAPE that produced it -- global read, local, upvalue, table field. The
+# fallback emitter routes every register through the `__pld_R` box table, so a
+# value the original read with GETGLOBAL is read from a table field in our
+# output, and getobjname names it "field 'v'" / "field '?'" instead of
+# "global 'gameSave'". The failing operation, the offending value's type and
+# the set of globals written before the failure all match. Instruction-level
+# evidence for each of the four is in docs/runbooks/m3-backlog.md.
+#
+# Pinned as EXACT PAIRS, not as an exclusion list: if either side's text
+# changes -- including if they start agreeing -- the gate fails and the pin
+# must be re-derived. Do not add entries to make a divergence go away.
+#
+# Lives here rather than in the test so that the CLI below and
+# tests/test_global_state_probe.py cannot disagree about what is pinned. They
+# used to: main() knew nothing about the pins and printed a red "225/229" plus
+# a non-zero exit while the test suite was green.
+EXPECTED_ERROR_NAME_DIVERGENCE = {
+    "snr_graphic.lua": (
+        "ERR|attempt to index global 'systemSave' (a nil value)|\n",
+        "ERR|attempt to index field '?' (a nil value)|\n"),
+    "snr_mainmenu.lua": (
+        "ERR|attempt to index global 'gameSave' (a nil value)|\n",
+        "ERR|attempt to index field 'v' (a nil value)|\n"),
+    "snr_memory.lua": (
+        "ERR|attempt to index global 'systemSave' (a nil value)|\n",
+        "ERR|attempt to index field 'v' (a nil value)|\n"),
+    "snr_novel.lua": (
+        "ERR|attempt to index global 'systemSave' (a nil value)|\n",
+        "ERR|attempt to index field 'v' (a nil value)|\n"),
+}
+
+
 def main() -> int:
     from pyluadec.pipeline import decompile_file
     corpus = Path(os.environ["PYLUADEC_CORPUS_DIR"])
     files = sorted(corpus.glob("*.lua"))
-    bad = []
+    divergent = {}
     for f in files:
-        if probe(f.read_bytes(), is_source=False) != probe(decompile_file(f).source, is_source=True):
-            bad.append(f.name)
-    print(f"global-state: {len(files) - len(bad)}/{len(files)} identical"
-          + (f"; divergent: {bad[:10]}" if bad else ""))
-    return 1 if bad else 0
+        orig = probe(f.read_bytes(), is_source=False)
+        dec = probe(decompile_file(f).source, is_source=True)
+        if orig != dec:
+            divergent[f.name] = (orig, dec)
+    # Two-directional, exactly as the test asserts: a pinned pair that changed
+    # text, converged, or vanished is a failure, not a silent pass.
+    unexpected, moved, gone = adjudicate_pins(
+        divergent, EXPECTED_ERROR_NAME_DIVERGENCE)
+    print(f"global-state: {len(files) - len(divergent)}/{len(files)} identical, "
+          f"{len(divergent) - len(unexpected)} pinned divergence(s)"
+          + (f"; UNEXPECTED: {unexpected[:10]}" if unexpected else ""))
+    if moved:
+        print(f"pinned text moved: {moved}")
+    if gone:
+        print(f"pinned divergence(s) converged or vanished: {gone}")
+    return 1 if (unexpected or moved or gone) else 0
 
 
 if __name__ == "__main__":

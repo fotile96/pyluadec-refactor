@@ -533,7 +533,11 @@ for f in sorted(Path(os.environ["PYLUADEC_CORPUS_DIR"]).glob("*.lua")):
                   f"lastpc={lastpc}  terminal? {pc + 1 == lastpc}")
 ```
 
-## 5. Deepen the global-state probe toward L2 (Task 9 Deliverable B)
+## 5. Deepen the global-state probe toward L2 (Task 9 Deliverable B) — DONE (M4 task 10)
+
+*Everything until "Closed — M4 task 10" below is the feasibility record as it
+stood before the gate was built, kept verbatim because several of its numbers
+were re-measured and two of them did not reproduce.*
 
 **These are Task 9 measurements, recorded here rather than re-derived.** The
 question was whether invoking each newly-defined global function under a
@@ -571,6 +575,146 @@ normalised first; it will stay red on `snr_novel` until backlog item 5 lands;
 and a 3000-event cap truncating 132/229 game loops is a reach ceiling that
 argues for a key-sequence-driven harness rather than a bare `pcall(main)`
 (cf. the predecessor's `DEBUG_KEY_SEQUENCE_HARNESS.md`).
+
+### Closed — M4 task 10
+
+Built as `scripts/probe_behaviour.lua` + `scripts/probe_behaviour.py`, gated by
+`tests/test_behaviour_probe.py`. See "Behaviour probe (L1.75)" below for what it
+does, what it reaches and what it does not. Everything re-measured 2026-08-12 on
+macOS arm64 against the M4 tree (212/229 files shipping structured source):
+
+| claim above | re-measured | verdict |
+| --- | --- | --- |
+| 228/229 non-empty traces | **229/229** | improved (this probe records the chunk's own global writes, so `config.lua` is no longer empty) |
+| 397,317 recorded engine calls | **398,196 events** | reproduces |
+| 226/229 agreement | **227/229** | improved (M4's loop work flipped 120 more files to structured) |
+| divergences: `snr_common`, `snr_mainmenu`, `snr_novel` | **`snr_mainmenu`, `snr_novel`** | `snr_common` converged |
+| 2.7s for 458 probe runs | **3.14s serial, 1.06s over 8 threads** | reproduces |
+| payload median 48,081 B, 11.5 MB total | **median 33,068 B, 13.6 MB total** | different shape, same order |
+| 3000-event cap truncates 132/229 | **132/229** | reproduces exactly |
+| stub policy is agreement-invariant | **NO — see below** | contradicted |
+
+**Contradicted: the stub-return policy is not agreement-invariant.** Measured
+over the corpus at 227 / 227 / 226 / 226 for
+nil-with-name-heuristic / always-nil / always-zero / the predecessor's
+zero-defaulted guess. The two zero-defaulted policies surface one *extra*
+instance of the same pinned `getobjname` class (`snr_common.lua`:
+`bad argument #1 to 'len'` vs `to '?'`), not a new defect — so the feasibility
+claim is right about the *class* of what the policy decides, and wrong that the
+count is invariant. The frozen policy is the nil-defaulted heuristic, which is
+both the best-agreeing and (by 9 events out of 398,196) the deepest-reaching.
+
+**The event-budget finding held, and now has corpus-scale evidence.** At the
+same 3000-event cap, `snr_s4_10_s.lua` executes **6.51M** VM instructions on the
+original side and **78.35M** on the decompiled side — a **12x** ratio — and
+still produces a byte-identical trace. Any instruction-count budget between
+those two numbers truncates one side and not the other. Across the corpus the
+worst case is that same 78.35M, so the frozen 400M backstop has **5.1x**
+headroom over the deepest real run; no corpus file reaches it (asserted).
+
+Still open after this task: the 3000-event cap truncates 132/229 files
+mid-loop, so a key-sequence-driven harness (spec M5, cf. the predecessor's
+`DEBUG_KEY_SEQUENCE_HARNESS.md`) remains the way past the reach ceiling; and
+`snr_novel` stays pinned until backlog item 5 (table internal layout) lands.
+
+## Behaviour probe (L1.75)
+
+Loads a chunk under a stubbing environment, runs it, then **invokes every global
+function the chunk defined**, recording a deterministic trace of the engine
+calls, stub-table writes, prints and errors that result. The original bytecode
+and our decompiled output are compared on that trace.
+
+**`scripts/probe_behaviour.lua` is the single source of truth** for the trace
+format, the frozen constants and the stub policy — describe it here, read it
+there; the earlier inline copy of the L1.5 probe in this file went stale the
+moment the probe was fixed. The Python driver is `scripts/probe_behaviour.py`
+(`probe_raw(payload, *, is_source) -> bytes`, `digest`, `header`,
+`first_difference`, `dump_mismatch`, a whole-corpus `main()`); the standing gate
+is `tests/test_behaviour_probe.py`.
+
+Output is `PROBE1|<status>|<event count>` followed by one line per event, or
+`LOADFAIL|<message>`; anything else, or a non-zero exit, raises `ProbeError`
+rather than becoming a comparable value. The comparison unit is a SHA-256 over
+the raw bytes — nothing decodes the trace, because it embeds corpus string
+constants that are frequently not UTF-8.
+
+### Result over the full corpus (M4 task 10)
+
+**229 files, 227 byte-identical, 2 pinned divergent, 0 probe failures,
+398,196 recorded events.** Status split on the original side: 97 `OK`,
+132 `CAP` (hit the 3000-event budget), 0 `INSN`.
+
+Reach against the L1.5 gate it deepens (both columns measured 2026-08-12):
+
+| measure | L1.5 global-state | L1.75 behaviour |
+| --- | --- | --- |
+| files with a non-empty payload | 224 / 229 | 229 / 229 |
+| compared units | 452 globals | 398,196 events |
+| payload, median | 22 B | 33,068 B |
+| payload, total | ~65 KB | 13.6 MB |
+| files whose payload is only `main=<function>` | 222 | 0 |
+
+### The two pins, and the evidence for each
+
+Both are pinned in `EXPECTED_DIVERGENCE` (`scripts/probe_behaviour.py`) as
+exact `(original, decompiled)` first-differing-line pairs, adjudicated two-
+directionally by `adjudicate_pins` (`scripts/probe_common.py`): a changed
+message, a converged pair or a vanished file all fail the gate.
+
+- **`snr_mainmenu.lua` — the `getobjname` artifact of the `__pld_R` box model**,
+  the same class already pinned in the L1.5 gate. Both sides record the same 18
+  preceding events, then both fail with an arithmetic-on-nil error; exactly one
+  trace line differs (asserted). The original does `GETTABLE 6 6 "library"`
+  immediately followed by `ADD 5 5 6` (luac listing pcs 117/118, and identically
+  at 299/300, 518/519, 743/744, 883/884 — every one composes the same message),
+  so `kname` finds a *string* constant and says `field 'library'`. Our fallback
+  emits that pair as `__pld_R[6] = __pld_R[6]["library"]` /
+  `__pld_R[5] = __pld_R[5] + __pld_R[6]`, so the ADD's operand came from a
+  `GETTABLE` whose key is the *number* constant 6; `kname` refuses a non-string
+  RK and says `field '?'`.
+- **`snr_novel.lua` — table iteration order.** The two traces are the same
+  *multiset* of 43 lines in a different order (asserted). The file's only
+  `pairs` loop is at pcs 24…37 of a main-chunk subproto and iterates
+  `<upvalue>.layerNumber`. The original builds that table with
+  `NEWTABLE 1 0 23` — a 29-entry hash-size hint — followed by 29 `SETTABLE`s;
+  the fallback emits a bare `{}`, so luac gives it `NEWTABLE ... 0 0` and the 29
+  inserts grow the node array by rehash instead. Different node array,
+  different `next()` order. This is backlog item 5 with runtime evidence.
+
+Both remaining pins are on files that still ship **fallback** output; the 212
+files that ship structured source all agree.
+
+### Non-vacuity
+
+The L1.5 probe shipped once in a state where any probe-side failure returned
+`""`, compared equal on all 229 files, and was counted as non-empty by the very
+assertion meant to prevent vacuity. `tests/test_behaviour_probe.py` therefore
+commits, rather than merely reporting, the checks that make the gate falsifiable:
+
+- three **fault injections** on the real gate path — `+`→`-` and a `while` bound
+  moved by one in `snr_crd_10.lua`'s *structured* output, and a FORLOOP limit
+  `<=`→`<` in `snr_memory.lua`'s *fallback* output — each asserted to be a
+  unique anchor first, so an anchor that stopped matching fails loudly instead
+  of injecting nothing;
+- an `os.exit` in the target must not truncate the trace and exit 0;
+- five determinism overrides (`os.time`/`os.clock`/`os.date`, `math.random`,
+  `collectgarbage`, `tostring(table)`, `os.getenv`) each covered by a synthetic
+  case, precisely because the corpus never calls them and corpus green could
+  never falsify them;
+- the event budget asserted to be an event budget: two chunks with identical
+  observable behaviour and wildly different instruction counts must produce
+  identical traces;
+- the instruction backstop asserted to fire on a loop that records nothing.
+
+### Scope — do not assume more than this
+
+Only top-level globals the chunk itself wrote are invoked, only those whose
+value is a function, and always with **no arguments**. Functions reachable only
+through a table field are never called. Unknown globals resolve to a stub proxy,
+so what is observed is behaviour *under the frozen stub policy*, not under the
+real PSP engine. State accumulates across the invocations in one run
+(deliberately: deterministic, and it exercises code that depends on what an
+earlier function set up).
 
 ## 6. Deferred minors carried out of M3
 
@@ -643,9 +787,14 @@ such — assume the same is possible of the others.
   the stripped `.luac` (`?:0:`) and our `.lua`. The one remaining way `ERR|`
   residue can be representation-dependent for a reason other than
   `getobjname`.
-- The CLI `main()` knows nothing about the pinned divergences — it prints
+- ~~The CLI `main()` knows nothing about the pinned divergences — it prints
   `225/229` and returns 1, so anyone running the documented script sees a RED
-  gate while the suite is green.
+  gate while the suite is green.~~ **CLOSED (M4 task 10).** The pin moved out
+  of the test and into `scripts/probe_global_state.py` next to the CLI that has
+  to honour it, and both CLIs now adjudicate through the shared
+  `scripts/probe_common.py::adjudicate_pins` (unexpected / moved / gone), so a
+  clean run prints `225/229 identical, 4 pinned divergence(s)` and returns 0
+  while a converged or moved pin still returns 1.
 - Table/function-valued **keys** still serialise via `tostring(k)` (an address,
   non-deterministic across the two probe processes). 0 occurrences today.
 - `payload_of` splits `ERR|` on the first `|`, mis-splitting a message

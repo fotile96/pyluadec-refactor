@@ -7,42 +7,11 @@ design, its measured reach, and the known incomparable dimension recorded in
 """
 import pytest
 
-# The four corpus files whose ORIGINAL bytecode and DECOMPILED output both
-# fail, at the same point and with the same error class, but whose error text
-# carries a different variable name.
-#
-# Lua 5.1 builds "attempt to index <kind> '<name>'" / "bad argument #n to
-# '<name>'" from ldebug.c's getobjname(), which names a value by the BYTECODE
-# SHAPE that produced it -- global read, local, upvalue, table field. The
-# fallback emitter routes every register through the `__pld_R` box table, so a
-# value the original read with GETGLOBAL is read from a table field in our
-# output, and getobjname names it "field 'v'" / "field '?'" instead of
-# "global 'gameSave'". The failing operation, the offending value's type and
-# the set of globals written before the failure all match.
-#
-# Investigated in the Task 9 round-1 report: the divergence is NOT the
-# .luac/.lua split (compiling our output with luac_sz4, stripped or not,
-# reproduces the same text), and under an auto-stubbing _G all four advance
-# further in lockstep and diverge again only in the same getobjname noun.
-#
-# Pinned as EXACT PAIRS, not as an exclusion list: if either side's text
-# changes -- including if they start agreeing, which M4's move off the box
-# model should cause -- this test fails and the pin must be re-derived.
-# Do not add entries to make a divergence go away.
-EXPECTED_ERROR_NAME_DIVERGENCE = {
-    "snr_graphic.lua": (
-        "ERR|attempt to index global 'systemSave' (a nil value)|\n",
-        "ERR|attempt to index field '?' (a nil value)|\n"),
-    "snr_mainmenu.lua": (
-        "ERR|attempt to index global 'gameSave' (a nil value)|\n",
-        "ERR|attempt to index field 'v' (a nil value)|\n"),
-    "snr_memory.lua": (
-        "ERR|attempt to index global 'systemSave' (a nil value)|\n",
-        "ERR|attempt to index field 'v' (a nil value)|\n"),
-    "snr_novel.lua": (
-        "ERR|attempt to index global 'systemSave' (a nil value)|\n",
-        "ERR|attempt to index field 'v' (a nil value)|\n"),
-}
+# The pin itself lives next to the CLI that has to honour it
+# (scripts/probe_global_state.py), so the gate and the documented script cannot
+# disagree about what is pinned; see the comment there for the getobjname
+# argument and the instruction-level evidence.
+from scripts.probe_global_state import EXPECTED_ERROR_NAME_DIVERGENCE
 
 
 def test_probe_is_deterministic():

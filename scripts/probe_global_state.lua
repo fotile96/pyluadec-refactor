@@ -23,6 +23,8 @@ local tostring = tostring
 local print = print
 local loadfile = loadfile
 local pcall = pcall
+local rawget = rawget
+local assert = assert
 local osexit = os.exit
 local tsort = table.sort
 local tconcat = table.concat
@@ -33,31 +35,25 @@ local sbyte = string.byte
 
 local target = ...
 
--- Lua 5.1 formats both load and runtime errors as "<source>:<line>: <message>".
--- The source and line necessarily differ between the .luac input (stripped
--- bytecode: source "?", no line info) and the .lua input, so the prefix cannot
--- be compared -- but the residue is derived from string constants and opcode
--- semantics and is comparable. Strip the first "<anything>:<digits>: " prefix.
-local function strip_location(msg)
-  if type(msg) ~= "string" then return nil end
-  local i = 1
+-- `strip_location` (the "<source>:<line>: " prefix stripper, which both probes
+-- need because the prefix necessarily differs between the stripped .luac and
+-- our .lua) lives in scripts/probe_common.lua, found from arg[0] rather than
+-- through package.path so this stays runnable as a bare
+-- `lua scripts/probe_global_state.lua <target>` from any cwd.
+local strip_location
+do
+  local a = rawget(G, "arg")
+  local argv0 = (a and a[0]) or ""
+  local dir, i = "", 1
   while true do
-    local c = sfind(msg, ":", i, true)
-    if not c then return msg end
-    local j = c + 1
-    local digits = 0
-    while true do
-      local b = sbyte(msg, j)
-      if b and b >= 48 and b <= 57 then
-        digits = digits + 1
-        j = j + 1
-      else
-        break
-      end
-    end
-    if digits > 0 and ssub(msg, j, j + 1) == ": " then return ssub(msg, j + 2) end
-    i = c + 1
+    local s = sfind(argv0, "/", i, true)
+    if not s then break end
+    dir = ssub(argv0, 1, s)
+    i = s + 1
   end
+  local chunk = assert(loadfile(dir .. "probe_common.lua"),
+                       "probe_common.lua not found next to " .. argv0)
+  strip_location = chunk().strip_location
 end
 
 local function ser(v, depth, seen)

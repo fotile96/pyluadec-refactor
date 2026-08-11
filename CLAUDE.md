@@ -76,11 +76,12 @@ Phase 1（M0）已完成：uv 骨架、vendored pristine Lua 5.1.5、序列化�
 - 构建原生产物（vendored lua/luac 的 sz4/sz8 变体 + 两个 pybind bridge `.so`，产出到 `build/` 与 `src/pyluadec/_native/`）：`./scripts/build_native.sh`
 - 跑全部测试（文档化的默认调用方式——务必带上语料环境变量）：
   `PYLUADEC_CORPUS_DIR=/path/to/script_to_decompile uv run pytest`（或加 `-v`）。
-  **不带这个环境变量的 `uv run pytest` 不是"全部测试"**：13 个语料门控用例会被
+  **不带这个环境变量的 `uv run pytest` 不是"全部测试"**：语料门控用例会被
   静默 `pytest.skip`（而不是报错中断），其中包括 M2 出口门
-  `test_corpus_compile.py`、golden/parity 两道门、以及台账不动点测试
-  `test_ledger_ratchet.py`——裸跑仍会打印形如 "107 passed" 的绿色结果，但这不
-  代表这些门跑过了。`tests/conftest.py` 装了一个 `pytest_terminal_summary`
+  `test_corpus_compile.py`、golden/parity 两道门、台账不动点测试
+  `test_ledger_ratchet.py`、以及 L1.5/L1.75 两道探针门——裸跑仍会打印绿色结果，
+  但这不代表这些门跑过了（2026-08-12 实测：裸跑 `450 passed, 48 skipped`，
+  带语料 `498 passed`；这个数字随测试增加而变，别把它当常量抄）。`tests/conftest.py` 装了一个 `pytest_terminal_summary`
   钩子，语料目录缺失时会在测试结束后打印醒目的警告横幅，提醒你这一点；但**不会**
   让裸跑本身失败——语料门控用 skip 而非 error 是有意为之（本地/CI 环境不一定都
   能拿到 229 个语料文件），这条 CLAUDE.md 记录只是把"文档化默认值"和"裸跑的真实
@@ -150,7 +151,8 @@ ingest -> lift -> cfg -> sir.build -> express.reconstruct -> emit.lua
 
 ### 新增常用命令
 
-- 全局状态探针（L1.5 门）：`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_global_state.py`。**注意 CLI 不认识那 4 条已钉住的发散**，它会打印 `225/229` 并返回 1；权威判定在 `tests/test_global_state_probe.py`（套件绿即门绿）。
+- 全局状态探针（L1.5 门）：`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_global_state.py`。M4 task 10 起 CLI 认识那 4 条已钉住的发散（钉子已从测试挪到 `scripts/probe_global_state.py`，两个 CLI 与两个门共用 `scripts/probe_common.py::adjudicate_pins`），干净跑法打印 `225/229 identical, 4 pinned divergence(s)` 并返回 0；权威判定仍在 `tests/test_global_state_probe.py`。
+- 行为探针（L1.75 门，M4 task 10 新增）：`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_behaviour.py`。在打桩环境下**实际调用**每个 chunk 定义的全局函数并比对事件轨迹，干净跑法打印 `227/229 identical, 2 pinned divergence(s), 398196 recorded events`。设计、能力边界、两条钉子的指令级证据见 `docs/runbooks/m3-backlog.md`「Behaviour probe (L1.75)」节。
 - 效应表-发射器一致性门：`uv run pytest tests/test_effects_emitter_consistency.py`（语料臂 + 合成操作数网格，无需语料也能跑合成臂）。
 - 单文件结构化反编译 / 看认证结果 / 调试某个未认证函数：命令见 `structured-pipeline.md`「Common operations」节。
 
