@@ -39,14 +39,15 @@ mis-structure a function.
 `lift/effects.py` and `structure/fallback.py` are two independent hand
 transcriptions of `lvm.c`. Nothing mechanically reconciled them. For every
 instruction, the register indices the emitted template touches must be a subset
-of `effects.reads | effects.writes` (skipping open regions, which are
-`__pld_top`-relative). Re-measured when it landed: **207214 of 214192 corpus
-instructions checked, 0 disagreements**; the other 6978 carry an open region
-(6949 `CALL`, 26 `VARARG`, 3 `RETURN`). The corpus arm reaches only 32 of 38
-opcodes, so a synthetic operand grid covers the remaining 6. See
-"The effects–emitter consistency gate" in `structured-pipeline.md` for the two
-findings that came out of writing it, including the `TAILCALL` `writes_open`
-gap carried to M4 below.
+of `effects.reads | effects.writes`. Re-measured M4 task 8, after that task
+removed the gate's blanket open-region skip: **all 214192 corpus instructions
+checked, 0 disagreements**; 6981 of them carry an open (`__pld_top`-relative)
+region — 6949 `CALL`, 26 `VARARG`, 3 `RETURN`, 3 `TAILCALL` — and are checked
+for their static part only. The corpus arm reaches 33 of 38 opcodes, so a
+synthetic operand grid covers the remaining 5. (Before task 8: 207214 of
+214192 checked, 32 of 38 opcodes.) See "The effects–emitter consistency gate"
+in `structured-pipeline.md` for the two findings that came out of writing it,
+including the `TAILCALL` `writes_open` gap, now closed — §4 below.
 
 **3. Promote the global-state probe to an L1.5 gate.** *(Landed — M3 Task 9;
 see "Global-state probe" below for what it does and does not reach.)* It turns
@@ -407,7 +408,12 @@ because downstream passes (a real pass registry, reordering-based
 beautification) will need it — not because it is expected to move the L3 rate.
 Full story in `structured-pipeline.md`, "Register classification".
 
-## 4. `TAILCALL` is missing `writes_open` in the axiom layer
+## 4. `TAILCALL` is missing `writes_open` in the axiom layer — DONE (M4 task 8)
+
+*Everything until "Closed — M4 task 8" below is the record as it stood before
+the fix, kept verbatim because it contains a retracted claim that must not be
+re-derived. Present tense in it means "before M4 task 8". The resolution, and
+the reason the differential moved nothing, are in that closing subsection.*
 
 `lift/effects.py`'s `TAILCALL` row returns `writes=∅, writes_open=0`. That is
 under-approximate: in `lvm.c`'s `OP_TAILCALL`, the `PCRC` branch
@@ -466,6 +472,42 @@ differential run stays required** before touching the `TAILCALL` row — it is
 the thing that would settle this, and it is M4 work. Do not let the
 `lparser.c` citation, which only covers the first half, be read as a licence
 to skip it.
+
+### Closed — M4 task 8
+
+The differential run was done: `classify_registers`' four fields
+(`locals`/`temps`/`loop_vars`/`temp_defs`) plus each proto's certification
+level, rung and refusal reason, swept over all **1944 proto occurrences of
+229 files** before and after the row change. **The two sweeps are
+byte-identical: 0 protos changed in any field, 0 levels moved**, and
+`scripts/run_corpus.py` reproduced `corpus/ledger.jsonl` byte-for-byte
+(1389/1478 unique `L3`, 94.0%; 1855/1944 occurrences, 95.4%).
+
+The reason it moved nothing is **not** the terminality argument retracted
+above, and not "C is always 0" either. It is `_block_floor`:
+`effects.successors(TAILCALL) == ()`, so `build_cfg` always ends a basic
+block at a `TAILCALL` and makes the next pc a leader; `_staging_slice` never
+looks below the loop header's own block entry, so a `TAILCALL` can never lie
+strictly between a staging producer and the header consuming it. The
+open-write barrier is unreachable for `TAILCALL` in real lifted code — a
+structural argument, now pinned over the corpus by
+`tests/test_effects_tailcall.py::test_corpus_lifted_tailcalls_all_end_their_basic_block`
+rather than left as prose.
+
+The row is nevertheless load-bearing, which a synthetic fixture proves: hand
+a `LirFunction` a `TAILCALL` with a fall-through successor (an LIR luac will
+not emit) sitting between three staging writes and a `FORPREP`, and the
+control triple's verdict flips `temps -> locals` with the row. Neuter check
+included.
+
+One knock-on, worth knowing before touching the row again: the
+effects–emitter consistency gate used to skip every instruction carrying an
+open region, so an unconditional `writes_open` on `TAILCALL` silently removed
+all 3 corpus `TAILCALL`s and all 196 grid `TAILCALL` rows from it. Task 8
+removed that skip rather than accept the coverage loss (`_registers_touched`
+never names an open region's registers, so the subset assertion was well
+posed for those rows all along and the skip was discarding their static
+half). Measured: 0 violations, +6981 corpus rows, +1 corpus opcode.
 
 Re-derive the table:
 
@@ -551,7 +593,8 @@ such — assume the same is possible of the others.
   `A=255`/`B=511`/`C=511` boundary that had previously only been
   hand-verified. Verified 2026-08-11; the entry above was stale when this
   file was written. (`tests/test_effects_emitter_consistency.py`'s synthetic
-  grid also drives this path over 7284 rows.)
+  grid also drives this path over 7448 rows, all of them since M4 task 8
+  removed its open-region skip.)
 - ~~`tests/synth.py` — `mk_cfg` duplicates `test_dom.py`'s own local
   `_mk_cfg`.~~ **CLOSED (M3 final-review round).** `test_dom.py` now imports
   `tests.synth.mk_cfg`; the bodies were line-for-line identical, so the swap

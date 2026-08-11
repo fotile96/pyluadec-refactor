@@ -439,12 +439,19 @@ _EXHAUSTIVE_CASES = [
      _mk(_Op.CALL, a=2, b=1, c=0),
      frozenset({2}), frozenset(), False, True, True, _ARB, _ARB, _ARB),
 
-    ("TAILCALL fixed args",  # lvm.c: writes nothing itself -- frame is replaced, not results-written
+    # lvm.c:611 asserts C is always 0, so TAILCALL has no fixed-result form:
+    # writes_open is unconditional. On the PCRLUA path (lvm.c:613-629) the
+    # frame is replaced and control never returns to the next instruction, but
+    # on the PCRC path (lvm.c:630-632, a C-function callee) luaD_precall has
+    # already left the results at R[a..top) and execution falls through --
+    # so the union of the two paths writes an open region and nothing fixed.
+    # (M4 task 8; `writes` stays empty because the region is top-relative.)
+    ("TAILCALL fixed args",
      _mk(_Op.TAILCALL, a=2, b=3, c=0),
-     frozenset({2, 3, 4}), frozenset(), False, False, True, _ARB, _ARB, _ARB),
+     frozenset({2, 3, 4}), frozenset(), False, True, True, _ARB, _ARB, _ARB),
     ("TAILCALL open args (B==0)",
      _mk(_Op.TAILCALL, a=2, b=0, c=0),
-     frozenset({2}), frozenset(), True, False, True, _ARB, _ARB, _ARB),
+     frozenset({2}), frozenset(), True, True, True, _ARB, _ARB, _ARB),
 
     ("RETURN fixed",  # lvm.c: if(b!=0) top=ra+b-1 -> b-1 values at ra..ra+b-2
      _mk(_Op.RETURN, a=2, b=3),

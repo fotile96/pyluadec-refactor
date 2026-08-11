@@ -26,7 +26,7 @@ around it.
    from `corpus/ledger.jsonl` (`uv run python scripts/ledger_dashboard.py`).
    The 225/229 global-state figure comes from
    `tests/test_global_state_probe.py` / `scripts/probe_global_state.py`. The
-   effects–emitter counts (207214/214192, 7284) live in
+   effects–emitter counts (214192/214192, 6981 open rows, 7448 grid rows) live in
    `tests/test_effects_emitter_consistency.py`'s `corpus_scan` fixture, but
    the test asserts only floors — to see the exact numbers you have to print
    the fixture's `checked` / `protos` yourself.
@@ -832,17 +832,19 @@ template must touch are a **subset** of `effects.reads | effects.writes`.
 
 Four tests:
 
-- corpus arm — walks all 229 files, lifts all 1944 protos. **Measured: 207214
-  of 214192 instructions checked, 0 disagreements.** The other 6978 carry an
-  open (`R[base..top)`) region and are skipped: 6949 `CALL`, 26 `VARARG`,
-  3 `RETURN`.
-- corpus opcode-reach pin — the corpus arm reaches only **32 of 38 opcodes**
-  (`SELF`, `POW`, `UNM`, `NOT`, `CLOSE` never occur; all 26 `VARARG`s are
-  `B == 0`, i.e. open). Pinned as a lower bound so the reach cannot silently
-  shrink — `checked > 100_000` would not notice, since 81227 of the checked
-  rows are `LOADK` alone.
+- corpus arm — walks all 229 files, lifts all 1944 protos. **Measured
+  (M4 task 8): all 214192 instructions checked, 0 disagreements.** 6981 of
+  them carry an open (`R[base..top)`) region — 6949 `CALL`, 26 `VARARG`,
+  3 `RETURN`, 3 `TAILCALL` — and are checked for their *static* part only;
+  the `top`-relative part has no static register set to compare against and
+  is outside what this gate reconciles. (Until M4 task 8 those rows were
+  skipped outright. See below.)
+- corpus opcode-reach pin — the corpus arm reaches **33 of 38 opcodes**
+  (`SELF`, `POW`, `UNM`, `NOT`, `CLOSE` never occur). Pinned as a lower bound
+  so the reach cannot silently shrink — `checked > 100_000` would not notice,
+  since 81227 of the checked rows are `LOADK` alone.
 - synthetic arm — the same invariant over an exhaustive operand grid built with
-  `tests/synth.mk_instr` (7284 non-open rows), reaching **38 of 38 opcodes**.
+  `tests/synth.mk_instr` (7448 rows), reaching **38 of 38 opcodes**.
 - non-vacuity + fault injection — every opcode except `JMP`/`CLOSE` has a
   non-empty touched set, and dropping any one register from a real effects row
   makes the subset check fail.
@@ -856,17 +858,31 @@ Two findings from writing it, both worth carrying:
   (`lift.py` widens `CLOSURE`'s reads with the captured registers from the
   following `MOVE` pseudo-instructions; `FORLOOP`'s `may_error=True` is a
   documented conservative over-approximation).
-- **`lift/effects.py` omits `writes_open` on `TAILCALL`.** This is a real gap:
-  `lvm.c:630-632`, the `PCRC` (non-Lua callee) branch of `OP_TAILCALL`, leaves
-  the callee's results at `R[a..top)` for the immediately following
-  `RETURN A 0` to read. It does not make the gate fail — `OP_TAILCALL` always
-  has `C == 0` (`lvm.c:611` asserts `GETARG_C(i) - 1 == LUA_MULTRET`), so the
-  emitter side touches nothing beyond `R[a..a+b)` — but the row is
-  under-approximate. Deliberately **not** fixed in task 10: per CLAUDE.md,
-  changing the axiom layer needs an `lvm.c` citation *plus* a differential run,
-  and adding `writes_open` would put every `TAILCALL` pc into
-  `classify_registers`' `open_write_pcs`, which can move classifications and
-  therefore the committed ledger. Carried to the M4 backlog.
+- **`lift/effects.py` omitted `writes_open` on `TAILCALL`** — found here in
+  task 10, fixed in **M4 task 8**. `lvm.c:630-632`, the `PCRC` (non-Lua
+  callee) branch of `OP_TAILCALL`, leaves the callee's results at `R[a..top)`
+  for the immediately following `RETURN A 0` to read, and `lvm.c:611` asserts
+  `GETARG_C(i) - 1 == LUA_MULTRET` so there is no fixed-result form to gate
+  on: the row's `writes_open` is unconditional. The differential run CLAUDE.md
+  requires for an axiom-layer change was done over all 1944 proto occurrences
+  (`classify_registers`' four fields plus each proto's certification verdict,
+  before and after): **nothing moved, and `corpus/ledger.jsonl` came back
+  byte-identical.** The reason is `_block_floor`, not terminality —
+  `successors(TAILCALL) == ()` makes every `TAILCALL` end its basic block, so
+  it can never sit between a staging producer and the loop header consuming
+  it. Details and the synthetic case that does reach the barrier:
+  `tests/test_effects_tailcall.py`.
+
+  The fix's one visible consequence was in this gate: with the blanket
+  open-region skip in place, giving `TAILCALL` a `writes_open` silently
+  dropped every `TAILCALL` row from both arms. Rather than accept the
+  coverage loss, task 8 removed the skip — `_registers_touched` never names
+  an open region's registers (every branch that could is guarded by
+  `if b`/`if c` and degenerates to the empty set exactly when the region
+  opens), so the subset assertion is well-posed for those rows and was simply
+  discarding their static half. Measured with the skip removed: 0 violations,
+  +6981 corpus rows, +1 corpus opcode (`VARARG`, whose 26 occurrences are all
+  `B == 0`).
 
 ## Common operations
 

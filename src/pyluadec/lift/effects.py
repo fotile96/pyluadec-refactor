@@ -90,7 +90,18 @@ def _row(ri: RawInstr):
     if op in (Op.CALL, Op.TAILCALL):
         reads = F({a}) | (F(range(a + 1, a + b)) if b else F())
         if op is Op.TAILCALL:
-            return reads, F(), b == 0, 0, ARB, ARB, ARB, True
+            # writes_open is unconditional, unlike CALL's `c == 0` gate.
+            # lvm.c:611 asserts `GETARG_C(i) - 1 == LUA_MULTRET` (C is always
+            # 0), so there is no fixed-result form to gate on, and the PCRC
+            # branch (lvm.c:630-632 -- the callee was a C function, already
+            # run to completion by luaD_precall) falls through to the next
+            # instruction with the callee's results sitting at R[a..top).
+            # The other reachable branch, PCRLUA (lvm.c:613-629), replaces
+            # the frame and `goto reentry`s, so it never returns here at all;
+            # modelling the union of the two means modelling the write.
+            # `writes` stays empty because the region is top-relative (same
+            # convention as CALL C==0 / VARARG B==0). M4 task 8.
+            return reads, F(), b == 0, 1, ARB, ARB, ARB, True
         writes = F(range(a, a + c - 1)) if c else F()
         return reads, writes, b == 0, c == 0, ARB, ARB, ARB, True
     if op is Op.RETURN:

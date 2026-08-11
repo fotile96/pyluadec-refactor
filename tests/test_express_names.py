@@ -745,18 +745,26 @@ def _temp_write_violations(fn, rc):
             reads.setdefault(r, []).append(pc)
         if li.effects.reads_open:
             open_reads.append((pc, li.ri.a if li.ri.op is Op.RETURN else li.ri.a + 1))
-        if li.effects.writes_open or li.ri.op is Op.TAILCALL:
-            # TAILCALL is listed here even though lift/effects.py does not set
-            # writes_open on it. When its callee is not a Lua function,
-            # OP_TAILCALL leaves the results at R[a..top) and the RETURN that
-            # luac always emits directly after it returns exactly that open
-            # range -- so `return f(a, b, c, "k")` has TAILCALL read a..a+4
-            # explicitly and then RETURN read the same slots open, which
-            # without this looks like a second consumer of the *staging*
-            # writes. Modelled here in the oracle rather than in the effect
-            # table, which is this project's axiom layer and out of scope for
-            # this task (CLAUDE.md: changing it needs an lvm.c/PDF citation
-            # and a full differential run).
+        if li.effects.writes_open:
+            # `or li.ri.op is Op.TAILCALL` used to be spelled out here: when
+            # its callee is not a Lua function, OP_TAILCALL leaves the results
+            # at R[a..top) and the RETURN luac always emits directly after it
+            # returns exactly that open range -- so `return f(a, b, c, "k")`
+            # has TAILCALL read a..a+4 explicitly and then RETURN read the
+            # same slots open, which without the extra term looks like a
+            # second consumer of the *staging* writes. It was modelled in this
+            # oracle rather than in the effect table because the table is the
+            # axiom layer and changing it needs an lvm.c citation plus a full
+            # differential run (CLAUDE.md).
+            #
+            # M4 task 8 did exactly that (lvm.c:630-632; the differential over
+            # all 1944 protos moved nothing -- see tests/test_effects_tailcall.py),
+            # so `analyze()` now returns writes_open=True for EVERY TAILCALL
+            # operand form, unconditionally. The special case is therefore
+            # exactly redundant, not merely usually redundant:
+            # test_effects_tailcall.py::
+            # test_tailcall_declares_an_open_write_region_for_every_operand_form
+            # is the standing proof of the equivalence.
             open_writes.append((pc, li.ri.a))
 
     bad = []
