@@ -73,14 +73,14 @@ range goes through `_verify_single_entry` (`sir/build.py:68-108`), which refuses
 unless every CFG block starting inside the claimed pc range is dominated by the
 block containing the condition. The pc-interval arithmetic alone cannot see a
 jump from unrelated code into the middle of a "then" body; the dominator check
-can. Call sites: `sir/build.py:1019`, `:1021` (if/else arms), `:1086`
-(numeric-for body), `:1109` (generic-for body), `:304` (`while <cond>` body),
-`:411` (`repeat` body), `:474` (`while true` body), `:676` (the M4 task-4
-`CondValue` range).
+can. Call sites: `_structure_if` (both branches), `_structure_numeric_for`
+(body), `_structure_generic_for` (body), `_match_while` (`while <cond>` body),
+`_match_repeat` (`repeat` body), `_match_while_true` (`while true` body), and
+`_match_cond_value` (the M4 task-4 `CondValue` range).
 
-The `:676` call site is NOT covered by the M3-era inertness measurement two
-paragraphs below (that one predates M4 task 3 and was never re-derived for
-it). It has its own, separate proof: fix round 1 of task 4 found it pinned by
+The `_match_cond_value` call site is NOT covered by the M3-era inertness
+measurement two paragraphs below (that one predates M4 task 3 and was never
+re-derived for it). It has its own, separate proof: fix round 1 of task 4 found it pinned by
 nothing (neutering it, together with `_match_cond_value`'s other guard below,
 left 128/128 tests green and the corpus census unchanged) and added
 `tests/test_express_testset.py::test_reachable_jump_into_the_middle_of_a_cond_value_chain_raises`,
@@ -94,8 +94,8 @@ not merely asserted.
 
 `_match_cond_value` also carries a second check with no call-site entry above
 because it isn't a `_verify_single_entry` call: an inline
-`claimed != {p for p in fn.instrs if lo <= p < join}` equality
-(`sir/build.py:679-681`) after `_parse_value` returns. Fix round 1 also found
+`claimed != {p for p in fn.instrs if lo <= p < join}` equality inside
+`_match_cond_value`, after `_parse_value` returns. Fix round 1 also found
 this one pinned by nothing, but the two turned out to differ in kind on
 investigation: `_parse_value`'s own recursive descent and `value_claimed`
 (`sir/regions.py:208-220`) are built from the same contiguous sub-ranges by
@@ -259,7 +259,8 @@ coverage: `tests/test_sir_build_acyclic.py::test_acyclic_corpus_claims_every_pc`
 and `tests/test_sir_build_loops.py::test_for_corpus_claims_every_pc`.
 
 `_structure_range` also refuses to loop forever: any recognizer path that fails
-to advance `pc` raises rather than spinning (`sir/build.py:769-774`).
+to advance `pc` raises rather than spinning (the `_last_pc` progress check
+inside `_structure_range_impl`).
 
 ### `pyluadec.express` — LIR to statement/expression IR
 
@@ -307,11 +308,11 @@ pattern, predates the rule).
 Two invariants inside the printer that are easy to break and expensive to
 debug:
 
-- `_implicit_return_pc` (`emit/lua.py:458-486`) suppresses the `RETURN A 1`
+- `_implicit_return_pc` suppresses the `RETURN A 1`
   that `lparser.c`'s `close_func` unconditionally appends to every proto.
   Printing it makes the recompile emit *two*. This was worth +17.3 points of
   L3 rate on its own (see "How the L3 rate was actually won").
-- `_terminates` (`emit/lua.py:489-517`) stops a `Seq` after an unconditional
+- `_terminates` stops a `Seq` after an unconditional
   `return`/`break`, because in Lua 5.1 those are only legal as the last
   statement of a block — printing the sibling after them is a syntax error,
   not merely dead code.

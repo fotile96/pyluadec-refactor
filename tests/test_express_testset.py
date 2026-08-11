@@ -225,9 +225,9 @@ def test_unprovable_testset_shape_still_refuses_loudly():
 # The two guards inside `_match_cond_value` itself (fix round 1, Important 1).
 #
 # `_match_cond_value` carries two checks beyond `_parse_value`'s own recursive
-# descent: the dominance check (`_verify_single_entry` at `sir/build.py:676`)
-# and the claimed-range equality check (`claimed != {...}` at
-# `sir/build.py:679-681`, now parenthesized by F5 below). The review found
+# descent: the dominance check (the `_verify_single_entry` call inside
+# `_match_cond_value`) and the claimed-range equality check (`claimed != {...}`
+# inside `_match_cond_value`, now parenthesized by F5 below). The review found
 # neither pinned by any fixture: neutering both together left 128/128 tests
 # green and the corpus census unchanged. What follows pins each SEPARATELY,
 # and is honest about the two turning out to be different in kind.
@@ -235,7 +235,7 @@ def test_unprovable_testset_shape_still_refuses_loudly():
 
 def test_reachable_jump_into_the_middle_of_a_cond_value_chain_raises(monkeypatch):
     """Fix round finding (M4 task 4 review, Important 1, dominance half): the
-    `_verify_single_entry` call inside `_match_cond_value` (`sir/build.py:676`)
+    `_verify_single_entry` call inside `_match_cond_value`
     was pinned by nothing -- the reviewer neutered it (together with the
     claim-equality check below) and got 128/128 tests passing and corpus
     behaviour byte-for-byte unchanged (accepts 1447, CondValue protos 12).
@@ -318,8 +318,8 @@ def test_reachable_jump_into_the_middle_of_a_cond_value_chain_raises(monkeypatch
 
 def test_cond_value_claim_check_is_unreachable_from_real_parse_value_but_the_pc_claim_audit_still_catches_a_broken_value_claimed(monkeypatch):
     """Fix round finding (M4 task 4 review, Important 1, claim-equality half):
-    the `claimed != {p for p in fn.instrs if lo <= p < join}` check at
-    `sir/build.py:679-681` was likewise pinned by nothing.
+    the `claimed != {p for p in fn.instrs if lo <= p < join}` check inside
+    `_match_cond_value` was likewise pinned by nothing.
 
     Unlike the dominance guard above, this one is not merely hard to reach --
     it is PROVABLY unreachable from any input given the current
