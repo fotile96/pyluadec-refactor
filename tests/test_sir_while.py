@@ -441,7 +441,9 @@ def test_reachable_jump_into_the_middle_of_a_while_header_raises(monkeypatch):
     with pytest.raises(StructureError):
         build_sir(fn)
 
-    def _match_while_header_minus_uniformity_check(fn_, pc2blk_, lo, S, hi, continue_target):
+    def _match_while_header_minus_uniformity_check(fn_, pc2blk_, lo, S, hi,
+                                                   continue_target,
+                                                   thread_target=None):
         header, header_pcs = [], []
         pc = lo
         while pc < S:
@@ -460,7 +462,8 @@ def test_reachable_jump_into_the_middle_of_a_while_header_raises(monkeypatch):
         if jmp_pc >= S or jmp_pc not in fn_.instrs or fn_.instrs[jmp_pc].ri.op is not Op.JMP:
             return None
         exit_pc = fn_.instrs[jmp_pc].successors[0]
-        if continue_target is not None and exit_pc == continue_target:
+        if (continue_target is not None and exit_pc == continue_target) \
+                or (thread_target is not None and exit_pc == thread_target):
             exit_pc = hi
         if exit_pc != S + 1:
             return None

@@ -191,22 +191,45 @@ def test_counter_closure_and_dispatch_mix():
 
 
 def test_if_and_elseif_conjunctions_preserved():
-    """KNOWN GAP: ships fallback (`L1`), not `L3` -- measured 2026-08-11.
+    """KNOWN GAP: ships fallback (`L1`), not `L3`.
 
     `f`'s body -- `if p0 < p1 and v4 == -1 then ... elseif 3 < p0 and v4 == 1
     then ... end` -- is refused by `build_sir` with
-    `StructureError: pc 4: if targets out of range` at the second
-    condition's `AND` (confirmed directly via `sir.build.build_sir` on `f`'s
-    lifted IR). This is the documented "if targets out of range" refusal
-    cluster (`docs/runbooks/structured-pipeline.md`'s "Current capability
-    boundary", 10 unique corpus protos): the inner `if`'s AND-chain
-    false-exit is threaded (`luaK_jump`'s `jpc` pending-list concatenation)
-    onto the ENCLOSING `elseif` chain's else-skip -- one level up from the
-    loop-header case `continue_target` already unwinds for in
-    `_structure_if`, which does not yet rewrite this case. `main` (the
-    wrapper chunk) falls back too, since `print_chunk` inlines `f`'s body
-    inline at its `CLOSURE` site, so one unstructurable descendant takes the
-    whole ancestor chain with it.
+    `StructureError: pc 4: if targets out of range` at the second condition's
+    `AND`, still, after M5 task 4.
+
+    **The M4-era diagnosis recorded here was wrong and is corrected in
+    place** (re-measured 2026-08-12 by dumping `f`'s lifted stream). It read:
+    "the inner if's AND-chain false-exit is threaded (`luaK_jump`'s `jpc`
+    pending-list concatenation) onto the ENCLOSING elseif chain's else-skip",
+    and predicted that M5 task 4's threading work would flip this case. It
+    did not, because there is no threading here at all. `f` compiles to
+
+        2 LT   ->(3,4)    3 JMP -> 8      <- first conjunct's false-exit
+        4 EQ   ->(5,6)    5 JMP -> 8      <- second conjunct's false-exit
+        6 LOADK x=1       7 JMP -> 13     <- the else-skip
+        8 LT   ...        (the elseif)
+
+    Both conjuncts' false-exits are patched DIRECTLY to pc 8, the elseif's
+    own test -- `luaK_patchtohere(flist)` at the head of the else branch, not
+    a pending-list concatenation onto JMP@7. JMP@5's target (8) is past the
+    end of the then-body (which ends at 7, the else-skip), and no rewrite can
+    make it mean "end of the then-body", because it does not: falling through
+    to 7 would SKIP the elseif entirely.
+
+    The real cause is that `sir.regions.If` carries exactly ONE compare
+    instruction. `a and b` is therefore read as nested `if`s, which is the
+    same bytecode when the `if` has no else branch (why `if a and b then X
+    end` certifies today) and a DIFFERENT one when it does. `or` has no
+    nested-`if` reading at all. Closing this needs a condition TREE in the
+    region/expression/printer layers; see the M5 task-4 report's residual and
+    `tests/test_sir_longtail2.py::KNOWN_REFUSALS`, whose two-line synthetic
+    exemplars (`if a and b then f() else g() end`, `if a or b then f() end`)
+    are this same shape.
+
+    `main` (the wrapper chunk) falls back too, since `print_chunk` inlines
+    `f`'s body at its `CLOSURE` site, so one unstructurable descendant takes
+    the whole ancestor chain with it.
     """
     src = """
         local function f(p0, p1, v4)

@@ -680,10 +680,15 @@ def test_the_printer_arm_is_not_carried_entirely_by_arm_one(corpus_scan):
     If every printed register were already reconciled by Arm 1, the
     `reg in fr.covered` branch would be dead and the printer's own
     `NumericFor` `A+3` / `GenericFor` `A+3+i` decodes would be unchecked by
-    anything. Measured: 21 of the 12118 printed names on this corpus reach
-    text without any reconstructor accessor having touched them first --
-    `by_kind` breaks down as `{NumericFor: 19, GenericFor: 2}` exactly
-    (round-1 measurement, 2026-08-12), pinned below.
+    anything. Measured: 22 printed names on this corpus reach text without any
+    reconstructor accessor having touched them first -- `by_kind` breaks down
+    as `{NumericFor: 19, GenericFor: 3}` exactly, pinned below.
+
+    The `GenericFor` count moved 2 -> 3 in M5 task 4 (and the corpus's
+    structured-chunk count 212 -> 217): the jpc-threading fix in
+    `sir/build.py` made more protos structure, so more `for`-in headers reach
+    the printer. It is a POPULATION figure, not a floor -- when it moves,
+    re-measure and say why, do not widen it into an inequality.
 
     NOT included here: a `CLOSURE`'s captured `ps.b` (the printer's third
     register decode). A round-1 measurement found it passes via the *first*
@@ -697,7 +702,7 @@ def test_the_printer_arm_is_not_carried_entirely_by_arm_one(corpus_scan):
     assert rec.printed_via_frame > 0, rec.printed_via_frame
     assert rec.printed_via_arm1 > 0, rec.printed_via_arm1
     assert rec.printed_via_arm1 + rec.printed_via_frame == rec.printed
-    assert rec.printed_via_frame_by_kind == {"NumericFor": 19, "GenericFor": 2}, (
+    assert rec.printed_via_frame_by_kind == {"NumericFor": 19, "GenericFor": 3}, (
         rec.printed_via_frame_by_kind)
 
 
@@ -707,16 +712,18 @@ def test_closures_captured_upvalue_is_covered_by_arm_one_only(corpus_scan):
     The module docstring's earlier claim -- "all four [printer register
     decodes] covered by Arm 2" -- did not reproduce for the `CLOSURE`
     capture decode (`emit/lua.py:287`'s `name_for(ps.b, self.depth)`).
-    Measured: of the 907 corpus calls to `name_for` under a `CLOSURE` frame,
-    all 907 pass via Arm 1 (the register was already reconciled against its
+    Measured: of the 912 corpus calls to `name_for` under a `CLOSURE` frame,
+    all 912 pass via Arm 1 (the register was already reconciled against its
     own definition site earlier in the enclosing function) and 0 via the
-    frame's covered set. Pinned here rather than left as prose so a future
+    frame's covered set. (907 before M5 task 4's jpc-threading fix, which put
+    five more protos through the structured printer -- a population figure,
+    re-measured 2026-08-12, not a floor.) Pinned here rather than left as prose so a future
     change that routes some of these through the frame disjunct instead (or
     stops reconciling them via Arm 1 at all) is caught, not re-asserted by
     hand next time someone reads the docstring.
     """
     rec = corpus_scan["rec"]
-    assert rec.printed_via_arm1_by_kind.get("CLOSURE", 0) == 907, (
+    assert rec.printed_via_arm1_by_kind.get("CLOSURE", 0) == 912, (
         rec.printed_via_arm1_by_kind.get("CLOSURE"))
     assert "CLOSURE" not in rec.printed_via_frame_by_kind, (
         rec.printed_via_frame_by_kind)

@@ -165,7 +165,8 @@ def _exits_only_to(fn, lo: int, S: int, allow: tuple[int, ...] = ()) -> bool:
 
 
 def _match_while_header(fn, pc2blk, lo: int, S: int, hi: int,
-                        continue_target: int | None):
+                        continue_target: int | None,
+                        thread_target: int | None = None):
     """The header half of `while <cond> do ... end` recognition.
 
     Given a candidate loop header `lo` and closing back edge `S`, decide
@@ -199,6 +200,15 @@ def _match_while_header(fn, pc2blk, lo: int, S: int, hi: int,
     pending and is concatenated onto the enclosing loop's closing JMP, so it
     surfaces as a jump to the ENCLOSING header. Its source-level destination
     is "the end of the enclosing body", which inside this range is `hi`.
+
+    `thread_target` (M5 task 4) is the same unwinding for the case where the
+    enclosing construct is an `if` rather than a loop -- `while` as the last
+    statement of a then-block whose else-skip absorbed the pending false-exit
+    (`if a then while b do f() end else h() end`). See `_structure_if`'s
+    docstring for the lcode.c argument. Both rewrites are self-limiting: they
+    substitute `hi`, and the `exit_pc != S + 1` test immediately below then
+    still has to hold, so a loop that is NOT the last thing in its range
+    (`hi > S + 1`) is refused exactly as before.
     """
     header: list = []
     header_pcs: list[int] = []
@@ -219,7 +229,8 @@ def _match_while_header(fn, pc2blk, lo: int, S: int, hi: int,
     if jmp_pc >= S or jmp_pc not in fn.instrs or fn.instrs[jmp_pc].ri.op is not Op.JMP:
         return None
     exit_pc = fn.instrs[jmp_pc].successors[0]
-    if continue_target is not None and exit_pc == continue_target:
+    if (continue_target is not None and exit_pc == continue_target) \
+            or (thread_target is not None and exit_pc == thread_target):
         exit_pc = hi
     if exit_pc != S + 1:
         return None
@@ -230,7 +241,8 @@ def _match_while_header(fn, pc2blk, lo: int, S: int, hi: int,
 
 
 def _match_while(fn, cfg, idoms, pc2blk, sites, memo, lo: int, hi: int,
-                 break_target: int | None, continue_target: int | None):
+                 break_target: int | None, continue_target: int | None,
+                 thread_target: int | None = None):
     """Recognize `while <cond> do ... end` opening at range position `lo`.
 
     Returns `(While region, next pc)` or None; never raises, exactly like
@@ -293,7 +305,8 @@ def _match_while(fn, cfg, idoms, pc2blk, sites, memo, lo: int, hi: int,
     s_blk = pc2blk[S]
     if s_blk in idoms and not dominates(idoms, header_blk, s_blk):
         return None                          # reachable from outside the loop
-    m = _match_while_header(fn, pc2blk, lo, S, hi, continue_target)
+    m = _match_while_header(fn, pc2blk, lo, S, hi, continue_target,
+                            thread_target)
     if m is None:
         return None
     header, header_pcs, cond_pc, jmp_pc, exit_pc = m
@@ -503,7 +516,7 @@ def _match_while_true(fn, cfg, idoms, pc2blk, sites, memo, lo: int, hi: int):
 
 
 def _match_loop(fn, cfg, idoms, pc2blk, sites, memo, pc: int, hi: int,
-                break_target, continue_target):
+                break_target, continue_target, thread_target=None):
     """The loop-recognizer cascade: `(region, next pc)` for the first shape
     that proves out at `pc`, else None.
 
@@ -519,7 +532,7 @@ def _match_loop(fn, cfg, idoms, pc2blk, sites, memo, pc: int, hi: int,
     answered differently depending on where structuring happened to be.
     """
     return (_match_while(fn, cfg, idoms, pc2blk, sites, memo, pc, hi,
-                         break_target, continue_target)
+                         break_target, continue_target, thread_target)
             or _match_while_true(fn, cfg, idoms, pc2blk, sites, memo, pc, hi)
             or _match_repeat(fn, cfg, idoms, pc2blk, sites, memo, pc, hi,
                              break_target, continue_target))
@@ -733,7 +746,8 @@ def _match_cond_value(fn, cfg, idoms, pc2blk, lo: int, hi: int):
 
 def _structure_range(fn, cfg, idoms, pc2blk, lo: int, hi: int,
                      break_target: int | None = None,
-                     continue_target: int | None = None, sites=None,
+                     continue_target: int | None = None,
+                     thread_target: int | None = None, sites=None,
                      memo=None) -> Region:
     """Memoizing front end for `_structure_range_impl`.
 
@@ -748,16 +762,22 @@ def _structure_range(fn, cfg, idoms, pc2blk, lo: int, hi: int,
     same defect wearing a different hat.
 
     The result of structuring a range is a pure function of
-    `(lo, hi, break_target, continue_target)` given the fixed
+    `(lo, hi, break_target, continue_target, thread_target)` given the fixed
     fn/cfg/idoms/pc2blk/sites, so caching it -- refusals included, they are
     the expensive half -- is sound and collapses the blowup to linear in
     distinct ranges. The cache lives for one `build_sir` call.
+
+    `thread_target` is part of the key for the same reason the other two are:
+    it changes which jumps `_structure_if` reads as "end of this range", so
+    two calls over the same interval with different thread targets can
+    legitimately produce different regions (or one refuse and one succeed).
+    Omitting it would let whichever ran first answer for both.
     """
     if sites is None:
         sites = _jmp_sites(fn)
     if memo is None:
         memo = {}
-    key = (lo, hi, break_target, continue_target)
+    key = (lo, hi, break_target, continue_target, thread_target)
     hit = memo.get(key)
     if hit is not None:
         if isinstance(hit, str):
@@ -767,6 +787,7 @@ def _structure_range(fn, cfg, idoms, pc2blk, lo: int, hi: int,
         region = _structure_range_impl(fn, cfg, idoms, pc2blk, lo, hi,
                                        break_target=break_target,
                                        continue_target=continue_target,
+                                       thread_target=thread_target,
                                        sites=sites, memo=memo)
     except StructureError as e:
         memo[key] = str(e)
@@ -777,7 +798,8 @@ def _structure_range(fn, cfg, idoms, pc2blk, lo: int, hi: int,
 
 def _structure_range_impl(fn, cfg, idoms, pc2blk, lo: int, hi: int,
                           break_target: int | None = None,
-                          continue_target: int | None = None, sites=None,
+                          continue_target: int | None = None,
+                          thread_target: int | None = None, sites=None,
                           memo=None) -> Region:
     """Structure the pc interval [lo, hi) into a Region. Assumes single-entry at lo.
 
@@ -791,6 +813,17 @@ def _structure_range_impl(fn, cfg, idoms, pc2blk, lo: int, hi: int,
     to the enclosing while's header would skip the FORLOOP, so it is NOT an
     end-of-iteration jump for the for and must not be claimed as one).
 
+    thread_target: the pc that a jump still PENDING at the end of this range
+    ends up carrying, when the instruction emitted at that point is itself a
+    JMP (an enclosing `if`'s else-skip) and `luaK_jump` therefore concatenated
+    the pending list onto it instead of flushing it. Such a jump's
+    source-level destination is "the end of this range", i.e. `hi`, and
+    `_structure_if` rewrites it accordingly -- see its `thread_target`
+    paragraph for the lcode.c argument and for why the rewrite is a no-op
+    anywhere but tail position. None at the top level, and None inside any
+    loop body (there the analogous role is `continue_target`'s: what a loop
+    body's pending jumps get concatenated onto is the loop's own closing JMP).
+
     sites/memo: the `_jmp_sites` map and the per-`build_sir` result cache,
     both created once at the top call. Passed as optional keywords rather
     than positionals so the top-level call in build_sir keeps its M3
@@ -802,6 +835,19 @@ def _structure_range_impl(fn, cfg, idoms, pc2blk, lo: int, hi: int,
     instead, so that caller becomes a loud bug rather than a quiet one.
     """
     assert sites is not None and memo is not None
+    # `thread_target`'s one invariant, and the whole reason the rewrite it
+    # drives is safe: a jump threaded past the end of this range necessarily
+    # targets a pc at or beyond `hi`. `_structure_if` combines it with the
+    # `jt <= hi` bound it already enforced to conclude that the rewrite is a
+    # no-op except on inputs the old code refused outright -- so a caller that
+    # ever passed a target INSIDE the range would silently convert a legal
+    # forward jump into "end of range", dropping every statement between.
+    # Nothing reaches that today (`_structure_if` normalizes a backward raw
+    # target to None just above its recursive call); the assert exists so a
+    # future miswiring is loud. Fault-injected in
+    # `tests/test_sir_longtail2.py::test_a_thread_target_inside_the_range_is_
+    # rejected_rather_than_silently_retargeting_a_jump`.
+    assert thread_target is None or thread_target >= hi, (thread_target, hi)
     parts: list[Region] = []
     pc = lo
     _last_pc: int | None = None
@@ -834,7 +880,7 @@ def _structure_range_impl(fn, cfg, idoms, pc2blk, lo: int, hi: int,
         # Tried first: a loop header is a header whatever instruction sits on
         # it, and the for recognizers below key off the instruction alone.
         w = _match_loop(fn, cfg, idoms, pc2blk, sites, memo, pc, hi,
-                        break_target, continue_target)
+                        break_target, continue_target, thread_target)
         if w is not None:
             parts.append(w[0])
             pc = w[1]
@@ -872,6 +918,7 @@ def _structure_range_impl(fn, cfg, idoms, pc2blk, lo: int, hi: int,
             region, nxt = _structure_if(fn, cfg, idoms, pc2blk, pc, hi,
                                         break_target=break_target,
                                         continue_target=continue_target,
+                                        thread_target=thread_target,
                                         sites=sites, memo=memo)
             parts.append(region)
             pc = nxt
@@ -921,7 +968,7 @@ def _structure_range_impl(fn, cfg, idoms, pc2blk, lo: int, hi: int,
                 # Straight into two for shapes M3 already accepts, changing
                 # their printed output for no reason.
                 w = _match_loop(fn, cfg, idoms, pc2blk, sites, memo, pc, hi,
-                                break_target, continue_target)
+                                break_target, continue_target, thread_target)
                 if w is not None:
                     pending = w
                     break
@@ -943,16 +990,67 @@ def _structure_range_impl(fn, cfg, idoms, pc2blk, lo: int, hi: int,
 
 
 def _structure_if(fn, cfg, idoms, pc2blk, pc: int, hi: int, break_target: int | None = None,
-                  continue_target: int | None = None, sites=None, memo=None):
-    """pc is a compare instruction; the next pc is its JMP. Returns (If region, next pc)."""
+                  continue_target: int | None = None,
+                  thread_target: int | None = None, sites=None, memo=None):
+    """pc is a compare instruction; the next pc is its JMP. Returns (If region, next pc).
+
+    ## `thread_target`: the same jpc threading, one construct over (M5 task 4)
+
+    `continue_target` below unwinds a false-exit that `luaK_jump` concatenated
+    onto a LOOP's closing JMP. The identical thing happens with no loop in
+    sight, because `luaK_jump` is also what emits an `if`'s else-skip
+    (`lparser.c:ifstat`, `luaK_concat(&escapelist, luaK_jump(fs))`): a jump
+    still pending when the enclosing `if`'s else-skip is emitted is
+    concatenated onto it and ends up carrying the ENCLOSING if's join pc.
+
+        if a then          -- 2: TEST  3: JMP -> 10
+          if b then f() end   -- 5: TEST  6: JMP -> 12   <-- threaded
+        else h() end        -- 9: JMP -> 12 (the else-skip)
+
+    The inner false-exit at pc 6 targets 12, which is past the end of the
+    then-body it lives in (`hi` == 9), so M3/M4 refused it as `if targets out
+    of range`. Its source-level destination is "the end of this range", so the
+    rewrite is `jt = hi`, exactly as for the loop case.
+
+    Why `jt == thread_target` proves that, and not merely "these two numbers
+    happen to agree": it is the same `lcode.c` argument spelled out in the
+    `continue_target` comment below, applied to a different concatenation
+    site. `luaK_patchtohere` (lcode.c:236-239) does not patch -- it
+    concatenates the list onto `fs->jpc` -- and `dischargejpc` (lcode.c:163)
+    flushes `fs->jpc` to the current pc before EVERY non-JMP emission
+    (`luaK_code`, lcode.c:789-801). So a jump that still carries the enclosing
+    else-skip's target was pending at the moment that else-skip was emitted,
+    i.e. nothing but JMPs was emitted between the end of the construct that
+    owns it and the end of the enclosing then-block. That is tail position.
+
+    The rewrite cannot fire outside tail position even if that argument were
+    wrong, which is what makes it safe rather than merely well-argued: every
+    `thread_target` handed down is the raw target of the jump that TERMINATES
+    the range, and that target is always `>= hi`. A non-tail `if` inside the
+    range has its false-exit flushed to a real pc `< hi` by `dischargejpc`, so
+    `jt == thread_target` forces `jt >= hi`, and combined with the
+    `jt <= hi` bound the old code already enforced the rewrite is a no-op
+    unless `jt == hi == thread_target`. Concretely: this rewrite can only ever
+    convert a REFUSAL (`jt > hi`) into an acceptance -- it can never
+    re-target a jump that structuring already understood.
+
+    `thread_target` is threaded down as the RAW (un-rewritten) successor of
+    the terminating jump, because that is the value a concatenated jump
+    literally carries in the bytecode, and because multi-level nesting chains
+    it: three `if`s deep in tail position all end up on the outermost
+    else-skip's target, and each level passes that same raw pc inward.
+    """
     li = fn.instrs[pc]
     jmp_pc = pc + 1
     if jmp_pc not in fn.instrs or fn.instrs[jmp_pc].ri.op is not Op.JMP:
         raise StructureError(f"pc {pc}: compare not followed by JMP")
     jmp = fn.instrs[jmp_pc]
     jt = jmp.successors[0]                      # where the JMP goes (start of else / join)
+    raw_jt = jt                                 # pre-rewrite: what a threaded jump carries
     then_lo = jmp_pc + 1                        # fall-through: the 'then' body
-    if continue_target is not None and jt == continue_target:
+    if thread_target is not None and jt == thread_target:
+        jt = hi                                 # see this function's docstring
+    elif continue_target is not None and jt == continue_target:
         # The false-exit was threaded onto the enclosing loop's closing JMP
         # and thence to its header (`while true do if c then x() end end`).
         # Its source-level destination is "the end of the loop body", which
@@ -993,6 +1091,12 @@ def _structure_if(fn, cfg, idoms, pc2blk, pc: int, hi: int, break_target: int | 
     join = jt
     then_hi = jt
     then_last = jt - 1
+    # What the then-body's own still-pending jumps end up carrying. With no
+    # else-skip the then-body runs to `jt`, so it is this `if`'s own false-exit
+    # they share a `jpc` flush with -- hence the RAW `jt`, which is `hi` in the
+    # ordinary case (making the inner rewrite a no-op) and the enclosing
+    # thread/continue target when this `if` was itself threaded.
+    then_thread = raw_jt
     is_break_jmp = (then_last >= then_lo and then_last in fn.instrs
                     and fn.instrs[then_last].ri.op is Op.JMP
                     and break_target is not None
@@ -1009,7 +1113,15 @@ def _structure_if(fn, cfg, idoms, pc2blk, pc: int, hi: int, break_target: int | 
         # between jt and break_target as a fabricated "else" block.
         else_jmp = fn.instrs[then_last]
         cand = else_jmp.successors[0]
-        if continue_target is not None and cand == continue_target:
+        raw_cand = cand                   # pre-rewrite: what a threaded jump carries
+        if thread_target is not None and cand == thread_target:
+            # The else-skip of an if/else in tail position of an enclosing
+            # then-block: threaded onto the ENCLOSING else-skip, so it carries
+            # that if's join. Same argument as the `jt` rewrite above; see this
+            # function's docstring. This is the `else-join out of range`
+            # refusal cluster.
+            cand = hi
+        elif continue_target is not None and cand == continue_target:
             # Same threading as above, one level down: the else-skip of an
             # if/else in tail position of a loop body lands on the header.
             # It is still an else-skip -- rewriting it to `hi` is what keeps
@@ -1051,6 +1163,10 @@ def _structure_if(fn, cfg, idoms, pc2blk, pc: int, hi: int, break_target: int | 
             # the trailing JMP of the then-body is claimed by the If, not the then-body
             then_hi = then_last
             cond_pcs = frozenset({pc, jmp_pc, then_last})
+            # The then-body is terminated by THIS else-skip, so it is this
+            # else-skip that `luaK_jump` concatenates the body's still-pending
+            # jumps onto -- and they carry its raw target, not the rewritten one.
+            then_thread = raw_cand
     else:
         cond_pcs = frozenset({pc, jmp_pc})
     # The interval arithmetic above only proves the pc ranges are gap-free and
@@ -1060,15 +1176,33 @@ def _structure_if(fn, cfg, idoms, pc2blk, pc: int, hi: int, break_target: int | 
     _verify_single_entry(cfg, idoms, pc2blk, pc, then_lo, then_hi)
     if then_hi != jt:
         _verify_single_entry(cfg, idoms, pc2blk, pc, jt, join)
+    if then_thread < then_hi:
+        # A BACKWARD raw target: the terminating jump was itself threaded onto
+        # an enclosing LOOP's closing JMP, so what it carries is that loop's
+        # header pc. `continue_target` -- unchanged down this same call --
+        # already covers exactly that value, so dropping it here loses no
+        # acceptance, and it keeps `thread_target`'s one invariant
+        # (`thread_target >= hi`, asserted in `_structure_range_impl`) true.
+        # Without this, `while true do if a then if b then f() end else g() end
+        # end` hands the then-body a thread target BELOW its own range.
+        then_thread = None
     then_body = _structure_range(fn, cfg, idoms, pc2blk, then_lo, then_hi,
                                  break_target=break_target,
                                  continue_target=continue_target,
+                                 thread_target=then_thread,
                                  sites=sites, memo=memo) if then_lo < then_hi \
         else Seq((), frozenset())
     if else_body is None and then_hi != jt:
+        # The else-body is terminated by falling through to `join`. If a real
+        # instruction sits there (`join < hi`) `dischargejpc` flushes the
+        # body's pending jumps to it and nothing is threaded; only when this
+        # `if` is itself in tail position of its range (`join == hi`) can they
+        # survive to whatever THIS range's terminator is.
         else_body = _structure_range(fn, cfg, idoms, pc2blk, jt, join,
                                      break_target=break_target,
                                      continue_target=continue_target,
+                                     thread_target=(thread_target
+                                                    if join == hi else None),
                                      sites=sites, memo=memo) if jt < join \
             else Seq((), frozenset())
     return (If(cond=li, negated=(li.ri.a == 0), then_body=then_body,
