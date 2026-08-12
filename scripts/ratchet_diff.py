@@ -60,7 +60,7 @@ and this is the instrument that closes it: the floors keep catching
 catastrophes without churning, and the baseline diff catches the 1-row
 regression that stays inside them.
 
-## The seven regressions
+## The nine regressions
 
 | kind | meaning |
 | --- | --- |
@@ -71,6 +71,8 @@ regression that stays inside them.
 | `reason-regression` | an `L3` row carries a `refusal_reason` |
 | `shipping-regression` | an occurrence's `shipped` went `structured` -> `fallback` |
 | `new-l0` | a row arrived at `L0` |
+| `l2-lost` | an occurrence held an `l2` grant and no longer does |
+| `l2-coverage-downgrade` | an occurrence is still granted `L2`, at a LOWER coverage |
 
 `occurrence-removed` covers the shape a per-ROW diff cannot see: the ledger's
 1944 occurrences are 1478 rows, so a proto vanishing from `walk_proto_paths`
@@ -95,8 +97,8 @@ where 12 unequal strings name nothing.
 
 ## What is deliberately NOT a regression
 
-Added rows, level upgrades, rung improvements, and `fallback -> structured`
-shipping changes.
+Added rows, level upgrades, rung improvements, `fallback -> structured`
+shipping changes, and newly-granted or improved `l2` badges.
 
 Also **fields the OLD side lacks** -- the "schema-annotated change" case: a
 baseline written before M4's `refusal_reason` or M5 task 6's per-occurrence
@@ -180,6 +182,9 @@ class DiffReport:
     rung_downgrades: int = 0
     shipping_gained: int = 0
     shipping_lost: int = 0
+    l2_gained: int = 0
+    l2_lost: int = 0
+    l2_cov_downgrades: int = 0
     old_l3: int = 0
     new_l3: int = 0
     old_occurrences: int = 0
@@ -477,7 +482,53 @@ def diff_ledgers(old: list[dict], new: list[dict]) -> DiffReport:
                 detail=f"{key[0]}:{key[1]} shipped structured, now fallback"))
         elif os_ == "fallback" and ns == "structured":
             rep.shipping_gained += 1
+        # L2 (M5 task 9). Same shape as the shipping check and the same
+        # asymmetry: losing a grant is a regression, gaining one is not, and a
+        # baseline that predates the field has `None` on the old side so
+        # neither branch fires (reported as a schema note instead).
+        ol2, nl2 = _l2_cov(oo), _l2_cov(no)
+        if ol2 is not None and nl2 is None:
+            rep.l2_lost += 1
+            rep.regressions.append(Regression(
+                kind="l2-lost", shash=nshash,
+                cluster=cluster_of(new_by.get(nshash, {}).get("refusal_reason")),
+                detail=f"{key[0]}:{key[1]} was granted L2@{ol2:.0%}, now "
+                       f"{_l2_word(no)}"))
+        elif ol2 is not None and nl2 is not None:
+            if nl2 < ol2:
+                rep.l2_cov_downgrades += 1
+                rep.regressions.append(Regression(
+                    kind="l2-coverage-downgrade", shash=nshash,
+                    cluster=cluster_of(
+                        new_by.get(nshash, {}).get("refusal_reason")),
+                    detail=f"{key[0]}:{key[1]} L2@{ol2:.0%} -> L2@{nl2:.0%}: "
+                           f"the same key sequences reach less of the artifact"))
+            elif nl2 > ol2:
+                rep.l2_gained += 1
+        elif ol2 is None and nl2 is not None:
+            rep.l2_gained += 1
     return rep
+
+
+def _l2_cov(occ: dict) -> float | None:
+    """The granted coverage on an occurrence, or None when it was refused, not
+    driven, or written by a ledger predating the field. Those three are
+    deliberately one bucket HERE and three buckets in the ledger: the ratchet
+    only has to answer "was a grant lost", and `_l2_word` names which of the
+    three the new side actually is when it reports one."""
+    v = occ.get("l2")
+    if isinstance(v, dict) and isinstance(v.get("cov"), (int, float)):
+        return float(v["cov"])
+    return None
+
+
+def _l2_word(occ: dict) -> str:
+    v = occ.get("l2")
+    if v is None:
+        return "not driven"
+    if isinstance(v, dict) and "refused" in v:
+        return f"refused ({v['refused']})"
+    return f"unreadable ({v!r})"
 
 
 def _first_occ(row: dict) -> str:
@@ -514,6 +565,9 @@ def format_report(rep: DiffReport, old_path: str, new_path: str) -> str:
                f"fallback")
     out.append(f"  L3 rate:  {_pct(rep.old_l3, rep.old_rows)} -> "
                f"{_pct(rep.new_l3, rep.new_rows)}")
+    out.append(f"  L2:       {rep.l2_gained} occurrence(s) gained or improved, "
+               f"{rep.l2_lost} lost the grant, {rep.l2_cov_downgrades} lost "
+               f"coverage")
     for note in rep.schema_notes:
         out.append(f"  {note}")
     if rep.ok:

@@ -616,3 +616,105 @@ def test_regression_rows_are_hashable_and_ordered():
     b = Regression(kind="level-downgrade", shash="a" * 64, cluster="structure",
                    detail="L3 -> L1")
     assert a == b and len({a, b}) == 1
+
+
+# --------------------------------------------------------------------------
+# L2 (M5 task 9). Same shape as `shipped`: a per-occurrence fact, so the
+# mutations below are one field of one occurrence of one row.
+# --------------------------------------------------------------------------
+
+def _l2_row(rows: list[dict]) -> dict:
+    for r in rows:
+        if any(isinstance(o.get("l2"), dict) and "cov" in o["l2"]
+               for o in r["occurrences"]):
+            return r
+    raise AssertionError("no occurrence in the committed ledger holds an l2 grant")
+
+
+def test_an_occurrence_losing_its_l2_grant_fails(committed, tmp_path, capsys):
+    """The badge is a claim about a run; a run that stopped agreeing, stopped
+    being driven, or started tainting must not go quiet. All three collapse to
+    "the grant is gone", and the message names which of the three the new side
+    is (`_l2_word`)."""
+    new = copy.deepcopy(committed)
+    row = _l2_row(new)
+    occ = next(o for o in row["occurrences"]
+               if isinstance(o.get("l2"), dict) and "cov" in o["l2"])
+    occ["l2"] = {"refused": "taint"}
+
+    rc, out = _run(tmp_path, committed, new, capsys)
+    assert rc == 1
+    assert row["shash"] in out
+    assert "l2-lost" in out and "refused (taint)" in out
+    assert occ["file"] in out
+    assert _kinds(committed, new) == ["l2-lost"]
+
+
+def test_an_occurrence_dropped_to_not_driven_also_fails(committed, tmp_path, capsys):
+    """`None` means "no key sequence authored for this file". Silently
+    deleting a sequence is the cheapest possible way to make the L2 gate stop
+    saying anything, so it has to read as a loss too, distinguishable in the
+    message from a refusal."""
+    new = copy.deepcopy(committed)
+    row = _l2_row(new)
+    occ = next(o for o in row["occurrences"]
+               if isinstance(o.get("l2"), dict) and "cov" in o["l2"])
+    occ["l2"] = None
+
+    rc, out = _run(tmp_path, committed, new, capsys)
+    assert rc == 1
+    assert "l2-lost" in out and "not driven" in out
+    assert _kinds(committed, new) == ["l2-lost"]
+
+
+def test_an_l2_coverage_drop_fails_naming_the_row(committed, tmp_path, capsys):
+    """Still granted, reaching less: the same key sequences now walk fewer of
+    the artifact's blocks, which is a reach regression the boolean grant
+    cannot see."""
+    new = copy.deepcopy(committed)
+    row = _l2_row(new)
+    occ = next(o for o in row["occurrences"]
+               if isinstance(o.get("l2"), dict) and "cov" in o["l2"])
+    occ["l2"] = {"cov": round(occ["l2"]["cov"] / 2, 4)}
+
+    rc, out = _run(tmp_path, committed, new, capsys)
+    assert rc == 1
+    assert row["shash"] in out
+    assert "l2-coverage-downgrade" in out
+    assert _kinds(committed, new) == ["l2-coverage-downgrade"]
+
+
+def test_a_better_or_newly_granted_l2_is_not_a_regression(committed, tmp_path,
+                                                          capsys):
+    """The asymmetry, in both directions that are allowed: coverage going up,
+    and a file that had no badge acquiring one."""
+    new = copy.deepcopy(committed)
+    row = _l2_row(new)
+    occ = next(o for o in row["occurrences"]
+               if isinstance(o.get("l2"), dict) and "cov" in o["l2"])
+    occ["l2"] = {"cov": min(1.0, occ["l2"]["cov"] + 0.05)}
+    fresh = next(r for r in new if all(o.get("l2") is None
+                                       for o in r["occurrences"]))
+    fresh["occurrences"][0]["l2"] = {"cov": 0.42}
+
+    rc, out = _run(tmp_path, committed, new, capsys)
+    assert rc == 0
+    assert "no regression" in out
+    assert "2 occurrence(s) gained or improved" in out
+
+
+def test_a_baseline_predating_l2_is_not_a_mass_regression(committed, tmp_path,
+                                                          capsys):
+    """The schema-annotated case, for this field: every occurrence in the
+    baseline loses `l2` and the diff must stay clean, reporting the omission
+    rather than reading 167 grants as arriving from nowhere."""
+    old = copy.deepcopy(committed)
+    for r in old:
+        for o in r["occurrences"]:
+            o.pop("l2", None)
+        r.pop("l2", None)
+
+    rc, out = _run(tmp_path, old, committed, capsys)
+    assert rc == 0
+    assert "schema: NEW adds occurrence field `l2`" in out
+    assert "schema: NEW adds row field `l2`" in out

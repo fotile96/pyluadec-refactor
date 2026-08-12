@@ -86,6 +86,20 @@ def main() -> int:
     n_whole_fb = sum(1 for f in by_file.values()
                      if not f["hybrid"] and f["fb"] == f["n"])
 
+    # L2 differential execution (M5 task 9). Reported in the `L2@cov%` form the
+    # spec asks for, and reported on BOTH bases -- rows and occurrences --
+    # because `l2` is measured per FILE and aggregated onto rows by
+    # `verify.ledger.row_l2`, so the two numbers answer different questions.
+    # The refusal histogram is next to it for the same reason
+    # `refusal_reason`'s is: a file that stops being granted must show up as
+    # data, not as an absence.
+    l2_rows = [e for e in entries if e.get("l2") and "cov" in e["l2"]]
+    l2_occs = [o for o in occs if o.get("l2") and "cov" in o["l2"]]
+    l2_refused = Counter(o["l2"]["refused"] for o in occs
+                         if o.get("l2") and "refused" in o["l2"])
+    l2_files = {o["file"] for o in occs if o.get("l2")}
+    l2_files_granted = {o["file"] for o in l2_occs}
+
     l3 = levels.get("L3", 0)
     # Occurrence basis as well as unique-shape basis: the ledger dedups by
     # structural_hash, so "% of unique protos" and "% of the 1944 protos that
@@ -107,6 +121,18 @@ def main() -> int:
         ("files fully structured", n_files - n_hybrid - n_whole_fb),
         ("files hybrid", n_hybrid),
         ("files whole-file fallback", n_whole_fb),
+        ("L2 files driven", f"{len(l2_files_granted)}/{len(l2_files)} granted "
+                            f"(of {n_files} in the corpus)"),
+        ("L2 share (rows)", f"{len(l2_rows)}/{len(entries)} "
+                            f"({len(l2_rows) / len(entries):.1%})"),
+        ("L2 share (occurrences)", f"{len(l2_occs)}/{n_occ} "
+                                   f"({len(l2_occs) / n_occ:.1%})"),
+        *([("L2 badge, min/median/max",
+            "L2@{:.0%} / L2@{:.0%} / L2@{:.0%}".format(
+                min(e["l2"]["cov"] for e in l2_rows),
+                sorted(e["l2"]["cov"] for e in l2_rows)[len(l2_rows) // 2],
+                max(e["l2"]["cov"] for e in l2_rows)))] if l2_rows else []),
+        *[(f"L2 refused: {k}", v) for k, v in l2_refused.most_common()],
         # `(kv[0] is None, kv[0])`, not `kv[0]`: an `L3` row is supposed to
         # carry a rung, but if one ever did not, plain `sorted` would raise
         # `TypeError: '<' not supported between 'NoneType' and 'int'` -- and

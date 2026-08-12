@@ -81,6 +81,57 @@ class LedgerEntry:
     # payload, are documented there. Defaulted so that a ledger written before
     # this field existed still loads through `read_ledger`.
     refusal_reason: str | None = None
+    # The L2 differential-execution badge (M5 task 9). `{"cov": 0.xx}` when
+    # every occurrence of this shape lives in a file that passed the L2 gate,
+    # `None` otherwise. Computed by `row_l2` from the per-occurrence records,
+    # never independently -- see that function for why the row-level field is
+    # an aggregate rather than a measurement of its own. Defaulted so a ledger
+    # written before this field existed still loads through `read_ledger`.
+    l2: dict | None = None
+
+
+def row_l2(occurrences: list[dict]) -> dict | None:
+    """The row-level `l2` field, as a pure function of the occurrences.
+
+    ## Why `l2` is per-OCCURRENCE first and per-row only as an aggregate
+
+    `l2` is a property of running a whole CHUNK under a key sequence, i.e. of
+    a FILE. A ledger row is a `structural_hash` group, and one shape occurs in
+    up to 27 different files (measured 2026-08-12 on the committed ledger: 13
+    of 1478 shapes occur in more than one file). So a per-file fact cannot be
+    a row-level measurement without an aggregation rule, and it must not be
+    pushed into the verdict `scripts/run_corpus.py::key_disagreements` pins.
+
+    That function's stated policy -- "if this ever returns non-empty, the fix
+    is to split the key" -- applies to the CERTIFICATION verdict `(level,
+    rung, refusal_reason)`, which `structure.structured._memo_key` claims is a
+    function of `(structural_hash, _debug_fingerprint)`. `l2` makes no such
+    claim and could not: two occurrences of one shape can legitimately differ,
+    because one file has an authored key sequence and the other does not.
+    That is the same reason its docstring already excludes `compile_ok` ("a
+    property of the file, not of the shape"), and it is why `hybrid` and
+    `shipped` live on the occurrence. Adding `l2` to the pinned verdict would
+    manufacture disagreements and force a key split that carries no soundness
+    content -- so `key_disagreements` is left exactly as it is.
+
+    ## The aggregation rule, and why this direction
+
+    Granted only when EVERY occurrence is granted, at the MINIMUM coverage
+    seen. A row's badge is a claim about the shape wherever it ships, so one
+    occurrence in a file that was never driven (or that diverged) has to sink
+    the row -- the same conservative direction `fallback` takes with its OR
+    over occurrences. A max-based rule would let one granted file lend its
+    badge to 26 files nobody ran.
+    """
+    if not occurrences:
+        return None
+    covs = []
+    for o in occurrences:
+        v = o.get("l2")
+        if not isinstance(v, dict) or "cov" not in v:
+            return None
+        covs.append(v["cov"])
+    return {"cov": min(covs)}
 
 
 def write_ledger(entries: list[LedgerEntry], path: Path) -> None:

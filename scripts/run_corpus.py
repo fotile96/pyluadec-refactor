@@ -8,6 +8,14 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+# Run as `uv run python scripts/run_corpus.py`, sys.path[0] is scripts/, not
+# the repo root, so the `scripts.probe_keyseq` import inside main() would not
+# resolve. Under pytest the rootdir is already on the path and this is a
+# no-op. NOTE: this is the real repo root, deliberately not the `ROOT` the
+# ledger fixed-point test monkeypatches to a scratch directory -- that patch
+# redirects where OUTPUT goes, not where code is imported from.
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 # Ledger levels are a ratchet: they only ever go up.
 _RANK = {"L0": 0, "L1": 1, "L2": 2, "L3": 3}
@@ -160,9 +168,14 @@ def main() -> int:
     # exactly the fingerprint the certification memo uses, and a second,
     # public transcription of that field list is the drift this import avoids.
     from pyluadec.structure.structured import _debug_fingerprint
-    from pyluadec.verify.ledger import (LedgerEntry, oracle_version, structural_hash,
-                                        write_ledger)
+    from pyluadec.verify.ledger import (LedgerEntry, oracle_version, row_l2,
+                                        structural_hash, write_ledger)
     from pyluadec.verify.normalize import LADDER_VERSION
+    # The L2 gate (M5 task 9). Only the files with an authored key sequence
+    # are probed -- five of 229, measured to be exactly the files that reach a
+    # `pressButton` poll at all -- so this costs a bounded handful of
+    # subprocesses, not a second corpus pass. See scripts/probe_keyseq.py.
+    from scripts.probe_keyseq import KEY_SEQUENCES, evaluate as l2_evaluate
 
     corpus = Path(os.environ["PYLUADEC_CORPUS_DIR"])
     outdir = ROOT / "build" / "decompiled"
@@ -185,8 +198,10 @@ def main() -> int:
     n_shipped_structured = 0
     n_hybrid_files = 0
     n_fallback_files = 0
+    n_l2_granted = 0
     files = sorted(corpus.glob("*.lua"))
     for f in files:
+        root_bytes = f.read_bytes()
         root = load_file(f)
         res = decompile_chunk(root)
         (outdir / f.name).write_bytes(res.source)
@@ -201,6 +216,17 @@ def main() -> int:
             n_hybrid_files += 1
         elif res.shipped_fallback.get("main"):
             n_fallback_files += 1
+        # Per-FILE, and recorded on every occurrence in it. `None` for the 224
+        # files with no authored sequence: "not driven" and "driven and
+        # refused" are different facts and the ledger keeps them apart.
+        l2_field = None
+        if f.name in KEY_SEQUENCES:
+            l2_res = l2_evaluate(root_bytes, res.source, KEY_SEQUENCES[f.name])
+            l2_field = l2_res.as_ledger_field()
+            if not l2_res.granted:
+                print(f"L2 REFUSED {f.name}: {l2_res.reason} "
+                      f"({l2_res.detail[:160]})", file=sys.stderr)
+            n_l2_granted += bool(l2_res.granted)
         protos = {}
         walk_proto_paths("main", root, protos)
         for path, p in protos.items():
@@ -217,7 +243,7 @@ def main() -> int:
             shipped_fb = res.shipped_fallback[path]
             occ = {"file": f.name, "proto_path": path,
                    "shipped": "fallback" if shipped_fb else "structured",
-                   "hybrid": res.hybrid}
+                   "hybrid": res.hybrid, "l2": l2_field}
             level = res.levels[path] if compile_ok else "L0"
             # The un-compile-adjusted verdict, which is what `_memo_key`
             # claims is a function of `(structural_hash, _debug_fingerprint)`.
@@ -276,6 +302,11 @@ def main() -> int:
         e.confessions = ([{"pc_lo": 1, "pc_hi": e.n_insns,
                            "reason": "fallback-state-machine",
                            "pass": "structure.fallback"}] if e.fallback else [])
+        # Row-level `l2` is an AGGREGATE of the per-occurrence records and is
+        # never measured independently; `verify.ledger.row_l2` holds the rule
+        # and the argument for why it does not belong in `key_disagreements`'
+        # pinned verdict.
+        e.l2 = row_l2(e.occurrences)
         if not e.compile_ok:
             _force_l0(e)
     # BEFORE writing: refuse to emit a ledger whose grouping key is unsound.
@@ -310,6 +341,10 @@ def main() -> int:
           f"{len(files) - n_hybrid_files - n_fallback_files} files fully "
           f"structured, {n_hybrid_files} hybrid, {n_fallback_files} whole-file "
           f"fallback")
+    n_l2_rows = sum(1 for e in by_hash.values() if e.l2)
+    print(f"L2: {n_l2_granted}/{len(KEY_SEQUENCES)} authored file(s) granted; "
+          f"{n_l2_rows}/{len(by_hash)} row(s) carry the badge "
+          f"({len(KEY_SEQUENCES)}/{len(files)} files have a key sequence)")
     return 0 if n_ok == len(files) else 1
 
 
