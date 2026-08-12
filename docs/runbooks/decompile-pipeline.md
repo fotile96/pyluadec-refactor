@@ -663,6 +663,11 @@ of a `LedgerEntry` (`pyluadec.verify.ledger.LedgerEntry`):
   `null`) but nothing in M2 populates them yet — that's later milestones
   (`L2` differential-exec certification is M5 per the plan's explicit
   non-goals; `L3.1+` normalization rungs are M3).
+  **Superseded for `L2` by M5 task 9**: it landed as a separate per-occurrence
+  `l2` field (`{"cov": 0.xx}`), *not* as a `level` value, because `L2` and
+  `L3` are independent proofs and folding L2 into the rank would force an
+  `L3` row that also passed differential execution to discard one of the two.
+  See `structured-pipeline.md`, "The L2 gate".
   **Plainly stated, `L1` means: this proto shape's fallback emission
   compiled, and — only for the synthetic cases the differential-exec suite
   happens to construct from source — matched stdout/exit code on those

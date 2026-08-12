@@ -145,7 +145,7 @@ ingest -> lift -> cfg -> structure.fallback -> oracle 编译验证 -> ledger
 - 台账是自身生成脚本的不动点（同语料、同 oracle 构建再跑一次必须字节级复现），由 `tests/test_ledger_ratchet.py` 守护。
 - **"等级只升不降"自 M5 task 8 起由机器强制，但强制它的不是 pytest 套件。** 边界（2026-08-12 逐条核对）：
   - **套件断言的**：不许出现 `L0`、`compile_ok` 全真、`shash` 有序且唯一、覆盖 229 文件 / 1944 处出现、以及上面那条不动点（`tests/test_ledger_ratchet.py`）；外加**行内**等级与 confession 的耦合（`tests/test_m3_exit.py`，见下文 M3 一节）、M3 出口比例 `> 0.50` 与 M4 出口比例 `> 0.85`（`tests/test_m4_exit.py`，同时钉住分母 `== 1944` 与 `refusal_reason` 的双向耦合）。
-  - **跨版本单调性**由 `scripts/ratchet_diff.py OLD NEW` 判定（spec §5 的完整形态）：逐行等级降级、rung 降级（`l3_level` 变**大**＝证明变弱）、行消失、**某个 occurrence 不再被 walk 到（行还在）**、`L3` 行带上 `refusal_reason`、逐 occurrence `shipped` 从 `structured` 退回 `fallback`、新行落在 `L0`——任一即 exit 1，并按 `refusal_reason` 聚类打印涉事行；升级、新增行、**baseline 一侧缺的**字段 exit 0（反方向不对称：新台账**丢**字段不豁免，实测丢 `level` 出 1478 条降级、丢 `l3_level` 出 1430 条 rung 降级）。它**不在**套件里（baseline 是 git ref 不是 fixture），而是 `scripts/ratchet_job.sh` 的第 2 道门（第 1 道全套件、第 3 道 `PYLUADEC_GENERATED_CASE_LIMIT=24` 全量差分执行扫描），在里程碑收口和任何动台账的合并前跑。套件里的 `tests/test_ratchet_diff.py`（37 个用例，不需要语料）只负责一件事：证明这个工具**能失败**——每种失败模式一个用例，喂手工改坏的真实台账副本并要求非零退出且**点名那一行**。
+  - **跨版本单调性**由 `scripts/ratchet_diff.py OLD NEW` 判定（spec §5 的完整形态）：逐行等级降级、rung 降级（`l3_level` 变**大**＝证明变弱）、行消失、**某个 occurrence 不再被 walk 到（行还在）**、`L3` 行带上 `refusal_reason`、逐 occurrence `shipped` 从 `structured` 退回 `fallback`、逐 occurrence `l2` 授证丢失（`l2-lost`）或覆盖率下降（`l2-coverage-downgrade`，M5 task 9 新增）、新行落在 `L0`——任一即 exit 1，并按 `refusal_reason` 聚类打印涉事行；升级、新增行、**baseline 一侧缺的**字段 exit 0（反方向不对称：新台账**丢**字段不豁免，实测丢 `level` 出 1478 条降级、丢 `l3_level` 出 1430 条 rung 降级）。它**不在**套件里（baseline 是 git ref 不是 fixture），而是 `scripts/ratchet_job.sh` 的第 2 道门（第 1 道全套件、第 3 道 `PYLUADEC_GENERATED_CASE_LIMIT=24` 全量差分执行扫描），在里程碑收口和任何动台账的合并前跑。套件里的 `tests/test_ratchet_diff.py`（37 个用例，不需要语料）只负责一件事：证明这个工具**能失败**——每种失败模式一个用例，喂手工改坏的真实台账副本并要求非零退出且**点名那一行**。
   - **退出码：0 好、1 有降级、125 =「这棵树没法判」（git bisect skip）、128 =「工具本身配错了」（git bisect abort）。没有 2。** M5 task 8 原版用 2 表示"不是判决"，那是错的：`git-bisect(1)`（本机 git 2.39.5）明说 1..127 里除 125 外**全部**读作 bad，实测一个永远 `exit 2` 的 predicate 会让 bisect 言之凿凿地指认一个无辜 commit。round 1 一并修掉了"未捕获异常逃出 `main()` 变成 exit 1"（同一类：把仪器故障报成树的判决）。
   - **本仓库没有任何 CI runner 配置**（无 `.github/workflows/`，2026-08-12 核实），所以上面这些是"有人去跑"的命令，不是自动触发的。`git bisect run` 的确切写法（含把脚本与 baseline 拷到树外，因为老 commit 上这两样都不存在；以及**判 skip 的依据是"有没有产出台账"而不是 `run_corpus.py` 的退出码**——它在有文件编译失败时会写完带 `L0` 的台账再返回 1，老写法把这种最响的回归当成 skip 跳过了）见 `docs/runbooks/structured-pipeline.md`「The `git bisect run` predicate」，已用注入**编译**回归的临时分支实跑验证过。
 - **台账主键 = `structural_hash` 单独一项，这个假设自 M5 task 8 起被每次生成时断言**（`scripts/run_corpus.py::key_disagreements`；违反即拒绝写台账）。实测 2026-08-12：1478 组里 16 组含多于一个 debug fingerprint（共 462 个），**0 组**在 `(level, rung, refusal_reason)` 上分歧。选择"断言"而非"拆键"的理由、拆键会把台账从 1478 行变成 1924 行这个实测值，见 runbook「The ledger's grouping key」。
@@ -181,6 +181,15 @@ M3–M4 的旧说法「产物为结构化 ⟺ root proto 认证 `L3`」是**替�
 ### 新增常用命令
 
 - 全局状态探针（L1.5 门）：`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_global_state.py`。M4 task 10 起 CLI 认识那 4 条已钉住的发散（钉子已从测试挪到 `scripts/probe_global_state.py`，两个 CLI 与两个门共用 `scripts/probe_common.py::adjudicate_pins`），干净跑法打印 `225/229 identical, 4 pinned divergence(s)` 并返回 0；权威判定仍在 `tests/test_global_state_probe.py`。
+- **L2 差分执行门（M5 task 9 新增）**：`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_keyseq.py`。
+  原始字节码与产出源码在同一 stub 环境、同一**按键序列**下跑，trace 逐字节相同 +
+  序列确实被轮询 + 无 taint 才授 `L2`，徽章是产物基本块覆盖率。干净跑法打印
+  `L2: 5/5 authored file(s) granted`。**reach 只有 5 个文件，这是实测而非偷懒**：
+  全语料只有 5 个文件真的会走到 `pressButton`（snr_common/snr_graphic/snr_lib/
+  snr_memory/snr_music），其余 127 个撞上限的文件是线性剧本，被 `vms()` 数量截断，
+  按键序列对它们没有任何作用。M5 计划里「3000 事件上限截断了 132 个文件、按键序列
+  正是解药」的说法机制对、数字错。设计、语法、taint 论证、覆盖率口径见
+  `docs/runbooks/structured-pipeline.md`「The L2 gate」。
 - 行为探针（L1.75 门，M4 task 10 新增）：`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_behaviour.py`。在打桩环境下**实际调用**每个 chunk 定义的全局函数并比对事件轨迹，干净跑法打印 `227/229 identical, 2 pinned divergence(s), 398196 recorded events`。设计、能力边界、两条钉子的指令级证据见 `docs/runbooks/m3-backlog.md`「Behaviour probe (L1.75)」节。
 - 效应表-发射器一致性门：`uv run pytest tests/test_effects_emitter_consistency.py`（语料臂 + 合成操作数网格，无需语料也能跑合成臂）。
 - **Ratchet 门（M5 task 8）**：`PYLUADEC_CORPUS_DIR=... ./scripts/ratchet_job.sh [BASELINE_REF]`——全套件 + 台账 baseline diff + 24 例全量差分执行扫描，实测 37.9s，`BASELINE_REF` 默认 `eb08890`（上一个里程碑合并点）。只要 diff：`git show <ref>:corpus/ledger.jsonl > /tmp/base.jsonl && uv run python scripts/ratchet_diff.py /tmp/base.jsonl corpus/ledger.jsonl`。
@@ -195,6 +204,13 @@ M3–M4 的旧说法「产物为结构化 ⟺ root proto 认证 `L3`」是**替�
 - `occurrences[].shipped`（M5 task 6 新增）：`"structured"` / `"fallback"`，这一处 occurrence 的文本由哪个发射器产出——`fallback` 字段的逐 occurrence 精确形式。
 - `occurrences[].hybrid`（M5 task 6 新增）：这处 occurrence 所在的 chunk 是否发的是 hybrid 产物。
 - **`level` 与 `shipped` 是两个问题，且已不再一致**：`level` 是该 proto 单独（连同其整棵子树）的证明记录，与邻居怎么发无关；`shipped` 是产物事实。语料上两向都出现：6 行 `L1` 却发结构化（自己的字段被 `certify_hybrid` 精确比对过，只有被替换的后代没有），150 行 `L3` 却发 fallback（它们住在仍整文件回退的 7 个文件里）。
+- `occurrences[].l2` / `l2`（M5 task 9 新增）：前者是逐 occurrence 的**逐文件**事实——
+  `{"cov": 0.xx}` 授证、`{"refused": <kind>}` 有序列但被拒、`null` 没有序列；后者是行级
+  聚合（`verify/ledger.py::row_l2`），**每一处** occurrence 都授证才授，取最小 cov。
+  `l2` **没有**并进 `key_disagreements` 的 verdict：那条 pin 管的是
+  `(level, rung, refusal_reason)`（`_memo_key` 声称是 `(shash, dfp)` 的函数），而 `l2`
+  跟 `compile_ok`/`hybrid` 一样是**文件**属性，同一 shape 跨 27 个文件时天然可以不一致——
+  把它并进去只会制造假分歧并逼出一次没有健全性内容的拆键。`key_disagreements` 一字未动。
 - `refusal_reason`（M4 task 6 新增）：非 `L3` 行**为什么**没认证；`L3` 行为 `null`。
   confession 只说"回退了"，这个字段说"回退的原因"——`build_sir` 拒绝与"打印成功但
   认证失败"以前在台账里长得一模一样。四种 kind：`structure:` / `reconstruct:` /
@@ -251,4 +267,4 @@ Phase 4 已完成。**能力边界与残差普查的权威仍是 `docs/runbooks/
 
 ### 仍未做（都在 M5 agenda）
 
-完整 ratchet CI（baseline diff、降级即失败）**M4 没做**，已由 **M5 task 8 落地**（`scripts/ratchet_diff.py` + `scripts/ratchet_job.sh`，见上文「台账约定」；本仓库无 CI runner 配置，是命令不是自动触发）；`LEN` 重新分级（M5 task 1）；那 89 处残差；L2 差分执行认证与按键序列 harness；`_stack_discipline`（462 行、33 个 if、11 个内嵌闭包）的拆分。
+完整 ratchet CI（baseline diff、降级即失败）**M4 没做**，已由 **M5 task 8 落地**（`scripts/ratchet_diff.py` + `scripts/ratchet_job.sh`，见上文「台账约定」；本仓库无 CI runner 配置，是命令不是自动触发）；`LEN` 重新分级（M5 task 1）；L2 差分执行认证与按键序列 harness（**M5 task 9 落地**，见上文；两个历史检查点的*断言*仍是 task 10）；那 89 处残差；`_stack_discipline`（462 行、33 个 if、11 个内嵌闭包）的拆分。

@@ -1477,7 +1477,11 @@ a wrong split cannot certify). The gap is confined to protos still on the
 fallback path, which is why this item shrinks as item 3 progresses and why
 `snr_novel` is one of the 17.
 
-## 6. L2 differential-execution certification, and the key-sequence harness
+## 6. L2 differential-execution certification, and the key-sequence harness — DONE (M5 task 9)
+
+*Everything until "Closed — M5 task 9" below is the record as it stood before
+the change. One of its figures is right about the mechanism and wrong about
+the count; the correction is in the Closed section, not smoothed away here.*
 
 Spec M5 proper. The behaviour probe (L1.75) is the deepest instrument today
 and its reach ceiling is measured, not guessed: **the 3000-event cap truncates
@@ -1489,6 +1493,37 @@ wants a key-sequence-driven harness rather than a bare `pcall(main)` — cf. the
 predecessor's `pyluadec/DEBUG_KEY_SEQUENCE_HARNESS.md`, which carries two
 concrete historical bug checkpoints that convert directly into regression
 cases.
+
+### Closed — M5 task 9
+
+`scripts/probe_keyseq.{lua,py}`, `tests/test_l2_keyseq.py`, the `l2` ledger
+field, the dashboard rows, and two new `ratchet_diff` regression kinds
+(`l2-lost`, `l2-coverage-downgrade`). Full design, grammar, taint argument and
+coverage caveats: `docs/runbooks/structured-pipeline.md`, "The L2 gate".
+
+**The figure above that did not reproduce.** "The 3000-event cap truncates 132
+of 229 files mid-loop … getting past that ceiling wants a key-sequence-driven
+harness" is right that the cap binds on 132 files and right that key sequences
+are the lever for input-blocked ones — but the two sets barely overlap.
+Measured 2026-08-12 over all 229 files on the original side, **exactly five
+reach a `pressButton` poll at all**: `snr_common` (2557 poll events of 3001),
+`snr_graphic` (2606), `snr_lib` (2243), `snr_memory` (2608), `snr_music`
+(2502). The other 127 capped files are linear story scripts truncated by sheer
+`vms()` volume; no key sequence moves them. So the harness lifts the ceiling
+for 5 files, not 132 — and for the other 224 there is no input loop for a
+sequence to drive, which is a stronger statement than "not yet authored".
+
+All five are granted: `snr_lib` L2@95%, `snr_music` L2@72%, `snr_graphic`
+L2@53%, `snr_memory` L2@51%, `snr_common` L2@21%. `snr_lib.lua` is the clean
+demonstration — driven, it goes from `CAP|3001` (2243 of them polls) to
+`OK|28`.
+
+**What is still open after this.** The two historical checkpoints from
+`DEBUG_KEY_SEQUENCE_HARNESS.md` are *runnable* (their sequences are authored
+and granted: `entry=systemOption.OptionMain`, `entry=systemConfig.ConfigMain`)
+but what they ASSERT — the `OptionMain` double-clamp and the `ConfigMain`
+CIRCLE gate/wait — is M5 task 10. Corpus-wide L2 remains out of reach for the
+reason above, not for want of authoring effort.
 
 ## 7. Extract `express/names.py::_stack_discipline`
 
