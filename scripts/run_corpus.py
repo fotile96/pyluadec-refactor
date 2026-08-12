@@ -18,6 +18,12 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 # Ledger levels are a ratchet: they only ever go up.
+#
+# `"L2"` is DEAD and kept only so this table cannot be read as claiming the
+# rank is dense. M5 task 9 landed L2 as the per-occurrence `l2` FIELD, not as
+# a `level` value, because L2 and L3 are independent proofs and one rank would
+# force a row holding both to discard one. Nothing writes `level = "L2"`;
+# `verify/ledger.py::LedgerEntry.level` says the same from the other side.
 _RANK = {"L0": 0, "L1": 1, "L2": 2, "L3": 3}
 
 _L0_REASON = "compile: shipped chunk did not compile"
@@ -221,7 +227,12 @@ def main() -> int:
         # refused" are different facts and the ledger keeps them apart.
         l2_field = None
         if f.name in KEY_SEQUENCES:
-            l2_res = l2_evaluate(root_bytes, res.source, KEY_SEQUENCES[f.name])
+            # `levels=` is the certification this loop already computed; the
+            # L2 grant requires every proto in the chunk to be `L3` (see
+            # `evaluate`), and handing it over avoids a second full
+            # certification pass per driven file.
+            l2_res = l2_evaluate(root_bytes, res.source, KEY_SEQUENCES[f.name],
+                                 levels=res.levels)
             l2_field = l2_res.as_ledger_field()
             if not l2_res.granted:
                 print(f"L2 REFUSED {f.name}: {l2_res.reason} "

@@ -932,11 +932,17 @@ function main() pressButton("CIRCLE") decide(sys.a) end
 """,
         # Stored into a script-built table and read back: `SETTABLE` is not
         # tracked, only indexing off a stub table or at a stub key.
+        #
+        # The constructor rather than `local t = {} t.x = sys.a` -- same
+        # `SETTABLE` with a constant key, but the two-statement form is not
+        # certifiable by this pipeline (measured 2026-08-13: `mismatch: code`,
+        # and so are five neighbouring variants of it), so since a grant
+        # requires the whole chunk to be `L3` it would now refuse as `not-l3`
+        # and demonstrate nothing about taint.
         "table-round-trip": b"""
 function main()
   pressButton("CIRCLE")
-  local t = {}
-  t.x = sys.a
+  local t = { x = sys.a }
   if t.x == "x" then hit() else miss() end
 end
 """,
@@ -1246,6 +1252,114 @@ end
     assert (r.granted, r.reason) == (False, "divergent")
 
 
+# A pair that agrees for 3000 events and then does something visibly
+# different. `pressButton` makes the run poll (condition 3); the `for` bounds
+# and the `pressButton` argument are constants, so `static_taint` is empty
+# (condition 6); nothing here can fire a metamethod, so there are no runtime
+# marks (condition 4). The ONLY thing separating these two programs is past
+# the event cap.
+_TRUNCATED_ORIGINAL = b"""
+function main()
+  pressButton("CIRCLE")
+  for i = 1, 5000 do engine.Go(i) end
+  engine.OriginalTail()
+end
+"""
+_TRUNCATED_ARTIFACT = _TRUNCATED_ORIGINAL.replace(
+    b"engine.OriginalTail()", b"engine.COMPLETELY_DIFFERENT_TAIL()")
+
+
+def test_a_pair_that_only_agrees_up_to_the_event_cap_cannot_be_the_whole_grant():
+    """C1. `evaluate` never called `header`, so a run stopped at `MAX_EVENTS`
+    compared equal over its PREFIX and that fact was recorded nowhere -- not
+    in the verdict, not in `detail`, not in `corpus/ledger.jsonl`.
+
+    Measured on this fixture before the fix: both sides `CAP|3001`, byte-equal,
+    zero taint, `granted=True, cov=1.0` -- two programs whose engine calls
+    differ certified identical. Neutering the `if not complete:` arm in
+    `evaluate` puts that back and turns this test red.
+    """
+    from scripts.probe_keyseq import evaluate, header
+    o = probe_raw(_bytecode(_TRUNCATED_ORIGINAL), is_source=False,
+                  spec="k=1,CIRCLE;tail=")
+    d = probe_raw(_TRUNCATED_ARTIFACT, is_source=True, spec="k=1,CIRCLE;tail=")
+    assert header(o) == header(d) == ("CAP", 3001, 0)
+    assert o == d, "the fixture is only interesting while the prefixes agree"
+    r = evaluate(_bytecode(_TRUNCATED_ORIGINAL), _TRUNCATED_ARTIFACT,
+                 ["k=1,CIRCLE;tail="])
+    assert (r.granted, r.reason, r.cov) == (False, "truncated", None)
+
+
+def test_one_completed_sequence_is_enough_and_a_capped_one_still_has_to_agree():
+    """The other half of C1, and the shape `snr_lib.lua` actually has: two
+    sequences that finish and one degenerate one that never does.
+
+    "Every sequence must reach `OK`" was measured and rejected -- with
+    `MAX_EVENTS` raised 1000x for the experiment, `snr_lib.lua` under
+    `tail=CIRCLE` still reports `CAP|3000001`, and every one of the five
+    authored files carries at least one non-halting sequence, so that rule
+    would put L2 reach at 0 permanently. What must NOT weaken is that a capped
+    sequence still has to agree: the second half here mutates only what the
+    capped run sees, and it must still refuse.
+    """
+    from scripts.probe_keyseq import evaluate
+    src = b"""
+function main()
+  for i = 1, 3 do
+    if pressButton("CIRCLE") == true then engine.Chose(i) return end
+    engine.Tick(i)
+    wait(1)
+  end
+  while true do engine.Spin() wait(1) end
+end
+"""
+    finishes = "k=1,CIRCLE;tail="
+    never_finishes = "tail="
+    r = evaluate(_bytecode(src), src, [finishes, never_finishes])
+    assert (r.granted, r.cov) == (True, 1.0), r.detail
+    assert "1/2 sequence(s) completed" in r.detail
+    mutated = src.replace(b"engine.Spin()", b"engine.WRONG()")
+    r = evaluate(_bytecode(src), mutated, [finishes, never_finishes])
+    assert (r.granted, r.reason) == (False, "divergent")
+
+
+def test_a_chunk_that_is_not_fully_l3_cannot_be_granted():
+    """I1. `static_taint` analyses the ORIGINAL only, so it speaks for the
+    shipped artifact just while the two are field-identical -- which is what
+    `L3` establishes and nothing else does.
+
+    The shapes really do diverge. Measured 2026-08-13 on `snr_music.lua`: the
+    original taints `{compare 36, length 1, launder 1, loop 3, truthiness 2}`,
+    its shipped fallback text taints `{compare 3, loop 16}`. The `__pld_R` box
+    model hides 33 compare sites and invents 13 loop sites.
+
+    The fixture below is a two-statement script-built table, which this
+    pipeline emits as fallback (`mismatch: code`). Its taint is empty and its
+    traces agree, so before the precondition it granted.
+    """
+    from scripts.probe_keyseq import evaluate, static_refusal
+    from pyluadec.ingest import load_bytes
+    from pyluadec.pipeline import decompile_chunk
+    src = b"""
+function main()
+  pressButton("CIRCLE")
+  local t = {}
+  t.x = sys.a
+  if t.x == "x" then hit() else miss() end
+end
+"""
+    bc = _bytecode(src)
+    assert set(decompile_chunk(load_bytes(bc)).levels.values()) == {"L1"}
+    assert static_refusal(load_bytes(bc)) == {}, "must not refuse for taint"
+    r = evaluate(bc, src, ["k=1,CIRCLE;tail="])
+    assert (r.granted, r.reason) == (False, "not-l3")
+    assert r.detail == "2 of 2 proto(s) are not L3"
+    # And the caller cannot smuggle the precondition away by passing levels it
+    # likes: the parameter exists to avoid recomputing, not to override.
+    r = evaluate(bc, src, ["k=1,CIRCLE;tail="], levels={"main": "L3"})
+    assert r.granted, "an all-L3 levels map is the only thing that grants"
+
+
 def test_a_file_with_no_sequence_is_refused_not_granted():
     """I2. With `evaluate`'s `if not specs:` removed, `evaluate(bc, src, [])`
     returned `granted=True, cov=0.0` -- measured. The per-spec loop simply
@@ -1372,7 +1486,11 @@ def l2_results(corpus_dir, decompiled):
 def test_corpus_l2_verdicts_are_what_is_pinned(l2_results):
     """Two-directional, like the probe gates' divergence pins: a file that
     silently stops being granted AND a refusal that quietly converges both
-    fail. Measured 2026-08-12: all five authored files are granted."""
+    fail. Measured 2026-08-13: **one** of the five is granted (`snr_lib.lua`)
+    and the other four refuse `taint-static` -- which is what `EXPECTED_VERDICT`
+    says and what this test asserts against. The "all five are granted"
+    sentence that stood here was true only before the static backstop landed,
+    i.e. it described the state the backstop exists to have ended."""
     got = {n: ("granted" if r.granted else r.reason) for n, r in l2_results.items()}
     assert got == EXPECTED_VERDICT, {
         n: l2_results[n].detail for n in got if got[n] != EXPECTED_VERDICT.get(n)}
@@ -1382,9 +1500,12 @@ def test_corpus_l2_reach_is_not_vacuous(l2_results):
     """The gate must not be passing because the sequences drove nothing, and
     it must not be passing because it refuses everything either.
 
-    Measured 2026-08-12, after the static backstop landed: **one of the five
+    Re-measured 2026-08-13, after the M5 final fix round added the completed-
+    run and all-`L3` conditions and neither moved it: **one of the five
     authored files is granted** (`snr_lib.lua`, 3/3 protos entered, block
-    coverage in [0.3509, 0.9123] of 57 blocks -- it was [0.386, 0.9474] before
+    coverage in [0.3509, 0.9123] of 57 blocks -- unchanged, because its two
+    completing sequences alone enter exactly what all three do; it was
+    [0.386, 0.9474] before
     M5 task 10 round 1 re-timed the sequences so that every directive actually
     lands; two blocks were reached only by the old timing's accident of
     holding the tail key across a `wait`, and three longer honest variants
@@ -1452,10 +1573,12 @@ def test_the_sequences_actually_drive_the_corpus_loops(corpus_dir):
     from scripts.probe_keyseq import header, poll_count
     for name, specs in sorted(KEY_SEQUENCES.items()):
         raw = (corpus_dir / name).read_bytes()
+        statuses = []
         for spec in specs:
             t = probe_raw(raw, is_source=False, spec=spec)
             assert poll_count(t) > 0, f"{name} never polled under {spec}"
             assert header(t)[0] in ("OK", "CAP"), f"{name}/{spec}: {header(t)}"
+            statuses.append(header(t)[0])
             down = {l.split(b"|")[1] + b"@" + l.split(b"|")[2]
                     for l in t.split(b"\n")
                     if l.startswith(b"K|") and l.endswith(b"|true")}
@@ -1465,6 +1588,18 @@ def test_the_sequences_actually_drive_the_corpus_loops(corpus_dir):
             assert not missed, (
                 f"{name}: {len(missed)} directive(s) of {spec!r} were "
                 f"delivered on a frame the target never polls: {missed}")
+        # `OK` OR `CAP` above is deliberate -- every one of these files carries
+        # a degenerate sequence that never halts. But the grant's condition 6
+        # needs at least one COMPLETED run per file, and this line is what
+        # pins that on the corpus rather than only on fixtures: without it, a
+        # future re-timing that quietly pushed every sequence past the event
+        # cap would refuse all five as `truncated` and only the verdict pins
+        # would say so. Measured 2026-08-13: snr_lib 2 of 3 complete,
+        # snr_common 2 of 3, snr_graphic 2 of 3, snr_memory 1 of 2,
+        # snr_music 1 of 2.
+        assert "OK" in statuses, (
+            f"{name}: every sequence stopped at the event cap ({statuses}); "
+            f"an L2 grant needs at least one run observed to completion")
 
 
 def test_injected_arithmetic_swap_is_caught(corpus_dir, decompiled):

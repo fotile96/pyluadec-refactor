@@ -11,18 +11,28 @@ probe-side failure into a comparable value, and decides the grant.
 A file is granted `L2` when, under one authored key sequence:
 
 1. both sides produce a recognisable trace (no probe-side failure),
-2. the two traces are **byte-equal**,
+2. the two traces are **byte-equal over everything the probe observed**,
 3. the run actually consumed the sequence -- at least one `K|` poll event,
-4. neither side recorded any **taint**.
+4. neither side recorded any **taint**,
 
-5. **no stub-derived value can decide a branch unobserved** -- the static
-   backstop over the original bytecode (`static_taint`) finds no
-   `blind-compare`, `blind-length`, `blind-launder` or `blind-truthiness`
-   site.
+5. **at least one authored sequence ran to completion** (`header(...)[0] ==
+   "OK"`). A run stopped at `MAX_EVENTS` reports `CAP`, and "byte-equal" then
+   means "equal over the first 3000 events"; such a run is still required to
+   agree, but it cannot be the evidence a grant rests on. See `evaluate` for
+   why this is "at least one" and not "all", which is a measurement.
+
+6. **no stub-derived value can decide a branch unobserved** -- the static
+   backstop over the original bytecode (`static_taint`) finds none of the six
+   kinds of blind site in `_KINDS`,
+
+7. **every proto in the chunk is `L3`**. Condition 6 reads the ORIGINAL, so it
+   only speaks for the artifact while the two are field-identical; see
+   `evaluate` for the measurement that they otherwise are not.
 
 Anything else refuses, with a reason from `REFUSAL_KINDS`. The badge that
-rides along is `cov`: the fraction of the *shipped artifact's protos* the run
-entered (see `coverage` for why it is protos and not basic blocks).
+rides along is `cov`: the fraction of the *shipped artifact's protos* the
+COMPLETED runs entered (see `coverage` for why it is protos and not basic
+blocks, and `evaluate` for why the capped runs are left out of it).
 
 ## Taint: two instruments, because one of them is structurally blind
 
@@ -65,12 +75,26 @@ claimed to be complete and was not, which is what let the twelve routes ship:
 * **A value stored into a script-built table and read back.** `t.x = stub`
   then `if t.x == "a"`; `SETTABLE` is not tracked, only indexing off a
   stub-derived table or at a stub-derived key.
+* **Any other harness state carried between calls.** `waitf(n)` does
+  `tonumber(n)`, which is `nil` for a proxy, so `wait(sys.delay)` advances one
+  frame instead of N -- and the frame counter decides every later
+  `pressButton`. Measured: byte-equal traces, zero runtime marks, empty
+  `static_taint`, GRANT. `blind-harness` closes that at the ARGUMENT BOUNDARY
+  of the callees in `_CLEAN_CALLEES`; a register may-analysis still cannot
+  *follow* taint into the harness, so a future driver that keeps state a stub
+  can perturb some other way needs the same treatment at its own boundary.
+  **This is the one limit here that is not a propagation gap** -- and this
+  list omitted it through M5, while the runbook and
+  `docs/reports/m5-quality.md` §4 both named it.
 * **`VARARG`.** `local a = ...` compared against a literal is not flagged.
 
+The four above are the residue I could not close, not an inventory of what
+exists.
+
 A granted `L2` therefore says "these two programs behaved identically under
-this stub policy and this input, and no *directly* stub-derived value decided
-a branch we could not observe" -- not "this decompilation is correct under the
-real engine".
+this stub policy and this input, over everything the probe observed, and no
+*directly* stub-derived value decided a branch we could not observe" -- not
+"this decompilation is correct under the real engine".
 """
 from __future__ import annotations
 
@@ -101,7 +125,7 @@ PROBE = ROOT / "scripts" / "probe_keyseq.lua"
 _MARKERS = (b"KEYSEQ1|", b"LOADFAIL|")
 
 REFUSAL_KINDS = ("divergent", "taint", "taint-static", "no-key-poll",
-                 "probe-error")
+                 "truncated", "not-l3", "probe-error")
 
 
 class ProbeError(RuntimeError):
@@ -812,8 +836,8 @@ _LAUNDERERS = frozenset({b"type", b"rawequal", b"getmetatable", b"next",
                          b"tostring", b"tonumber", b"select", b"pcall",
                          b"unpack", b"rawget", b"pairs", b"ipairs", b"xpcall"})
 
-# The four kinds of site, and the subset that refuses. They are equal today --
-# all four refuse -- but they are two names because they answer two questions
+# The six kinds of site, and the subset that refuses. They are equal today --
+# all six refuse -- but they are two names because they answer two questions
 # ("what can this analysis find" vs "what does a grant require"), and because
 # a single tuple made `_DECIDING` unreferenced and therefore unfalsifiable:
 # `tests/test_l2_keyseq.py::test_the_same_fixture_with_the_branch_taken_off_a_
@@ -862,16 +886,35 @@ def static_taint(root) -> dict[str, int]:
       is not a `blind-launder`, but its RESULT is stub-derived by the rule
       below, so a comparison on it still refuses as `blind-compare`.
     * `blind-truthiness` -- `TEST`/`TESTSET` on a stub-derived register.
+    * `blind-loop` -- `FORPREP`/`FORLOOP`/`TFORLOOP` whose control triple
+      `R(A)..R(A+2)` is stub-derived. A loop's trip count is a branch, and the
+      body can then write a perfectly clean register.
+    * `blind-harness` -- a stub-derived value in the argument window of a
+      `_CLEAN_CALLEES` callee. The harness's own state (`waitf`'s frame
+      counter) is a channel a register may-analysis is structurally unable to
+      follow, so it is closed at the boundary instead; see the runbook's
+      "Harness state is a channel, not a propagation gap".
 
-    All four refuse. `blind-truthiness` was very nearly left out on the
-    prediction that `if someGlobal then` is so common that refusing on it
-    would take L2 reach to zero. **That prediction was wrong and the
-    measurement is the reason it is in:** over the five authored files the
-    counts are `snr_common` 17, `snr_graphic` 9, `snr_memory` 9, `snr_music`
-    2 and `snr_lib` **0** -- so including it costs nothing on this corpus (the
-    only file that survives the other three kinds survives this one too) and
-    it makes the refusal condition the literal property, not an approximation
-    of it.
+    **All six refuse** (`_DECIDING is _KINDS`). This list said "four" and
+    closed with "All four refuse" through M5, silently omitting the last two,
+    which are not cosmetic: re-measured 2026-08-13, `blind-loop` is **50**
+    sites on `snr_common` and **19** on `snr_graphic`.
+
+    `blind-truthiness` was very nearly left out on the prediction that
+    `if someGlobal then` is so common that refusing on it would take L2 reach
+    to zero. **That prediction was wrong and the measurement is the reason it
+    is in:** re-measured 2026-08-13 over the five authored files, the counts
+    are `snr_common` **20**, `snr_graphic` 9, `snr_memory` 9, `snr_music` 2
+    and `snr_lib` **0** (the 17 this line carried for `snr_common` predates
+    the later rounds' widening of what counts as stub-derived) -- so including
+    it costs nothing on this corpus (the only file that survives the other
+    kinds survives this one too) and it makes the refusal condition the
+    literal property, not an approximation of it.
+
+    `blind-harness` is **0 on all five authored files**, so its evidence is
+    entirely synthetic: a green corpus says nothing about whether it works.
+    What does is the `wait(sys.delay)` fixture in `tests/test_l2_keyseq.py::
+    test_harness_state_is_a_channel_the_register_analysis_cannot_see`.
 
     STATIC, so it does not know which paths ran: a site in a function the key
     sequence never enters still refuses the file. That is the conservative
@@ -1196,15 +1239,92 @@ class L2Result:
         return {"refused": self.reason}
 
 
+def chunk_levels(original: bytes, root=None) -> dict[str, str]:
+    """`{proto path: certification level}` for a chunk, from the pipeline.
+
+    Split out so `evaluate` can be handed the result a caller already has
+    (`scripts/run_corpus.py` computes it for every file anyway) instead of
+    paying for a second certification, while a caller that has nothing still
+    cannot skip the check.
+    """
+    from pyluadec.ingest import load_bytes
+    from pyluadec.pipeline import decompile_chunk
+    return decompile_chunk(load_bytes(original) if root is None
+                           else root).levels
+
+
 def evaluate(original: bytes, artifact_src: bytes,
-             specs: Sequence[str], *, original_root=None) -> L2Result:
+             specs: Sequence[str], *, original_root=None,
+             levels: dict[str, str] | None = None) -> L2Result:
     """The whole grant rule, over one file and ALL of its authored sequences.
 
-    Every sequence must pass on its own; the coverage badge is taken over
-    their union. A file gets more than one sequence when one entry point is
-    not the whole story -- `snr_common.lua` carries the two historical
-    checkpoints (`systemOption.OptionMain`, `systemConfig.ConfigMain`) plus a
-    whole-chunk run, and a single spec could only drive one of them.
+    Every sequence must pass on its own; the coverage badge is taken over the
+    union of the sequences that RAN TO COMPLETION. A file gets more than one
+    sequence when one entry point is not the whole story -- `snr_common.lua`
+    carries the two historical checkpoints (`systemOption.OptionMain`,
+    `systemConfig.ConfigMain`) plus a whole-chunk run, and a single spec could
+    only drive one of them.
+
+    ## Truncation is part of the verdict, and it was not
+
+    Through M5 this function never called `header`, so a sequence stopped at
+    `MAX_EVENTS` compared equal *over its prefix* and that was recorded
+    nowhere -- not in the verdict, not in `detail`, not in the ledger.
+    Demonstrated by `tests/test_l2_keyseq.py::test_a_pair_that_only_agrees_up_
+    to_the_event_cap_cannot_be_the_whole_grant`:
+    `for i=1,5000 do engine.Go(i) end engine.OriginalTail()` against the same
+    loop ending in `engine.COMPLETELY_DIFFERENT_TAIL()` both stop at
+    `CAP|3001`, are byte-equal, carry no taint, and returned
+    `granted=True, cov=1.0`.
+
+    A capped sequence now proves only what it observed. It is still REQUIRED
+    to agree -- nothing was relaxed -- but it can no longer be the evidence a
+    grant rests on: at least one sequence must reach `OK`, and the coverage
+    badge is computed over those sequences alone, so the badge is never backed
+    by an observation that was cut off.
+
+    **Not "every sequence must reach `OK`", and that is a measurement, not a
+    preference.** These menu loops are re-entrant, and the degenerate
+    sequences (`snr_lib`'s `tail=CIRCLE`, which holds select from frame 1)
+    never halt at all: measured 2026-08-13 with `MAX_EVENTS` raised 1000x for
+    the experiment, `snr_lib.lua` under `tail=CIRCLE` reports `CAP|3000001`.
+    Every one of the five authored files carries at least one such sequence,
+    so requiring all of them to complete would put L2 reach on this corpus at
+    0 permanently -- not because any decompilation is in doubt, but because an
+    authored input does not terminate.
+
+    What a grant therefore claims: every authored run agreed over everything
+    observed, and at least one of them was observed to completion. What it
+    does not claim: anything about a capped run past its cap. `detail` prints
+    the completed/total count, so a CLI reader can see which it is.
+
+    ## Why a grant requires the whole chunk to be `L3`
+
+    `static_taint` analyses the ORIGINAL only (`root = original_root or
+    load_bytes(original)`), so the shipped artifact's own blind sites are
+    invisible to it. While the artifact is field-identical to the original
+    that is harmless -- the two have the same sites by construction -- and it
+    is exactly what `L3` establishes.
+
+    The two genuinely diverge otherwise. Measured 2026-08-13 on
+    `snr_music.lua`, whose artifact is not fully `L3`: the original taints
+    `{compare 36, length 1, launder 1, loop 3, truthiness 2}` while its
+    shipped text taints `{compare 3, loop 16}` -- the fallback state machine's
+    `__pld_R` box model *hides* 33 compare sites and *invents* 13 loop sites.
+    An analysis of one is not an analysis of the other.
+
+    So the precondition is made structural rather than left accidental: every
+    proto in the chunk must be `L3`. Measured cost on this corpus: none. The
+    sole granted file (`snr_lib.lua`) is `L3` on all 3 protos, and the four
+    refused files are refused by `taint-static` first anyway -- they are also
+    all non-`L3` (17 of 147, 4 of 6, 4 of 6, 2 of 5), so the ORDER of the last
+    two checks is what decides which reason they report. It is deliberate:
+    an actual taint finding says more than "not field-identical", and keeping
+    it also leaves `corpus/ledger.jsonl` byte-unchanged.
+
+    **L2 therefore certifies only field-identical artifacts today.** Extending
+    it to hybrids or to fallback text requires analysing the ARTIFACT too, not
+    just relaxing this check; that is M6 work.
 
     Pure with respect to the ledger: it takes bytes and returns a verdict.
     """
@@ -1215,6 +1335,7 @@ def evaluate(original: bytes, artifact_src: bytes,
         # evaluated, and the whole grant rule was skipped rather than failed.
         return L2Result(False, "no-key-poll", None, "no sequence authored")
     try:
+        complete: list[str] = []
         for spec in specs:
             o = probe_raw(original, is_source=False, spec=spec)
             d = probe_raw(artifact_src, is_source=True, spec=spec)
@@ -1230,6 +1351,15 @@ def evaluate(original: bytes, artifact_src: bytes,
                 kinds = sorted({m.split(b"|")[1].decode("ascii") for m in marks})
                 return L2Result(False, "taint", None,
                                 f"{spec}: {len(marks)} mark(s): {kinds}")
+            # `o == d` was established above, so one header speaks for both.
+            if header(o)[0] == "OK":
+                complete.append(spec)
+        if not complete:
+            # Every observation was cut off, so "byte-equal" means "equal over
+            # a prefix" and nothing more. See the docstring.
+            return L2Result(False, "truncated", None,
+                            f"all {len(specs)} sequence(s) stopped at the "
+                            f"event cap")
         # The STATIC backstop, over the ORIGINAL bytecode. Last of the
         # refusals because it is the coarsest -- it does not know which paths
         # ran -- but it is the only one that sees the idiom the runtime marks
@@ -1242,14 +1372,22 @@ def evaluate(original: bytes, artifact_src: bytes,
         if blind:
             kinds = ", ".join(f"{k}={v}" for k, v in sorted(blind.items()))
             return L2Result(False, "taint-static", None, kinds)
-        c = coverage(artifact_src, specs)
+        # The backstop above read the ORIGINAL; this is what makes that the
+        # same program as the artifact. See the docstring.
+        lv = chunk_levels(original, root) if levels is None else levels
+        not_l3 = sum(1 for v in lv.values() if v != "L3")
+        if not_l3:
+            return L2Result(False, "not-l3", None,
+                            f"{not_l3} of {len(lv)} proto(s) are not L3")
+        c = coverage(artifact_src, complete)
     except (ProbeError, subprocess.SubprocessError, CoverageError) as e:
         return L2Result(False, "probe-error", None, str(e)[:400])
     lo, hi = c.block_interval
     return L2Result(True, None, c.fraction,
                     f"{c.protos_entered}/{c.protos} protos; blocks in "
                     f"[{lo:.2f}, {hi:.2f}] of {c.blocks} "
-                    f"({c.collisions} share an entry line)")
+                    f"({c.collisions} share an entry line); "
+                    f"{len(complete)}/{len(specs)} sequence(s) completed")
 
 
 def evaluate_corpus(corpus: Path, artifact_of, *, jobs: int = 5
