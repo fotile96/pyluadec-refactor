@@ -2603,11 +2603,11 @@ on it:
 
 | file | poll events / 3001 | L2 badge |
 | --- | --- | --- |
-| `snr_lib.lua` | 2243 | **L2@95%** (54/57 blocks) |
-| `snr_music.lua` | 2502 | **L2@72%** (484/669) |
-| `snr_graphic.lua` | 2606 | **L2@53%** (743/1389) |
-| `snr_memory.lua` | 2608 | **L2@51%** (555/1086) |
-| `snr_common.lua` | 2557 | **L2@21%** (2120/10332) |
+| `snr_lib.lua` | 2243 | **L2@95%** (54/57 blocks = 0.9474) |
+| `snr_music.lua` | 2502 | **L2@72%** (484/669 = 0.7235) |
+| `snr_graphic.lua` | 2606 | **L2@53%** (743/1389 = 0.5349) |
+| `snr_memory.lua` | 2608 | **L2@51%** (555/1086 = 0.5110) |
+| `snr_common.lua` | 2557 | **L2@21%** (2120/10332 = 0.2052) |
 
 The other 127 capped files are the linear story scripts, truncated by sheer
 `vms()` volume; no key sequence changes that. Corpus-wide L2 was an explicit
@@ -2615,8 +2615,12 @@ non-goal for M5 and would need a sequence authored per file — but the honest
 statement is stronger than "not yet": for 224 of the 229 files there is no
 input loop for a sequence to drive.
 
-`snr_lib.lua` is the clean demonstration: driven, it goes from `CAP|3001`
-(2243 of them polls) to `OK|28`, i.e. it runs to completion.
+`snr_lib.lua` is the clean demonstration. It carries three sequences, and
+the third of them is deliberately the *undriven* one (`tail=CIRCLE`, i.e. the
+button held from frame 1 and never released) which still runs to `CAP|3001`
+with 2243 polls, exactly as under L1.75. The other two drive it: the DOWN /
+DOWN / CIRCLE sequence finishes at `OK|28` and the UP / four-DOWN / CIRCLE one
+at `OK|236`. Union coverage 0.9474.
 
 `snr_common.lua`'s badge is low for a real reason and not a defect. Its
 denominator is all 10,332 blocks of a 20k-line file, and its three sequences
@@ -2676,10 +2680,13 @@ exists to prevent).
 * an arithmetic result (`if sys.n + 1 > 0 then`) — `__add` already flattened
   the proxy to the number `0`, so the comparison is number-vs-number.
 
-**The corpus exercises none of the six taint routes**: measured, it never
-calls `type`, `rawequal` or `getmetatable`, and no proxy pair reaches a
-comparison metamethod. Every piece of evidence for the taint analysis is
-therefore synthetic, and corpus green says nothing about it. That is the
+**The corpus exercises none of the six taint routes.** Measured 2026-08-12,
+all **229** files driven on the original side under
+`k=1,CIRCLE;k=3,CROSS;tail=CROSS`: **0** taint marks, **0** probe errors.
+(Consistent with the static picture — the decompiled corpus contains no call
+to `type`, `rawequal` or `getmetatable` at all.) Every piece of evidence for
+the taint analysis is therefore synthetic, and corpus green says nothing about
+it. That is the
 normal situation here, not a gap — see MEMORY's "the corpus is a weaker oracle
 than it looks".
 

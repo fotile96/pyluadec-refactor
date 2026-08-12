@@ -453,8 +453,9 @@ def main(argv: list[str] | None = None) -> int:
         r = results[name]
         badge = f"L2@{r.cov:.0%}" if r.granted else f"refused ({r.reason})"
         print(f"  {name:<24} {badge:<22} {r.detail}")
+    n_specs = sum(len(v) for v in KEY_SEQUENCES.values())
     print(f"L2: {len(granted)}/{len(results)} authored file(s) granted "
-          f"({len(KEY_SEQUENCES)} sequence(s) authored, "
+          f"({n_specs} sequence(s) over {len(KEY_SEQUENCES)} file(s), "
           f"{len(list(corpus.glob('*.lua')))} files in the corpus)")
     return 0 if len(granted) == len(results) else 1
 

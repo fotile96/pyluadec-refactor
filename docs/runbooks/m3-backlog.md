@@ -1515,8 +1515,9 @@ sequence to drive, which is a stronger statement than "not yet authored".
 
 All five are granted: `snr_lib` L2@95%, `snr_music` L2@72%, `snr_graphic`
 L2@53%, `snr_memory` L2@51%, `snr_common` L2@21%. `snr_lib.lua` is the clean
-demonstration — driven, it goes from `CAP|3001` (2243 of them polls) to
-`OK|28`.
+demonstration — the same file that runs to `CAP|3001` with 2243 polls under
+its deliberately-undriven third sequence finishes at `OK|28` under its
+driven one.
 
 **What is still open after this.** The two historical checkpoints from
 `DEBUG_KEY_SEQUENCE_HARNESS.md` are *runnable* (their sequences are authored

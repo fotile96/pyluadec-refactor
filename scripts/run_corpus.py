@@ -342,9 +342,10 @@ def main() -> int:
           f"structured, {n_hybrid_files} hybrid, {n_fallback_files} whole-file "
           f"fallback")
     n_l2_rows = sum(1 for e in by_hash.values() if e.l2)
+    n_specs = sum(len(v) for v in KEY_SEQUENCES.values())
     print(f"L2: {n_l2_granted}/{len(KEY_SEQUENCES)} authored file(s) granted; "
           f"{n_l2_rows}/{len(by_hash)} row(s) carry the badge "
-          f"({len(KEY_SEQUENCES)}/{len(files)} files have a key sequence)")
+          f"({n_specs} sequence(s) over {len(KEY_SEQUENCES)}/{len(files)} files)")
     return 0 if n_ok == len(files) else 1
 
 

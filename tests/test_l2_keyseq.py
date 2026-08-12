@@ -684,7 +684,7 @@ def test_corpus_l2_reach_is_not_vacuous(l2_results):
     """The gate must not be passing because the sequences drove nothing.
 
     Floors are deliberately well under the measurement (2026-08-12:
-    snr_lib 0.9474, snr_music 0.7234, snr_graphic 0.5349, snr_memory 0.5110,
+    snr_lib 0.9474, snr_music 0.7235, snr_graphic 0.5349, snr_memory 0.5110,
     snr_common 0.2052) so ordinary drift does not fail them, but a collapse of
     the instrument does. `snr_common.lua`'s badge is low for a real reason and
     not a defect: its denominator is all 10,332 blocks of a 20k-line file, and
