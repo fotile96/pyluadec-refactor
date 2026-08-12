@@ -62,7 +62,13 @@ def oracle_version() -> str:
 @dataclass
 class LedgerEntry:
     shash: str
-    level: str                    # L0 | L1 | L2 | L3
+    # `L0 | L1 | L3`. **There is no `L2` level and there never was one** --
+    # M5 task 9 landed L2 as the separate `l2` field below, deliberately,
+    # because `L2` and `L3` are independent proofs and a single rank would
+    # force a row that has both to discard one (`decompile-pipeline.md`, "the
+    # ledger's fields"). `scripts/run_corpus.py::_RANK` still carries an
+    # `"L2": 2` entry; it is dead and is documented as dead there.
+    level: str
     l3_level: int | None
     compile_ok: bool
     fallback: bool
@@ -72,11 +78,20 @@ class LedgerEntry:
     oracle: str
     ladder: str
     # Why this proto is not `L3`; `None` exactly when it is (M4 task 6). The
-    # `confessions` list says only THAT a proto fell back -- every non-`L3` row
-    # carries the same whole-range `fallback-state-machine` entry -- which was
-    # enough while a refusal was the only way to miss `L3`, and stopped being
-    # enough once M4 produced protos that structure and print cleanly and then
-    # fail the comparison. Produced by `structure.structured.ProtoCert.reason`;
+    # `confessions` list says only THAT a proto's text came from the fallback
+    # state machine, which was enough while a refusal was the only way to miss
+    # `L3` and stopped being enough once M4 produced protos that structure and
+    # print cleanly and then fail the comparison.
+    #
+    # It also no longer LINES UP with this field, and M5 task 6 is why: since
+    # hybrid emission, `confessions` tracks the shipped artifact and `level`
+    # tracks the proof, so the two disagree in both directions. Measured on
+    # the committed ledger 2026-08-13: **6 of the 48 non-`L3` rows carry no
+    # confession** (they ship structured inside a hybrid), and **150 `L3` rows
+    # do** (they live in the 7 whole-file-fallback chunks). The sentence that
+    # stood here -- "every non-`L3` row carries the same whole-range
+    # `fallback-state-machine` entry" -- was a pre-task-6 fact left in the
+    # present tense. Produced by `structure.structured.ProtoCert.reason`;
     # its vocabulary, and the rule that it never carries bytecode-derived
     # payload, are documented there. Defaulted so that a ledger written before
     # this field existed still loads through `read_ledger`.
@@ -87,6 +102,17 @@ class LedgerEntry:
     # never independently -- see that function for why the row-level field is
     # an aggregate rather than a measurement of its own. Defaulted so a ledger
     # written before this field existed still loads through `read_ledger`.
+    #
+    # **What a grant proves, and what it does not.** It proves that the
+    # original bytecode and the shipped artifact produced byte-identical event
+    # traces under a stub environment and a scripted key sequence, that at
+    # least one of those runs reached its end rather than the event cap, that
+    # no stub-derived value was seen deciding a branch, and that every proto in
+    # the chunk is `L3`. It does NOT prove behaviour under the real engine, and
+    # it says nothing about paths the sequence did not take -- `cov` is exactly
+    # the fraction of the artifact's protos the completed runs entered, and
+    # `scripts/probe_keyseq.py`'s module docstring lists four gaps the pair
+    # still cannot see. The full rule is `probe_keyseq.evaluate`.
     l2: dict | None = None
 
 

@@ -185,10 +185,26 @@ M3–M4 的旧说法「产物为结构化 ⟺ root proto 认证 `L3`」是**替�
 
 - 全局状态探针（L1.5 门）：`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_global_state.py`。M4 task 10 起 CLI 认识那 4 条已钉住的发散（钉子已从测试挪到 `scripts/probe_global_state.py`，两个 CLI 与两个门共用 `scripts/probe_common.py::adjudicate_pins`），干净跑法打印 `225/229 identical, 4 pinned divergence(s)` 并返回 0；权威判定仍在 `tests/test_global_state_probe.py`。
 - **L2 差分执行门（M5 task 9 新增）**：`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_keyseq.py`。
-  原始字节码与产出源码在同一 stub 环境、同一**按键序列**下跑，五个条件全过才授 `L2`：
-  trace 逐字节相同、序列确实被轮询、无运行期 taint 标记、**静态回退分析找不到任何
-  「stub 派生值决定了一个没人看见的分支」的位置**、且探针没有自身故障。徽章 `cov` 是
-  产物**被进入的 proto 比例**（不是基本块——基本块归属只能靠行号，会随排版移动，
+  原始字节码与产出源码在同一 stub 环境、同一**按键序列**下跑，**七个**条件全过才授 `L2`：
+  trace 在**探针观测到的范围内**逐字节相同、序列确实被轮询、无运行期 taint 标记、**静态回退
+  分析找不到任何「stub 派生值决定了一个没人看见的分支」的位置**、探针没有自身故障、
+  **至少有一条序列跑到了自然结束**（不是撞 `MAX_EVENTS=3000` 被截断）、且 **chunk 里每个
+  proto 都是 `L3`**。后两条是**最终修复轮**补的，两条都是已经发货的洞：
+  (a) `evaluate` 从来没读过 trace 的 `header`，所以两边都撞上限时「逐字节相同」实际只是
+  「前 3000 个事件相同」，而这一点在判决、detail、台账里**一处都没记**——合成反例
+  `for i=1,5000 do engine.Go(i) end engine.OriginalTail()` 对
+  `... engine.COMPLETELY_DIFFERENT_TAIL()` 双方 `CAP|3001`、逐字节相同、零 taint、
+  `granted=True, cov=1.0`。刻意是**「至少一条」而不是「每条都要」**：退化序列根本不停机
+  （把上限调大 1000 倍实测，`snr_lib.lua` 的 `tail=CIRCLE` 报 `CAP|3000001`），五个文件各有一条，
+  「每条都要」会把 reach 永久打到 0。
+  (b) 静态回退分析只读**原始**字节码，所以它只在产物与原始逐字段相同时才代表产物——
+  形状实测会分叉：`snr_music.lua` 原始 taint 是 `{compare 36, length 1, launder 1, loop 3,
+  truthiness 2}`，其发货的 fallback 文本是 `{compare 3, loop 16}`，`__pld_R` 盒模型**藏了** 33 个
+  比较点、**凭空造出** 13 个。所以现在的 L2 **只认证逐字段相同的产物**；要扩到 hybrid/fallback
+  是 M6 的活，且必须去分析产物本身，而不是放松这条。两条的实测代价都是**零**：reach 前后都是
+  1/5（`snr_lib.lua`，其两条完成序列单独给出的覆盖率与三条全跑完全一致），`corpus/ledger.jsonl`
+  字节不变。徽章 `cov` 是**完成的**那些 run 进入的
+  产物 proto 比例（不是基本块——基本块归属只能靠行号，会随排版移动，
   实测同一程序 16 个块「铺开 0.9375 / 压紧 1.0」，那会打破 CLAUDE.md 对「呈现层变更＝
   台账字节不变」的定义）。干净跑法打印 `L2: 1/5 authored file(s) granted, 4 refused as expected`
   并返回 0。
@@ -302,9 +318,9 @@ Phase 5 已完成（12 个任务）。**能力边界、认证门不变式、归�
 - `L3`：**1430/1478 唯一 proto（96.8%）、1896/1944 处出现（97.5%）**（M4 收口 94.0% / 95.4%）。
 - **产物**：229 个文件里 **216 全结构化 / 6 hybrid / 7 整文件 fallback**（M4 收口 212/0/17）。逐 occurrence：**1747/1944（89.9%）发结构化文本**；按指令量算 85.8%（M5 起点 65.6%）。
 - 移植的质量分（原项目 `semantic_eval.py` 的口径）：**0.968833**（M5 起点 0.935633）。216 个全结构化文件**全部恰好 1.000000**；低于 0.997 的 13 个正好是那 13 个非全结构化文件，一个不多。
-- 测试：**860 passed**，本机（macOS 15.2 / Apple M4，arm64）**42.2–43.4s**，**上限 45s——最坏一次只剩 1.6s 余量，这是 M6 要处理的第一件事**（M6 agenda）。`./scripts/ratchet_job.sh` exit 0。
-  **测试顺序不影响耗时**：M5 task 11 起流传的「`-p no:randomly` 与默认的差别是真的」**没有复现**（task 12 round 1 实测）。交错跑 5 对：固定 42.28/42.25/42.26/42.99/43.39（均值 42.63），随机 42.57/42.69/42.97/43.09/42.78（均值 42.82）——差 0.19s，而固定臂自己的极差就有 1.14s；另一台主机上 10 次交错跑同样不分离且符号相反。真实的结论只有一条：本套件有 1–2 秒的 run-to-run 抖动，**跨会话的单次对比分不出任何东西**——本里程碑那些争议时间数正出于此。
-- 出口门 `tests/test_m5_exit.py`：四条地板（唯一 `L3` ≥0.96、occurrence `L3` ≥0.96、结构化 reach ≥0.85、质量分 ≥0.96），全部**刻意低于实测值**，理由写在该文件 docstring 里。
+- 测试：**865 passed**，本机（macOS 15.2 / Apple M4，arm64）**41.0–42.0s**（最终修复轮 4 次实测；该轮加了 5 个用例）。**上限 45s——最坏一次只剩 3.0s 余量，这仍是 M6 要处理的第一件事**（M6 agenda）。`./scripts/ratchet_job.sh` exit 0。
+  **测试顺序从来没有被真正变动过**（2026-08-13 实测）：本仓库**没有装任何随机化插件**——`pytest --trace-config` 里唯一的第三方插件是 `pytest-timeout 2.4.0`，`find_spec("pytest_randomly")` 是 `None`，而 `-p no:randomly` 关掉的是一个不存在的插件，pytest 对此**静默当成 no-op**（`uv run pytest -p no:randomly --co -q` → 865 collected，exit 0）。所以 M5 task 11 的 5 对、task 12 的 5 对、以及审查者在另一台主机上的 10 次，两臂跑的都是**同一个 collection order**：task 11 断言有差别、task 12 「证伪」了它，两边都没检查这个旋钮是否接上。**唯一站得住的结论**：本套件有 1–2 秒的 run-to-run 抖动（42.25–43.39s 与 42.57–43.09s 是同一种配置的两组样本；另一台主机 39.36–41.13s），**跨会话的单次对比分不出任何东西**——本里程碑那些争议时间数正出于此。顺序到底影响不影响，**目前是未测量的**。
+- 出口门 `tests/test_m5_exit.py`：四条地板（唯一 `L3` **≥0.94**、occurrence `L3` ≥0.96、结构化 reach ≥0.85、质量分 ≥0.96），全部**刻意低于实测值**，理由写在该文件 docstring 里。唯一 `L3` 那条在最终修复轮从 0.96 放宽到 **0.94（= M4 出口）**：0.96 只剩 12 行（0.75pp）余量，正落在该文件自己描述的 churn 范围内——那是绊线不是地板，而绊线的标准修法就是改阈值。逐行单调性本来就由 `scripts/ratchet_diff.py` 逐行守着（更细的仪器），这条地板只负责粗粒度的「M5 不得低于 M4 收口」。代价已写明：41 行降级至少要付 41 个 occurrence，所以在这两个数下 **occurrence `L3` 才是紧的那条，唯一 `L3` 无法单独触发**（`tests/test_m5_exit.py::FORCED_COUPLING`，并且该耦合被断言为算术强制而非偶然）。
 
 ### spec 决策表新增两条（**这是本里程碑最需要被读到的部分**）
 
@@ -319,7 +335,7 @@ Phase 5 已完成（12 个任务）。**能力边界、认证门不变式、归�
 - **output surface v2**（task 7）：`elseif`、点语法、`-1`、统一 4 空格缩进（含函数体）、可逆 UTF-8 原样输出。字节红线的呈现层修订也在这里，见「工程红线」。**可读性因此在原项目最强的那条轴上反超**：最大缩进深度 61 → **8**，而原项目是 **10**；216 个文件里我们更深的有 **0** 个。
 - **ratchet 工具链**（task 8）：`scripts/ratchet_diff.py` + `scripts/ratchet_job.sh`，退出码 0/1/125/128，见上文「台账约定」。本仓库仍无 CI runner 配置。
 - **L2 门**（task 9）：按键序列差分执行 + 覆盖率 + 静态 taint 拒授，台账新增逐 occurrence 的 `l2` 字段与行级纯聚合 `verify.ledger.row_l2`。**实测 reach 是 1 个文件**（`snr_lib.lua` L2@100%，2 行 / 3 处 occurrence），另有 164 处 occurrence 记 `{"refused": "taint-static"}`。
-- **两个历史按键序列检查点**（task 10）：`tests/test_keyseq_checkpoints.py`，性质同时断言在**原始字节码的 trace** 上，**10** 个 both-sides 注入证明断言会红（2026-08-13 重数：该模块收集 12 个用例 = 2 个性质 + 10 个注入；task 10 的报告写的 7 是它 round 0 的数）。**注意**：这两个检查点都住在 `snr_common.lua`，而该文件被 L2 静态 taint **拒授**（`doScriptScene == "<字面量>"` 这个语料主力惯用法对运行时 harness 结构上不可观测），所以「检查点绿」与「该文件拿到 L2 徽章」是两件事，后者没有发生也不该靠放松门去发生。
+- **两个历史按键序列检查点**（task 10）：`tests/test_keyseq_checkpoints.py`，性质同时断言在**原始字节码的 trace** 上，**10** 个注入用例证明断言会红（2026-08-13 重数：该模块收集 12 个用例 = 2 个性质 + 10 个注入；task 10 的报告写的 7 是它 round 0 的数）。**「both-sides」的保证来自性质函数在要求 trace 相等之后被分别施加于两条 trace，不是来自注入**：入库的参数化只改**产物那一侧**，both-sides 形态是文件里明确写着的树外练习——把注入称作 both-sides 是夸大了入库的东西。**注意**：这两个检查点都住在 `snr_common.lua`，而该文件被 L2 静态 taint **拒授**（`doScriptScene == "<字面量>"` 这个语料主力惯用法对运行时 harness 结构上不可观测），所以「检查点绿」与「该文件拿到 L2 徽章」是两件事，后者没有发生也不该靠放松门去发生。
 - **`express/freereg.py`**（task 11）：`_stack_discipline` 从 `names.py` 拆出。
 - **`refusal_reason` 带上了 `Mismatch.path`**（task 12，M5 agenda 8）：非 root 的失配现在记成 `mismatch: <字段> at <路径>`。实测语料上 22 条 `mismatch` 里 20 条在 `root`、2 条不在（两个 hybrid root），台账因此动了 2 行，ratchet 0 降级。
 

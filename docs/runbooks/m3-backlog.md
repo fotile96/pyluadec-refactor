@@ -40,7 +40,7 @@ why. Readability against the predecessor's shipped output is evaluated in
 `docs/reports/m4-readability.md`.
 
 Status at the end of M5 (all figures measured 2026-08-13 at the task-12 tree):
-229/229 still compile; **860 tests pass in 42.2–43.4s** on macOS 15.2 /
+229/229 still compile; **865 tests pass in 41.0–42.0s** on macOS 15.2 /
 Apple M4 (arm64) against a 45s ceiling — **test ordering makes no measurable
 difference**, see the M6 agenda item 6 for the interleaved numbers and for the
 inherited claim that it does, which did not reproduce; the ledger
@@ -1766,7 +1766,10 @@ is the record.
 
 **Acceptance.** `corpus/ledger.jsonl` regenerated and byte-identical after each
 of the three commits. Suite 833 passed. Timing, interleaved OLD/NEW with
-`-p no:randomly`, three pairs: OLD 37.40 / 37.93 / 38.61s, NEW 37.82 / 37.80 /
+`-p no:randomly` (which is a **no-op here** — no randomiser is installed; see
+§6 of the M6 agenda, added in the M5 final fix round — so this was an
+OLD-vs-NEW comparison in one fixed order, which is what it needed to be
+anyway), three pairs: OLD 37.40 / 37.93 / 38.61s, NEW 37.82 / 37.80 /
 38.42s — means 37.98 vs 38.01s, a 0.03s difference against a 1.21s spread
 *within* the OLD arm, i.e. no measurable change and no regression of M5 task
 2's recovery. Because the suite is dominated by `luac_sz4` subprocesses and
@@ -2281,8 +2284,9 @@ smoothed over.
 M5's own closed items keep their record in place above (§§1–14), including the
 retracted claims inside them; do not re-derive from those.
 
-**Starting state, measured 2026-08-13.** 229/229 compile; **860 tests pass in
-42.2–43.4s** on macOS 15.2 / Apple M4 (arm64), against a 45s ceiling; the
+**Starting state, measured 2026-08-13.** 229/229 compile; **865 tests pass in
+41.0–42.0s** on macOS 15.2 / Apple M4 (arm64), against a 45s ceiling (860 at
+42.2–43.4s before the final fix round, which added 5 tests); the
 ledger holds 1478 unique shapes over 1944 occurrences, of which **1430 (96.8%)
 / 1896 (97.5%)** are `L3`; **216 files ship fully structured, 6 hybrid, 7 whole-
 file fallback**; **1747/1944 (89.9%) occurrences ship structured text**; ported
@@ -2438,23 +2442,32 @@ share one property — none changes behaviour, and several add test code to a
 suite whose headroom is **host-dependent and, on the tightest host measured,
 1.6 seconds**.
 
-- **Suite headroom is the first of them.** 860 tests. Measured 2026-08-13 on
-  macOS 15.2 / Apple M4 (arm64): **42.2–43.4s**, i.e. **1.6s** under the 45s
-  ceiling at worst. A reviewer's host measures the same tree at **39.4–41.1s
+- **Suite headroom is the first of them.** 865 tests. Measured 2026-08-13 on
+  macOS 15.2 / Apple M4 (arm64) over four runs: **41.0–42.0s**, i.e. **3.0s**
+  under the 45s ceiling at worst (860 tests at 42.2–43.4s before the final fix
+  round). A reviewer's host measures the same tree at **39.4–41.1s
   over 10 runs**, i.e. ~4s. Quote the host with the number.
 
-  **Test ordering is NOT a factor, and the claim that it is did not survive
-  measurement.** M5 task 11 reported 37.2–37.6s fixed against 39.5–40.4s
-  random and that split propagated into `CLAUDE.md`, the `CHANGELOG` and this
-  file. Re-measured at task 12 round 1, **interleaved** rather than across
-  sessions, 5 pairs: fixed **42.28 / 42.25 / 42.26 / 42.99 / 43.39s** (mean
-  42.63), random **42.57 / 42.69 / 42.97 / 43.09 / 42.78s** (mean 42.82). The
-  difference is **0.19s** against a **1.14s** spread inside the fixed arm
-  alone, and the reviewer's 10 interleaved runs on its own host reproduce the
-  non-separation *with the sign inverted* (fixed 39.76–40.08, random
-  39.36–41.13). What is real is 1–2s of run-to-run variance, which is why a
-  single-run comparison across sessions has repeatedly "shown" an effect that
-  is not there.
+  **Test ordering is UNMEASURED — neither M5 claim about it was a measurement
+  of ordering.** M5 task 11 reported 37.2–37.6s "fixed" against 39.5–40.4s
+  "random" and that split propagated into `CLAUDE.md`, the `CHANGELOG` and
+  this file; task 12 round 1 re-measured interleaved (5 pairs: 42.28 / 42.25 /
+  42.26 / 42.99 / 43.39 against 42.57 / 42.69 / 42.97 / 43.09 / 42.78) and
+  wrote "ordering is not a factor". **Neither arm ever varied the order.**
+  Measured 2026-08-13: no randomiser is installed — `pytest --trace-config`
+  registers exactly one third-party plugin (`pytest-timeout 2.4.0`) and
+  `find_spec("pytest_randomly")` is `None` — so `-p no:randomly` deselects a
+  plugin that does not exist and pytest accepts it as a **silent no-op**
+  (`uv run pytest -p no:randomly --co -q` → 865 collected, exit 0). Both arms
+  of every one of those A/Bs, including the reviewer's 10 on a second host,
+  ran the same collection order.
+
+  What survives is the variance, not the comparison: **1–2s of run-to-run
+  spread**, which is why a single-run comparison across sessions has
+  repeatedly "shown" an effect that nothing here could have produced.
+  Answering the ordering question at all requires installing
+  `pytest-randomly`; that is the M6 item, and it should be decided on whether
+  order-independence is worth a dependency, not on these numbers.
 
   M5 task 2 recovered ~11.9s with a process-level certification
   memo and the milestone spent all of it. The two biggest single costs are

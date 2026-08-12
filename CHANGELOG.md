@@ -69,12 +69,36 @@
   this corpus's central idiom (427 sites across 23 files). **220 of 229 files
   contain no `pressButton` at all**, so for most of the corpus there is no
   input loop to drive — a stronger statement than "not yet authored".
+
+  **Two more granting routes were found in the final review round, making
+  thirty-two, and both had shipped.** (1) `evaluate` never read the trace
+  header, so when both sides stopped at `MAX_EVENTS = 3000` "byte-equal" meant
+  "equal over the first 3000 events" with nothing recorded anywhere — a
+  fixture whose two sides differ only in their final engine call certified
+  identical at `cov=1.0`. A grant now requires at least one authored sequence
+  to run to completion, and `cov` is measured over those only; it is *not*
+  "every sequence", because the degenerate ones provably never halt (`snr_lib`
+  under `tail=CIRCLE` reports `CAP|3000001` with the cap raised 1000×) and
+  requiring it would put reach at 0 forever. (2) The static backstop reads the
+  **original** only, so it spoke for the artifact only while the two were
+  field-identical; on `snr_music.lua` the two shapes really do diverge
+  (`__pld_R` hides 33 compare sites and invents 13). A grant now requires
+  every proto in the chunk to be `L3`, which makes that precondition
+  structural instead of accidental. **Reach unchanged at 1/5 and
+  `corpus/ledger.jsonl` byte-unchanged**; extending L2 to hybrids or fallback
+  text is M6 work and needs the artifact analysed, not this condition
+  relaxed.
 - **The two historical key-sequence checkpoints are regression tests.**
   `tests/test_keyseq_checkpoints.py` drives `snr_common.lua` and asserts the
   `OptionMain` double clamp and the `ConfigMain` CIRCLE gate/wait **on the
-  original bytecode's trace as well as ours**, with **10** parametrised
-  both-sides injections proving each assertion fires (re-counted 2026-08-13;
-  task 10's own report says seven, which was its round-0 figure). Two things worth
+  original bytecode's trace as well as ours**, with **10** parametrised bug
+  injections proving each assertion fires (re-counted 2026-08-13; task 10's
+  own report says seven, which was its round-0 figure). Precisely: the two
+  property tests apply their property function to each trace *separately*
+  after requiring the traces equal, so a both-sides regression cannot pass —
+  that is the guarantee. The committed parametrisation mutates **only the
+  artifact side**; the both-sides form of the same demonstration is an
+  out-of-tree exercise, disclosed as such in the file. Two things worth
   recording: a menu option's *value* is invisible to the probe, so the property
   is expressed through the `layerClip` rectangle the redraw produces and no
   menu row is ever named (the bytes red line, navigated rather than dodged);
@@ -88,17 +112,22 @@
   protocol could express and the printer could not. `src/pyluadec/passes/` was
   never created, so no code was deleted. The plugin surface itself is not
   rejected; its client is M6+'s proposer.
-- **Suite: 860 tests, 42.2–43.4s on macOS 15.2 / Apple M4 (arm64)**, against
-  a 45s ceiling. **Test ordering makes no measurable difference**, and the
-  claim that it does — inherited from M5 task 11 and repeated here in a first
-  draft — did not survive measurement: 5 interleaved pairs on this host give
-  fixed 42.25–43.39s (mean 42.63) against random 42.57–43.09s (mean 42.82), a
-  0.19s difference inside a 1.14s spread within the fixed arm alone, and a
-  reviewer's 10 interleaved runs on a second host reproduce the
-  non-separation with the sign inverted. What is real is that this suite has a
-  second or two of run-to-run variance, so a single-run comparison across
-  sessions cannot separate ordering from noise — which is the actual source of
-  this milestone's disputed timings. M5 task 2 recovered
+- **Suite: 865 tests, 41.0–42.0s on macOS 15.2 / Apple M4 (arm64)** (four runs
+  in the final fix round, which added 5 tests; 860 at 42.2–43.4s before it), against
+  a 45s ceiling. **Test ordering was never varied, by either arm of the
+  argument.** No randomiser is installed — measured 2026-08-13, the only
+  third-party pytest plugin registered is `pytest-timeout 2.4.0`,
+  `importlib.util.find_spec("pytest_randomly")` is `None`, and `-p
+  no:randomly` names a plugin that does not exist, which pytest accepts as a
+  **silent no-op** (`uv run pytest -p no:randomly --co -q` → 865 collected,
+  exit 0). So M5 task 11's 5 pairs, task 12's 5 pairs and a reviewer's 10 on a
+  second host all ran both arms in *identical collection order*: task 11
+  asserted an ordering difference and task 12 "refuted" it, and neither
+  checked that the knob was connected. What those runs do establish stands:
+  this suite has 1–2s of run-to-run variance (fixed 42.25–43.39s, "random"
+  42.57–43.09s — two samples of the same configuration), so a single-run
+  comparison across sessions cannot separate anything from noise, which is the
+  actual source of this milestone's disputed timings. M5 task 2 recovered
   ~11.9s with a process-level certification memo and the milestone spent all of
   it; **1.6s of headroom at worst on this host is the first item on the M6
   engineering agenda** (a reviewer's host measures the same tree at

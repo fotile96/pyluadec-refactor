@@ -275,9 +275,14 @@ What *is* green is the pair of checkpoints themselves:
 `tests/test_keyseq_checkpoints.py` drives `snr_common.lua` under scripted key
 sequences and asserts the two historical bug properties (the `OptionMain`
 double clamp, the `ConfigMain` CIRCLE gate/wait) **on the original's trace as
-well as ours**, with **10** parametrised both-sides injections proving the
-assertions fire (re-counted 2026-08-13; task 10's report said seven, its
-round-0 figure). Those tests do not need the L2 badge and do not claim it; the
+well as ours**, with **10** parametrised bug injections proving the assertions
+fire (re-counted 2026-08-13; task 10's report said seven, its round-0 figure).
+The both-sides guarantee comes from the property functions being applied to
+each trace separately *after* trace equality is required, not from the
+injections: the committed parametrisation mutates **only the artifact side**,
+and the both-sides form is an out-of-tree exercise the file discloses. Calling
+the injections "both-sides" overstated what is committed. Those tests do not
+need the L2 badge and do not claim it; the
 badge would have added a coverage measurement, not the property.
 
 ---
@@ -299,16 +304,25 @@ asserting a number nobody re-derived.
    wrap entry in `CHANGELOG.md` for the post-task figure.
 4. **"`-p no:randomly` really does change the figure"** (from M5 task 11,
    repeated in this report's first draft, in `CLAUDE.md` and in the
-   `CHANGELOG`) — **did not survive interleaved measurement.** 5 pairs on
-   macOS 15.2 / Apple M4: fixed 42.28 / 42.25 / 42.26 / 42.99 / 43.39s
-   (mean 42.63), random 42.57 / 42.69 / 42.97 / 43.09 / 42.78s (mean 42.82).
-   A **0.19s** difference against a **1.14s** spread inside the fixed arm
-   alone. A reviewer's 10 interleaved runs on a second host reproduce the
-   non-separation *with the sign inverted* (fixed 39.76–40.08, random
-   39.36–41.13). The supported statement is narrower and duller: this suite
-   has 1–2s of run-to-run variance, and a single-run comparison across
-   sessions cannot separate ordering from noise. That noise, not ordering, is
-   where this milestone's disputed timings came from.
+   `CHANGELOG`) — and **"test ordering makes no measurable difference"**, the
+   correction task 12 replaced it with. *Neither was a measurement of
+   ordering.* Measured 2026-08-13: no randomiser is installed
+   (`pytest --trace-config` registers exactly one third-party plugin,
+   `pytest-timeout 2.4.0`; `find_spec("pytest_randomly")` is `None`), and
+   `-p no:randomly` deselects a plugin that does not exist, which pytest
+   accepts silently (`uv run pytest -p no:randomly --co -q` → 865 collected,
+   exit 0). Every A/B in this milestone — task 11's 5 pairs, task 12's 5
+   pairs, a reviewer's 10 on a second host — therefore ran both arms in the
+   **same collection order**. This is the milestone's signature defect
+   surviving into the correction of itself.
+
+   What the runs do support, unchanged: this suite has **1–2s of run-to-run
+   variance** (42.25–43.39s and 42.57–43.09s on macOS 15.2 / Apple M4 are two
+   samples of one configuration, not two configurations; a reviewer's second
+   host gives 39.36–41.13s), so a single-run comparison across sessions cannot
+   separate anything from noise. That noise is where this milestone's disputed
+   timings came from. Whether ordering matters here is **unmeasured**: it
+   needs `pytest-randomly` actually installed, and that is an M6 question.
 5. **"15 `CASES` driven by a plain `for` loop"** (M5 agenda item 10) — there
    are **17**; they are now `pytest.mark.parametrize`d, so the count maintains
    itself.

@@ -92,9 +92,15 @@ from pyluadec.verify.normalize import Mismatch, NORMALIZATIONS, compare_protos
 # teardown but cannot undo cache entries written while it was in force. The
 # next reader (the corpus fixture, the ledger ratchet) would then consume a
 # wrong verdict and stay green. `tests/conftest.py`'s autouse
-# `_fence_certification_cache` fixture is the fence: it snapshots and restores
-# this dict around every test that requests `monkeypatch`. If you write a
-# fault-injection test, do not disable it.
+# `_fence_certification_cache` fixture is the fence: an UNCONDITIONAL autouse
+# fixture that snapshots and restores this dict (and `_HYBRID_CACHE`) around
+# EVERY test. If you write a fault-injection test, do not disable it.
+#
+# This comment used to say "around every test that requests `monkeypatch`",
+# which describes the narrower variant that was built, measured and then
+# REJECTED -- it is a heuristic about how a future test happens to patch, and
+# the two variants were indistinguishable against the suite's own noise.
+# `tests/conftest.py` records that measurement in full.
 _CERT_CACHE: dict[tuple[str, int, int, bool, str, str], "ProtoCert"] = {}
 
 

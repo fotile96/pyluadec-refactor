@@ -98,9 +98,14 @@ def decompile_chunk(root: Proto) -> DecompileResult:
     # covered its whole subtree. The comment that stood here noted the one way
     # they could come apart (a non-`L3` proto inside a certified root) and
     # recorded 0 such protos on this corpus. Hybrid emission makes the OTHER
-    # direction routine: 12 of the 13 formerly-fallback files now ship
-    # structured code for protos that are not individually `L3`, and stamping
-    # those with `fallback-state-machine` would be a false confession -- the
+    # direction real: **6 of the 13** formerly-fallback files became hybrids
+    # (`snr_story_main`, `snr_fragment_main`, `snr_s1_10_s`, `snr_s3_10_s`,
+    # `snr_s4_10_s`, `snr_s5_10_s`), and each ships **one** proto occurrence
+    # that is not individually `L3` -- 6 occurrences in 6 files, re-derived
+    # from the committed ledger 2026-08-13. (This comment said "12 of the 13",
+    # which is 2x the count of hybrids that exist; the other 7 still ship the
+    # whole-file fallback.) Stamping those 6 with `fallback-state-machine`
+    # would be a false confession -- the
     # text came from the structured printer and was compared field for field
     # by `certify_hybrid`. The level stays exactly what `certify_proto` said;
     # only the confession moved to the shipped-artifact fact it was always

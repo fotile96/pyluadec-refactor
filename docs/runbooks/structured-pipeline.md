@@ -1,16 +1,20 @@
-# Structured pipeline runbook (M3–M4)
+# Structured pipeline runbook (M3–M5)
 
 This is the operational and conceptual guide to the **structured** decompile
 path: dominator-driven region identification, expression reconstruction, the
 pure structural printer, and the per-proto `L3` certification gate that decides
 whether any of it is allowed to ship.
 
-Written for M3 and extended through M4 (loop recognition, the `and`/`or` value
+Written for M3, extended through M4 (loop recognition, the `and`/`or` value
 idiom, per-definition register classification, strip-mode matching, the effect
-lattice). **This file is the authority for the capability boundary and for the
-effect lattice.** Open work lives in `docs/runbooks/m3-backlog.md`'s "M5
-agenda"; the readability comparison against the predecessor's shipped output
-is `docs/reports/m4-readability.md`.
+lattice) and again through M5, which added roughly 900 lines here: output
+surface v2, hybrid chunks, the L2 key-sequence gate and the ratchet tooling.
+**This file is the authority for the capability boundary, for the effect
+lattice and for the L2 grant rule.** Open work lives in
+`docs/runbooks/m3-backlog.md`'s **"M6 agenda"** (the "M5 agenda" this line
+used to route to is now a closed record above it); the readability comparison
+against the predecessor's shipped output is `docs/reports/m4-readability.md`,
+and M5's quality evaluation is `docs/reports/m5-quality.md`.
 
 It is the companion to `docs/runbooks/decompile-pipeline.md`, which documents
 the M2 **fallback** path. The two coexist and neither replaces the other — see
@@ -18,7 +22,8 @@ the M2 **fallback** path. The two coexist and neither replaces the other — see
 
 Every quantitative claim below was measured in this repository against the
 229-file corpus (originally at commit `fb85f2f`; the capability-boundary
-figures re-measured through M4 and last verified 2026-08-12 at `3ae72c6`), or
+figures re-measured through M4 and M5, and last verified 2026-08-13 at
+`b73a513` plus the M5 final fix round), or
 is cited to a specific symbol / test name. If a number here stops matching
 reality, that is a bug in the runbook; re-measure and fix it rather than
 routing around it.
@@ -34,7 +39,10 @@ verified against the tree; convert any you touch.
 1. **Inlined and verified.** The capability-boundary table, its refusal
    breakdown, and the print-but-do-not-certify histogram have complete
    runnable scripts under "Current capability boundary", each printed together
-   with the output it produced when run on 2026-08-11.
+   with the output it produced when run on **2026-08-13**. All three of those
+   pasted outputs were stale at the M5 wrap while the prose around them was
+   right, which is the standing argument for re-running a block rather than
+   trusting its paste.
 2. **Read off a committed artifact or a standing test.** The L3 rates come
    from `corpus/ledger.jsonl` (`uv run python scripts/ledger_dashboard.py`).
    The 225/229 global-state figure comes from
@@ -388,9 +396,16 @@ Two consequences worth knowing before reading a v2 file:
   string. It is still a byte-exact representation of the original constant:
   `emit/lua.py::_str_lit` prints raw only when the bytes decode as strict
   UTF-8 **and** re-encode identically, and delegates to
-  `structure/fallback.py::str_lit`'s decimal escapes otherwise. That is the
-  one place in this codebase that decodes a bytecode-derived string, and it
-  is the whole of the scoped amendment recorded in CLAUDE.md's
+  `structure/fallback.py::str_lit`'s decimal escapes otherwise. It is the one
+  place that decodes a bytecode-derived string **whose result can reach the
+  artifact as a value** — four other `decode(` calls exist
+  (`emit/lua.py:157,190`, `structure/fallback.py:203,205`) and all four are
+  ASCII identifier paths that only decide whether a name is spellable, never
+  what the constant is. CLAUDE.md's scoped wording is the precise one; this
+  bullet used to claim "the one place in this codebase that decodes", full
+  stop, which a `grep -n "decode(" src/pyluadec/emit/lua.py
+  src/pyluadec/structure/fallback.py` falsifies in one line. `_str_lit` is
+  the whole of the scoped amendment recorded in CLAUDE.md's
   「工程红线」 section — `ingest`, `lift` and the comparison layer keep the
   absolute rule, and diagnostics still never carry corpus payload.
 
@@ -1982,7 +1997,7 @@ with each other by a factor of six, in `docs/reports/m5-quality.md`.
    because `luaK_patchtohere` sends both conjuncts' false-exits to the else
    block while the nested reading would send the inner one to the end of the
    outer then-block. `or` has no nested-`if` reading at all: `luaK_goiffalse`
-   (lcode.c:196-208) patches its truelist to the START of the then-block, so
+   (lcode.c:563-583) patches its truelist to the START of the then-block, so
    the first compare's jump goes forward OVER the second condition. Closing
    this needs a condition TREE — the acyclic analogue of what M4 task 4 built
    for the VALUE idiom. A 26-instruction runnable repro of the smallest
@@ -1999,7 +2014,7 @@ with each other by a factor of six, in `docs/reports/m5-quality.md`.
      `thread_target` parameter; this was the whole 11-proto `else-join` cluster
      and 3 of the 9 `if targets` leaves;
    * a `break` absorbing it (`if c then x() else break end`, `breakstat`,
-     lparser.c:1054-1067) — `_match_else_break`, which cannot use a
+     lparser.c:975-988) — `_match_else_break`, which cannot use a
      single-number rewrite because the join is `P+1` for a `P` that has to be
      recovered from the layout and validated by structuring;
    * `branch body block ... is unreachable` (10 protos) is gone entirely:
@@ -2141,7 +2156,7 @@ with each other by a factor of six, in `docs/reports/m5-quality.md`.
      recorded it as "a genuine upvalue-index divergence"; that is the
      symptom. Measured 2026-08-12 by reverse-engineering the source, the
      original is `u0, u1 = 1, 0` and it recompiles to the proto exactly.
-     `lparser.c`'s `assignment` (:1052-1090) resolves every left-hand
+     `lparser.c`'s `assignment` (:931-962) resolves every left-hand
      variable before `explist1` runs and stores them in REVERSE order as its
      recursion unwinds, so printing the same bytecode as three statements
      makes `u1` the first upvalue referenced and the two `SETUPVAL` operands
@@ -2313,7 +2328,10 @@ committed tests, so "known" here means recorded and fenced, not tolerated.
 
 ### Re-deriving the three rows
 
-Rows 1 and 2, verbatim (re-run 2026-08-11, reproduces the table above):
+Rows 1 and 2, verbatim (re-run 2026-08-13, reproduces the table above; the
+`1447/1913` this block printed until then was an M5-task-4-era paste that
+tasks 5's three clusters superseded — the *prose* table above was correct and
+the pasted output was not, which is the whole hazard of pasting output):
 
 ```python
 # PYLUADEC_CORPUS_DIR=... uv run python -
@@ -2359,16 +2377,18 @@ for name, S in (("accepts own body", {h for h, p in uniq.items() if accepts(p)})
 
 ```
 accepts own body         1465/1478 (99.1%)  1931/1944 (99.3%)
-whole subtree prints     1447/1478 (97.9%)  1913/1944 (98.4%)
+whole subtree prints     1452/1478 (98.2%)  1918/1944 (98.7%)
 ```
 
 Row 3 needs no script: it is the committed ledger. `uv run python
 scripts/ledger_dashboard.py` prints both bases (`L3 share (unique)` and
 `L3 share (occurrences)`).
 
-The refusal breakdown in point 1. Self-contained; re-run 2026-08-12, and the
-eight lines it prints — 1478 / 31 / 26 / 5 / 195 / 169 / 16 / 8 — are the
-output block below verbatim:
+The refusal breakdown in point 1. Self-contained; re-run 2026-08-13, and the
+eight lines it prints — 1478 / 13 / 12 / 1 / 195 / 183 / 16 / 4 — are the
+output block below verbatim. (It read `31 / 26 / 5 / … / 169 / … / 8` until
+then, prefaced by that same verbatim claim: an M5-task-4-era paste that task
+5 superseded, while point 1's prose three screens up already said 13.)
 
 ```python
 # PYLUADEC_CORPUS_DIR=... uv run python -
@@ -2411,13 +2431,13 @@ print(f"  of which are refused              {len(testset & refused)}")
 
 ```
 unique protos                       1478
-build_sir refusals                  31
-  of which carry a back edge        26
-  acyclic refusals                  5
+build_sir refusals                  13
+  of which carry a back edge        12
+  acyclic refusals                  1
 protos with a back edge at all      195
-  back edge but accepted (loop)     169
+  back edge but accepted (loop)     183
 protos containing TESTSET           16
-  of which are refused              8
+  of which are refused              4
 ```
 
 Point 3's opcode-histogram breakdown (re-run 2026-08-11 after M4 task 13; it
@@ -2544,8 +2564,12 @@ for k, v in firstop.most_common(6):
 ```
 
 The print-but-do-not-certify mismatch histogram in point 3. Self-contained —
-run it verbatim like the two above. This is the only one that spends
-`luac_sz4` subprocesses (35 of them):
+run it verbatim like the two above (re-run 2026-08-13). This is the only one
+that spends `luac_sz4` subprocesses (22 of them). Its output used to read
+`35 / code 35 / maxstacksize 20 / constants.len 16 / const[i] 11`, from the
+same superseded era as the two blocks above; the ledger's own census agrees
+with the numbers below — 22 `mismatch:` rows, 11 `maxstacksize` and 11 `code`
+(2 of those as `code at root/N`):
 
 ```python
 # PYLUADEC_CORPUS_DIR=... uv run python -
@@ -2594,11 +2618,10 @@ for field, n in hist.most_common():
 ```
 
 ```
-print but do not certify: 35
-  code             35
-  maxstacksize     20
-  constants.len    16
-  const[i]         11
+print but do not certify: 22
+  code             22
+  maxstacksize     14
+  const[i]         8
 ```
 
 Note `is_chunk_root` is matched to each proto's *actual* chunk-root status
@@ -2652,22 +2675,57 @@ input-polling loops those calls get stuck in with a **scripted key sequence**.
 A file is granted `L2` when, under **every** one of its authored sequences:
 
 1. both sides produce a recognisable trace (no probe-side failure),
-2. the two traces are **byte-equal**,
+2. the two traces are **byte-equal over everything the probe observed**,
 3. the run actually consumed the sequence — at least one `K|` poll event,
 4. neither side recorded any runtime **taint** mark, and
+
+and, over the file as a whole:
+
 5. the **static backstop** finds no place where a stub-derived value could
-   decide a branch nothing observed.
+   decide a branch nothing observed,
+6. **at least one authored sequence ran to completion** (`OK`, not `CAP`),
+7. **every proto in the chunk is `L3`**.
 
 Anything else refuses, with a reason from
 `probe_keyseq.REFUSAL_KINDS` = `divergent | taint | taint-static |
-no-key-poll | probe-error`. The badge is `cov`, the fraction of the shipped
-artifact's **protos** the run entered.
+no-key-poll | truncated | not-l3 | probe-error`. The badge is `cov`, the
+fraction of the shipped artifact's **protos** the **completed** runs entered.
 
 Condition 3 is what stops the gate being L1.75 with a better name: without it
 any of the 229 files could be handed a sequence it never reads and granted on
 trace equality alone. Condition 5 is what stops it being an *elaborate* L1.75
 — see below; it was added in round 1 after review found twelve ways to launder
 a stub value into a branch decision with the four other conditions all green.
+
+Conditions 6 and 7 were added in the M5 final fix round, and both were **holes
+that had shipped**:
+
+* Condition 2 used to say "byte-equal" flatly, and `evaluate` never looked at
+  `header`, so a run stopped at `MAX_EVENTS = 3000` compared equal *over its
+  prefix* with nothing recorded anywhere. Demonstrated:
+  `for i=1,5000 do engine.Go(i) end engine.OriginalTail()` against the same
+  loop ending in `engine.COMPLETELY_DIFFERENT_TAIL()` — both `CAP|3001`,
+  byte-equal, no taint, `granted=True, cov=1.0`. It is deliberately **"at
+  least one"** and not "all": the degenerate sequences never halt (measured
+  with the cap raised 1000x, `snr_lib.lua` under `tail=CIRCLE` reports
+  `CAP|3000001`), and every one of the five authored files has one, so
+  requiring all would put L2 reach at 0 permanently.
+* The static backstop reads the **original** only, so it speaks for the
+  artifact just while the two are field-identical. They otherwise diverge in
+  shape: on `snr_music.lua` the original taints
+  `{compare 36, length 1, launder 1, loop 3, truthiness 2}` and its shipped
+  fallback text taints `{compare 3, loop 16}` — the `__pld_R` box model hides
+  33 compare sites and invents 13. So **L2 today certifies only field-identical
+  artifacts**; extending it to hybrids or fallback text is M6 work and needs
+  the artifact analysed too, not this condition relaxed.
+
+Measured cost of both: **none.** Reach is 1/5 authored files before and after
+(`snr_lib.lua`, `cov` 1.0, 3/3 protos, block interval [0.3509, 0.9123] of 57 —
+its two completing sequences alone give the same coverage as all three), and
+`corpus/ledger.jsonl` is byte-unchanged. The four refused files fail condition
+5 first and would also fail condition 7 (17 of 147, 4 of 6, 4 of 6, 2 of 5
+protos not `L3`); the order of the last two checks is what decides which
+reason they report, and it keeps the more informative taint finding.
 
 ### Taint: two instruments, because one is structurally blind
 
@@ -2729,8 +2787,9 @@ exemption (`stash = sys.a` then `if stash == "x"`). A sound version would have
 to prove the write dominates every read *and* that the written value is not
 itself stub-derived; it was deleted instead, because it was measured to buy
 nothing — with it gone the CLI is still 1/5 with the same file granted.
-`snr_lib` has 0 globals that are both read and written; `snr_common` has 72. Four flag kinds, **all of which
-refuse**:
+`snr_lib` has 0 globals that are both read and written; `snr_common` has 72.
+**Six** flag kinds, all of which refuse (this line said "four" while the table
+under it listed six):
 
 | kind | site |
 | --- | --- |
@@ -2743,10 +2802,16 @@ refuse**:
 
 `blind-truthiness` was very nearly left out, on the prediction that
 `if someGlobal then` is common enough that refusing on it would take reach to
-zero. **The prediction was wrong.** Measured: `snr_common` 17, `snr_graphic`
-9, `snr_memory` 9, `snr_music` 2, `snr_lib` **0** — so including it costs
-nothing here and makes condition 5 the literal property instead of an
-approximation of it.
+zero. **The prediction was wrong.** Re-measured 2026-08-13: `snr_common`
+**20**, `snr_graphic` 9, `snr_memory` 9, `snr_music` 2, `snr_lib` **0** — so
+including it costs nothing here and makes the condition the literal property
+instead of an approximation of it. (The 17 this line carried for `snr_common`
+predates the later rounds' widening of what counts as stub-derived.) The full
+census, same run: `blind-compare` 236 / 58 / 48 / 36 / 0, `blind-loop` 50 /
+19 / 10 / 3 / 0, `blind-launder` 3 / 1 / 2 / 1 / 0, `blind-length` 0 / 7 / 0 /
+1 / 0, and **`blind-harness` 0 on all five** — so `blind-harness`'s evidence
+is *entirely synthetic*, and a green corpus says nothing about whether it
+works.
 
 ### The trusted-callee rule, and why it is an allowlist
 
@@ -2842,16 +2907,23 @@ should not:
 consecutive review rounds each found the new hole inside the code written to
 close the previous one — twelve routes in round 0, four in round 2, eight more
 in round 3 — and each round's list of "what remains" claimed to be the whole
-of it. Treat the three below as the residue I could not close, and assume
-there are others.
+of it. Treat the four below as the residue I could not close, and assume
+there are others. (This sentence said "three" while the list under it had
+four; the harness-state bullet is the one that kept getting dropped, and
+`scripts/probe_keyseq.py`'s own module docstring omitted it outright until the
+M5 final fix round.)
 
 * **A stub passed as an ARGUMENT.** `static_taint` is intra-proto and a
   parameter is a root, so `decide(sys.a)` with the comparison inside `decide`
   is not seen. (The RETURN direction is covered; so is the aliased launderer
   `local ts = tostring; ts(stub)`.)
-* **A value stored into a script-built table and read back.** `t.x = stub`
-  then `if t.x == "a"`; `SETTABLE` is not tracked. Indexing off a stub-derived
-  table, or at a stub-derived **key** (`t[sys.k]`), both are.
+* **A value stored into a script-built table and read back.**
+  `local t = { x = stub }` then `if t.x == "a"`; `SETTABLE` is not tracked.
+  Indexing off a stub-derived table, or at a stub-derived **key**
+  (`t[sys.k]`), both are. The committed fixture uses the constructor rather
+  than `local t = {} t.x = stub`, because the two-statement form is one this
+  pipeline cannot certify (`mismatch: code`) and grant condition 7 would then
+  refuse it as `not-l3` before taint got a word in.
 * **Any other harness state carried between calls.** `blind-harness` closes
   the argument boundary for the callees currently in `_CLEAN_CALLEES`; a
   register may-analysis still cannot *follow* taint through the harness, so a
@@ -2991,10 +3063,14 @@ of that table.
 
 The property is asserted on the **original's** trace as well as ours, which is
 the whole point: trace equality is already the L2 gate's job and says nothing
-if both sides regress together. Measured this session, all ten injected bug
-shapes (three of them the playbook's own) still fail the property when the
-*original* side is replaced by `luac_sz4`-compiled mutated source so the two
-traces are byte-equal. One of the ten is a **key-polarity swap**, found by
+if both sides regress together. That guarantee comes from the two property
+tests applying their property function to each trace **separately**, after
+requiring the traces equal — not from the injections, which mutate only the
+artifact side in the committed parametrisation. As an out-of-tree exercise
+(re-run each round, not committed), all ten injected bug shapes — three of
+them the playbook's own — still fail the property when the *original* side is
+replaced by `luac_sz4`-compiled mutated source so the two traces are
+byte-equal. One of the ten is a **key-polarity swap**, found by
 review: exchanging the two direction keys' names reaches the same five
 rectangles in reverse order, which `set()` erases, so it passed every other
 clamp assertion until an explicit "the two keys move the display in opposite
