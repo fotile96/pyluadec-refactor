@@ -323,29 +323,38 @@ def test_self_dynamic_key_falls_back_to_index_expr_without_duplicating_receiver(
 
 def test_loop_var_never_gets_a_localdecl(tmp_path):
     """FORPREP/FORLOOP's loop variable register (rc.loop_vars) must never be
-    the target of a LocalDecl emitted by reconstruct_straight -- it is
+    the target of a LocalDecl emitted while walking the loop's BODY -- it is
     declared by the `for` statement itself (Task 6/7), not by this layer.
 
     'for i = 1, 3 do i = i + 10 print(i) end' is deliberately chosen so the
     loop body *writes back* to the loop variable (legal Lua: reassigning i
     inside the body doesn't affect iteration) -- this is the one shape that
     actually calls write_reg on a loop_vars register and would surface a
-    missing "pre-seed declared" guard. A body that only *reads* i (e.g.
-    plain 'print(i)') never calls write_reg for register 3 at all, so it
-    would pass even with that guard entirely missing -- see the comment in
-    Reconstructor.__init__ (`self.declared = set(rc.loop_vars)`) for why the
-    guard is needed and this file's mutation (a) below for the fault
-    injection that confirms it's load-bearing.
+    missing declaration. A body that only *reads* i (e.g. plain 'print(i)')
+    never calls write_reg for register 3 at all, so it would pass even with
+    the declaration entirely missing -- see this file's mutation (a) below
+    for the fault injection that confirms it's load-bearing.
+
+    Driven through `declare_loop_vars` rather than through a whole-function
+    pre-seed in `Reconstructor.__init__`, because that is how the printer
+    drives it since M5 task 5: the declaration lives inside the
+    `open_scope`/`close_scope` pair around the body, so the name goes out of
+    scope again at the loop's `end` exactly as Lua's does. See
+    `Reconstructor.declare_loop_vars`.
     """
     from pyluadec.express.names import classify_registers
-    from pyluadec.express.reconstruct import reconstruct_straight, LocalDecl, Assign
+    from pyluadec.express.reconstruct import Reconstructor, LocalDecl, Assign
     from pyluadec.lift import Op
     p, fn = _proto_and_fn("for i = 1, 3 do i = i + 10 print(i) end", tmp_path)
     rc = classify_registers(fn)
     assert rc.loop_vars
     body_pcs = [pc for pc in sorted(fn.instrs)
                 if fn.instrs[pc].ri.op not in (Op.FORPREP, Op.FORLOOP)]
-    stmts = reconstruct_straight(fn, tuple(fn.instrs[pc] for pc in body_pcs), rc, depth=0)
+    rec = Reconstructor(fn, rc, depth=0)
+    snap = rec.open_scope()
+    rec.declare_loop_vars(rc.loop_vars)
+    stmts = rec.stmts_for(tuple(fn.instrs[pc] for pc in body_pcs))
+    rec.close_scope(snap)
     declared_regs = {r for s in stmts if isinstance(s, LocalDecl) for r in s.regs}
     assert not (declared_regs & rc.loop_vars)
     # and the write really did happen, as an Assign (not silently dropped)

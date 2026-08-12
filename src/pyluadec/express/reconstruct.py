@@ -187,11 +187,14 @@ class Reconstructor:
         # instead -- moved into names.py so RegClass.temps means what its
         # docstring says for every reader, not just this module).
         # loop_vars are declared by the `for` statement itself (Task 6/7's
-        # NumericFor/GenericFor printer), never by this module -- pre-seed
-        # them into `declared` so that if the loop body ever writes back to
-        # the loop variable (legal Lua: `for i=1,3 do i=i+10 ... end`
-        # reassigns i without affecting iteration), write_reg emits an
-        # Assign, never a second LocalDecl.
+        # NumericFor/GenericFor printer), never by this module. They are NOT
+        # seeded here: their scope is the loop's body, so the printer calls
+        # `declare_loop_vars` INSIDE the `open_scope`/`close_scope` pair that
+        # brackets that body (M5 task 5). Seeding them whole-function -- which
+        # is what this line did through M4 -- makes `write_reg` print a bare
+        # `l1_3 = 60` for a write to the same slot AFTER the loop, where the
+        # name is out of scope and Lua reads it as a write to a global. See
+        # `declare_loop_vars`.
         # Parameters are already in scope, and already named, when the body
         # starts -- `numparams` registers at the bottom of the frame. Without
         # seeding them, the first write to a parameter's register goes through
@@ -203,7 +206,7 @@ class Reconstructor:
         # `function(s) s = string.gsub(s, ...) ... end` -- a very common shape
         # here -- printed a spurious `local l1_0 = ...` on its first line
         # before this seeding (M3 task 8).
-        self.declared: set[int] = set(rc.loop_vars) | set(range(fn.proto.numparams))
+        self.declared: set[int] = set(range(fn.proto.numparams))
         # (base_reg, expr) for a not-yet-consumed open-result producer
         # (CALL C==0 or VARARG B==0): the instruction that will read the
         # open range [base_reg, dynamic top) consumes this via _consume_open.
@@ -306,6 +309,34 @@ class Reconstructor:
         self.env = dict(snap[1])
         self._pending = set(snap[2])
         self._consumed = set(snap[3])
+
+    def declare_loop_vars(self, regs) -> None:
+        """Bring a `for` statement's own variables into scope for its body.
+
+        Called by `emit.lua`'s `NumericFor`/`GenericFor` arms immediately
+        after `open_scope`, so `close_scope` at the loop's `end` takes them
+        back out again -- which is exactly `lparser.c`'s `forbody`
+        (`new_localvar` for the control triple and the visible variables,
+        then `enterblock`/`leaveblock` around the body).
+
+        Two things depend on the registers being in `declared` while the body
+        is walked: a body that writes back to the loop variable (legal Lua --
+        `for i = 1, 3 do i = i + 10 end` reassigns `i` without affecting
+        iteration) must print an `Assign`, not a second `local`; and a body
+        that only reads it must find a name rather than a staged expression.
+
+        Two things depend on them being OUT of `declared` afterwards. luac
+        hands the slots straight back to the next statement's expression stack
+        (`leaveblock` restores `fs->freereg = fs->nactvar`), so a later write
+        to the same slot is an ordinary temp or an ordinary fresh local -- and
+        printing it as `l1_3 = ...` names a variable that is no longer in
+        scope, which Lua compiles as a write to a GLOBAL. Measured on
+        `snr_novel.lua:main_6` (`for l1_3 = 0, 20 do ... end` followed by
+        `switchScreen(0, "", 60)`, whose third argument lands in slot 3):
+        before this change the printed chunk carried a `SETGLOBAL "l1_3"` the
+        original never had.
+        """
+        self.declared.update(regs)
 
     def stage(self, reg: int, e: Expr) -> None:
         """Put `e` into `reg` as an UNCONSUMED expression-stack temporary: the

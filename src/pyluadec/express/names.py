@@ -129,7 +129,8 @@ def classify_registers(fn: LirFunction) -> RegClass:
                 seen_forloop_pcs.add(forloop_pc)
             controls |= triple
             loop_vars.add(ri.a + 3)
-            occurrences.append({"triple": triple, "control_pcs": occ_pcs, "loop_start": pc})
+            occurrences.append({"triple": triple, "control_pcs": occ_pcs,
+                                "loop_start": pc, "vars": {ri.a + 3}})
         elif ri.op is Op.FORLOOP and pc not in seen_forloop_pcs:
             # A FORLOOP whose paired FORPREP wasn't found above (malformed/
             # unexpected bytecode) -- still claim it defensively rather than
@@ -138,13 +139,16 @@ def classify_registers(fn: LirFunction) -> RegClass:
             triple = {ri.a, ri.a + 1, ri.a + 2}
             controls |= triple
             loop_vars.add(ri.a + 3)
-            occurrences.append({"triple": triple, "control_pcs": {pc}, "loop_start": pc})
+            occurrences.append({"triple": triple, "control_pcs": {pc},
+                                "loop_start": pc, "vars": {ri.a + 3}})
         elif ri.op is Op.TFORLOOP:
             triple = {ri.a, ri.a + 1, ri.a + 2}
             controls |= triple
-            loop_vars |= set(range(ri.a + 3, ri.a + 3 + ri.c))
+            occ_vars = set(range(ri.a + 3, ri.a + 3 + ri.c))
+            loop_vars |= occ_vars
             loop_start = jmp_targets.get(pc, pc)
-            occurrences.append({"triple": triple, "control_pcs": {pc}, "loop_start": loop_start})
+            occurrences.append({"triple": triple, "control_pcs": {pc},
+                                "loop_start": loop_start, "vars": occ_vars})
     claims: dict[int, list[int]] = {}         # register -> indices into `occurrences`
     own_control_pcs: dict[int, set[int]] = {}  # register -> control pcs of ITS OWN claimers
     for i, occ in enumerate(occurrences):
@@ -211,8 +215,17 @@ def classify_registers(fn: LirFunction) -> RegClass:
         if occ_index in slice_cache:
             return slice_cache[occ_index]
         occ = occurrences[occ_index]
+        slice_cache[occ_index] = _walk_staging(
+            occ, _block_floor(occ["loop_start"]))
+        return slice_cache[occ_index]
+
+    def _walk_staging(occ: dict, floor: int) -> dict[int, set[int]]:
+        """`_staging_slice`'s walk, with the floor supplied by the caller.
+
+        Split out for `_window_floor` below, which needs the same backward
+        slice but must not force a CFG. Everything the walk does is
+        floor-independent; the floor only truncates it earlier."""
         triple: set[int] = occ["triple"]
-        floor = _block_floor(occ["loop_start"])
         attributed: dict[int, set[int]] = {}
         need = set(triple)
         pos = occ["loop_start"]
@@ -237,14 +250,80 @@ def classify_registers(fn: LirFunction) -> RegClass:
                 (eff.writes & need) | (eff.reads & triple))
             need = (need - eff.writes) | (eff.reads & triple)
             pos = best
-        slice_cache[occ_index] = attributed
         return attributed
 
+    window_floor_cache: dict[int, int] = {}
+
+    def _window_floor(occ_index: int) -> int:
+        """The lowest pc this occurrence's ownership window reaches: the first
+        instruction of the staging chain that feeds its header.
+
+        Deliberately computed with **no basic-block floor**, i.e. NOT via
+        `_staging_slice`. `_block_floor` builds the CFG, and this value is
+        needed for every control register of every loop, on every call --
+        including for hand-built `LirFunction`s whose successors point past
+        their own last instruction, which `build_cfg` cannot survive (see
+        `_stack_discipline`'s `block_floor` parameter for why that laziness is
+        load-bearing). Dropping the floor can only make the window WIDER,
+        which pulls more pre-loop defs inside it, which can only make
+        `_control_lifetime_ok` refuse more often -- the pre-M5-task-5
+        behaviour, and the safe direction.
+        """
+        if occ_index not in window_floor_cache:
+            occ = occurrences[occ_index]
+            pcs = set(_walk_staging(occ, ordered[0] if ordered else 0))
+            window_floor_cache[occ_index] = min(
+                pcs | occ["control_pcs"] | {occ["loop_start"]})
+        return window_floor_cache[occ_index]
+
+    # ---- loop WINDOWS: where a `for` header's slots are actually its own ----
+    #
+    # A `for` header owns registers `a..a+2` (the control triple) and `a+3...`
+    # (the visible variables) -- but it owns them only for the pcs its own
+    # statement spans, exactly as `lparser.c`'s `fornum`/`forlist` open a
+    # `BlockCnt` around them and `leaveblock` releases them at the loop's
+    # `end`. Before M5 task 5 that ownership was a whole-FUNCTION property
+    # here, which is what `lparser.c` never says: `leaveblock` restores
+    # `fs->freereg = fs->nactvar` and hands `a..a+3` straight back to the next
+    # statement's expression stack, and luac reuses them immediately
+    # (`for i = 0, 20 do f(i) end  g(0, "", 60)` puts `g`'s callee in `a` and
+    # its third argument in `a+3`).
+    #
+    # The window is `[_window_floor(i), max(control_pcs)]`: from the first
+    # instruction of the staging chain that feeds the header, through the
+    # header, the body and the closing FORLOOP/TFORLOOP -- and nothing else.
+    # A register is looked up per pc against the windows of the occurrences
+    # that claim it; outside all of them the slot is ordinary scratch and the
+    # freereg simulation is its only judge.
+    ctl_win: dict[int, list[int]] = {}       # register -> occurrence indices
+    var_win: dict[int, list[int]] = {}
+    for i, occ in enumerate(occurrences):
+        for r in occ["triple"]:
+            ctl_win.setdefault(r, []).append(i)
+        for r in occ["vars"]:
+            var_win.setdefault(r, []).append(i)
+
+    def _in(idxs, pc: int) -> bool:
+        return any(_window_floor(i) <= pc <= max(occurrences[i]["control_pcs"])
+                   for i in idxs)
+
     def _control_lifetime_ok(r: int) -> bool:
-        """True iff every tracked def and use of r belongs to one claiming
-        loop occurrence's control lifetime: that loop's own FORPREP/FORLOOP/
-        TFORLOOP, or an instruction the backward slice above proved to be
-        part of the chain producing r for that loop's header.
+        """True iff every tracked def and use of r *inside one of r's control
+        windows* belongs to a claiming loop occurrence's control lifetime:
+        that loop's own FORPREP/FORLOOP/TFORLOOP, or an instruction the
+        backward slice above proved to be part of the chain producing r for
+        that loop's header.
+
+        Defs and uses OUTSIDE every window are not asked about at all (M5
+        task 5). They are not the loop's business: the slot has been handed
+        back to the expression stack by then (`leaveblock` restores
+        `fs->freereg = fs->nactvar`), and the ordinary per-definition rules in
+        `_stack_discipline` are the right judge of them. Asking about them is
+        what made `for i = 0, 20 do layerLoad(i, "") end
+        switchScreen(0, "", 60)` (`snr_novel.lua:main_6`) grade `switchScreen`
+        and its first two arguments named locals: the third argument reuses
+        the loop variable's slot, which counted as an assignment to a named
+        local and so ended the statement early.
 
         `controls` is accumulated over EVERY FORPREP/FORLOOP/TFORLOOP in the
         function, purely by register number -- it says nothing about whether
@@ -281,6 +360,12 @@ def classify_registers(fn: LirFunction) -> RegClass:
         extra = {pc for pc in defs.get(r, []) if pc not in exempt}
         extra |= {pc for pc in uses.get(r, []) if pc not in exempt}
         if not extra:
+            # Answered without consulting a window at all -- deliberately, so
+            # a function whose only loop is its whole body never forces
+            # `_window_floor` (and through it the staging walk) to run.
+            return True
+        extra = {pc for pc in extra if _in(ctl_win.get(r, ()), pc)}
+        if not extra:
             return True
         idxs = claims.get(r, ())
         return all(
@@ -312,14 +397,30 @@ def classify_registers(fn: LirFunction) -> RegClass:
     # before it (measured: this alone is the difference between `local l0_1 =
     # g  l0_1 = l0_1()` and `local l0_1 = g()` in
     # `if x then local y = g() print(y) end for k, v in pairs(x) do ... end`).
+    #
+    # Since M5 task 5 all three of the sets below are asked *per pc*, not per
+    # register: a `for` header owns its slots only inside its own extent (see
+    # the extent block above). Outside it the same register number is ordinary
+    # scratch and the simulation must be free to grade it, which is exactly
+    # what `for i = 0, 20 do f(i) end g(0, "", 60)` needs -- with whole-
+    # function seeding, `g`'s third argument (which lands in the loop
+    # variable's slot) counted as a write to a named local, ended the
+    # statement, and promoted `g` and its first two arguments to locals.
+    frame_locals = set(range(fn.proto.numparams)) | set(fn.captured_regs)
+
+    def _known_local(r: int, pc: int) -> bool:
+        return (r in frame_locals
+                or (r in dedicated_controls and _in(ctl_win.get(r, ()), pc))
+                or _in(var_win.get(r, ()), pc))
+
+    def _loop_control(r: int, pc: int) -> bool:
+        return r in controls and _in(ctl_win.get(r, ()), pc)
+
+    def _named_local(r: int, pc: int) -> bool:
+        return r in frame_locals or _in(var_win.get(r, ()), pc)
+
     stack_temps, stack_temp_defs = _stack_discipline(
-        fn, ordered,
-        dedicated_controls | loop_vars | set(range(fn.proto.numparams))
-        | set(fn.captured_regs),
-        frozenset(controls),
-        frozenset(loop_vars) | frozenset(range(fn.proto.numparams))
-        | frozenset(fn.captured_regs),
-        _block_floor)
+        fn, ordered, _known_local, _loop_control, _named_local, _block_floor)
     locals_: set[int] = set()
     temps: set[int] = set()
     # (pc, reg) definitions the reconstructor may stage instead of
@@ -336,6 +437,14 @@ def classify_registers(fn: LirFunction) -> RegClass:
     def all_defs_of(r: int) -> set[tuple[int, int]]:
         return {(pc, r) for pc in defs.get(r, ())}
 
+    def _outside(r: int, spans) -> set[tuple[int, int]]:
+        """The simulation's temp verdicts for `r`'s definitions OUTSIDE the
+        `for` extents that own it. Inside them the header's own rules decide
+        (a proved control triple's staging is a temp, a loop variable's
+        `for`-statement binding is a local); outside, the slot is ordinary
+        scratch and the freereg simulation is the judge."""
+        return {k for k in sim_by_reg.get(r, ()) if not _in(spans, k[0])}
+
     for r in sorted(regs):
         # Parameters and closure-captured registers are named, live locals by
         # construction -- checked FIRST so that the `controls` branch cannot
@@ -348,15 +457,38 @@ def classify_registers(fn: LirFunction) -> RegClass:
         if r < fn.proto.numparams or r in fn.captured_regs:
             locals_.add(r); continue
         if r in controls:
+            spans = ctl_win.get(r, ())
             if r in dedicated_controls:
-                temps.add(r)
-                temp_defs |= all_defs_of(r)
+                # Inside its own extent every def of a proved control slot is
+                # header staging, hence a temp; outside, the simulation
+                # decides. The whole-register verdict follows from the two
+                # (`temps` still means "every tracked def of r is a temp",
+                # which is what `RegClass` documents and what `_read_reg`
+                # falls back on).
+                mine = {(pc, r) for pc in defs.get(r, ()) if _in(spans, pc)}
+                mine |= _outside(r, spans)
+                temp_defs |= mine
+                if defs.get(r) and mine == all_defs_of(r):
+                    temps.add(r)
+                else:
+                    locals_.add(r)
             else:
                 locals_.add(r)
                 temp_defs |= sim_by_reg.get(r, frozenset())
             continue
         if r in loop_vars:
-            locals_.add(r); continue
+            spans = var_win.get(r, ())
+            # A loop variable is a named local for the `for` statement's own
+            # extent and ordinary scratch after it (`lparser.c`'s `forbody`
+            # opens a block around it; `leaveblock` at the loop's `end` gives
+            # the slot straight back).
+            mine = _outside(r, spans)
+            temp_defs |= mine
+            if defs.get(r) and mine == all_defs_of(r):
+                temps.add(r)
+            else:
+                locals_.add(r)
+            continue
         temp_defs |= sim_by_reg.get(r, frozenset())
         if r in stack_temps:
             temps.add(r)
@@ -368,9 +500,9 @@ def classify_registers(fn: LirFunction) -> RegClass:
 
 
 def _stack_discipline(fn: LirFunction, ordered: list[int],
-                      known_locals: set[int],
-                      loop_control_regs: frozenset[int],
-                      named_locals: frozenset[int],
+                      known_local: Callable[[int, int], bool],
+                      loop_control: Callable[[int, int], bool],
+                      named_local: Callable[[int, int], bool],
                       block_floor: Callable[[int], int],
                       ) -> tuple[set[int], set[tuple[int, int]]]:
     """`(registers whose EVERY definition is a luac temporary, the set of
@@ -693,13 +825,13 @@ def _stack_discipline(fn: LirFunction, ordered: list[int],
                 if not _same_block(ent[1], at):
                     ent[3] = 1
                 return
-        if r not in known_locals and r not in loop_control_regs:
+        if not known_local(r, at) and not loop_control(r, at):
             # Not pending and not a known local: either a slot this function
             # never defines, or a second read of an already-consumed temp.
             # Either way it cannot be a pop-once inlinable binding.
             #
-            # `loop_control_regs` is exempted from the poisoning but NOT from
-            # being pushed (that is `known_locals`' job). A `for` header's own
+            # `loop_control` is exempted from the poisoning but NOT from
+            # being pushed (that is `known_local`'s job). A `for` header's own
             # FORLOOP/TFORLOOP re-reads its control slots on every iteration,
             # long after FORPREP consumed the staged values; those reads are
             # the loop's own bookkeeping, not a decompiler-visible second use,
@@ -770,9 +902,9 @@ def _stack_discipline(fn: LirFunction, ordered: list[int],
     #    sits below every pending temp (pending entries are only pushed at or
     #    above freereg, which is at or above `nactvar`), so the `pop_ge` has
     #    already drained the stack and `promote_all()` finds it empty. The
-    #    residual gap is the same one as in (1): `known_locals` is a
-    #    whole-function set, so a slot that was a named local in an exited
-    #    scope is still treated as one here. Should that ever leave a lower
+    #    residual gap is the same one as in (1): a slot released by an
+    #    ordinary `do ... end` block's exit (as opposed to a `for`'s, which
+    #    M5 task 5 made pc-scoped) is still treated as a named local here. Should that ever leave a lower
     #    pending entry behind, this `promote_all()` fires in the SAFE
     #    direction (promote to local), which is why it is kept rather than
     #    deleted as dead.
@@ -787,7 +919,7 @@ def _stack_discipline(fn: LirFunction, ordered: list[int],
 
         def push(regs) -> None:
             for r in regs:
-                if r not in known_locals:
+                if not known_local(r, pc):
                     pending.append([r, pc, 0, 0])
                     last_def[r] = pc
 
@@ -827,7 +959,7 @@ def _stack_discipline(fn: LirFunction, ordered: list[int],
             writes = sorted(li.effects.writes)
             if writes:
                 pop_ge(writes[0])
-                if writes[0] in named_locals:
+                if named_local(writes[0], pc):
                     promote_all()                  # assignment to a named local
                 else:
                     push(writes)

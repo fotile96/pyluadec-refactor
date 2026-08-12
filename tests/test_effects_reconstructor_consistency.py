@@ -532,12 +532,24 @@ _WRAPPED_ACCESSORS = frozenset({
     "_read_reg", "take_expr", "_stable_ref", "_value_run",
     "stage", "force_materialize", "write_reg", "_emit_multi"})
 
-# The one `reg`-taking method deliberately NOT wrapped. It neither reads nor
-# writes `reg`'s slot: it scans the *other* still-staged entries of `env` for
-# a `LocalExpr(reg)` that a pending write would invalidate. Its `reg` is
-# always the register `force_materialize` is about to write and has already
-# recorded, so wrapping it would double-count, not add coverage.
-_UNWRAPPED_BY_DESIGN = frozenset({"_refuse_stale_reference"})
+# The `reg`-taking methods deliberately NOT wrapped.
+#
+# `_refuse_stale_reference` neither reads nor writes `reg`'s slot: it scans
+# the *other* still-staged entries of `env` for a `LocalExpr(reg)` that a
+# pending write would invalidate. Its `reg` is always the register
+# `force_materialize` is about to write and has already recorded, so wrapping
+# it would double-count, not add coverage.
+#
+# `declare_loop_vars` (M5 task 5) does not touch a register's VALUE at all --
+# it only brings the `for` statement's own variables into scope for the
+# duration of its body, i.e. it edits `declared`, never `env`/`_pending`.
+# The registers it names are the ones `emit.lua`'s `NumericFor`/`GenericFor`
+# arms have already put through `name_for` for the header line, which this
+# gate's `named()` wrapper does record; wrapping this too would count the
+# same registers a second time against whichever opcode's frame happened to
+# be open.
+_UNWRAPPED_BY_DESIGN = frozenset({"_refuse_stale_reference",
+                                  "declare_loop_vars"})
 
 # `_consume_open(start)` is not in either set: its parameter is a range start
 # rather than a register, and every slot it reads goes through `_read_reg`.

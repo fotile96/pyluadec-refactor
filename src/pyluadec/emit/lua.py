@@ -461,6 +461,7 @@ class Printer:
             # Kept for symmetry and for non-luac input; see
             # Reconstructor.open_scope.
             snap = self.recon.open_scope()
+            self.recon.declare_loop_vars((a + 3,))
             out += self.region(r.body, indent + 1)
             self.recon.close_scope(snap)
             out.append(f"{pad}end")
@@ -480,6 +481,7 @@ class Printer:
             # Kept for symmetry and for non-luac input; see
             # Reconstructor.open_scope.
             snap = self.recon.open_scope()
+            self.recon.declare_loop_vars(range(a + 3, a + 3 + c))
             out += self.region(r.body, indent + 1)
             self.recon.close_scope(snap)
             out.append(f"{pad}end")

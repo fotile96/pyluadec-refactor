@@ -108,24 +108,50 @@ def test_while_true_break_guard_recovers_loop():
 
 
 def test_counter_closure_and_dispatch_mix():
-    """KNOWN GAP: ships fallback (`L1`), not `L3` -- measured 2026-08-11.
+    """CLOSED by M5 task 5: the whole chunk now certifies `L3`.
 
-    `main`'s own body DOES structure and print (`build_sir` accepts it,
-    `print_chunk` succeeds), but the recompiled candidate genuinely differs
-    in shape from the original: `maxstacksize` 18 vs 20, 13 vs 15 constants,
-    and the `code` array differs from early in the function (verified via
-    `certify_proto(root, is_chunk_root=True).mismatches`). This is the
-    "prints but does not certify" residual documented in
-    `docs/runbooks/structured-pipeline.md`'s "Current capability boundary"
-    (35 unique protos, post-task-13) -- specifically Task 6's "re-census"
-    material (constant-table-ordering / extra-instruction clusters B/D), NOT
-    the per-register-number classification bug task 13 already fixed (that
-    cluster is down to 4). Every OTHER proto in this chunk -- `make_counter`
-    and its returned closure, and all four `op_N` helpers -- certifies `L3`
-    independently; only the call-heavy dispatcher body of `main` itself does
-    not, which is exactly the point of per-proto (not per-chunk)
-    certification: one proto's gap does not poison its siblings' levels,
-    only the shipped chunk artifact (which is all-or-nothing on the root).
+    ## What it used to be, and why the recorded mechanism was wrong
+
+    Through M4 this shipped fallback, and the docstring attributed it to
+    "constant-table-ordering / extra-instruction clusters B/D" -- the same
+    kind of misattribution M5 task 4 found on the *other* pinned case in this
+    file. The stated symptoms were real (`maxstacksize` 18 vs 20, 13 vs 15
+    constants) but they were consequences, not the cause. Diffing the printed
+    chunk across the fix shows what it actually was, all of it one mechanism:
+    a `for` statement's control slots and loop variable were treated as owned
+    by the loop for the WHOLE function rather than for the loop's own extent.
+
+        -   l0_10 = l0_0                              (first loop's body:
+        -   l0_10 = l0_10(...)                         call staged into the
+        -   l0_5[l0_9] = l0_10                         *next* loop's control
+        +   l0_5[l0_9] = l0_0(...)                     slot, so materialized)
+
+        - local l0_7 = 1                             (second loop's header
+        - local l0_8 = 80                             operands, materialized
+        - l0_9 = 1                                    -- and `l0_9`, the FIRST
+        - for l0_10 = l0_7, l0_8, l0_9 do             loop's variable, was
+        + for l0_10 = 1, 80, 1 do                     still `declared`, so
+                                                      this line compiled to a
+                                                      SETGLOBAL)
+
+        - l0_7 = print                               (after the second loop,
+        - l0_8 = l0_6                                  slots 7/8 are ordinary
+        - l0_7(l0_8)                                   scratch again; two more
+        + print(l0_6)                                  SETGLOBALs)
+
+    The three `SETGLOBAL`s are where the two extra constants came from, and
+    the materialized locals are where the two extra stack slots came from.
+    See `express.names.classify_registers`' loop-window block and
+    `express.reconstruct.Reconstructor.declare_loop_vars`.
+
+    ## What it pins now
+
+    Every proto in the chunk certifies, so the shipped artifact is structured
+    source rather than the fallback state machine -- asserted both ways
+    (`certs` levels *and* the absence of `__pld_pc` in `out.source`), because
+    the level and the artifact are deliberately decoupled (a chunk ships
+    structured iff its ROOT certifies) and a test that checked only one of
+    them would not notice the other regressing.
     """
     src = """
         local function make_counter(base, twist)
@@ -180,14 +206,14 @@ def test_counter_closure_and_dispatch_mix():
         print(sum)
     """
     out = _run(src, "1271004\n")
-    assert out.certs["main"].level == "L1"       # measured; see docstring
+    assert out.certs["main"].level == "L3"       # was L1 through M4; see docstring
     assert out.certs["main_0"].level == "L3"     # make_counter
     assert out.certs["main_0_0"].level == "L3"   # make_counter's returned closure
     assert out.certs["main_1"].level == "L3"     # op1
     assert out.certs["main_2"].level == "L3"     # op2
     assert out.certs["main_3"].level == "L3"     # op3
     assert out.certs["main_4"].level == "L3"     # op4
-    assert b"__pld_pc" in out.source             # artifact: fallback chunk (root not L3)
+    assert b"__pld_pc" not in out.source         # artifact: structured (root L3)
 
 
 def test_if_and_elseif_conjunctions_preserved():
