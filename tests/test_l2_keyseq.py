@@ -1323,6 +1323,112 @@ end
     assert (r.granted, r.reason) == (False, "divergent")
 
 
+# A branch that ONLY the capped sequence enters, with the divergence inside it
+# and past the event cap. Everything the grant checks is clean: both specs
+# agree over what was observed, one completes, taint is empty, both protos are
+# `L3`.
+_BRANCH_ORIGINAL = b"""
+function main()
+  if pressButton("CIRCLE") == true then
+    for i = 1, 5000 do engine.Go(i) end
+    engine.OriginalTail()
+  else
+    engine.Short()
+  end
+end
+"""
+_BRANCH_ARTIFACT = _BRANCH_ORIGINAL.replace(
+    b"engine.OriginalTail()", b"engine.COMPLETELY_DIFFERENT_TAIL()")
+
+
+def test_a_branch_only_a_capped_sequence_enters_is_granted_on_a_truncated_prefix():
+    """**KNOWN-OPEN ROUTE. This asserts what the gate DOES, not what it
+    should do** -- the same style as
+    `test_what_the_two_taint_instruments_still_cannot_see`, which commits the
+    taint gaps as fixtures that grant and should not. If a future change makes
+    this refuse, that is an improvement and this test is what should be
+    deleted, loudly.
+
+    C1's guard converted "the whole grant can rest on a truncated prefix" into
+    "part of it can". Constructed by review and reproduced 2026-08-13: the
+    `else` arm is entered only by `tail=`, which completes at `OK|5`; the
+    divergent tail lives in the `then` arm, entered only by
+    `k=1,CIRCLE;tail=`, which caps at `CAP|3001` before reaching it.
+
+    **`cov` cannot see it**, and that is why this is not a cheap fix: BOTH
+    specs enter 2 of 2 protos, so the badge reads 1.0 while a whole branch
+    went unobserved. Closing it needs branch-level coverage or a post-cap
+    divergence check. Routed to M6 (`m3-backlog.md`, M6 agenda 2).
+
+    Two things NOT closed by C1 and stated here so neither reads as fixed:
+    this route, and the fact that truncation still does not reach
+    `corpus/ledger.jsonl` -- `snr_lib`'s granted row stores `{"cov": 1.0}`
+    with no completed/total count, because the ledger is byte-frozen for this
+    branch. `detail` carries it; the ledger does not.
+    """
+    from scripts.probe_keyseq import evaluate, header, static_refusal
+    from pyluadec.ingest import load_bytes
+    from pyluadec.pipeline import decompile_chunk
+    bc = _bytecode(_BRANCH_ORIGINAL)
+    specs = ["tail=", "k=1,CIRCLE;tail="]
+    got = []
+    for spec in specs:
+        o = probe_raw(bc, is_source=False, spec=spec)
+        d = probe_raw(_BRANCH_ARTIFACT, is_source=True, spec=spec)
+        assert o == d, f"{spec}: the fixture needs both sides to agree"
+        got.append(header(o))
+    assert got == [("OK", 5, 0), ("CAP", 3001, 0)], got
+    assert static_refusal(load_bytes(bc)) == {}
+    assert set(decompile_chunk(load_bytes(bc)).levels.values()) == {"L3"}
+
+    r = evaluate(bc, _BRANCH_ARTIFACT, specs)
+    assert (r.granted, r.cov) == (True, 1.0), r.detail
+    assert "1/2 sequence(s) completed" in r.detail
+    assert "2/2 protos" in r.detail, (
+        "the point of the route: proto coverage is blind to the branch")
+
+
+def test_the_badge_does_not_credit_a_proto_only_a_capped_run_entered():
+    """N2. `evaluate` computes `coverage(artifact_src, complete)`, not
+    `(..., specs)`, and reverting that one word left the full 865-test suite
+    green -- this branch's recurrence pattern landing inside the fix round for
+    it. This is the behavioural pin.
+
+    `spin` is reachable only from the `else` arm, which only the non-halting
+    sequence takes, so it is entered exclusively by a run that was cut off.
+    Measured 2026-08-13 on this fixture: over both specs `protos_entered` is
+    **3 of 3** (`cov` 1.0); over the completing spec alone it is **2 of 3**
+    (`cov` 0.6667). The badge must report the second, or it credits the
+    artifact for a proto no completed observation ever reached.
+
+    `entry=main` matters: without it the probe calls every global the chunk
+    defines, `spin` among them, and both sequences cap.
+    """
+    from scripts.probe_keyseq import coverage, evaluate, header
+    src = b"""
+function spin()
+  while true do engine.Spin() wait(1) end
+end
+function main()
+  if pressButton("CIRCLE") == true then
+    engine.Chose()
+  else
+    spin()
+  end
+end
+"""
+    finishes, caps = "entry=main;k=1,CIRCLE;tail=", "entry=main;tail="
+    bc = _bytecode(src)
+    assert header(probe_raw(bc, is_source=False, spec=finishes))[0] == "OK"
+    assert header(probe_raw(bc, is_source=False, spec=caps))[0] == "CAP"
+    assert coverage(src, [finishes, caps]).protos_entered == 3
+    assert coverage(src, [finishes]).protos_entered == 2
+
+    r = evaluate(bc, src, [finishes, caps])
+    assert (r.granted, r.cov) == (True, 0.6667), r.detail
+    assert "2/3 protos" in r.detail and "1/2 sequence(s) completed" in r.detail
+
+
 def test_a_chunk_that_is_not_fully_l3_cannot_be_granted():
     """I1. `static_taint` analyses the ORIGINAL only, so it speaks for the
     shipped artifact just while the two are field-identical -- which is what

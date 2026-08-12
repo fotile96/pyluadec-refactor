@@ -113,6 +113,17 @@ class LedgerEntry:
     # the fraction of the artifact's protos the completed runs entered, and
     # `scripts/probe_keyseq.py`'s module docstring lists four gaps the pair
     # still cannot see. The full rule is `probe_keyseq.evaluate`.
+    #
+    # **What this field does NOT record: truncation.** A granted row stores
+    # `{"cov": <n>}` and nothing else, so "1 of 2 sequences ran to completion"
+    # lives only in `L2Result.detail`, which is CLI-facing and never
+    # serialised. `snr_lib.lua`'s granted row is `{"cov": 1.0}` today. Left as
+    # is on purpose for the M5 branch -- adding a key rewrites every driven
+    # row and this file is the branch's byte-frozen artifact -- but it is
+    # OPEN, not closed: `tests/test_l2_keyseq.py::test_a_branch_only_a_capped_
+    # sequence_enters_is_granted_on_a_truncated_prefix` shows a grant a capped
+    # run can still carry alone for one branch, and the ledger says nothing
+    # about it. M6 (`m3-backlog.md`, M6 agenda 2).
     l2: dict | None = None
 
 

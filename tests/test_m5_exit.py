@@ -322,6 +322,18 @@ def test_the_ledger_metrics_actually_reject_a_worse_ledger(name):
         # rows and `occurrence L3` counts occurrences, and no row carries
         # fewer than one occurrence, so `need` row demotions cost at least
         # `need` occurrences no matter which rows are chosen.
+        #
+        # **Unit mismatch, stated rather than left to be found**: `need_total`
+        # is in the units of `name`'s numerator (rows, for `unique L3`) and is
+        # subtracted from `other`'s numerator (occurrences). That is sound for
+        # the one declared pair only because rows <= occurrences, i.e. this is
+        # a LOWER bound on the collateral and the assertion errs toward
+        # REJECTING an exemption. For a hypothetical pair where the units run
+        # the other way it would err toward accepting one -- which is why the
+        # `pytest.raises` below is not redundant with it: that half requires
+        # the sibling gate to actually be red on the actual mutation, in the
+        # actual units. Any second entry in `FORCED_COUPLING` needs this
+        # arithmetic re-derived for its own pair before it is added.
         clean = _rows()
         best_num, best_den = ledger_metrics(clean)[other]
         assert (best_num - need_total) / best_den < LEDGER_FLOORS[other], (

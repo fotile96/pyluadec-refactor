@@ -18,8 +18,10 @@ A file is granted `L2` when, under one authored key sequence:
 5. **at least one authored sequence ran to completion** (`header(...)[0] ==
    "OK"`). A run stopped at `MAX_EVENTS` reports `CAP`, and "byte-equal" then
    means "equal over the first 3000 events"; such a run is still required to
-   agree, but it cannot be the evidence a grant rests on. See `evaluate` for
-   why this is "at least one" and not "all", which is a measurement.
+   agree, but it cannot be the ONLY evidence a grant rests on. It CAN still be
+   the only evidence for a branch no completing sequence enters -- a known-open
+   route with a committed fixture; see `evaluate`, which also says why this is
+   "at least one" and not "all" (a measurement, not a preference).
 
 6. **no stub-derived value can decide a branch unobserved** -- the static
    backstop over the original bytecode (`static_taint`) finds none of the six
@@ -1278,10 +1280,43 @@ def evaluate(original: bytes, artifact_src: bytes,
     `granted=True, cov=1.0`.
 
     A capped sequence now proves only what it observed. It is still REQUIRED
-    to agree -- nothing was relaxed -- but it can no longer be the evidence a
-    grant rests on: at least one sequence must reach `OK`, and the coverage
-    badge is computed over those sequences alone, so the badge is never backed
-    by an observation that was cut off.
+    to agree -- nothing was relaxed -- and it can no longer be the ONLY
+    evidence a grant rests on: at least one sequence must reach `OK`, and the
+    coverage badge is computed over those sequences alone, so no proto is
+    credited to the badge on the strength of a run that was cut off.
+
+    ## What the guard does NOT buy, measured
+
+    **A capped run can still be the only evidence for a BRANCH that no
+    completing sequence enters.** Constructed by review and reproduced
+    2026-08-13 -- `tests/test_l2_keyseq.py::test_a_branch_only_a_capped_
+    sequence_enters_is_granted_on_a_truncated_prefix` is that fixture,
+    committed as a KNOWN-OPEN ROUTE that grants and should not, in the same
+    style as `test_what_the_two_taint_instruments_still_cannot_see`:
+
+        if pressButton("CIRCLE")==true then
+          for i=1,5000 do engine.Go(i) end engine.OriginalTail()
+        else engine.Short() end
+
+    with the artifact differing only in the tail call. Specs `["tail=",
+    "k=1,CIRCLE;tail="]` give `OK|5` (equal) and `CAP|3001` (equal prefix),
+    taint is empty, both protos are `L3` -- `granted=True, cov=1.0`. The
+    divergence lives in the branch only the capped sequence enters, so the
+    completed run says nothing about it.
+
+    `cov` does not notice, and cannot: **both** specs enter 2 of 2 protos, so
+    proto granularity is blind to a branch. Closing this needs branch-level
+    coverage or a post-cap divergence check, neither of which is cheap; routed
+    to M6 (`docs/runbooks/m3-backlog.md`, M6 agenda 2).
+
+    **The one live grant is not resting on this**, and that is a measurement
+    rather than an argument: `snr_lib.lua`'s capped `tail=CIRCLE` was re-run
+    at 10x the budget with every decimal token normalised out, and it produces
+    **15 distinct event shapes at 3000 events and the same 15 at 30000, none
+    new** -- the post-cap tail is pure repetition of the menu's redraw/poll
+    cycle. That is a property of THIS sequence that was measured once; **the
+    gate does not check it**, and a future sequence would need its own
+    measurement.
 
     **Not "every sequence must reach `OK`", and that is a measurement, not a
     preference.** These menu loops are re-entrant, and the degenerate
@@ -1374,6 +1409,16 @@ def evaluate(original: bytes, artifact_src: bytes,
             return L2Result(False, "taint-static", None, kinds)
         # The backstop above read the ORIGINAL; this is what makes that the
         # same program as the artifact. See the docstring.
+        #
+        # `levels` is TRUSTED, not verified: it exists so a caller that has
+        # already certified this chunk does not pay for a second pass, and the
+        # only in-tree caller (`scripts/run_corpus.py`) passes the `res.levels`
+        # of the very `decompile_chunk` whose `res.source` is `artifact_src`.
+        # A caller could hand over a map that says whatever it likes -- and one
+        # does, in `tests/test_l2_keyseq.py::test_a_chunk_that_is_not_fully_l3_
+        # cannot_be_granted`, deliberately, to show the check is what decides.
+        # That is a test affordance; if a second production caller ever appears
+        # this should recompute and compare rather than trust.
         lv = chunk_levels(original, root) if levels is None else levels
         not_l3 = sum(1 for v in lv.values() if v != "L3")
         if not_l3:
