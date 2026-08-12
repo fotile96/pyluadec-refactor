@@ -1135,7 +1135,7 @@ reason before and after, plus `scripts/run_corpus.py` reproducing
 follow its shape, including the synthetic fixture that proves the row is
 load-bearing even when the corpus cannot move.
 
-### Closed — M5 task 1 (commit `PENDING`)
+### Closed — M5 task 1 (commit `b0852ff`)
 
 The row is now `ARB / READ_HEAP / PURE`. `src/pyluadec/lift/effects.py`'s
 `UNM | LEN` branch was **split** so the regrade could not drag `UNM` with it
