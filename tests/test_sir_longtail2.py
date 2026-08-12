@@ -242,6 +242,99 @@ def test_the_memo_key_separates_ranges_that_differ_only_in_thread_target():
     assert memo[(4, 9, None, None, 12)] is r
 
 
+# ------------------------------------------ dead code luac emits unconditionally
+#
+# Diagnosis (measured 2026-08-12). Two things `lparser.c` emits without knowing
+# whether anything can reach them:
+#
+#   * the else-skip, `ifstat`'s `luaK_concat(&escapelist, luaK_jump(fs))`,
+#     which is dead whenever the then-block ends in `break` or `return`; and
+#   * the RETURN after a TAILCALL, `retstat`'s `luaK_ret` (lparser.c:1100-1116).
+#
+# Both land INSIDE the enclosing branch or loop body, where
+# `_verify_single_entry` refused them as `branch body block at pc N is
+# unreachable` -- 10 unique corpus protos, smallest `snr_common.lua:main_59`
+# (17 instrs) and `snr_common.lua:main_29_0` (18). `_is_dead_else_skip` now
+# admits exactly those two shapes and nothing else.
+#
+# `else break end` needs a second thing on top: `breakstat`'s own `luaK_jump`
+# absorbs the pending false-exit (lparser.c:1054-1067), so the `if`'s
+# false-exit points at the loop exit and the correct join has to be recovered
+# from the layout -- `_match_else_break`.
+
+DEAD_CODE_CASES = [
+    # main_59's shape: the false-exit threaded onto the else block's `break`.
+    b"local n = 0 for i = 1, 10 do if t[i] ~= -1 then n = n + 1 else break end end return n",
+    b"for i = 1, 10 do if t[i] then return i else break end end",
+    b"while c do if a then f() else break end end",
+    b"while c do if a then f() else break end g() end",
+    b"while true do if a then f() else break end end",
+    b"for i = 1, 3 do if a then f() else break end end",
+    # nested: BOTH breaks match `_match_else_break`'s pattern, and only the
+    # outer one is the outer if's else (the last-first ordering).
+    b"while true do if a then if b then x() else break end else break end end",
+    # main_29_0's shape: TAILCALL leaves a dead RETURN in each branch body.
+    b'local function f(a, b) if a == true then return g(b .. "_on") '
+    b'else return g(b .. "_off") end end',
+    # the dead else-skip with a `return` rather than a `break` in the then-arm
+    b"local function f(a) if a then return 1 else h() end return 2 end",
+]
+
+
+@pytest.mark.parametrize("src", DEAD_CODE_CASES,
+                         ids=[s.decode()[:48] for s in DEAD_CODE_CASES])
+def test_dead_code_luac_emits_unconditionally_certifies(src):
+    _certifies(src)
+
+
+def test_else_break_claims_the_break_as_the_else_body():
+    """Name the claim rather than trusting the pc-claim audit: the threaded
+    false-exit JMP and the dead else-skip belong to the `If`, and the break's
+    own JMP is the else body.
+
+    1-4 LOADK (n = 0 and the for control triple)  5 FORPREP->13
+    6-7 t[i]  8 EQ  9 JMP->14  (the threaded false-exit: 14 is the loop exit)
+    10 ADD  11 JMP->13 (the else-skip, over a one-instruction else)
+    12 JMP->14 (the break; unreachable)  13 FORLOOP  14 RETURN
+    """
+    src = (b"local n = 0 for i = 1, 10 do if t[i] ~= -1 then n = n + 1 "
+           b"else break end end return n")
+    fn, r = _sir(src)
+    (i,) = _find(r, If)
+    from pyluadec.sir.regions import Break
+    assert isinstance(i.else_body, Break)
+    assert i.else_body.claimed_pcs == frozenset({12})
+    assert i.claimed_pcs == frozenset({8, 9, 11})
+    assert i.join_pc == 13
+    assert all_claimed(i.then_body) == frozenset({10})
+
+
+def test_dead_code_of_any_other_shape_is_still_refused():
+    """`_is_dead_else_skip` is deliberately narrow, and these four committed
+    floor tests are its neuter proof -- not a hypothetical one.
+
+    NEUTER PROOF (2026-08-12, on the finished tree): replacing the whole
+    check with an unconditional `if True:` buys exactly the same corpus figure
+    -- 75 unique protos below `L3`, the same as the narrow rule -- and makes
+    all four of these fail with `DID NOT RAISE StructureError`. So the narrow
+    rule costs nothing and these four are what pins it. Their dead code is a
+    MOVE chain after a RETURN, which is neither a lone JMP nor a RETURN behind
+    a TAILCALL, and which could not be printed as live Lua anyway (`return`
+    must end its block).
+
+    This test only asserts they exist and are about this; they carry their own
+    assertions.
+    """
+    import tests.test_sir_build_acyclic as acyclic
+    import tests.test_sir_build_loops as loops
+    for mod, name in ((acyclic, "test_dead_code_inside_a_claimed_then_range_raises"),
+                      (acyclic, "test_dead_code_inside_a_claimed_else_range_raises"),
+                      (loops, "test_dead_code_inside_a_numeric_for_body_raises"),
+                      (loops, "test_dead_code_inside_a_generic_for_body_raises")):
+        assert hasattr(mod, name), f"{mod.__name__}::{name} went missing"
+        getattr(mod, name)()
+
+
 # ------------------------------------------------------------- known gaps
 #
 # Recorded, not asserted away. Each one is the SHAPE that still refuses, with

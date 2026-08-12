@@ -680,15 +680,16 @@ def test_the_printer_arm_is_not_carried_entirely_by_arm_one(corpus_scan):
     If every printed register were already reconciled by Arm 1, the
     `reg in fr.covered` branch would be dead and the printer's own
     `NumericFor` `A+3` / `GenericFor` `A+3+i` decodes would be unchecked by
-    anything. Measured: 22 printed names on this corpus reach text without any
+    anything. Measured: 31 printed names on this corpus reach text without any
     reconstructor accessor having touched them first -- `by_kind` breaks down
-    as `{NumericFor: 19, GenericFor: 3}` exactly, pinned below.
+    as `{NumericFor: 28, GenericFor: 3}` exactly, pinned below.
 
-    The `GenericFor` count moved 2 -> 3 in M5 task 4 (and the corpus's
-    structured-chunk count 212 -> 217): the jpc-threading fix in
-    `sir/build.py` made more protos structure, so more `for`-in headers reach
-    the printer. It is a POPULATION figure, not a floor -- when it moves,
-    re-measure and say why, do not widen it into an inequality.
+    The counts moved in M5 task 4, from `{NumericFor: 19, GenericFor: 2}`
+    (and the corpus's structured-chunk count from 212 to 218): the
+    jpc-threading and dead-code work in `sir/build.py` made more protos
+    structure, so more `for` headers reach the printer at all. It is a
+    POPULATION figure, not a floor -- when it moves, re-measure and say why,
+    do not widen it into an inequality.
 
     NOT included here: a `CLOSURE`'s captured `ps.b` (the printer's third
     register decode). A round-1 measurement found it passes via the *first*
@@ -702,7 +703,7 @@ def test_the_printer_arm_is_not_carried_entirely_by_arm_one(corpus_scan):
     assert rec.printed_via_frame > 0, rec.printed_via_frame
     assert rec.printed_via_arm1 > 0, rec.printed_via_arm1
     assert rec.printed_via_arm1 + rec.printed_via_frame == rec.printed
-    assert rec.printed_via_frame_by_kind == {"NumericFor": 19, "GenericFor": 3}, (
+    assert rec.printed_via_frame_by_kind == {"NumericFor": 28, "GenericFor": 3}, (
         rec.printed_via_frame_by_kind)
 
 

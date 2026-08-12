@@ -65,6 +65,59 @@ def _jmp_sites(fn: LirFunction) -> dict[int, tuple[int, ...]]:
     return {k: tuple(sorted(v)) for k, v in out.items()}
 
 
+def _is_dead_else_skip(cfg, start: int) -> bool:
+    """True iff the (unreachable) block at `start` is one of the two shapes
+    luac emits unconditionally and then cannot reach: the else-skip JMP, or
+    the RETURN that always follows a TAILCALL.
+
+    `ifstat` runs `luaK_concat(&escapelist, luaK_jump(fs))` before it knows
+    whether the then-block can fall out of itself, so `if c then break else
+    x() end` and `if c then return else x() end` leave a JMP that nothing can
+    reach sitting at the end of the then-block -- INSIDE whatever branch or
+    loop body encloses the `if`. Measured 2026-08-12: ten unique corpus protos
+    were refused as `branch body block at pc N is unreachable` for exactly
+    this, every one of their dead blocks a single JMP preceded by another JMP
+    (the smallest, `snr_common.lua:main_59`, 17 instrs: a numeric-for whose
+    body is `if c then n = n + 1 else break end`).
+
+    Deliberately narrow, and the narrowness is free. "One JMP" is not a proxy
+    for "harmless dead code": it is the whole of what `ifstat` can leave
+    behind, and it is always claimed by the enclosing `If` itself as its
+    `then_last`, so admitting it adds nothing to what has to be printed. Dead
+    code of any other shape is still refused -- `tests/test_sir_build_
+    acyclic.py`'s two `test_dead_code_inside_a_claimed_*_range_raises` and
+    `tests/test_sir_build_loops.py`'s two `test_dead_code_inside_a_*_for_body_
+    raises` are hand-built MOVE chains after a RETURN, and they still raise.
+    That matters beyond tidiness: printing a dead MOVE after a `return` would
+    emit source Lua rejected outright (`return` must end its block).
+
+    Measured 2026-08-12 on the finished tree: replacing this whole check with
+    an unconditional `allow_unreachable=True` gives the SAME corpus figure (75
+    unique protos below `L3`) and turns all four of those tests red. So the
+    four are the neuter proof, and the narrow rule costs nothing.
+    """
+    blk = cfg.blocks[start]
+    if len(blk.instrs) != 1:
+        return False
+    op = blk.instrs[0].ri.op
+    if op is Op.JMP:
+        return True
+    # `lparser.c:retstat` rewrites `return f(...)` to a TAILCALL and then
+    # emits `luaK_ret` anyway (lparser.c:1100-1116), so every TAILCALL is
+    # followed by a RETURN that the VM never executes. Same argument as the
+    # else-skip's, and the same narrowness: the predecessor pc must be that
+    # TAILCALL, so a RETURN dead for any other reason is still refused.
+    # `snr_common.lua:main_29_0` (18 instrs, `if c then return f(a) else
+    # return f(b) end`) is the corpus instance; both of its dead RETURNs and
+    # both of its dead JMPs sit inside the branch bodies.
+    if op is not Op.RETURN:
+        return False
+    for b in cfg.blocks.values():
+        if b.instrs and b.instrs[-1].ri.pc == start - 1:
+            return b.instrs[-1].ri.op is Op.TAILCALL
+    return False
+
+
 def _verify_single_entry(cfg, idoms, pc2blk, cond_pc: int, lo: int, hi: int,
                          *, allow_unreachable: bool = False) -> None:
     """Refuse unless every CFG block starting in pc range [lo, hi) is dominated by
@@ -98,7 +151,7 @@ def _verify_single_entry(cfg, idoms, pc2blk, cond_pc: int, lo: int, hi: int,
         if not (lo <= start < hi):
             continue
         if start not in idoms:
-            if allow_unreachable:
+            if allow_unreachable or _is_dead_else_skip(cfg, start):
                 continue
             raise StructureError(
                 f"pc {cond_pc}: branch body block at pc {start} is unreachable")
@@ -989,6 +1042,122 @@ def _structure_range_impl(fn, cfg, idoms, pc2blk, lo: int, hi: int,
     return Seq(tuple(parts), frozenset())
 
 
+def _match_else_break(fn, cfg, idoms, pc2blk, sites, memo, li, pc: int,
+                      jmp_pc: int, then_lo: int, hi: int, jt: int,
+                      break_target, continue_target, thread_target):
+    """`if <cond> then <body> else break end`: the third absorber of a pending
+    false-exit, after the loop-closing JMP (`continue_target`) and the
+    enclosing else-skip (`thread_target`).
+
+    Returns `(If region, next pc)` or None; never raises. Only ever consulted
+    once `_structure_if`'s `then_lo <= jt <= hi` bound has already failed, so
+    like the two rewrites above it can turn refusals into acceptances and
+    nothing else.
+
+    `breakstat` (lparser.c:1054-1067) ends with
+    `luaK_concat(fs, &bl->breaklist, luaK_jump(fs))`, and `luaK_jump`
+    concatenates whatever is pending onto the new JMP. When the else block is
+    exactly a `break`, the false-exit `ifstat` made pending one line earlier
+    (`luaK_patchtohere(fs, flist)`) is still on `fs->jpc`, so it joins the
+    breaklist and is patched to the loop exit -- past the end of the range it
+    lives in. Layout, with P the break's own JMP:
+
+        pc        <compare>
+        jmp_pc    JMP -> break_target      (the threaded false-exit)
+        ...       the then-body
+        P-1       JMP -> P+1               (the else-skip, over a 1-instr else)
+        P         JMP -> break_target      (the `break`; UNREACHABLE, because
+                                             the only jump to it was threaded
+                                             onto it rather than at it)
+        P+1       the join
+
+    Unlike the two rewrites, the correct destination cannot be read off a
+    single number here -- `hi` is wrong (the join is `P+1`, and `P` must end
+    up claimed as the else body, not swallowed into the then-body). P is found
+    by the pattern above and then VALIDATED by structuring, the same way
+    `_match_while_true` validates a closing-JMP candidate: candidates are
+    tried last-first and no region is published until the then-body structures
+    and claims exactly `[then_lo, P-1)`. Last-first is what makes nesting come
+    out right -- for `if a then (if b then x() else break end) else break end`
+    both breaks match the pattern, and the OUTER `if`'s else is the later one;
+    picking the inner one leaves the outer's own else-skip stranded inside the
+    then-body, where `_structure_range` refuses it as an unrecognized transfer
+    and the candidate is discarded.
+
+    `snr_common.lua:main_59` (17 instrs) is the smallest corpus instance: a
+    numeric-for whose whole body is `if t[i] ~= -1 then n = n + 1 else break
+    end`, P == 14.
+
+    ## Three narrowings, all measured INERT -- kept for diagnosis, not proof
+
+    `pc2blk[P] not in idoms` (P must be unreachable), the last-first
+    `sorted(..., reverse=True)`, and the `all_claimed(then_body) != ...`
+    equality are each individually, and all three together, removable with the
+    whole suite green and the corpus census unchanged at 75 unique protos
+    below `L3` (measured 2026-08-12 on this tree; the nested fixture
+    `while true do if a then if b then x() else break end else break end end`
+    still comes out right under first-first ordering because the structuring
+    attempt discards the wrong candidate anyway). They are recorded here as
+    DEFENSIVE, in the same terms the runbook already uses for
+    `_match_cond_value`'s claim check -- not asserted to be load-bearing.
+
+    What actually carries correctness is the same thing that carries
+    `_match_while_true`'s candidate loop: no region is published until the
+    then-body structures, plus `_verify_single_entry` on that range, plus
+    `build_sir`'s own pc-claim audit, plus the L3 gate. What was NOT tried:
+    an adversarial hand-built CFG that separates them. luac cannot emit one
+    (a `break` reachable at P implies this if's false-exit was patched at P,
+    so `jt` would be in range and this function is never consulted), so such a
+    test would have to be synthetic, and the honest statement is that it does
+    not exist rather than that the checks are proven.
+    """
+    if break_target is None or jt != break_target:
+        return None
+
+    def _is_else_skip(P: int) -> bool:
+        li_ = fn.instrs[P - 1]
+        if li_.ri.op is not Op.JMP:
+            return False
+        if li_.successors == (P + 1,):
+            return True
+        # The else-skip can itself have been threaded, when the whole `if` is
+        # the last statement of its range: then it carries the enclosing
+        # loop's header or the enclosing else-skip's target instead of the
+        # join. Same jpc argument as `_structure_if`'s two rewrites, and the
+        # same self-limiting form -- the join must be `hi` for it to apply.
+        threaded = {t for t in (continue_target, thread_target)
+                    if t is not None}
+        return P + 1 == hi and li_.successors[0] in threaded
+
+    cands = [P for P in range(then_lo + 1, hi)
+             if P in fn.instrs and P - 1 in fn.instrs
+             and fn.instrs[P].ri.op is Op.JMP
+             and fn.instrs[P].successors == (break_target,)
+             and pc2blk[P] not in idoms and _is_else_skip(P)]
+    for P in sorted(cands, reverse=True):
+        then_hi = P - 1
+        join = P + 1
+        if join > hi:
+            continue
+        try:
+            _verify_single_entry(cfg, idoms, pc2blk, pc, then_lo, then_hi)
+            then_body = _structure_range(fn, cfg, idoms, pc2blk, then_lo,
+                                         then_hi, break_target=break_target,
+                                         continue_target=continue_target,
+                                         thread_target=thread_target,
+                                         sites=sites, memo=memo) \
+                if then_lo < then_hi else Seq((), frozenset())
+            if all_claimed(then_body) != {p for p in fn.instrs
+                                          if then_lo <= p < then_hi}:
+                continue                     # under/over-claimed: wrong P
+        except (StructureError, RegionOverlap):
+            continue
+        return (If(cond=li, negated=(li.ri.a == 0), then_body=then_body,
+                   else_body=Break(claimed_pcs=frozenset({P})), join_pc=join,
+                   claimed_pcs=frozenset({pc, jmp_pc, then_hi})), join)
+    return None
+
+
 def _structure_if(fn, cfg, idoms, pc2blk, pc: int, hi: int, break_target: int | None = None,
                   continue_target: int | None = None,
                   thread_target: int | None = None, sites=None, memo=None):
@@ -1081,6 +1250,11 @@ def _structure_if(fn, cfg, idoms, pc2blk, pc: int, hi: int, break_target: int | 
         # earlier pc) is the correct rewritten destination.
         jt = hi
     if not (then_lo <= jt <= hi):
+        eb = _match_else_break(fn, cfg, idoms, pc2blk, sites, memo, li, pc,
+                               jmp_pc, then_lo, hi, jt, break_target,
+                               continue_target, thread_target)
+        if eb is not None:
+            return eb
         raise StructureError(f"pc {pc}: if targets out of range")
     # Peek (do not recurse yet) at whether the then-body ends by jumping over an
     # else block, so the trailing JMP can be excluded from the then-body range
