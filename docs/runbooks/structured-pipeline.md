@@ -1577,7 +1577,7 @@ the original instruction stream actually did.
 ### Run the suite
 
 ```bash
-PYLUADEC_CORPUS_DIR=<corpus> uv run pytest              # 676 tests, 35.0-35.3s over 3 runs (measured 2026-08-12, M5 task 8 round 3)
+PYLUADEC_CORPUS_DIR=<corpus> uv run pytest              # 861 tests; 42.3-43.0s (default RANDOM order) / 41.6-42.5s (-p no:randomly), 2026-08-13, M5 task 12
 PYLUADEC_CORPUS_DIR=<corpus> uv run pytest tests/test_effects_emitter_consistency.py -v
 ```
 
@@ -1952,10 +1952,22 @@ them a `build_sir` change (the top row is untouched): a `for` statement's
 slots are now released at its `end` (cluster 1), a generic `for` over a call
 prints one iterator expression instead of three materialized locals
 (cluster 2), and `>`/`>=` are recovered instead of being normalised to
-`<`/`<=` (cluster 3). All three are detailed in point 3 below. 216 of the 229
-files now ship structured source (92 at M3 close, 212 at M4 close, 215 after
-M5 task 4), and the corpus quality average is 0.950580 (0.935633 at M4 close,
-0.946390 after M5 task 4).
+`<`/`<=` (cluster 3). All three are detailed in point 3 below. **M5 tasks 6–12
+moved none of the three rows**, deliberately: task 6 changed how chunks are
+assembled rather than what certifies, and tasks 7–12 were surface, gates and
+documents.
+
+**Artifact counts, re-measured 2026-08-13 (task 12) — and note they are no
+longer a single number.** 216 of the 229 files ship **fully** structured source
+(92 at M3 close, 212 at M4 close, 215 after M5 task 4, 216 after task 5); since
+M5 task 6 a further **6 ship hybrid** (structured with fallback holes at the
+`CLOSURE` sites that would not certify) and **7 ship the whole-file M2
+fallback** (13 before task 6, 17 at M4 close). Per occurrence, **1747 of 1944
+(89.9%) ship structured text**; by instruction volume the same split is 85.8% /
+14.2%. The corpus quality average is **0.968833** (0.935633 at M4 close,
+0.946390 after M5 task 4, 0.950580 after task 5, 0.968833 after task 6 and
+unmoved since). Full evaluation, including the five volume bases that disagree
+with each other by a factor of six, in `docs/reports/m5-quality.md`.
 
 1. **1478 → 1465: `build_sir` refuses 13 unique protos** (169 before M4 task
    3, 43 after it, 31 after task 4, 13 after M5 task 4). By message: 11
@@ -3218,9 +3230,15 @@ twelve laundering routes and three fault injections — runs in **2.0s**.
 `src/pyluadec/verify/semantic_score.py` is a mechanism-equivalent port of
 `/root/pyluadec/pyluadec/semantic_eval.py`, the metric that produced the
 predecessor's stated `avg_score 0.997` — the number spec §1 goal 4 and §7's
-M5 row commit us not to regress against. It had never been run against our
+M5 row committed us not to regress against. It had never been run against our
 output before this task, because it lives in the predecessor's 32-bit
 in-process bridge pipeline.
+
+**Since 2026-08-12 the 0.997 is M6's exit, not M5's** (spec §2 decision table;
+the arithmetic is below and in `docs/reports/m5-quality.md`). M5 exits at
+**0.968833** against a floor of 0.96 asserted by
+`tests/test_m5_exit.py::test_m5_exit_quality_no_regression`, which is the one
+test in that file that re-derives rather than reading the committed ledger.
 
 **It is an evaluation instrument and gates nothing.** `verify/normalize.py`
 and `verify/certify.py` decide what is `L3`; a high score cannot promote
@@ -3294,7 +3312,20 @@ start, and it is the baseline every later re-measurement is compared against.
 fallback files (`snr_e1_10_s.lua`, `snr_s2_10_s.lua`, `snr_s6_10_s.lua`)
 left fallback. **M5 task 5 moved it to `avg_score 0.950580`**, with 13 files
 below threshold (avg 0.129456) and 216 structured at exactly 1.000000 — one
-more file (`snr_lib.lua`) left fallback. The block below still describes the
+more file (`snr_lib.lua`) left fallback. **M5 task 6 (hybrid emission) moved it
+to `avg_score 0.968833`**, still 13 files below threshold but split 6 hybrid
+(avg 0.816791) / 7 whole-file fallback (avg 0.137429); tasks 7–12 did not move
+it and were not supposed to, and the figure was re-measured at task 12 and
+reproduces to six decimals. **That is where M5 exits, and it is where the
+milestone's acceptance criterion was re-scoped** — 0.997 is M6's exit now, by
+the human partner's decision of 2026-08-12, recorded in the spec's §2 decision
+table. The arithmetic that closed the original gate off: 216 files at exactly
+1.000000 means the other 13 must average ≥ 0.947, and converting all 7
+remaining fallbacks to hybrids *at the measured hybrid quality* reaches only
+0.9896. The current distribution, the per-file table for the 13, and the five
+volume bases are in `docs/reports/m5-quality.md`.
+
+The block below still describes the
 M5-start state; the shape of the distribution is unchanged, only the counts.
 
 The distribution is as clean as it could be: every one of the 212 files whose
@@ -3341,6 +3372,18 @@ makes their artifact stop being a pc-dispatch state machine). Closing 16 of 17
 leaves the average at (212 + 16 + 0.1329)/229 = **0.9962** — still short,
 same as before the fix to four decimal places. This is the sharpest statement
 of what Tasks 4–7 have to deliver.
+
+**Re-derived at M5 task 12 (2026-08-13), on the post-hybrid population — and
+this is the arithmetic the human partner's re-scope decision rests on.** 216
+files now contribute 216.000, so the remaining 13 must average **≥ 0.947** for
+the corpus to reach 0.997. They average **0.450980** (6 hybrids at 0.816791, 7
+whole-file fallbacks at 0.137429). The partial-credit path that did not exist
+at task 3 now does — a hybrid scores far above a fallback — but it does not
+reach: converting all 7 remaining fallbacks to hybrids *at the measured hybrid
+quality* gives (216 + 13 × 0.816791)/229 = **0.9896**. So 0.997 requires
+essentially every file at ~1.0, i.e. the reconstruction residual closed, which
+is M6 agenda 1. **Nothing here argues the gate should be weakened; it argues
+which milestone owns it.**
 
 ### Calibration — why the number is believable
 
@@ -3391,6 +3434,23 @@ bases that are cheap to reproduce from the committed ledger and
 The line-volume row is not comparable across columns the way the other two are
 (the artifact's own text changes when a file stops shipping a state machine),
 which is why the middle column is blank rather than guessed.
+
+**Re-measured at M5 task 12 (2026-08-13), after output surface v2.** The first
+two rows are unchanged to the digit (14.2% = 30584/215218, 10.1% = 197/1944 —
+tasks 7–11 moved no proto). The third row is **37.3% (31884/85588)**: the
+numerator is identical and the *denominator* fell by 640 lines, because task 7's
+`elseif` folding removes one `end` per collapse from the structured files and
+the whole-file-fallback files are untouched by it. A ratio whose denominator
+moves under a presentation change is exactly why this row carries the caveat
+above.
+
+**Predecessor-line basis, added here because it is the one M4 quoted and the
+one that kept getting disputed:** the 7 whole-file fallbacks are **8888/57998 =
+15.3%** of the predecessor's shipped text, the 6 hybrids another 21.8%, so the
+216 fully-structured files are **62.8%**. M4's "47.6%" for its 17-file set
+reproduces exactly on this same basis (27623/57998). The five bases disagree by
+a factor of six on the fallback column, so quote the denominator or quote the
+per-occurrence figure instead. Full table: `docs/reports/m5-quality.md` §2.
 
 ## Relationship to the fallback runbook
 

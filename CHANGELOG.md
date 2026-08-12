@@ -1,5 +1,109 @@
 # Changelog
 
+## 2026-08-13 — M5: the long tail, the L2 gate, and a quality baseline
+
+- **`L3` is 1430/1478 unique (96.8%) and 1896/1944 occurrences (97.5%)**, from
+  1389 (94.0%) / 1855 (95.4%) at M4 close. Three routes, in order of what they
+  bought: closing the `build_sir` refusal leaves (refusals 31 → 13), closing the
+  mismatch/reconstruct leaves, and **hybrid chunk emission** — a chunk whose
+  root does not certify now ships structured text with fallback holes at the
+  `CLOSURE` sites that would not certify, instead of forfeiting the whole file.
+  **216 of 229 files ship fully structured source, 6 ship hybrid, 7 still ship
+  the whole-file M2 fallback** (17 at M4 close). Per occurrence, **1747/1944
+  (89.9%) ship structured text**; by instruction volume, 85.8%.
+- **The milestone's acceptance criterion was RE-SCOPED, by the human partner,
+  and it is recorded in the spec's own decision log** rather than only in a
+  runbook, because it modifies a §1 goal-4 criterion the user confirmed section
+  by section. M5 task 3 ported the predecessor's `semantic_eval.py` metric and
+  measured **0.935633** at milestone start against its stated `0.997`; tasks 4,
+  5 and 6 moved it to **0.968833**. The arithmetic then closed the original
+  gate off: with 216 files at *exactly* 1.000000 the remaining 13 must average
+  ≥ 0.947, and converting all 7 remaining fallbacks to hybrids at the measured
+  hybrid quality of 0.816791 reaches only 0.9896. **0.997 is M6's exit now**,
+  with a diagnosed agenda rather than a hope — 13 compound-`if` refusals (one
+  defect, with a committed 26-instruction repro) and 4 root reconstruction
+  defects that hybrid emission *unmasked*, one of them adjudicated
+  (`snr_music.lua`'s main collapses four nested table constructors into one
+  aliased table). **The metric was not relaxed and the certification gate was
+  not touched.**
+- **Readability now beats the predecessor on the axis M4 called our worst.**
+  Output surface v2: `elseif`, dot sugar for string keys, `-1` instead of
+  `(-1)`, uniform 4-space indentation including function bodies, and readable
+  UTF-8. Re-measured over the 216 structured files: max nesting depth **61 → 8**
+  against the predecessor's **10**, and ours is deeper in **0 of 216** files;
+  `["` 6085 → **0**; high-byte decimal escapes 991233 → **0**; `(-` 570 → **0**;
+  line-leading `elseif` 0 → **282** (predecessor 278); `while` and `break` still
+  match it **exactly** (196/196, 178/178); line ratio 0.972×. Every one of the
+  five changes was verified by regenerating the whole ledger and requiring it
+  **byte-identical** — which is what caught the one attempt that was not a
+  presentation change. The UTF-8 item needed a scoped, human-approved amendment
+  to the bytes red line, implemented in exactly one function
+  (`emit/lua.py::_str_lit`); `ingest`, `lift` and `verify` still decode nothing.
+- **A full ratchet, and a `git bisect` predicate that tells the truth.**
+  `scripts/ratchet_diff.py` + `scripts/ratchet_job.sh` (suite → baseline diff →
+  24-case differential sweep). It is a *command*: this repository has no CI
+  runner configuration and none was invented. Four of the five review findings
+  against it were about the bisect contract being wrong in ways the first
+  report presented as verified — `git-bisect(1)` reads every exit code in
+  1..127 except 125 as **bad**, so the intended "not a verdict" exit of 2 was
+  silently naming innocent commits; and the documented predicate skipped
+  exactly the loudest regression class it exists for. Both fixed and both
+  demonstrated by running a real bisect against an injected **compile**
+  regression. `tests/test_ratchet_diff.py` (37 cases, no corpus needed) exists
+  solely to prove the tool can fail.
+- **L2 differential certification is online, and its measured reach is one
+  file.** Key-sequence driving under a stubbed environment, proto-level
+  coverage, and a conservative static may-analysis that refuses a grant when a
+  stub-derived value could decide a branch unobserved. New per-occurrence `l2`
+  ledger field with a row-level pure aggregate. **`snr_lib.lua` at `L2@100%` —
+  2 rows, 3 occurrences of 1944 — and 164 occurrences refused
+  `taint-static`.** The reach is the result, not a shortfall to be explained
+  away: across four review rounds **thirty granting routes were found, every
+  one of them inside the previous round's fix**, and the reach never moved off
+  1 of 5 — every fix refused a fixture, none refused a corpus file. The
+  triggering finding is structural: Lua 5.1's `equalobj` compares types before
+  consulting `__eq`, so a stub proxy compared against a string literal is
+  *unobservable* to any runtime harness, and `doScriptScene == "<literal>"` is
+  this corpus's central idiom (427 sites across 23 files). **220 of 229 files
+  contain no `pressButton` at all**, so for most of the corpus there is no
+  input loop to drive — a stronger statement than "not yet authored".
+- **The two historical key-sequence checkpoints are regression tests.**
+  `tests/test_keyseq_checkpoints.py` drives `snr_common.lua` and asserts the
+  `OptionMain` double clamp and the `ConfigMain` CIRCLE gate/wait **on the
+  original bytecode's trace as well as ours**, with seven parametrised
+  both-sides injections proving each assertion fires. Two things worth
+  recording: a menu option's *value* is invisible to the probe, so the property
+  is expressed through the `layerClip` rectangle the redraw produces and no
+  menu row is ever named (the bytes red line, navigated rather than dodged);
+  and re-timing exposed that **11 of 11 `k=`-bearing shipped sequences were
+  dropping directives** — the frame model costs 6 frames per `wait` — which is
+  now fixed, with 53/53 directives landing and no L2 verdict flipped.
+- **The pass registry is retired, permanently, not deferred** (spec §2 decision
+  table). Everything spec §4's Pass protocol specified — apply, verify,
+  commit-or-rollback, confession — is already done, and done more strictly, by
+  the per-proto certification gate. Nothing in M2–M5 needed a transform the
+  protocol could express and the printer could not. `src/pyluadec/passes/` was
+  never created, so no code was deleted. The plugin surface itself is not
+  rejected; its client is M6+'s proposer.
+- **Suite: 861 tests, 41.6–42.5s fixed ordering / 42.3–43.0s random**, against
+  a 45s ceiling. `-p no:randomly` really does change the figure, which is where
+  several of this milestone's disputed timings came from. M5 task 2 recovered
+  ~11.9s with a process-level certification memo and the milestone spent all of
+  it; **~2s of headroom is the first item on the M6 engineering agenda.**
+- **Not done, and now the M6 agenda** (`docs/runbooks/m3-backlog.md`, numbered
+  so items can be cited): reaching 0.997 by closing the reconstruction residual;
+  corpus-wide L2 plus the taint analysis's four documented gaps (argument
+  direction, script-built tables, `VARARG`, and harness state — the last being
+  the first limit found that is *not* a propagation gap, since a register-level
+  may-analysis structurally cannot follow taint into the probe's own frame
+  counter); the `next`/`pairs` iteration-order gap; probe hardening; making a
+  `StructureError` say which proto raised it; and the engineering debt swept at
+  the wrap. **M1's Linux x86_64 verification is still outstanding** — the
+  migration runbook requires *both* 64-bit platforms and only macOS arm64 has
+  been proven, and M5 found one concrete Linux-only defect
+  (`ratchet_job.sh`'s BSD-only `mktemp -t`) by reading upstream source rather
+  than by running it.
+
 ## 2026-08-12 — M4: loops, and verification hardening
 
 - **Loops recovered.** `while <cond>`, `while true`, `repeat`, threaded

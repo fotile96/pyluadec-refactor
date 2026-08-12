@@ -1,5 +1,19 @@
 # M4 readability evaluation: our output vs the predecessor's shipped text
 
+> **SUPERSEDED for every current figure — see `docs/reports/m5-quality.md`.**
+> This file is the M4 snapshot and is kept as one. All five printer-level gaps
+> it names were closed by M5 task 7 (output surface v2) and the sixth,
+> structural one was halved by M5 task 6 (hybrid emission): re-measured
+> 2026-08-13, `["` 6085 → 0, high-byte escapes 991233 → 0, `(-` 570 → 0,
+> `elseif` 0 → 282, max nesting depth 61 → **8** against the predecessor's
+> **10**, and whole-file fallbacks 17 → 7.
+>
+> **The one figure here that is still quoted and is still right is §1.1's
+> 47.6%.** Re-measured on this report's own stated basis (27623/57998
+> predecessor lines over its own 17-file set) it reproduces exactly. M5 task 3
+> reported it as not reproducing; that is true of the five *other* bases task 3
+> measured and does not contradict this report. Quote the denominator.
+
 **This is an evaluation, not a gate.** Nothing here is asserted by a test and
 nothing here blocks the milestone. Its job is to say honestly how readable the
 M4 decompiler's output is next to the artifact that actually shipped, and to

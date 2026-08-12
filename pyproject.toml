@@ -28,20 +28,22 @@ testpaths = ["tests"]
 # never returns -- no failure name, no diff, easy to mistake for flakiness
 # and re-run.
 #
-# Sizing (test count re-counted 2026-08-12 at M5 task 8 round 3: 676 tests,
-# corpus present -- it read 523 from M5 task 2 through task 8 and was already
-# stale when task 8 landed; the wall-clock analysis below is unaffected, since
-# what sizes this backstop is the slowest SINGLE entry, not the count. The
-# timings were measured 2026-08-12 on macOS arm64,
-# AFTER M5 task 2's process-level certification cache -- an earlier revision of
-# this comment carried the same date and the pre-cache numbers, ~40s suite /
-# 12.0s ratchet / 10.0s probe, which are all now wrong):
-# the full suite is 32-34s wall clock (12 runs, drifting upward across a
-# session on this laptop) and the slowest SINGLE entry is
-# tests/test_behaviour_probe.py's corpus fixture SETUP at 10.4-10.7s -- it is
+# Sizing (test count re-counted 2026-08-13 at M5 task 12: 861 tests, corpus
+# present -- it read 523 from M5 task 2 through task 8, then 676 from task 8
+# through task 11, stale both times. The wall-clock analysis below is
+# unaffected either way, since what sizes this backstop is the slowest SINGLE
+# entry, not the count. The timings below were measured 2026-08-12 on macOS
+# arm64, AFTER M5 task 2's process-level certification cache -- an earlier
+# revision of this comment carried the same date and the pre-cache numbers,
+# ~40s suite / 12.0s ratchet / 10.0s probe, which are all now wrong):
+# the full suite was 32-34s wall clock (12 runs, drifting upward across a
+# session on this laptop) and is 41.6-43.0s at task 12 depending on test
+# ordering -- but that total is NOT what this setting is sized against, since
+# the timeout applies per test. The slowest SINGLE entry is
+# tests/test_behaviour_probe.py's corpus fixture SETUP at 10.4-11.9s -- it is
 # the first payer of the ~1900 luac_sz4 certification subprocesses, and every
 # later corpus pass now reads that cache instead (the ratchet test, previously
-# the slowest at 12.0s, is 1.66-1.69s in-suite). So 60s is ~6x headroom on THIS
+# the slowest at 12.0s, is 1.66-1.85s in-suite). So 60s is ~5x headroom on THIS
 # platform, but CLAUDE.md documents the primary environment
 # as a 32-bit i686 userland under WSL2, where subprocess spawn is materially
 # slower; 60s is plausibly reachable there for the ratchet test alone -- run it

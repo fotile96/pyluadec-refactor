@@ -84,6 +84,9 @@ cmake --build cmake-build-debug --target lua luac lua51_proto_extractor
   重新编码回原字节、且非纯 ASCII 时原样输出，否则回退到 `structure/fallback.py::str_lit`
   的十进制转义。`structure/fallback.py` 本身未改（fallback 产物仍全转义），
   `ingest`/`lift`/`verify` 一个字节都不解码。不得扩大这个口子。
+  （M5 task 7 的审查提过一个小意见：本节比批准的那一条 bullet 写得**长**。M5 task 12
+  逐句核对后**保留**——每一句都是那条 bullet 的作用域说明或其实测依据，没有一句扩大了
+  授权范围。红线条款宁可写长也不要留下需要读者自行推断的边界。）
 - **实测更正（2026-08-12）**：语料里**没有**非 UTF-8 字符串常量。229 文件 / 1944 proto /
   49063 个字符串常量，其中 17411 个非 ASCII，非 UTF-8 的 **0** 个。M4 计划文档里
   "frequently non-UTF-8 — the predecessor crashed on exactly this" 的说法**没有复现**；
@@ -281,8 +284,44 @@ Phase 4 已完成。**能力边界与残差普查的权威仍是 `docs/runbooks/
 
 结构化产物的行数是原项目的 **0.98 倍**（212 个文件全部落在 0.78×–1.03×），`__pld_*` 残留 **0**，212 个文件上 `while`/`break` 的行首计数与原项目**完全相同**（190/190、175/175）。**读得更差的五处（打印器层面）**：非 ASCII 字符串打成十进制转义（这是个日文视觉小说，下游就是翻译——这是最大的一处）、不发 `elseif`（208 个变成嵌套 `if`，最坏 61 层缩进对原项目的 5 层）、字符串键不用点语法（`t["k"]` 对 `t.k`）、函数体不缩进（可能是有意的下游耦合，见「下游耦合」一节）、一元负号打成 `(-1)` 而非 `-1`。外加第六处、结构性的：那 17 个 fallback 文件**按行数占语料的 47.6%**，所以"229 里 212 个"是往好里数的数法。
 
-**这五处打印器层面的差距已由 M5 task 7 全部关闭**（output surface v2，见「下游耦合」与 `docs/runbooks/structured-pipeline.md`）；台账逐次提交字节不变，认证门未做任何放松。第六处（fallback 文件的体量）由 M5 task 6 的 hybrid 发射处理，17 个整文件回退降到 7 个。M4 报告里那个 47.6% 在重测时**没有在任何口径下复现**，别再引用。
+**这五处打印器层面的差距已由 M5 task 7 全部关闭**（output surface v2，见「下游耦合」与 `docs/runbooks/structured-pipeline.md`）；台账逐次提交字节不变，认证门未做任何放松。第六处（fallback 文件的体量）由 M5 task 6 的 hybrid 发射处理，17 个整文件回退降到 7 个。
+
+**那个 47.6% 的处置，M5 task 12 定案（此前两次说法都不完整）**：它**按 M4 自己写明的口径精确复现**——重测 2026-08-13，M4 那 17 个文件占原项目产物 27623/57998 行 = 47.6%。M5 task 3 说的「五种口径下都不复现」是真的，但它测的是**另外五种**口径（我方产物行、字节码指令、字节码字节、原始源码行、proto 出现次数），没测 M4 声明的那一种。两句话都对，只是分母不同——教训是**引用比例必须连分母一起引**。post-hybrid 的完整五口径表在 `docs/reports/m5-quality.md` §2；不依赖口径的那个数是逐 occurrence 的 **1747/1944 = 89.9% 发结构化文本**。
 
 ### 仍未做（都在 M5 agenda）
 
 完整 ratchet CI（baseline diff、降级即失败）**M4 没做**，已由 **M5 task 8 落地**（`scripts/ratchet_diff.py` + `scripts/ratchet_job.sh`，见上文「台账约定」；本仓库无 CI runner 配置，是命令不是自动触发）；`LEN` 重新分级（M5 task 1）；L2 差分执行认证与按键序列 harness（**M5 task 9 落地**，见上文；reach 仅 1 个文件，两个历史检查点的*断言*仍是 task 10，且 snr_common 目前被静态 taint 拒授）；那 89 处残差；`_stack_discipline` 的拆分（**M5 task 11 落地**：拆成 `express/freereg.py`，`names.py` 968 → 494 行、被拆的走查本体 467 → 308 行；顺带发现「四道屏障各有一个 neuter 用例钉在 `tests/test_express_liverange.py`」这句只对前三道成立，第 4 道的钉子在 `tests/test_sir_loops_longtail.py` 与台账不动点测试上。**round 1 更正**：该任务原先还给这条结论捎带了一句「第 4 道是四道里唯一一动就让台账变的」——没量过，且是错的。逐道 neuter 后重生成台账实测：`_same_block` 改 28 个 proto、动 9 行台账，`MOVE d, s` 改 3 个、动 2 行，第 4 道改 3 个、动 2 行；**唯一不动台账的是第 2 道**（`_bar_literal_operands` 的字面量判定，语料上 0/1944），也就是说它是四道里语料完全看不见、证据全靠合成用例的那一道）。
+
+
+## Phase 5（M5：长尾、L2 门、质量基线）现状
+
+Phase 5 已完成（12 个任务）。**能力边界、认证门不变式、归一化阶梯、L2 门的权威仍是 `docs/runbooks/structured-pipeline.md`**；质量评估在 `docs/reports/m5-quality.md`；**尚未完成的工作全部在 `docs/runbooks/m3-backlog.md` 末尾的「M6 agenda」**（编号条目，可引用）。本节只给定位与速查，细节一律以那两处为准，不在此重复。
+
+### 收口数字（2026-08-13 实测）
+
+- `L3`：**1430/1478 唯一 proto（96.8%）、1896/1944 处出现（97.5%）**（M4 收口 94.0% / 95.4%）。
+- **产物**：229 个文件里 **216 全结构化 / 6 hybrid / 7 整文件 fallback**（M4 收口 212/0/17）。逐 occurrence：**1747/1944（89.9%）发结构化文本**；按指令量算 85.8%（M5 起点 65.6%）。
+- 移植的质量分（原项目 `semantic_eval.py` 的口径）：**0.968833**（M5 起点 0.935633）。216 个全结构化文件**全部恰好 1.000000**；低于 0.997 的 13 个正好是那 13 个非全结构化文件，一个不多。
+- 测试：**861 passed**；固定顺序 41.6–42.5s、随机顺序 42.3–43.0s（`-p no:randomly` 与默认的差别是真的，别混着引），**上限 45s——余量只剩 ~2s，这是 M6 要处理的第一件事**（M6 agenda）。`./scripts/ratchet_job.sh` exit 0。
+- 出口门 `tests/test_m5_exit.py`：四条地板（唯一 `L3` ≥0.96、occurrence `L3` ≥0.96、结构化 reach ≥0.85、质量分 ≥0.96），全部**刻意低于实测值**，理由写在该文件 docstring 里。
+
+### spec 决策表新增两条（**这是本里程碑最需要被读到的部分**）
+
+两条都是**改动 spec 已确认条款**的决定，因此按流程记进了 `docs/superpowers/specs/2026-08-09-pyluadec-refactor-overall-design.md` §2 决策表，不只是记在 runbook：
+
+1. **pass registry 永久退役**（不是推迟）。spec §4 给 pass 协议规定的 apply/verify/commit-or-rollback + confession，已被逐 proto 认证门整体承担且更严；M2–M5 没出现过一个需要它才能表达的变换（可读性特例全在打印层的结构折叠里）。`src/pyluadec/passes/` 从未创建，没有代码被删。插件面本身没被否定，只是客户在 M6+（GPU 提议器）。
+2. **§1 目标 4 的 `avg_score 0.997` 从 M5 出口挪给 M6**，M5 出口改为 ≥0.96（实测 0.968833）。理由是算术不是打折：216 个文件已是恰好 1.0，剩 13 个要平均 ≥0.947 才够；把剩余 7 个 fallback 全转 hybrid、按实测 hybrid 质量 0.816791 算也只到 0.9896。0.997 等价于把重构残差全关掉，那是 M6 的量。度量本身未改、未放松。
+
+### 新增 / 变化的东西（速查）
+
+- **hybrid chunk 发射**（task 6）：root 不认证时，`certify_hybrid` 把无法认证的 CLOSURE 站点换成 fallback 内联函数，父 proto 自己的字段仍逐字段比。台账 `fallback` 字段随之**改了定义**，并新增 `occurrences[].shipped` / `occurrences[].hybrid`——细节见上文「台账新字段」。
+- **output surface v2**（task 7）：`elseif`、点语法、`-1`、统一 4 空格缩进（含函数体）、可逆 UTF-8 原样输出。字节红线的呈现层修订也在这里，见「工程红线」。**可读性因此在原项目最强的那条轴上反超**：最大缩进深度 61 → **8**，而原项目是 **10**；216 个文件里我们更深的有 **0** 个。
+- **ratchet 工具链**（task 8）：`scripts/ratchet_diff.py` + `scripts/ratchet_job.sh`，退出码 0/1/125/128，见上文「台账约定」。本仓库仍无 CI runner 配置。
+- **L2 门**（task 9）：按键序列差分执行 + 覆盖率 + 静态 taint 拒授，台账新增逐 occurrence 的 `l2` 字段与行级纯聚合 `verify.ledger.row_l2`。**实测 reach 是 1 个文件**（`snr_lib.lua` L2@100%，2 行 / 3 处 occurrence），另有 164 处 occurrence 记 `{"refused": "taint-static"}`。
+- **两个历史按键序列检查点**（task 10）：`tests/test_keyseq_checkpoints.py`，性质同时断言在**原始字节码的 trace** 上，7 个 both-sides 注入证明断言会红。**注意**：这两个检查点都住在 `snr_common.lua`，而该文件被 L2 静态 taint **拒授**（`doScriptScene == "<字面量>"` 这个语料主力惯用法对运行时 harness 结构上不可观测），所以「检查点绿」与「该文件拿到 L2 徽章」是两件事，后者没有发生也不该靠放松门去发生。
+- **`express/freereg.py`**（task 11）：`_stack_discipline` 从 `names.py` 拆出。
+- **`refusal_reason` 带上了 `Mismatch.path`**（task 12，M5 agenda 8）：非 root 的失配现在记成 `mismatch: <字段> at <路径>`。实测语料上 22 条 `mismatch` 里 20 条在 `root`、2 条不在（两个 hybrid root），台账因此动了 2 行，ratchet 0 降级。
+
+### 本里程碑反复出现、值得带进 M6 的那个缺陷
+
+**「散文断言了没人量过的行为」**——task 8 花了四轮、task 9 花了四轮，每一轮的修复里都新长出一个同形的实例；task 11 的版本是一个**正确的发现外挂了一个没量过的最高级**（「唯一一个动台账的屏障」，实测是三个动）。写任何行为性句子之前先量它，包括没有测试断言的那些。最高级词（唯一 / 总是 / 从不 / 全部 / 完整）每出现一次都要么有一次测量，要么改写。

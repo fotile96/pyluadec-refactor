@@ -26,6 +26,8 @@
 | bytecode 读取路径 | **pybind11 + 双字长 lua 构建**（用户提案）：对 lua-5.1 打极小的序列化宽度补丁，64 位主机同时编出 sz4/sz8 两套库与 oracle，Python 按 header 派发。 |
 | GPU（RTX 5080 16G，位于未来 64 位环境） | 仅作**提议器类插件**（神经提议 + 硬验证门）；端到端 seq2seq 还原被否决（无语义保证、语料不足）。 |
 | 总体路线 | **方案甲（证明门控分层管线）为骨架，吸收方案乙（编译器反演）**：乙的归一化 roundtrip 比对器即甲的 L3 验证门；lparser/lcode 插桩规则挖掘留作后期实验插件。 |
+| **pass registry（§4 pass 插件协议、§3 布局里的 `passes/`）** | **永久退役，不是推迟**（2026-08-12，human partner；记录于 M5 task 12）。理由：§4 给 pass 协议规定的三件事——`apply` 出候选、`verify` 判定、失败即 rollback 并记 confession——已经被认证门整体承担且承担得更严。`structure/structured.py::emit_certified_chunk` 对**每个 proto**做「打印候选 → 真 `luac_sz4` 重编译 → `compare_protos` 逐字段比 → 不过就退回语义精确的 fallback 并在台账 confess」，即 registry 想要的 apply/verify/commit-or-rollback 循环，只是判定器是重编译比对而不是每个 pass 自带的 `verify`。M2–M5 全程没有出现过一个需要 registry 才能表达的变换：读者可见的特例（`elseif` 折叠、点语法、UTF-8 呈现、hybrid 替换）全部落在打印层或认证层，都是**结构折叠**而非 IR→IR 重写。保留一个零消费者的协议只会让「哪里放特例」这个问题有两个答案。**插件面本身没有被否定**，只是没有客户：真需要它的是 M6+ 的 GPU 提议器（§2 GPU 行、§10 provocation），到那时按提议器的实际接口重新设计，而不是先立一个为 2026-08-09 的猜想服务的协议。**没有代码被删除**——`src/pyluadec/passes/` 从未创建过。 |
+| **§1 目标 4 的验收数字 `avg_score 0.997`** | **M5 出口重新划定为 ≥0.96（实测 0.968833）；0.997 整体挪给 M6 作为其出口**（2026-08-12，human partner；记录于 M5 task 12）。理由是实测出来的算术，不是打折：M5 task 3 移植该度量后实测起点 **0.935633**，tasks 4/5/6 推到 0.946390 → 0.950580 → **0.968833**。此时 216 个文件已经是**恰好 1.000000**，于是剩下的 13 个必须平均 **≥0.947** 才能到 0.997；而把剩余 7 个整文件 fallback 全部转成 hybrid、**按实测的 hybrid 质量 0.816791 算**，也只到 **0.9896**。即：0.997 要求几乎每个文件都在 ~1.0，等价于把重构残差（13 个复合 `if` 拒绝 + 4 个 hybrid 发射所**揭露**的 root 重构缺陷，其中 `snr_music.lua:main` 已定性为 `classify_registers` 把 temp 当 local 而把四个嵌套表构造器折叠成一个别名表）全部关掉——那是 M6 的工作量，不是换一种拼装 chunk 的方式能买到的。度量本身未被改动、未被放松；门 `tests/test_m5_exit.py` 的地板同样低于实测值，理由见该文件 docstring。M6 的出口即本行的 0.997。 |
 
 ## 3. 架构分层与仓库布局
 
@@ -72,7 +74,10 @@ pyluadec-refactor/
 
 数字常量在 IR 中携带原始 8 字节 payload；打印用 `%.14g`（不足以 roundtrip 时升 `%.17g`），但验证比较的是重编译后常量表的 payload 逐位一致——十进制打印丢失精度的值（-0.0、16.000000000000004 等）不会漏过验证门。
 
-pass 插件协议：
+pass 插件协议 —— **已退役（2026-08-12，见 §2 决策表最后两行之一）。以下保留为设计
+记录，不是当前契约**：`src/pyluadec/passes/` 从未创建，registry 从未存在，其
+apply/verify/commit-or-rollback 职责由 `structure/structured.py` 的逐 proto 认证门
+承担。⑤beautify 层因此在实现中不存在，特例落在⑥print 的结构折叠里。
 
 ```python
 class Pass(Protocol):
@@ -141,8 +146,8 @@ class Pass(Protocol):
 | M2 保底闭环 | lift + CFG + fallback 发射器 + L3.0 比对器 + 台账初版 | 229 语料 100% 可编译输出；台账面板上线 |
 | M3 结构化主干 | 支配树区域识别 + PC 认领审计 + 归一化阶梯 L3.1-k | 多数函数脱离 fallback |
 | M4 表达式与美化链 | 证明门控内联 + 效应格三档语料标定 + pass registry + 首批美化 pass | 语义回归全绿 + 可读性对齐评估 |
-| M5 长尾与插件 | confession 榜驱动补齐 idiom pass + L2 门 + 按键序列回归 | 达到/超越原项目 229 语料质量基线 |
-| M6+ 实验（可选） | GPU 提议器、lparser/lcode 插桩规则挖掘、Lua 5.2 摄入 | 按台账 L3 比例评估收益 |
+| M5 长尾与插件 | confession 榜驱动补齐 idiom pass + L2 门 + 按键序列回归 | ~~达到/超越原项目 229 语料质量基线~~ → **重新划定为 ≥0.96（实测 0.968833）**，见 §2 决策表；「插件」一项随 pass registry 退役而作废（同表）。 |
+| M6+ 实验（可选） | GPU 提议器、lparser/lcode 插桩规则挖掘、Lua 5.2 摄入 | 按台账 L3 比例评估收益；**并继承 M5 让出的 `avg_score ≥ 0.997`**（§2 决策表） |
 
 每个里程碑收尾走 superpowers 流程（requesting-code-review + verification-before-completion）。
 
