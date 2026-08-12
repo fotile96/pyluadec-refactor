@@ -127,13 +127,15 @@ def _proto(src: bytes):
     return load_bytes(compile_source(src, strip=True))
 
 
-def test_fixtures_certify_l3():
-    bad = []
-    for src in CASES:
-        cert = certify_proto(_proto(src), is_chunk_root=True)
-        if cert.level != "L3":
-            bad.append((src, cert.mismatches))
-    assert bad == []
+@pytest.mark.parametrize("src", CASES, ids=range(len(CASES)))
+def test_fixtures_certify_l3(src):
+    """One case per test id (M5 agenda item 10, closed at task 12). This was a
+    plain `for` over `CASES` collecting into a `bad` list, so a failure named
+    the loop and printed the whole batch; now the failing case is the test id.
+    The item said 15 cases; there are **17** -- measured 2026-08-13, and the
+    parametrisation makes the count self-maintaining."""
+    cert = certify_proto(_proto(src), is_chunk_root=True)
+    assert cert.level == "L3", cert.mismatches
 
 
 def test_unclaimed_shapes_stay_unclaimed_and_are_not_silently_wrong():

@@ -454,6 +454,52 @@ def test_non_ascii_table_key_keeps_its_brackets():
     certifies(src)
 
 
+def _decimal_escapes(src: bytes) -> set[int]:
+    """Every `\\ddd` decimal escape in `src`, as the byte VALUE it denotes.
+
+    A scanner rather than a substring test, because `\\\\` (an escaped
+    backslash) may be followed by digits that are ordinary text: the printed
+    form of a constant holding `\\1` is the three bytes `\\`, `\\`, `1`, and a
+    substring search for `\\1` finds the tail of it. Lua 5.1's `read_string`
+    reads at most three digits after a backslash (`llex.c`), which is the same
+    rule applied here.
+    """
+    out: set[int] = set()
+    i = 0
+    while i < len(src):
+        if src[i] != 0x5C:                      # not a backslash
+            i += 1
+            continue
+        j = i + 1
+        if j < len(src) and src[j] == 0x5C:     # "\\\\" -- consume both
+            i = j + 1
+            continue
+        k = j
+        while k < len(src) and k - j < 3 and 0x30 <= src[k] <= 0x39:
+            k += 1
+        if k > j:
+            out.add(int(src[j:k]))
+        i = k if k > j else j + 1
+    return out
+
+
+def test_decimal_escape_scanner_sees_what_the_substring_test_could_not():
+    """`_decimal_escapes` is the check `test_a_real_corpus_string_prints_raw`
+    rests on, and that arm is vacuous on today's corpus (0 escapes in all 216
+    structured files). So the discriminating cases are here.
+
+    The two rows the old `b"\\\\1" not in src` form got wrong are the last
+    two: `\\127` is a DEL that the RAW path legitimately emits, and `"\\\\\\\\1"`
+    is a constant holding a backslash and the digit 1, whose printed form
+    contains the bytes `\\1` without being an escape at all."""
+    assert _decimal_escapes(b'"abc"') == set()
+    assert _decimal_escapes(b'"\\227\\128\\144"') == {227, 128, 144}   # caught
+    assert _decimal_escapes(b'"\\010\\013"') == {10, 13}               # ASCII
+    assert _decimal_escapes(b'"\\127"') == {127}                       # ASCII
+    assert _decimal_escapes(b'"\\\\1"') == set()                       # not an escape
+    assert _decimal_escapes(b'"\\\\\\\\200"') == set()                 # two escaped \\
+
+
 def test_a_real_corpus_string_prints_raw(corpus_dir, decompiled):
     """The real-data arm. `snr_crd_10.lua` ships fully structured source and
     its constants are the visual novel's Japanese script -- exactly the text a
@@ -478,4 +524,20 @@ def test_a_real_corpus_string_prints_raw(corpus_dir, decompiled):
         c.decode("utf-8")
         assert c in src, c[:16].hex()
     # ... and no decimal escape of a non-ASCII byte survives anywhere in it.
-    assert b"\\2" not in src and b"\\1" not in src
+    #
+    # Decoded properly rather than by substring. The old form was
+    # `b"\\2" not in src and b"\\1" not in src`, which is over-broad in two
+    # ways that this corpus happens not to exhibit (M5 task 7 review; fixed at
+    # task 12): `\\1` also forbids `\\127`, a DEL that `_str_lit`'s RAW path
+    # legitimately emits, and it forbids the tail of `"\\\\1"` -- the printed
+    # form of a constant holding a backslash followed by the digit 1. What the
+    # test means is the value, so read the value.
+    #
+    # Measured 2026-08-13: this artifact contains NO decimal escape at all,
+    # and neither does any of the other 215 fully-structured files -- the set
+    # of escape values over all 216 is empty. So the assertion below is
+    # currently vacuous on the corpus, which is why `_decimal_escapes` has its
+    # own positive/negative test next door: the corpus arm shows the artifact
+    # is clean, and that test shows the check can see a violation.
+    high = {v for v in _decimal_escapes(src) if v >= 128}
+    assert high == set(), sorted(high)[:8]

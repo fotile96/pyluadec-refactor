@@ -370,6 +370,65 @@ def test_refusal_and_rejection_carry_distinguishable_reasons(tmp_path):
     assert repr(rejected.mismatches[0].a) not in rejected.reason
 
 
+def test_the_compile_refusal_vocabulary_is_reachable(tmp_path, monkeypatch):
+    """M5 agenda item 9. `tests/test_m4_exit.py::REASON_KINDS` commits four
+    kinds; measured on the committed ledger, `structure` / `mismatch` /
+    `reconstruct` all occur and **`compile` occurs 0 times**. Its three
+    producers in `structure/structured.py::certify_proto` were reached by no
+    test and no corpus row, so a quarter of a committed vocabulary was
+    asserted and never demonstrated.
+
+    All three are reached here by making the PRINTER produce text `luac_sz4`
+    rejects (or a wrapper of the wrong shape) -- which is the only way in:
+    the certification gate converts every ordinary defect into an `L1`
+    verdict, and M5 task 8 measured that a compile fault cannot be injected
+    into the structured emitter at all without a patch like this one.
+
+    Not a claim that the corpus can reach them. It cannot today, and the
+    honest statement is that the strings are now known to be produced by the
+    code paths that name them rather than to be dead text.
+    """
+    import pyluadec.structure.structured as ss
+    from pyluadec.structure.structured import certify_proto
+
+    # Three DISTINCT protos, because `certify_proto` memoizes per proto and
+    # per `is_chunk_root` and would otherwise hand case 3 case 2's verdict.
+    root = _proto("local f = function(p) return p end return f", tmp_path)
+    nested_a = _proto("local f = function(p) return p end return f",
+                      tmp_path).subprotos[0]
+    nested_b = _proto("local f = function(p, q) return q end return f",
+                      tmp_path).subprotos[0]
+
+    # 1. chunk root: the printed chunk does not compile.
+    monkeypatch.setattr(ss, "print_chunk_or_raise", lambda p: "this is not lua")
+    c = certify_proto(root, is_chunk_root=True)
+    assert c.level == "L1"
+    assert c.reason == "compile: candidate chunk did not recompile", c.reason
+
+    # 2. nested: the wrapper body does not compile.
+    monkeypatch.setattr(ss, "_print_proto_body",
+                        lambda p, depth, upval_names: "this is not lua\n")
+    c = certify_proto(nested_a, is_chunk_root=False)
+    assert c.level == "L1"
+    assert c.reason == "compile: candidate wrapper did not recompile", c.reason
+
+    # 3. nested: the wrapper compiles but yields the wrong number of nested
+    #    functions, so `.subprotos[0]` would silently be the wrong proto. The
+    #    body closes the wrapper's own function early and adds a second one to
+    #    the SAME `return` list, which is what makes the wrapper's main proto
+    #    carry two children rather than one.
+    monkeypatch.setattr(ss, "_print_proto_body",
+                        lambda p, depth, upval_names: "end, function()\n")
+    c = certify_proto(nested_b, is_chunk_root=False)
+    assert c.level == "L1"
+    assert c.reason == ("compile: wrapper yielded 2 nested functions, "
+                        "expected 1"), c.reason
+
+    # And every one of them is inside the vocabulary the ledger commits to.
+    from tests.test_m4_exit import REASON_KINDS
+    assert c.reason.startswith(REASON_KINDS)
+
+
 def test_nested_refusal_also_carries_a_reason(tmp_path):
     """The wrapper path (`is_chunk_root=False`) has its own refusal/rejection
     returns; a reason added only to the chunk-root path would leave every

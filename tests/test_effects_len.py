@@ -154,8 +154,13 @@ def test_nothing_in_src_reads_the_effect_field():
     src = Path(__file__).resolve().parents[1] / "src" / "pyluadec"
     offenders = []
     for path in sorted(src.rglob("*.py")):
-        if path.name == "effects.py" and path.parent.name == "lift":
-            continue          # the table itself defines and returns the field
+        # `lift/effects.py` is NOT skipped any more (M5 task 1 deferred minor,
+        # closed at task 12). It used to be exempted wholesale "because the
+        # table itself defines and returns the field", which is true of the
+        # `effect=` KEYWORD in the `InstrEffects(...)` constructions and not of
+        # any attribute READ: measured 2026-08-13, `effects.py` contains 0
+        # `ast.Attribute` nodes named `effect`, so the exemption was covering
+        # nothing and hiding the one module most likely to grow a self-read.
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for node in ast.walk(tree):
             # An AST walk, not a text scan: `.effects` (the LirInstr field
@@ -163,6 +168,20 @@ def test_nothing_in_src_reads_the_effect_field():
             # so a substring scan would flag every real user and prove
             # nothing.
             if isinstance(node, ast.Attribute) and node.attr == "effect":
+                offenders.append((str(path.relative_to(src)), node.lineno))
+            # ... and the dynamic spelling, which an attribute walk alone
+            # misses. Corpus-wide there are exactly two `getattr` calls in
+            # `src/pyluadec/` today, both `getattr(a, field)` in
+            # `verify/normalize.py::_cmp` over a fixed field list that does
+            # not contain "effect"; a constant-string `getattr(fx, "effect")`
+            # would now be caught, a computed one still would not, and saying
+            # so is the point.
+            if (isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Name)
+                    and node.func.id == "getattr"
+                    and len(node.args) >= 2
+                    and isinstance(node.args[1], ast.Constant)
+                    and node.args[1].value == "effect"):
                 offenders.append((str(path.relative_to(src)), node.lineno))
     assert offenders == [], (
         f"a src/ module now reads InstrEffects.effect: {offenders}. The M5 "

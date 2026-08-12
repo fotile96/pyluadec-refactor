@@ -149,9 +149,17 @@ def test_counter_closure_and_dispatch_mix():
     Every proto in the chunk certifies, so the shipped artifact is structured
     source rather than the fallback state machine -- asserted both ways
     (`certs` levels *and* the absence of `__pld_pc` in `out.source`), because
-    the level and the artifact are deliberately decoupled (a chunk ships
-    structured iff its ROOT certifies) and a test that checked only one of
-    them would not notice the other regressing.
+    the level and the artifact are deliberately decoupled and a test that
+    checked only one of them would not notice the other regressing.
+
+    The decoupling used to be describable as "a chunk ships structured iff its
+    ROOT certifies". That stopped being true at M5 task 6: `emit_certified_chunk`
+    now has a middle case, and a HYBRID chunk ships structured text with
+    fallback holes at the `CLOSURE` sites it could not certify -- while its
+    root does NOT certify. Corpus-wide there are 6 such files. The direction
+    this test relies on still holds and is the weaker one: if every proto in
+    the chunk certifies, nothing is substituted and the artifact is fully
+    structured.
     """
     src = """
         local function make_counter(base, twist)
