@@ -7,10 +7,14 @@ records `fallback-state-machine`. Ledger levels going up while confessions go
 down is the ratchet signal M3 exists to produce.
 
 The shipped SOURCE and the per-proto LEVEL are deliberately decoupled (see
-`structure.structured`'s module docstring): the artifact is structured only
-when the ROOT certifies, because a chunk file is all-or-nothing, while a level
-is a per-proto proof record. `test_mixed_chunk_levels_are_per_proto` pins that
-decoupling directly.
+`structure.structured`'s module docstring): a level is a per-proto proof
+record, while the shipped artifact is a chunk-level choice among three tiers
+-- the root's own certified bytes, a hybrid (structured everywhere except at
+the CLOSURE sites a hybrid certification could not clear, M5 task 6), or the
+whole-chunk fallback -- not the all-or-nothing "root certifies or the whole
+file falls back" rule this docstring stated before the task-6 review's F6/
+Residual A correction. `test_mixed_chunk_levels_are_per_proto` pins the
+decoupling directly, and `tests/test_hybrid_chunk.py` pins the hybrid tier.
 """
 
 

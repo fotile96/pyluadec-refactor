@@ -577,8 +577,7 @@ PROBE_REACH_BEHAVIOUR = frozenset({
     "snr_story_main.lua"})
 
 
-def test_probe_reach_of_the_substituted_code(corpus_dir, decompiled,
-                                             monkeypatch):
+def test_probe_reach_of_the_substituted_code(corpus_dir, monkeypatch):
     """Measure, two-directionally, which hybrids' substituted code the standing
     probes run at all.
 
@@ -603,12 +602,33 @@ def test_probe_reach_of_the_substituted_code(corpus_dir, decompiled,
     bytecode with no source to append a driver to, so there is no symmetric way
     to call them. The synthetic differential tests above cover the boundary's
     mechanisms; this test bounds what the corpus gate adds to that.
+
+    **Both sides are built here, directly through `emit_certified_chunk`, not
+    through the session `decompiled` fixture (round 2 fix of this task's
+    review, New 1).** The first version read the clean side via `decompiled`
+    AFTER `monkeypatch.setattr` below was already installed. That is silently
+    correct only if some earlier test happened to warm the fixture for these 6
+    files first -- run this test alone, or under a `-k` selection that skips
+    whichever test warms it, and the fixture decompiles the "clean" side WITH
+    the sentinel patch live too, both sides match, and every reach comes out
+    empty (`assert frozenset() == frozenset({...})`, reproduced 2026-08-12).
+    Building `clean` in its own loop, in the same shape as `sentinel` below and
+    strictly before `monkeypatch.setattr`, removes the ordering dependency
+    instead of relying on collection order to hide it.
     """
     from concurrent.futures import ThreadPoolExecutor
     import scripts.probe_behaviour as probe_behaviour
     import scripts.probe_global_state as probe_global_state
     from pyluadec.emit import lua as emit_lua
     from pyluadec.ingest import load_file
+
+    clean: dict[str, bytes] = {}
+    for name in HYBRID_FILES:
+        S._HYBRID_CACHE.clear()
+        out = S.emit_certified_chunk(load_file(corpus_dir / name))
+        assert out.hybrid is True, name
+        clean[name] = out.source
+    S._HYBRID_CACHE.clear()
 
     real = emit_lua.inline_function_parts
 
@@ -617,11 +637,19 @@ def test_probe_reach_of_the_substituted_code(corpus_dir, decompiled,
         return params, 'error("PLD_SENTINEL")\n' + body
 
     monkeypatch.setattr(emit_lua, "inline_function_parts", injected)
-    # Only the HYBRID memo is dropped: per-proto certification never consults
-    # `fallback_paths` (`Printer.closure_parts` takes its no-substitutions
-    # branch), so the warm `_CERT_CACHE` is still valid under the patch and
-    # re-deriving ~50 verdicts per file would dominate this test's cost. The
-    # autouse fence in conftest restores both dicts afterwards.
+    # Only the HYBRID memo is dropped: `certify_proto` (per-proto
+    # certification) never passes a non-empty `fallback_paths` to
+    # `_print_proto_body` -- it always certifies a proto's OWN subtree in
+    # isolation (`is_chunk_root=True` prints via `print_chunk_or_raise`,
+    # `is_chunk_root=False` prints via the wrapper form), neither of which
+    # reaches this patched `inline_function_parts` at all. So the warm
+    # `_CERT_CACHE` is unaffected by the patch and re-deriving ~50 verdicts
+    # per file would dominate this test's cost for nothing. (Round 2,
+    # New 3: this comment used to cite `Printer.closure_parts` taking a
+    # "no-substitutions branch" that F9, earlier in this same review round,
+    # deleted -- the conclusion survives on the reason above, which was
+    # always the actual one.) The autouse fence in conftest restores both
+    # dicts afterwards.
     sentinel: dict[str, bytes] = {}
     for name in HYBRID_FILES:
         S._HYBRID_CACHE.clear()
@@ -634,11 +662,10 @@ def test_probe_reach_of_the_substituted_code(corpus_dir, decompiled,
             for n in HYBRID_FILES} == SENTINELS_PER_FILE
 
     def one(name):
-        clean = decompiled(corpus_dir / name).source
-        g = (probe_global_state.probe(clean, is_source=True)
+        g = (probe_global_state.probe(clean[name], is_source=True)
              != probe_global_state.probe(sentinel[name], is_source=True))
         b = (probe_behaviour.digest(probe_behaviour.probe_raw(
-                 clean, is_source=True))
+                 clean[name], is_source=True))
              != probe_behaviour.digest(probe_behaviour.probe_raw(
                  sentinel[name], is_source=True)))
         return name, g, b

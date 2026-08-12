@@ -138,7 +138,16 @@ gap rather than a defect:
   shared by three modules across two layers.
   The misplacement is still real; the fix is no longer "move it into
   fallback.py" but a shared codegen-side home. Lower priority than when it
-  had one consumer.)*
+  had one consumer.)* **M5 task 6 round 2 review (Residual B) added a third
+  instance of the same open question**: `emit/lua.py` imports `const_lit,
+  inline_function_parts` from `structure/fallback.py` (an emit -> structure
+  dependency), while `structure/structured.py` imports FROM `emit/lua.py` --
+  mutual dependency through `fallback.py`. `const_lit` predates task 6;
+  `inline_function_parts` is the hybrid boundary's own addition and cannot
+  currently live anywhere neutral because nowhere neutral exists yet.
+  Recorded at the import site in `emit/lua.py` rather than given a bespoke
+  fix; folds into whatever shared codegen-side home eventually gets built for
+  `LUA_KEYWORDS` and the proto-path convention below.
 - Duplicated proto-path convention — `pipeline.walk_proto_paths`'s own
   `f"{path}_{i}"` call (line 57 at the M4 branch point; a docstring expansion
   since pushed it to line 63 without this citation being re-swept — found
@@ -1600,7 +1609,11 @@ out of M2" and §6 above for the full text of each.
   concern shared by three modules across two layers; `structure/__init__.py`
   and `verify/__init__.py` are empty while `lift/` and `cfg/` export curated
   `__all__`. (`emit/__init__.py` was brought into line at task 12 —
-  `print_chunk_or_raise` is now exported.)
+  `print_chunk_or_raise` is now exported.) Same open question, third
+  instance (M5 task 6 round 2, Residual B): `emit/lua.py` imports from
+  `structure/fallback.py` while `structure/structured.py` imports from
+  `emit/lua.py` — a mutual dependency through `fallback.py`, undissolved
+  because the shared codegen-side home neither of these needs yet exists.
 - The `f"{path}_{i}"` proto-path convention is implemented independently at
   three sites; documented at all three rather than extracted, because the
   extraction needs a neutral home (same open question as `LUA_KEYWORDS`) and

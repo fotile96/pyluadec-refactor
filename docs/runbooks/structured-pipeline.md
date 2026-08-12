@@ -487,16 +487,39 @@ smaller than round 1 of this task claimed.** Injecting an unconditional
 | L1.5 global-state | **0 of 6** | all six |
 | L1.75 behaviour | 4 of 6 | `snr_fragment_main.lua`, `snr_s5_10_s.lua` |
 
+**`0 of 6` on L1.5 is not a corpus coincidence — it is close to structurally
+unmovable, and this is not the same claim** (round 2 of this task's review;
+the round-1 text above read like a measurement that could shift with a
+different corpus or a different budget, and it cannot, for a reason internal
+to the probe itself). `scripts/probe_global_state.lua` only `loadfile`s the
+chunk and `pcall`s its top-level body once; it never enumerates or invokes the
+globals that body *defines* (unlike `probe_behaviour.lua`'s invocation loop).
+So L1.5 can only ever execute a hybrid's substituted code if that code runs
+during the chunk's own top-level execution — never merely by being reachable
+from a global the chunk leaves for its caller to invoke later, which is how
+every one of the six hybrids' substituted functions is actually reached in
+this corpus. Re-verified 2026-08-12 (round 2) by reading
+`scripts/probe_global_state.lua` directly: no invocation loop is present.
+
 `snr_fragment_main.lua`'s only global (`main`) errors after 12 recorded events,
 and its substituted function is a chunk *local* called from another chunk
 local; `snr_s5_10_s.lua` hits the 3000-event cap before the invocation loop
-reaches the code that calls its two. `snr_s5_10_s.lua` is also the single file
-`test_corpus_hybrid_invariant_on_one_file` runs `shipping_violations` over, so
-it is the least-covered of the six twice over. The committed fault injection
-`test_a_broken_upvalue_write_at_the_boundary_diverges` is likewise a **no-op on
-the corpus**: no substituted function performs a `SETUPVAL` through a name
-slot, so all six artifacts stay byte-identical under that patch and both probes
-stay green.
+reaches the code that calls its two. **More budget does not fix the second
+one, measured 2026-08-12 (round 2):** raising `MAX_EVENTS` from 3000 to
+300000 in a scratch copy of `probe_behaviour.lua` and re-running it against
+`snr_s5_10_s.lua`'s original bytecode produces `PROBE1|INSN|257070` — it now
+stops on the 400M-instruction backstop (`INSN_BACKSTOP`) at 257070 recorded
+events, short of even the raised 300000 cap, and still before the invocation
+loop reaches the code that calls `main_42`/`main_43`. The earlier "hits the
+3000-event cap" phrasing invites the inference that a bigger budget would
+reach them; measured, it does not — the file's own top-level cost in VM
+instructions outruns the backstop first. `snr_s5_10_s.lua` is also the single
+file `test_corpus_hybrid_invariant_on_one_file` runs `shipping_violations`
+over, so it is the least-covered of the six twice over. The committed fault
+injection `test_a_broken_upvalue_write_at_the_boundary_diverges` is likewise a
+**no-op on the corpus**: no substituted function performs a `SETUPVAL` through
+a name slot, so all six artifacts stay byte-identical under that patch and
+both probes stay green.
 
 So: the probes gate the boundary on four files and say nothing about two. The
 boundary's *mechanisms* — name-slot aliasing in both directions, the upvalue

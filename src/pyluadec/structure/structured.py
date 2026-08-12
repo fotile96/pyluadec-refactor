@@ -2,10 +2,21 @@
 
 A proto certifies L3 iff the structured print of ITS OWN SUBTREE recompiles to a
 proto matching the original under the normalization ladder. Certification is
-per-proto so one unstructurable function cannot poison its siblings' levels;
-the shipped chunk source is structured only when the ROOT certifies (which
-covers the whole tree), otherwise the semantically-exact fallback chunk ships.
-No unverified structured code is ever returned.
+per-proto so one unstructurable function cannot poison its siblings' levels.
+
+**Shipping (M5 task 6 retired the all-or-nothing rule here; corrected in
+round 2 of that task's review, F6/Residual A -- this paragraph used to say
+"structured only when the ROOT certifies, otherwise the fallback chunk
+ships" verbatim, which is the invariant this task replaced).** Three tiers,
+tried in order: the ROOT's own certified bytes ship if the root certifies L3
+(covers the whole tree); else a hybrid ships if `certify_hybrid` can certify
+one -- structured code everywhere except at the CLOSURE sites its
+`fallback_paths` names, each such site filled by the semantically-exact
+fallback state machine and bound to the enclosing scope's own names; else the
+whole-chunk semantically-exact fallback ships. No unverified structured code
+is ever returned, and a hybrid's fallback-emitted protos are confessed in the
+ledger exactly as a whole-file fallback's are. See `emit_certified_chunk` and
+`ChunkOutcome`/`HybridCert` below for the mechanism.
 
 Why per-proto rather than chunk-level all-or-nothing (quantified 2026-08-10):
 only 93/229 corpus files have their ENTIRE proto tree inside the structurable
@@ -656,11 +667,18 @@ def _certify_hybrid_uncached(root: Proto,
 
 def emit_certified_chunk(root: Proto) -> ChunkOutcome:
     """Certify every proto in `root`'s tree independently, then choose the
-    shipped artifact: structured chunk source iff the ROOT certified L3
-    (which, per `certify_proto`'s wrapper-isolation contract, implies every
-    descendant printed and recompiled correctly as part of that same
-    structured print -- `print_chunk` prints the whole tree inline at each
-    CLOSURE site); the semantically-exact fallback chunk otherwise.
+    shipped artifact, in order: the ROOT's own certified bytes if it
+    certified L3 (which, per `certify_proto`'s wrapper-isolation contract,
+    implies every descendant printed and recompiled correctly as part of
+    that same structured print -- `print_chunk` prints the whole tree inline
+    at each CLOSURE site); else a hybrid (`certify_hybrid` below) -- structured
+    everywhere except at the CLOSURE sites its own certification could not
+    clear, each filled by the semantically-exact fallback and bound to the
+    enclosing scope's own names; else the whole-chunk semantically-exact
+    fallback (this docstring corrected round 2 of the task-6 review, F6/
+    Residual A -- it used to name only the root-certifies/whole-fallback
+    pair and omitted the hybrid tier this function's own body has had since
+    the feature landed).
 
     Identical protos are certified once and the result is shared -- corpus
     functions repeat verbatim (identical small helper closures), and

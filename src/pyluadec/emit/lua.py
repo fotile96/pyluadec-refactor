@@ -74,6 +74,20 @@ from pyluadec.sir import (Break, CondValue, EndIter, GenericFor, If,
                           NumericFor, Region, Repeat, Return, Seq, Straight,
                           While, WhileTrue)
 from pyluadec.sir.build import StructureError, build_sir
+# `emit` importing from `structure` is an emit -> structure dependency, and
+# `structure.structured` itself imports FROM `emit.lua` (`print_chunk_or_raise`,
+# `_print_proto_body`) -- so the two modules are mutually dependent through
+# `fallback.py`, which is the layering half of M5 task 6's F9 finding (round 2
+# review, Residual B). `const_lit` predates task 6 (peephole-era shared
+# formatting); `inline_function_parts` is this task's own addition, needed
+# because the hybrid boundary has to bind the substituted state machine to the
+# ENCLOSING structured scope's own names (see `structured.py`'s module
+# docstring, "Shipping"). Left as-is rather than given a new neutral home:
+# this is the same unresolved-layering question already tracked for
+# `LUA_KEYWORDS` (`lift/opcodes.py`, a decoder, holding a codegen concern) and
+# the `f"{path}_{i}"` proto-path convention (`docs/runbooks/m3-backlog.md`
+# section 14) -- a third instance of "the neutral home doesn't exist yet"
+# does not get its own answer; it is recorded there rather than invented here.
 from pyluadec.structure.fallback import const_lit, inline_function_parts
 
 # Lua 5.1 operator precedence (higher binds tighter; Lua reference manual

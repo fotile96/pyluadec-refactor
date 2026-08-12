@@ -43,9 +43,28 @@ def _force_l0(e) -> None:
     construction rather than by accident -- still latent (229/229 files
     compile, so no `L0` row has ever been written), but a demotion path that
     writes a row its own exit test would reject is not a hole worth keeping.
-    A shipped chunk that does not compile cannot be a certified artifact:
-    certification compiles what it certifies, so every proto in it really did
-    ship as state-machine text.
+
+    **What this is actually entitled to claim, and what it overclaims (M5
+    task 6 round 2 review, New 2).** `e.compile_ok` is AND-ed across every
+    occurrence of this SHAPE (`e.compile_ok = e.compile_ok and compile_ok` in
+    the walk above), so it goes false the moment ANY file the shape occurs in
+    fails to compile -- "a shipped chunk that does not compile cannot be a
+    certified artifact" is a true statement about THAT chunk, not about a
+    sibling file that shares the shape and compiled fine. This loop below
+    nonetheless stamps `shipped = "fallback"` on every occurrence in `e`,
+    including the ones that live in a different, compiling file, whose text in
+    `build/decompiled/` really was shipped structured. Re-measured
+    2026-08-12 (round 2): 13 of the 1478 shapes occur in more than one file
+    (max 27 files sharing one shape), so a false claim here would touch at
+    most those 13 rows' occurrences, never the other 1465. Still 0 rows today
+    (229/229 compile, so `_force_l0` has never fired on this corpus) -- a
+    trade against the pre-M5-task-6 state, which had a different latent
+    inconsistency (an L0 row could ship with an empty confession list), not a
+    regression against it, and not fixed here: narrowing this to only the
+    occurrences that actually live in a non-compiling file needs per-file
+    compile tracking this script does not currently keep per shape, and doing
+    that is out of this round's scope (no production behaviour change beyond
+    the docstring, per the round-2 brief).
     """
     e.level = "L0"
     e.l3_level = None
