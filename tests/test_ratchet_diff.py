@@ -9,7 +9,20 @@ baseline. A ratchet that cannot fail is worse than no ratchet, because it
 licenses exactly the claim it does not enforce -- so every failure mode below
 gets its own committed test that feeds `ratchet_diff` a hand-mutated copy of
 the REAL committed ledger and asserts a non-zero exit that NAMES the offending
-row. Narrowing any one check makes exactly one of these go red.
+row. Neutering any one check turns at least one NAMED case red, and only cases
+that belong to that check -- the red sets are disjoint, so a mutation that
+trips two checks at once is visible rather than absorbed.
+
+**That sentence used to say "exactly one", and it was false.** Round 2 found
+two guards in `load_rows` that no test touched at all: deleting the
+`isinstance(row, dict)` check left the entire suite green while a ledger line
+of `5` raised `AttributeError` straight out of `load_rows`, past `main`'s
+`(OSError, ValueError)` handler, to a traceback and exit 1 -- the very failure
+round 1 was fixing. It is also not "exactly one" numerically: several checks
+own two or three named cases (see the parametrised
+`test_every_undiffable_row_shape_is_skipped_not_blamed`). Both corrections are
+kept in the text rather than smoothed away, because "one check, one red test"
+is the claim that stopped being checked.
 
 The mutations are deliberately minimal (one field of one row) so that a test
 going green for the wrong reason -- e.g. because the mutation also tripped a
@@ -404,6 +417,73 @@ def test_a_malformed_new_row_is_skipped_not_blamed(committed, tmp_path, capsys):
     assert main([str(old), str(bad)]) == EXIT_UNTESTABLE
     err = capsys.readouterr().err
     assert "shash" in err and "No verdict" in err
+
+
+@pytest.mark.parametrize("label,line,neutered_behaviour", [
+    # The guard this parametrisation exists for. Round 2 found it UNPINNED:
+    # deleting `isinstance(row, dict)` left the whole 664-test suite green,
+    # while a scalar line raised `AttributeError: 'int' object has no attribute
+    # 'get'` out of `load_rows` -- past `main`'s `(OSError, ValueError)`
+    # handler, traceback, exit 1. That is round 1's finding 2 reintroduced by
+    # round 1's fix for finding 2, which is why each guard now gets a name.
+    ("scalar row", "5", "AttributeError escapes load_rows -> exit 1"),
+    ("string row", '"not a row"', "AttributeError escapes load_rows -> exit 1"),
+    ("occurrences not a list",
+     '{"shash": "aa", "level": "L3", "occurrences": {"file": "a.lua"}}',
+     "diff handler catches it -> 128 (abort), not 125"),
+    ("occurrence not an object",
+     '{"shash": "aa", "level": "L3", "occurrences": ["a.lua"]}',
+     "diff handler catches it -> 128 (abort), not 125"),
+    ("unhashable occurrence key",
+     '{"shash": "aa", "level": "L3", "occurrences": [{"file": ["a"], '
+     '"proto_path": "main"}]}',
+     "TypeError: unhashable list -> 128 (abort), not 125"),
+    # N2: a str rung slipped past BOTH the `is None` and the `isinstance(int)`
+    # branch, so baseline rung 0 vs new rung "one" scored 0 regressions.
+    ("rung of the wrong type",
+     '{"shash": "aa", "level": "L3", "l3_level": "one", "occurrences": []}',
+     "rung comparison silently skipped -> exit 0, a MISSED downgrade"),
+    ("rung is a bool",
+     '{"shash": "aa", "level": "L3", "l3_level": true, "occurrences": []}',
+     "bool is an int subclass; compares as rung 1"),
+    # N3: `cluster_of` does `.split(":", 1)`.
+    ("reason of the wrong type",
+     '{"shash": "aa", "level": "L1", "refusal_reason": 12345, '
+     '"occurrences": []}',
+     "AttributeError in cluster_of -> 128 (abort) where the contract says 125"),
+])
+def test_every_undiffable_row_shape_is_skipped_not_blamed(
+        committed, tmp_path, capsys, label, line, neutered_behaviour):
+    """One case per type guard in `load_rows`, each named, because round 2
+    found two guards that no test touched.
+
+    The rule: a ledger this script cannot diff is **125** (git skips the
+    commit), never 1 and never a traceback. `neutered_behaviour` records what
+    each guard's removal was measured to do -- three distinct failure modes,
+    so this is not one check wearing eight hats."""
+    bad = tmp_path / "bad.jsonl"
+    bad.write_text(line + "\n", encoding="utf-8")
+    old = _write(tmp_path / "old.jsonl", committed)
+    assert main([str(old), str(bad)]) == EXIT_UNTESTABLE, label
+    assert "No verdict" in capsys.readouterr().err, label
+
+
+def test_a_malformed_rung_cannot_hide_a_rung_downgrade(committed, tmp_path,
+                                                       capsys):
+    """N2 stated as the regression it actually is, rather than as a type
+    error. Measured before the guard: baseline rung 0 against new rung "one"
+    gave **0 regressions, exit 0** -- a genuine `L3.0` -> non-numeric rung
+    change waved through. It must not be exit 0 or 1; it is 125."""
+    old = copy.deepcopy(committed)
+    new = copy.deepcopy(committed)
+    o_row, n_row = _pick(old, "L3"), _pick(new, "L3")
+    o_row["l3_level"] = 0
+    n_row["l3_level"] = "one"
+    o = _write(tmp_path / "old.jsonl", old)
+    n = _write(tmp_path / "new.jsonl", new)
+
+    assert main([str(o), str(n)]) == EXIT_UNTESTABLE
+    assert "l3_level" in capsys.readouterr().err
 
 
 def test_duplicate_rows_are_rejected_rather_than_last_wins(committed, tmp_path,

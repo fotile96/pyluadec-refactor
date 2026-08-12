@@ -10,8 +10,9 @@
 #
 # Gate 3 is here rather than in the suite ON PURPOSE. The standing suite runs
 # DEFAULT_LIMIT = 3 of tests/test_generated_semantic_cases.py's CASE_COUNT = 24
-# differential-execution cases (0.31s); the full 24 costs 2.48s (both measured
-# 2026-08-12 on macOS arm64), and the suite has ~8s of headroom against its 45s
+# differential-execution cases (0.29s); the full 24 costs 2.29-2.54s over 5
+# runs (all measured 2026-08-12 on macOS arm64 -- it is noisy at this scale, so
+# it is quoted as a range), and the suite has ~7s of headroom against its 45s
 # ceiling with an L2 harness still to land. So the ported fuzz harness runs in
 # full HERE, on the ratchet, and one eighth of it per commit.
 set -euo pipefail

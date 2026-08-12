@@ -1323,12 +1323,20 @@ diff → git aborts). The internal-error case matters on its own: an uncaught
 reported as a tree verdict.
 
 Non-vacuity is the deliverable and was treated as one. `tests/test_ratchet_diff.py`
-is 25 tests, one per failure mode plus the CLI contract, each feeding a
-hand-mutated copy of the real committed ledger and asserting a non-zero exit
-**naming the row**; every check was individually neutered with exactly its own
-test(s) going red. Round 1's mutation pass found one vacuity in its own new
-tests — they were written against the exit-code *symbols*, so reverting both
-constants to 2 left all 24 green — and pinned the literal integers.
+is 34 tests, one named case per failure mode plus the CLI contract, each
+feeding a hand-mutated copy of the real committed ledger and asserting a
+non-zero exit **naming the row**. The standing claim is that neutering any one
+check turns at least one named case red and only cases belonging to that
+check — deliberately weaker than the "exactly its own test(s)" this entry used
+to assert, because the mutation pass caught something on each of the last two
+rounds: round 1's exit-code tests were written against the *symbols*, so
+reverting both constants to 2 left all 24 green; round 2 found that the pass
+had never been run over round 1's `load_rows` guards, two of which were
+unpinned and one load-bearing (deleting `isinstance(row, dict)` left the whole
+664-test suite green while a scalar ledger line escaped as an `AttributeError`
+and exited 1 — a tree verdict from an instrument fault, which is finding 2
+reintroduced by its own fix). Both are pinned now; see
+`structured-pipeline.md` → "Non-vacuity".
 
 The `git bisect run` predicate was **verified by running a bisect**, not
 described. Round 1 rewrote it: the original `run_corpus.py … || exit 125`
@@ -1359,19 +1367,38 @@ instead, and `main()` refuses to write a violating ledger; the exposure figures
 now print on every run. If it ever fires, the fix is to split the key.
 
 **3. The full generated sweep** is gate 3 of `scripts/ratchet_job.sh`.
-Re-measured: **24 cases in 2.48s** against **0.31s** for the standing 3 — so
-this entry's "~1.7s" did not reproduce and the fold-in costs the ratchet ~2.2s
-and the per-commit suite nothing.
+Re-measured over 5 runs: **24 cases in 2.29–2.54s** against **0.29s** for the
+standing 3 — so this entry's "~1.7s" did not reproduce, and the single figure
+"2.48s" quoted for two rounds is really a noisy range. The fold-in costs the
+ratchet ~2.2s and the per-commit suite nothing.
+
+**Known limitation, recorded not fixed (round 2, N4).**
+`src/pyluadec/verify/ledger.py::write_ledger` writes `corpus/ledger.jsonl` in
+place, with no write-to-temp-then-rename. So a `run_corpus.py` killed
+mid-write can leave a *shorter but syntactically valid* ledger, and the two
+truncation shapes land on opposite sides of the verdict/non-verdict line:
+
+- truncated at a **line** boundary → valid JSONL with rows missing →
+  `ratchet_diff.py` reports `row-removed` and exits **1**, i.e. an I/O
+  interruption reported as a bad commit;
+- truncated **mid-line** → `json.JSONDecodeError` in `load_rows` → exits
+  **125**, correctly.
+
+The fix is a tmp+rename in `write_ledger`, which is a change to how the
+committed artifact is produced and does not belong in a round whose constraint
+is that the ledger stay byte-identical. Recorded here so the next person does
+not rediscover it from a confusing bisect.
 
 **CI: there is none.** Checked — no `.github/workflows/`, no `.gitlab-ci.yml`,
 no runner config anywhere in the repo. No workflow was invented for a repo that
 has never had one; the ratchet is `scripts/ratchet_job.sh` (suite + baseline
-diff + full sweep, 40.3s end to end), run at a wrap and before any merge that
+diff + full sweep, 40.5s end to end), run at a wrap and before any merge that
 touches the ledger. If a runner is ever added, that script is the job body.
 
-Suite after round 1: **664 passed in 37.0-38.1s** (3 runs) (636 in 36.0s before the
-task, 655 in 36.7s at the task commit), against the 45s ceiling; +28 tests and
-~+1.2s over the whole task, and the 25 `ratchet_diff` tests need no corpus.
+Suite after round 2: **673 passed in 35.3-37.6s** (3 runs) (636 in 36.0s before the
+task, 655 in 36.7s at the task commit, 664 in 37.0-38.1s after round 1),
+against the 45s ceiling; +37 tests and ~+1.5s over the whole task, and all 34
+`ratchet_diff` tests need no corpus.
 
 ## 3. The 89 non-`L3` unique protos, and the 17 files still on fallback
 

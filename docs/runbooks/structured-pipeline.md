@@ -1525,7 +1525,7 @@ the original instruction stream actually did.
 ### Run the suite
 
 ```bash
-PYLUADEC_CORPUS_DIR=<corpus> uv run pytest              # 664 tests, 37.0-38.1s (3 runs, measured 2026-08-12, M5 task 8 round 1)
+PYLUADEC_CORPUS_DIR=<corpus> uv run pytest              # 673 tests, 35.3-37.6s over 3 runs (measured 2026-08-12, M5 task 8 round 2)
 PYLUADEC_CORPUS_DIR=<corpus> uv run pytest tests/test_effects_emitter_consistency.py -v
 ```
 
@@ -1544,11 +1544,12 @@ stays available:
 PYLUADEC_GENERATED_CASE_LIMIT=24 uv run pytest tests/test_generated_semantic_cases.py -v
 ```
 
-Measured 2026-08-12 on macOS arm64: **24 cases in 2.48s**, against **0.31s**
-for the standing 3 — so the fold-in costs the ratchet ~2.2s and the per-commit
-suite nothing. (An earlier revision of this section said "~1.7s" for the full
-sweep, measured 2026-08-11; that figure did not reproduce and 2.48s is the one
-to use. Why it grew was not investigated — five M5 tasks landed in between and
+Measured 2026-08-12 on macOS arm64 over 5 runs: **24 cases in 2.29–2.54s**,
+against **0.29s** for the standing 3 — so the fold-in costs the ratchet ~2.2s
+and the per-commit suite nothing. (An earlier revision of this section said
+"~1.7s" for the full sweep, measured 2026-08-11; that figure did not
+reproduce. A single-figure "2.48s" was then quoted for two rounds; at this
+scale the measurement is noisy enough that a range is the honest form. Why it grew was not investigated — five M5 tasks landed in between and
 attributing it without measuring would be a guess.)
 
 ### Ratchet the ledger against a baseline (M5 task 8)
@@ -1561,7 +1562,7 @@ Three gates: the full suite (which contains `tests/test_ledger_ratchet.py`,
 i.e. the proof that `corpus/ledger.jsonl` is a byte-exact fixed point of
 `scripts/run_corpus.py`), the baseline diff, and the full 24-case generated
 sweep. `BASELINE_REF` defaults to `eb08890`, the last merged milestone tip.
-Measured end-to-end 2026-08-12 (round 1): **40.3s**.
+Measured end-to-end 2026-08-12 (round 2): **40.5s**.
 
 The diff on its own:
 
@@ -1615,15 +1616,30 @@ tripwire. Both gaps are the same gap, and this closes it: floors catch
 catastrophes without churning, the baseline diff catches the one-row
 regression that stays inside them.
 
-**Non-vacuity.** `tests/test_ratchet_diff.py` (25 tests) feeds hand-mutated
-copies of the real committed ledger, one test per failure mode, and asserts a
-non-zero exit that names the offending row. Verified by mutation, twice: at M5
-task 8 each of the seven checks was neutered in turn and exactly its own
-test(s) went red; round 1 repeated the pass over its own additions and found a
-vacuity in them — the exit-code tests were written against the *symbols*
-`EXIT_UNTESTABLE` / `EXIT_BROKEN`, so reverting both constants to the old,
-wrong value of 2 left all 24 tests green. The literal integers are now pinned
-by `test_the_exit_codes_are_literally_the_ones_git_treats_as_non_verdicts`.
+**Non-vacuity.** `tests/test_ratchet_diff.py` (34 tests) feeds hand-mutated
+copies of the real committed ledger, one named case per failure mode, and
+asserts a non-zero exit that names the offending row. Verified by mutation
+three times, and **the mutation pass found something it had missed on each of
+the last two rounds** — which is the honest summary, not "every check was
+neutered":
+
+- M5 task 8: each of the seven diff checks neutered in turn, exactly its own
+  test(s) red.
+- Round 1: repeating the pass over round 1's own additions found the exit-code
+  tests were written against the *symbols* `EXIT_UNTESTABLE` / `EXIT_BROKEN`,
+  so reverting both constants to the old, wrong value of 2 left all 24 tests
+  green. Pinned by
+  `test_the_exit_codes_are_literally_the_ones_git_treats_as_non_verdicts`.
+- Round 2: the pass had **not** been run over round 1's `load_rows` guards.
+  Two were unpinned, and one was load-bearing: deleting `isinstance(row, dict)`
+  left the whole 664-test suite green while a ledger line of `5` raised
+  `AttributeError` out of `load_rows`, past `main`'s `(OSError, ValueError)`
+  handler, to a traceback and **exit 1 — a bad-commit verdict from an
+  instrument fault**, i.e. round 1's own finding 2 reintroduced by round 1's
+  fix for it. Now pinned by a parametrised case per guard.
+
+The standing claim is therefore the weaker, true one: neutering any one check
+turns at least one named case red, and only cases belonging to that check.
 
 ### The `git bisect run` predicate
 
@@ -1667,6 +1683,19 @@ path.) `rm -f` plus `test -s` asks the question that actually matters: a
 commit that could not produce a ledger at all cannot judge the ratchet, and one
 that produced a ledger full of `L0` rows is exactly the commit being hunted.
 `ratchet_diff.py`'s own 125/128 flow through the final `exit $rc`.
+
+**Two things this shape does that are worth knowing before you run it.** First,
+`run_corpus.py` has a *second* path that exits 1 without writing a ledger —
+`key_disagreements` finding a `structural_hash` group with more than one
+verdict, printing `LEDGER KEY UNSOUND` — and the predicate maps that to
+**skip**, not bad. That is defensible (a run that refused to write a ledger
+genuinely cannot judge the ratchet, and gate 1 of `scripts/ratchet_job.sh`
+covers the invariant), but it is a real class of commit the bisect will step
+over, so it is stated rather than left to be discovered. Second, `rm -f`
+deletes a **tracked** file: a probe interrupted between the `rm -f` and the
+`git checkout --` leaves your working tree missing `corpus/ledger.jsonl`. It is
+one `git checkout -- corpus/ledger.jsonl` away from clean, but check for it
+before blaming the next thing that reads the ledger.
 
 **Exit codes: the measured contract.** `git-bisect(1)` (git 2.39.5 on this
 host) says the script *"should exit with code 0 if the current source code is
@@ -1782,7 +1811,7 @@ fixture, and pinning one inside `pytest` would either freeze it at one
 milestone or re-derive it from `git` on every run. The check lives in
 `scripts/ratchet_job.sh`, which is run at a wrap and before any merge that
 touches the ledger. What the suite gained is the guarantee that the instrument
-works: `tests/test_ratchet_diff.py` (25 tests, no corpus needed) is the
+works: `tests/test_ratchet_diff.py` (34 tests, no corpus needed) is the
 non-vacuity proof.
 
 ### The ledger's grouping key — pinned, not split (M5 task 8)

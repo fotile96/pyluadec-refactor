@@ -218,7 +218,36 @@ def load_rows(path: Path | str) -> list[dict]:
     correctly when placed after). `write_ledger` cannot emit duplicates and
     `tests/test_ledger_ratchet.py` pins uniqueness, but the bisect predicate
     runs this script alone, against files it did not produce.
+
+    ## Which fields are type-checked, and why exactly these
+
+    Every field `diff_ledgers` DEREFERENCES rather than merely compares:
+
+    | field | why the diff would break without the check |
+    | --- | --- |
+    | the row itself | `.get` on a scalar -> `AttributeError`, which is not `ValueError` and so escaped `main`'s handler entirely (round 2, N1) |
+    | `shash` | dict key and row identity |
+    | `occurrences` | iterated, and each entry is `.get`-ed |
+    | `file` / `proto_path` | tuple-keyed into `_occurrence_index`; a list here is unhashable -> `TypeError` |
+    | `l3_level` | compared with `>`; a str slipped past both the `is None` and the `isinstance(int)` branch, so rung `0` -> `"one"` scored 0 regressions (round 2, N2) |
+    | `refusal_reason` | `.split(":", 1)` in `cluster_of`; a non-str raised out of the diff and inverted the 125/128 split (round 2, N3) |
+
+    Fields that are only ever COMPARED are deliberately NOT checked, because
+    the comparison already fails safe: an unknown or missing `level` ranks -1
+    via `LEVEL_RANK.get`, so it reads as a downgrade (measured: dropping
+    `level` from every NEW row yields 1478 `level-downgrade`s), and a
+    `shipped` of any type simply is not `"structured"`. Type-checking those
+    would ALSO convert the "NEW dropped a field" measurements in the module
+    docstring from findings into load errors, which is not the behaviour that
+    table describes.
+
+    Absent is not the same as malformed, throughout: a field that is missing
+    stays missing and is reported as a schema note. Only a field that is
+    PRESENT with an undiffable type is an error.
     """
+    def bad(n: int, msg: str) -> ValueError:
+        return ValueError(f"{path}:{n}: {msg}")
+
     out = []
     for n, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), 1):
         if not line.strip():
@@ -228,17 +257,32 @@ def load_rows(path: Path | str) -> list[dict]:
         except json.JSONDecodeError as e:
             raise ValueError(f"{path}:{n}: not JSON: {e}") from e
         if not isinstance(row, dict):
-            raise ValueError(f"{path}:{n}: ledger row is {type(row).__name__}, "
-                             f"expected a JSON object")
+            raise bad(n, f"ledger row is {type(row).__name__}, expected a JSON "
+                         f"object")
         shash = row.get("shash")
         if not isinstance(shash, str) or not shash:
-            raise ValueError(f"{path}:{n}: ledger row has no usable `shash` "
-                             f"({shash!r}); row identity is undefined")
+            raise bad(n, f"ledger row has no usable `shash` ({shash!r}); row "
+                         f"identity is undefined")
         occ = row.get("occurrences", ())
         if not isinstance(occ, (list, tuple)) or any(
                 not isinstance(o, dict) for o in occ):
-            raise ValueError(f"{path}:{n}: `occurrences` of {shash} is not a "
-                             f"list of objects")
+            raise bad(n, f"`occurrences` of {shash} is not a list of objects")
+        for o in occ:
+            for f in ("file", "proto_path"):
+                if f in o and not isinstance(o[f], str):
+                    raise bad(n, f"occurrence `{f}` of {shash} is "
+                                 f"{type(o[f]).__name__}, expected a string")
+        rung = row.get("l3_level")
+        # `bool` is an `int` subclass and would compare as 0/1 -- not a rung.
+        if rung is not None and (isinstance(rung, bool)
+                                 or not isinstance(rung, int)):
+            raise bad(n, f"`l3_level` of {shash} is {rung!r}; a rung must be an "
+                         f"integer or null, and a non-integer would slip past "
+                         f"the rung comparison unnoticed")
+        reason = row.get("refusal_reason")
+        if reason is not None and not isinstance(reason, str):
+            raise bad(n, f"`refusal_reason` of {shash} is "
+                         f"{type(reason).__name__}, expected a string or null")
         out.append(row)
     seen: set[str] = set()
     for row in out:
@@ -472,6 +516,16 @@ def main(argv: list[str] | None = None) -> int:
     commit, so a fault there should abort the whole run (128) rather than mark
     a hundred commits skipped; the NEW ledger is produced by the tree under
     test, so a fault there means only that THIS commit cannot be judged (125).
+
+    **The split holds for faults `load_rows` recognises, and only those.** An
+    UNANTICIPATED fault in a NEW ledger reaches the `diff_ledgers` handler
+    below and exits 128 -- abort -- where the rule above would say 125. That is
+    deliberate and it is the safe direction: once the diff has crashed, this
+    script cannot tell a bad ledger from a bug in itself, and stopping the run
+    with a message beats skipping N commits and reporting nothing. Round 2's
+    N3 was one such case that had a knowable shape (a non-string
+    `refusal_reason`), so it moved into `load_rows` and now returns 125; the
+    residual class stays at 128 by design rather than by omission.
     """
     args = sys.argv[1:] if argv is None else list(argv)
     if len(args) != 2:

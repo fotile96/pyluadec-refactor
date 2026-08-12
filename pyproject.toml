@@ -28,7 +28,7 @@ testpaths = ["tests"]
 # never returns -- no failure name, no diff, easy to mistake for flakiness
 # and re-run.
 #
-# Sizing (test count re-counted 2026-08-12 at M5 task 8 round 1: 664 tests,
+# Sizing (test count re-counted 2026-08-12 at M5 task 8 round 2: 673 tests,
 # corpus present -- it read 523 from M5 task 2 through task 8 and was already
 # stale when task 8 landed; the wall-clock analysis below is unaffected, since
 # what sizes this backstop is the slowest SINGLE entry, not the count. The
