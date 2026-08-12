@@ -2785,9 +2785,15 @@ there are others.
   future driver that keeps state a stub can perturb some other way would need
   the same treatment at its own boundary.
 * **`VARARG`.** `local a = ...` compared against a literal is not flagged.
-  **Flagged for M5 task 10:** `snr_common.lua` has 26 `VARARG`s and calls
-  `select` 26 times, so this gap and the `select` idiom meet in exactly the
-  file both checkpoints live in.
+  `snr_common.lua` has 26 `VARARG`s and reads `select` 26 times (both counts
+  re-measured in M5 task 10 and reproduced exactly), so this gap and the
+  `select` idiom do meet in the file both historical checkpoints live in.
+  **But not in the checkpoints themselves**: the 26/26 are spread over 11
+  protos, and `OptionMain` (`main_74_13`) and `ConfigMain` (`main_76_2`) --
+  together with the whole of the `main_74` and `main_76` subtrees -- contain
+  **0** of each. Neither checkpoint property rests on the idiom, so task 10's
+  regressions are not standing on this gap. It remains open for the L2 grant
+  itself, which `snr_common.lua` does not have anyway (`taint-static`).
 
 Two things tried this round that did not work, recorded so they are not
 retried blind: widening the loop-variable register window does **not** catch a
@@ -2878,6 +2884,42 @@ fail there if it changed or converged. L2 deliberately does not pin
 divergences of its own: a pin is an exemption, and this gate refuses on
 divergence rather than excusing it. `snr_common` refuses anyway, on
 `taint-static`.
+
+### The two historical checkpoints (M5 task 10)
+
+`tests/test_keyseq_checkpoints.py` ports the predecessor's
+`DEBUG_KEY_SEQUENCE_HARNESS.md` playbook — the two "已验证的高价值检查点" in
+`snr_common.lua`, deferred through two milestones — onto this harness. Each
+drives the original bytecode and our shipped artifact with one authored key
+sequence, requires the traces to be **byte-equal**, and then asserts the
+checkpoint's own property **on each trace separately**:
+
+| checkpoint | property, as a statement about the trace |
+| --- | --- |
+| `systemOption.OptionMain`'s two mutually exclusive clamps (`1..5` / `0..1`) | Drive menu row 1 to both ends (4 LEFT, 6 RIGHT), move down one row, do the same (3 LEFT, 4 RIGHT). Row 1's display layer takes **5** distinct `layerClip` rectangles, row 2's takes **2**, both saturate under repeated pressing, and 5 > 2 — two ranges of different size are in force under the same two keys. |
+| `systemConfig.ConfigMain`'s CIRCLE gate/wait | Press CIRCLE on a row the gates reject, then on a row they accept. The run ends `OK` not `CAP`; the first CIRCLE-down is **not** the last poll; between it and the next iteration's poll the trace records exactly one call, `wait(1)`, and the frame advances by exactly 1; after the accepted press there is no further poll and the trace ends at the entry's return. |
+
+The property is asserted on the **original's** trace as well as ours, which is
+the whole point: trace equality is already the L2 gate's job and says nothing
+if both sides regress together. Measured this session, all seven injected bug
+shapes (three of them the playbook's own) still fail the property when the
+*original* side is replaced by `luac_sz4`-compiled mutated source so the two
+traces are byte-equal.
+
+Both properties are expressed in **numbers and event structure only** —
+distinct rectangle counts, poll frames, frame deltas, "was there a poll after
+this one". No corpus string is matched: the red line holds without an
+exception, and the one thing that could not be phrased structurally (*which*
+menu row is which) is handled positionally, as "the first and last display
+layer to be redrawn".
+
+**What they do not prove.** `snr_common.lua` ships **whole-file fallback** and
+its L2 verdict is `refused: taint-static`; this module does not change either,
+and adds no sequence to `KEY_SEQUENCES` (so `corpus/ledger.jsonl` is
+byte-unchanged). These are behavioural regressions over the fallback state
+machine along two input-driven paths — which is exactly the ground the L2
+badge does not cover, since the badge is `snr_lib.lua` and structured text
+only.
 
 ### Why this has to be sound rather than best-effort
 
