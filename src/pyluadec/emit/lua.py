@@ -211,7 +211,25 @@ def _expr(e: Expr, depth: int, parent_prec: int, ctx: "Printer | None") -> str:
     upvalues and to print nested closures' bodies).
     """
     if isinstance(e, ConstExpr):
-        return _wrap_if_primary(const_lit(e.value), parent_prec)
+        txt = const_lit(e.value, parenthesize_negative=False)
+        if txt.startswith("-"):
+            # A negative numeral is, to Lua's grammar, unary minus applied to
+            # a numeral (`llex.c` never produces a signed number token; the
+            # `-` is `subexpr`'s UNARY_PRIORITY operator, and `lcode.c`'s
+            # `constfolding` is what turns it back into one constant). So it
+            # takes unary precedence from the table above, and gets its
+            # parentheses in exactly the positions any other unary expression
+            # would: left of `^`, and as the base of a call/index/method.
+            # `_SIMPLE_PREC`, which every other constant uses, would
+            # under-parenthesise it (`-1 ^ 2` reparses as `-(1 ^ 2)`).
+            #
+            # This is a property of the numeral token, read off the single
+            # character that makes it one; it is not a re-parse of emitted
+            # output (`num_lit` makes the same test one line lower to decide
+            # whether the default wrapping applies).
+            prec = _PREC["unary"]
+            return txt if prec >= parent_prec else f"({txt})"
+        return _wrap_if_primary(txt, parent_prec)
     if isinstance(e, LocalExpr):
         return name_for(e.reg, depth)
     if isinstance(e, GlobalExpr):
@@ -259,14 +277,21 @@ def _expr(e: Expr, depth: int, parent_prec: int, ctx: "Printer | None") -> str:
     if isinstance(e, UnExpr):
         prec = _PREC["unary"]
         inner = _expr(e.operand, depth, prec, ctx)
-        # "-" always gets a trailing space: without it, a nested unary minus
-        # (`- -x`, reconstructed from two UNM instructions) would print as
-        # "--x", which Lua's lexer reads as a comment, silently deleting the
-        # rest of the line. BinExpr already separates its operator with
-        # spaces on both sides, so this is only strictly required here, but
-        # applying it unconditionally is simpler than special-casing the one
-        # dangerous adjacency.
-        sep = " " if e.op in ("not", "-") else ""
+        # `not` always needs a separator (`notx` is one identifier). `-` needs
+        # one only against another leading `-`: `--` is a Lua COMMENT, so
+        # `- -x` (two UNM instructions) or `- -1` (UNM over a negative
+        # numeral, newly reachable since change 3 stopped parenthesising those)
+        # would silently delete the rest of the line. `#` never needs one.
+        #
+        # Through M5 task 6 this was `e.op in ("not", "-")` -- unconditional,
+        # "simpler than special-casing the one dangerous adjacency". Change 3
+        # narrows it to the dangerous adjacency itself, because `- l0_0` is
+        # exactly the kind of thing this task exists to fix and because the
+        # numeral case makes the adjacency more common, not less. Testing the
+        # first character of the operand's own text is a lexical
+        # token-separation decision made while composing the token, not a
+        # re-parse of emitted statements.
+        sep = " " if (e.op == "not" or (e.op == "-" and inner.startswith("-"))) else ""
         out = f"{e.op}{sep}{inner}"
         return f"({out})" if prec < parent_prec else out
     if isinstance(e, BinExpr):

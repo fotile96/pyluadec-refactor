@@ -34,7 +34,23 @@ PRELUDE = HELPERS + "local __pld_F = {}\n"
 _NEG_ZERO_PAYLOAD = struct.pack("<d", -0.0)
 
 
-def num_lit(k: LuaNumber) -> str:
+def num_lit(k: LuaNumber, *, parenthesize_negative: bool = True) -> str:
+    """Render a number payload as a Lua numeral that recompiles to exactly
+    these 8 bytes.
+
+    `parenthesize_negative=False` returns the BARE numeral (`-1`, not
+    `(-1)`) for the caller that has its own precedence model and will add
+    parentheses only where the grammar needs them -- `emit.lua`, which treats
+    a leading `-` as unary-minus precedence (M5 task 7 change 3). The default
+    keeps the always-safe over-parenthesised form, which is what this module's
+    own state-machine templates want: they splice numerals into
+    `f"{x} {op} {y}"` slots with no precedence model at all.
+
+    The three special forms below (`(0/0)`, `(1/0)`, `(-1/0)`,
+    `(-1/(1/0))`) are unaffected by the flag on purpose: they are
+    EXPRESSIONS, not numerals, and their precedence is `/`'s, not unary
+    minus's, so `(-1/0) ^ 2` and `-1/0 ^ 2` are different programs.
+    """
     v = struct.unpack("<d", k.payload)[0]
     if v != v:
         return "(0/0)"
@@ -58,7 +74,9 @@ def num_lit(k: LuaNumber) -> str:
     candidates += ["%.14g" % v, "%.17g" % v]
     for s in candidates:
         if struct.pack("<d", float(s)) == k.payload:
-            return f"({s})" if s.startswith("-") else s
+            if parenthesize_negative and s.startswith("-"):
+                return f"({s})"
+            return s
     raise EmitError(f"cannot render number payload {k.payload.hex()} losslessly")
 
 
@@ -77,7 +95,7 @@ def str_lit(bs: bytes) -> str:
     return "".join(out)
 
 
-def const_lit(c) -> str:
+def const_lit(c, *, parenthesize_negative: bool = True) -> str:
     if c is None:
         return "nil"
     if c is True:
@@ -85,7 +103,7 @@ def const_lit(c) -> str:
     if c is False:
         return "false"
     if isinstance(c, LuaNumber):
-        return num_lit(c)
+        return num_lit(c, parenthesize_negative=parenthesize_negative)
     if isinstance(c, bytes):
         return str_lit(c)
     raise EmitError(f"unexpected constant {c!r}")

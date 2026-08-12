@@ -196,3 +196,91 @@ def test_table_constructor_identifier_keys_lose_their_brackets():
 def test_dot_sugar_fixtures_certify_l3():
     certifies(DOT_SRC)
     certifies(DOT_CTOR_SRC)
+
+
+# --------------------------------------------------------------------------
+# 3. unary minus
+# --------------------------------------------------------------------------
+
+NEG_SRC = (b"local x = -1 "
+           b"f(-1, -1.5, x ^ -1, -1 ^ 2, -1 .. 'a', 'a' .. -1, -x, - -x, (-1)[1])")
+
+
+def test_parenthesised_and_bare_negative_numerals_compile_identically():
+    """`(-1)` and `-1` differ only in `lparser.c::primaryexp`'s `'('` case,
+    which wraps the inner `expr` in `luaK_dischargevars` + `luaK_exp2reg`-free
+    `VRELOCABLE` handling and emits nothing of its own for a constant.
+
+    The interesting half is not that; it is that dropping the parentheses is
+    only safe where precedence allows, which is why this change extends
+    `_PREC` rather than stripping a pair of characters. Lua 5.1 §2.5.6 binds
+    `^` tighter than unary minus on BOTH sides (`-1 ^ 2` is `-(1 ^ 2)`), so
+    a negative numeral used as the left operand of `^` still needs its
+    parentheses -- and `luac` proves it: the two spellings below are NOT the
+    same program.
+    """
+    assert (compile_source(b"f(-1)", strip=True)
+            == compile_source(b"f((-1))", strip=True))
+    assert (compile_source(b"return -1 ^ 2", strip=True)
+            != compile_source(b"return (-1) ^ 2", strip=True))
+
+
+def test_negative_numerals_lose_their_parentheses_where_precedence_allows():
+    assert printed(NEG_SRC) == (
+        "local l0_0 = -1\n"
+        'f(-1, -1.5, l0_0 ^ (-1), -1, -1 .. "a", "a" .. -1, -l0_0, - -l0_0, '
+        "(-1)[1])\n")
+
+
+def test_negative_numeral_keeps_its_parentheses_where_precedence_demands():
+    """Three positions where dropping them would change the parse, all in
+    `NEG_SRC` above:
+
+    * `(-1)[1]` -- an index base must be a `prefixexp`, and `-1[1]` parses as
+      `-(1[1])`.
+    * `- -l0_0` -- the space is `UnExpr`'s existing anti-`--`-comment rule;
+      what this change adds is that `- -1` would be spelled the same way
+      rather than as `- (-1)`.
+    * `-1 ^ 2` in the SOURCE folds to the constant `-1` before it ever
+      reaches the printer (`lcode.c::constfolding`), which is why the printed
+      form is a bare `-1` and not `(-1) ^ 2`; the left-operand-of-`^` rule is
+      exercised directly by test_unary_minus_precedence_table_is_the_rule.
+    """
+    out = printed(NEG_SRC)
+    assert "(-1)[1]" in out
+    assert "- -l0_0" in out and "--" not in out
+
+
+def test_unary_minus_precedence_table_is_the_rule():
+    """The printer must wrap a negative numeral in exactly the positions
+    `_PREC` says it must, so this drives `print_expr` directly rather than
+    hoping a fixture happens to compile into each shape.
+    """
+    from pyluadec.emit.lua import _PREC, print_expr
+    from pyluadec.express.expr import BinExpr, ConstExpr, IndexExpr
+    from pyluadec.ingest.proto import LuaNumber
+    import struct
+
+    neg = ConstExpr(LuaNumber(value=-1.0, payload=struct.pack("<d", -1.0)))
+    two = ConstExpr(LuaNumber(value=2.0, payload=struct.pack("<d", 2.0)))
+    # `^` is right-associative and binds tighter than unary on the left.
+    assert print_expr(BinExpr("^", neg, two), 0) == "(-1) ^ 2"
+    # Conservative, and deliberately so: Lua would accept `2 ^ -1` (`subexpr`
+    # admits a unary operator at the start of any operand regardless of the
+    # limit it was given), but `_expr` has always over-parenthesised a `UnExpr`
+    # in this position and a negative numeral is spelled the same way as one.
+    assert print_expr(BinExpr("^", two, neg), 0) == "(2) ^ (-1)"
+    # `(2)` there is a PRE-EXISTING wart, not this change: `_SIMPLE_PREC` is
+    # `_PRIMARY_PREC - 1 == _PREC["^"]`, and `^`'s right-associativity asks its
+    # left operand for `_PREC["^"] + 1`, so ANY constant left of `^` is
+    # parenthesised. Harmless (over-parenthesising never changes a parse) and
+    # unreachable on this corpus -- measured 0 `^` operators in all 229
+    # decompiled files. Recorded rather than fixed; out of this task's scope.
+    assert print_expr(BinExpr("*", neg, two), 0) == "-1 * 2"
+    assert print_expr(BinExpr("..", neg, two), 0) == '-1 .. 2'
+    assert print_expr(IndexExpr(neg, two), 0) == "(-1)[2]"
+    assert _PREC["unary"] < _PREC["^"]
+
+
+def test_negative_numeral_fixtures_certify_l3():
+    certifies(NEG_SRC)
