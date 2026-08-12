@@ -414,7 +414,7 @@ end
 and only `recompiled.subprotos[0]` is compared. The parameter names must match
 what `name_for(reg, 1)` synthesizes — the same `l{depth}_{reg}` convention.
 
-Certification results are memoized on `(oracle_version(), is_chunk_root) +
+Certification results are memoized on `_oracle_identity() + (is_chunk_root,) +
 _memo_key`, where `_memo_key = (structural_hash, _debug_fingerprint)`, in a
 module-level dict that lives for the whole **process** (M5 task 2; it was
 per-chunk, inside `emit_certified_chunk`, through M4).
@@ -435,20 +435,42 @@ The other two key components exist because the scope is now process-wide:
   `source`). Within one chunk it could be omitted, because a proto cannot
   equal a strict descendant of itself; across chunks nothing constrains the
   two callers.
-- `oracle_version()` — the same `git log -1 --format=%H -- vendor native` the
-  ledger's `oracle` field records, resolved once per process. A `luac_sz4`
-  rebuilt underneath a live process must not be certified against by proxy
-  from the previous build's verdicts, and a byte-identical ledger would not
-  catch that: the stale verdicts would be internally consistent and simply
-  describe the wrong compiler.
+- `_oracle_identity()` — the `luac_sz4` binary's own `(path, mtime_ns, size)`,
+  re-`stat`ed **on every lookup**. A `luac_sz4` rebuilt underneath a live
+  process must not be certified against by proxy from the previous build's
+  verdicts, and a byte-identical ledger would not catch that: the stale
+  verdicts would be internally consistent and simply describe the wrong
+  compiler. Two channels move that binary mid-process and this catches both —
+  a rebuild in place, and a `PYLUADEC_BUILD_DIR` swap (`oracle.build_dir()`
+  re-reads the variable per compile). The M5 task 2 original used
+  `oracle_version()` (`git log -1 --format=%H -- vendor native`) memoized once
+  per process, for symmetry with the ledger's `oracle` field; its round-1
+  review demonstrated that serving a stale `L3` against a swapped compiler,
+  because a once-per-process value cannot partition anything a real rebuild
+  does. The git hash is not kept alongside — it is strictly weaker (a commit
+  under `vendor/` without a rebuild leaves the same compiler in place, where
+  the cached verdicts are still correct). Cost: two `stat`s per lookup,
+  17.8 µs, i.e. ~45 ms on a warm 229-file pass that otherwise takes 0.62 s and
+  nothing measurable on the suite.
 
 All three components are pinned by neuter-proved tests in
-`tests/test_structured_certify.py` (`test_process_cache_*`). What the cache
+`tests/test_structured_certify.py` (`test_process_cache_*`); the oracle
+component has one test per channel. What the cache
 buys is almost entirely *cross-pass*: intra-pass redundancy over the corpus is
 only 20 of 1944 certifications (1.0%; there are 1924 distinct keys, not 1478),
 but a second full corpus pass in one process costs 0.65s against ~9s cold.
 `clear_certification_cache()` releases it — a full pass holds 4.08 MB of chunk
-`source` bytes.
+`source` bytes — and is itself pinned by
+`test_clear_certification_cache_drops_every_entry`.
+
+Because that dict now outlives the chunk, it is shared state between TESTS as
+well: a fault-injection test that monkeypatches the printer or the
+reconstructor and then certifies writes a wrong verdict under an ordinary key,
+and `monkeypatch`'s teardown restores the attribute but not the cache. The
+fence is `tests/conftest.py`'s autouse `_fence_certification_cache`, which
+snapshots and restores the dict around every test; the poisoning pair in
+`tests/test_structured_certify.py` fails without it. If you write a
+fault-injection test, do not disable it.
 
 ## The normalization ladder
 

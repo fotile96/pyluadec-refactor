@@ -1465,8 +1465,15 @@ paid is not the one this item describes.
   unique-proto count). Distinct `_memo_key`s, which is what the memo is keyed
   on and must stay keyed on, number **1924** over the same 1944 occurrences
   (229 chunk roots + 1695 nested). Only 16 `structural_hash` groups carry more
-  than one debug fingerprint, but those 16 hold ~446 fingerprints between them
-  — a handful of tiny repeated closures at ~450 different `linedefined`s.
+  than one debug fingerprint, but those 16 hold **462** fingerprints between
+  them, i.e. **446 more than one each** — and 446 is exactly 1924 − 1478, so
+  the whole gap between the two counts lives in those 16 groups. (An earlier
+  revision of this bullet said "~446 fingerprints", attaching the right number
+  to the wrong quantity; re-measured 2026-08-12, both figures above reproduce
+  exactly.) They are tiny repeated closures: 482 occurrences with 1–39
+  instructions each, at 444 distinct `linedefined` values, and the largest
+  single group is a **one-instruction** proto appearing 292 times under 273
+  different line numbers.
 - "~24% of the subprocess cost" — **false**, and it is 466/1944 = 24.0%, i.e.
   arithmetic on the wrong 1478. The true *intra*-pass redundancy is
   **20/1944 = 1.0%**. `scripts/run_corpus.py`, which makes exactly one pass,
@@ -1492,12 +1499,12 @@ the "before" row: the item's own 11.7s/40.0s figures had already drifted to
 of five before this landed.
 
 The behaviour-probe setup is unchanged by design — it is the *first* payer.
-`test_ledger_ratchet` run alone is still 10.4-10.5s. The saving is a transfer,
+`test_ledger_ratchet` run alone is still 9.8-10.0s. The saving is a transfer,
 not a disappearance.
 
 Implementation: the memo moved from `emit_certified_chunk` (per chunk) into
 `structure.structured.certify_proto` (module-level dict, per process), keyed on
-`(oracle_version(), is_chunk_root) + _memo_key(proto)`. `is_chunk_root` is new
+`_oracle_identity() + (is_chunk_root,) + _memo_key(proto)`. `is_chunk_root` is new
 to the key and is a genuine soundness fix for the wider scope — it retires the
 "a proto cannot equal a strict descendant of itself" argument that
 `ProtoCert.source`'s field comment used to have to make. `corpus/ledger.jsonl`
@@ -1510,6 +1517,25 @@ proto, so a hypothetical non-determinism in certification would now be masked
 there rather than caught — recorded in `tests/conftest.py`'s `decompiled`
 docstring, which previously promised the ratchet consumed nothing another test
 computed.
+
+**Round 1 (fix commit `PENDING`)** changed two things and re-measured a third.
+The oracle component of the key was `oracle_version()` memoized into a module
+global, which is constant for the life of a process and therefore could not
+partition the cache in any real scenario: the review demonstrated a warm cache
+serving a stale `L3` after `PYLUADEC_BUILD_DIR` (a supported knob that
+`oracle.build_dir()` re-reads per compile) was pointed at a `luac_sz4` that
+refuses everything. It is now the binary's own `(path, mtime_ns, size)`,
+re-`stat`ed per lookup, which catches both that swap and an in-place rebuild;
+cost 17.8 µs per lookup, ~45 ms on a warm corpus pass, nothing measurable on
+the suite. Second, the shared cache had no fence against a test poisoning it
+under a `monkeypatch` (whose teardown restores the attribute but not the cache
+entries computed under it): `tests/conftest.py` now snapshots and restores the
+dict around every test, at a cost that six interleaved A/B full-suite runs
+could not resolve against the suite's own noise (the fixture's docstring has
+the table). Suite after both: **523 tests, 31.98–34.18 s over 12 runs**, the
+spread being session-long thermal drift rather than anything in the diff;
+`corpus/ledger.jsonl` still byte-identical (md5
+`d4a5ac56938ef0e19f22e7d36a6be0d7`).
 
 ## 13. Readability items surfaced by the M4 evaluation
 

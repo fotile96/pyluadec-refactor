@@ -545,39 +545,192 @@ def test_process_cache_separates_chunk_root_from_nested_certification(
     assert len(S._CERT_CACHE) == 2
 
 
-def test_process_cache_does_not_survive_an_oracle_rebuild(tmp_path, monkeypatch):
-    """Invariant 4: the cache is keyed on the oracle's identity -- the same
-    `git log -1 --format=%H -- vendor native` the ledger's `oracle` field
-    records -- so a `luac_sz4`/`lua_sz4` rebuilt underneath a live process
-    cannot be certified against by proxy from the previous build's verdicts.
+def _refusing_luac(d: Path) -> Path:
+    """A directory holding a `luac_sz4` that refuses every input.
 
-    A byte-identical ledger would NOT catch that failure: the stale verdicts
-    would be internally consistent and simply describe the wrong compiler.
+    `oracle.build_dir()` only checks that the file exists, and
+    `oracle.compile_source` reports a non-zero exit as `LuaCompileError`, so
+    this turns every certification into `L1 compile: candidate chunk did not
+    recompile`. That is the loudest possible "the compiler changed" signal: a
+    proto that certified `L3` against the real oracle cannot certify against
+    this one, so a cache that still answers `L3` is unambiguously serving a
+    verdict measured against a compiler that is no longer there.
+    """
+    d.mkdir(parents=True, exist_ok=True)
+    stub = d / "luac_sz4"
+    stub.write_text("#!/bin/sh\nexit 1\n")
+    stub.chmod(0o755)
+    return stub
 
-    Simulated by moving the process's memoized oracle identity, which is what
-    a rebuild-plus-commit does to `oracle_version()`'s answer. Three steps,
-    and the middle one is the neuter target: with the oracle identity dropped
-    from the key, step 2 returns `first` and the `is not` assertion fails.
+
+def test_process_cache_does_not_survive_a_build_dir_swap(tmp_path, monkeypatch):
+    """Invariant 4, channel 1: `PYLUADEC_BUILD_DIR` swaps the oracle binary
+    underneath a live process, and the cache must not answer from the old
+    one's verdicts.
+
+    `oracle.build_dir()` re-reads that environment variable on every
+    `compile_source` call -- it is a documented, supported knob
+    (docs/runbooks/decompile-pipeline.md), not a test-only seam -- so this is
+    a real way for the compiler to move mid-process, and the round-1 review of
+    M5 task 2 demonstrated it serving a stale `L3` against the original
+    `git log`-hash key. Three steps; the middle one is the neuter target
+    (drop `_oracle_identity()` from the key and step 2 returns `first`), and
+    step 3 proves the identity PARTITIONS the cache rather than overwriting a
+    single slot.
+
+    A byte-identical ledger would not catch this failure: the stale verdicts
+    are internally consistent and simply describe the wrong compiler.
     """
     from pyluadec.structure import structured as S
 
     monkeypatch.setattr(S, "_CERT_CACHE", {})
     p = _proto("local a = 1 return a", tmp_path)
 
-    real_oracle = S._oracle_identity()
-    assert real_oracle and real_oracle != "0" * 40
-
     first = S.certify_proto(p, is_chunk_root=True)
     assert first.level == "L3", first.mismatches
-    assert S.certify_proto(p, is_chunk_root=True) is first     # 1. cached
+    assert S.certify_proto(p, is_chunk_root=True) is first      # 1. cached
 
-    monkeypatch.setattr(S, "_ORACLE_ID", "0" * 40)             # 2. "rebuild"
+    _refusing_luac(tmp_path / "fake_build")                     # 2. swap
+    monkeypatch.setenv("PYLUADEC_BUILD_DIR", str(tmp_path / "fake_build"))
     after = S.certify_proto(p, is_chunk_root=True)
     assert after is not first, (
-        "the pre-rebuild verdict was reused after the oracle identity moved")
-    assert after.level == "L3", after.mismatches
+        "the pre-swap verdict was reused after PYLUADEC_BUILD_DIR moved the "
+        "oracle binary")
+    assert after.level == "L1"
+    assert after.reason == "compile: candidate chunk did not recompile"
 
-    monkeypatch.setattr(S, "_ORACLE_ID", real_oracle)          # 3. back again
+    monkeypatch.delenv("PYLUADEC_BUILD_DIR")                    # 3. back again
     assert S.certify_proto(p, is_chunk_root=True) is first, (
         "the real oracle's entry did not survive the detour -- the identity "
         "is not in the key, it is merely overwriting one")
+
+
+def test_process_cache_does_not_survive_a_luac_rebuilt_in_place(
+        tmp_path, monkeypatch):
+    """Invariant 4, channel 2: the oracle binary is REPLACED AT THE SAME PATH,
+    which is what `./scripts/build_native.sh` does to `build/luac_sz4`.
+
+    Distinct from the swap test above and it is the reason the key carries
+    `(mtime_ns, size)` and not just the path: here `oracle.luac_sz4()` returns
+    the identical string before and after (asserted), so a path-only identity
+    would serve the pre-rebuild verdict. Neuter target: key on
+    `str(oracle.luac_sz4())` alone and this test fails while the swap test
+    still passes.
+    """
+    import shutil
+    from pyluadec import oracle
+    from pyluadec.structure import structured as S
+
+    build = tmp_path / "build"
+    build.mkdir()
+    shutil.copy2(BUILD / "luac_sz4", build / "luac_sz4")
+    monkeypatch.setenv("PYLUADEC_BUILD_DIR", str(build))
+    monkeypatch.setattr(S, "_CERT_CACHE", {})
+    p = _proto("local a = 1 return a", tmp_path)
+
+    before_path = str(oracle.luac_sz4())
+    first = S.certify_proto(p, is_chunk_root=True)
+    assert first.level == "L3", first.mismatches
+    assert S.certify_proto(p, is_chunk_root=True) is first
+
+    _refusing_luac(build)                       # same path, new bytes
+    assert str(oracle.luac_sz4()) == before_path
+
+    after = S.certify_proto(p, is_chunk_root=True)
+    assert after is not first, (
+        "the pre-rebuild verdict was reused after luac_sz4 was rebuilt in "
+        "place -- the key does not distinguish two binaries at one path")
+    assert after.level == "L1"
+    assert after.reason == "compile: candidate chunk did not recompile"
+
+
+def test_clear_certification_cache_drops_every_entry(tmp_path, monkeypatch):
+    """`clear_certification_cache()` is the only escape hatch from this
+    module's process-lifetime dict, so it gets the three lines that keep it
+    from rotting into a no-op.
+
+    Asserted through the public surface rather than by poking the dict: after
+    the clear, a repeat `certify_proto` must return a DIFFERENT object with
+    the SAME verdict -- recomputed, not served, and recomputed correctly.
+    """
+    from pyluadec.structure import structured as S
+
+    cache: dict = {}
+    monkeypatch.setattr(S, "_CERT_CACHE", cache)
+    p = _proto("local a = 1 return a", tmp_path)
+
+    first = S.certify_proto(p, is_chunk_root=True)
+    assert S.certify_proto(p, is_chunk_root=True) is first
+    assert cache
+
+    S.clear_certification_cache()
+    assert cache == {}
+
+    again = S.certify_proto(p, is_chunk_root=True)
+    assert again is not first
+    assert again.level == first.level == "L3"
+    assert again.source == first.source
+
+
+# --- The shared cache versus fault injection (round-1 Important 2) ----------
+#
+# These two tests are a PAIR and their order matters: the first deliberately
+# poisons `structure.structured`'s real, process-lifetime cache from under a
+# monkeypatch, and the second checks the poison did not outlive it. What makes
+# the second one pass is tests/conftest.py's autouse `_fence_certification_
+# cache` fixture. Without the fence the second test fails (verified by
+# disabling the fixture: `L1` instead of `L3`), which is the whole point --
+# `monkeypatch` restores the attribute it patched and cannot restore cache
+# entries computed while it was in force.
+#
+# They are written against the REAL cache on purpose. Every other test in this
+# section monkeypatches `_CERT_CACHE` to a private dict, which is the right
+# thing for a test about the cache's key; it is also exactly the discipline a
+# future fault-injection author will not know to follow, so something has to
+# test the case where nobody followed it.
+#
+# The source is unique to this pair, and that is load-bearing: the first
+# draft used `local a = 1 return a`, which `test_straight_chunk_certifies_l3`
+# above has already certified through the real cache, so the poisoner got a
+# cache HIT and never wrote anything (it asserted `L1` and saw `L3`). A shared
+# cache makes fixture sources shared state; this one is used nowhere else.
+_POISON_SRC = "local q1, q2 = 11, 22 return q1 + q2"
+
+
+def test_a_patched_printer_writes_a_wrong_verdict_into_the_shared_cache(
+        tmp_path, monkeypatch):
+    """Half 1 of the pair: poison the real cache under an ordinary key.
+
+    The patched printer emits `return 0` for every proto, so the candidate
+    recompiles fine and simply is not the original -- an `L1 mismatch` verdict
+    for a proto that genuinely certifies `L3`. The key is untouched by the
+    patch (it is a function of the proto and the oracle binary, neither of
+    which moved), so this entry is indistinguishable from a real one.
+    """
+    from pyluadec.structure import structured as S
+
+    p = _proto(_POISON_SRC, tmp_path)
+    monkeypatch.setattr(S, "print_chunk_or_raise", lambda proto: "return 0\n")
+
+    poisoned = S.certify_proto(p, is_chunk_root=True)
+    assert poisoned.level == "L1"
+    assert poisoned.reason is not None
+    assert poisoned.reason.startswith("mismatch:")
+
+
+def test_the_poisoned_verdict_did_not_outlive_the_test_that_wrote_it(tmp_path):
+    """Half 2: the same proto, no patch, no private cache -- the verdict must
+    be the true one.
+
+    `_proto` compiles the same source in a different tmp dir, and `-s` strips
+    the source name, so the two protos have the same `_memo_key` (verified:
+    the key is content-derived, `source` is `b'=?'` in both). This test would
+    therefore consume the previous test's entry if anything kept it.
+    """
+    from pyluadec.structure import structured as S
+
+    c = S.certify_proto(_proto(_POISON_SRC, tmp_path), is_chunk_root=True)
+    assert c.level == "L3", (
+        "a verdict computed under a monkeypatched printer survived into "
+        "another test -- tests/conftest.py::_fence_certification_cache is "
+        "not fencing the shared cache")

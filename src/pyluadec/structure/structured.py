@@ -49,9 +49,9 @@ construction and no assumption about the caller's tree is needed. See
 `_debug_fingerprint`.
 
 M5 task 2 moved that memo out of `emit_certified_chunk` (per chunk) and into
-`certify_proto` (per process), and added `is_chunk_root` and the oracle's
-identity to the key. Rationale, measured savings, and the trade of putting
-process-lifetime state in a `src/` module are all at `certify_proto`.
+`certify_proto` (per process), and added `is_chunk_root` and the oracle
+binary's identity to the key. Rationale, measured savings, and the trade of
+putting process-lifetime state in a `src/` module are all at `certify_proto`.
 """
 from __future__ import annotations
 
@@ -66,19 +66,25 @@ from pyluadec import oracle
 from pyluadec.sir.build import StructureError
 from pyluadec.structure.fallback import emit_chunk
 from pyluadec.verify.certify import carries_debug, certify_l3, debug_view
-from pyluadec.verify.ledger import oracle_version, structural_hash
+from pyluadec.verify.ledger import structural_hash
 from pyluadec.verify.normalize import Mismatch, NORMALIZATIONS, compare_protos
 
 
 # Process-level certification cache; see `certify_proto`. Keyed on
-# `(oracle identity, is_chunk_root) + _memo_key(proto)` -- never on anything
-# weaker, see `_debug_fingerprint`.
-_CERT_CACHE: dict[tuple[str, bool, str, str], "ProtoCert"] = {}
-
-# Memoized `oracle_version()`. `None` until the first certification asks:
-# resolving it costs a `git log` subprocess, and paying that per lookup would
-# cost more than the cache saves.
-_ORACLE_ID: str | None = None
+# `_oracle_identity() + (is_chunk_root,) + _memo_key(proto)` -- never on
+# anything weaker, see `_debug_fingerprint`.
+#
+# This dict is module state that outlives any one chunk, so a TEST that
+# monkeypatches production internals (the printer, the reconstructor, the CFG
+# builder) and then certifies writes a verdict computed under the patch into
+# it, under an ordinary key -- and `monkeypatch` undoes the attribute at
+# teardown but cannot undo cache entries written while it was in force. The
+# next reader (the corpus fixture, the ledger ratchet) would then consume a
+# wrong verdict and stay green. `tests/conftest.py`'s autouse
+# `_fence_certification_cache` fixture is the fence: it snapshots and restores
+# this dict around every test that requests `monkeypatch`. If you write a
+# fault-injection test, do not disable it.
+_CERT_CACHE: dict[tuple[str, int, int, bool, str, str], "ProtoCert"] = {}
 
 
 @dataclass(frozen=True)
@@ -193,19 +199,51 @@ def _debug_fingerprint(p: Proto) -> str:
     return hashlib.sha256(blob.encode()).hexdigest()
 
 
-def _oracle_identity() -> str:
-    """This process's oracle identity, resolved once.
+def _oracle_identity() -> tuple[str, int, int]:
+    """The identity of the `luac_sz4` binary a certification would actually
+    run, resolved ON EVERY LOOKUP: `(path, mtime_ns, size)`.
 
-    `oracle_version()` shells out to `git log`; at ~1900 certifications per
-    corpus pass, paying that per cache lookup would cost more than the cache
-    saves. Memoized in a module global rather than `functools.lru_cache` so a
-    test can move it (see
-    `test_process_cache_does_not_survive_an_oracle_rebuild`).
+    Resolved per lookup rather than memoized because the point of this
+    component is to partition the cache when the oracle moves underneath a
+    LIVE process, and there are exactly two ways that happens -- both of which
+    this catches and neither of which a once-per-process value can:
+
+    * a rebuild in place (`./scripts/build_native.sh`) rewrites
+      `build/luac_sz4`, moving its mtime and usually its size;
+    * `PYLUADEC_BUILD_DIR` (a documented, supported knob -- see
+      `docs/runbooks/decompile-pipeline.md`) is read by `oracle.build_dir()`
+      on every `compile_source` call, so it can swap the binary between two
+      certifications within one process.
+
+    The M5 task 2 original keyed on `verify.ledger.oracle_version()` (`git
+    log -1 --format=%H -- vendor native`) memoized into a module global. That
+    is what the ledger's `oracle` field records, and the symmetry was
+    appealing, but as a cache key it was inert: memoized, it is constant for
+    the life of the process, so it could not partition the cache in any
+    scenario a real rebuild produces -- only a test assigning the global moved
+    it. The round-1 review demonstrated the consequence live (warm cache +
+    `PYLUADEC_BUILD_DIR` pointed at a `luac_sz4` that refuses everything: a
+    stale `L3` served for a proto that no longer compiles). The git hash is
+    NOT kept alongside: it is strictly weaker than this tuple (a commit under
+    `vendor/`/`native/` without a rebuild leaves the same compiler in place,
+    where the cached verdicts are still correct) and keeping an inert
+    component in the key is what invited the overclaim in the first place.
+
+    Cost: two `stat`s (`build_dir()` checks existence, then this reads the
+    metadata), microseconds, against the ~1-2ms `luac` subprocess this guards.
+    Measured over the corpus 2026-08-12: full-suite wall unchanged within
+    run-to-run noise (task-2-report.md, round 1).
+
+    Raises `oracle.OracleError` when no `luac_sz4` can be found. That is a
+    small behaviour change: a certification whose printer refuses used to
+    return `L1` without ever touching the oracle, and now needs the oracle to
+    exist to compute its key. It is the same exception this module already
+    raises from `compile_source` for any proto that DOES print, so a build
+    tree without an oracle fails the same way, just earlier.
     """
-    global _ORACLE_ID
-    if _ORACLE_ID is None:
-        _ORACLE_ID = oracle_version()
-    return _ORACLE_ID
+    luac = oracle.luac_sz4()
+    st = luac.stat()
+    return (str(luac), st.st_mtime_ns, st.st_size)
 
 
 def certify_proto(proto: Proto, *, is_chunk_root: bool) -> ProtoCert:
@@ -215,8 +253,8 @@ def certify_proto(proto: Proto, *, is_chunk_root: bool) -> ProtoCert:
 
     ## The key
 
-    `(oracle identity, is_chunk_root) + _memo_key(proto)`, and every component
-    is load-bearing:
+    `_oracle_identity() + (is_chunk_root,) + _memo_key(proto)`, and every
+    component is load-bearing:
 
     * `_memo_key` = `structural_hash` + `_debug_fingerprint`. Together they
       cover every field `compare_protos` examines, so equal keys imply equal
@@ -236,13 +274,17 @@ def certify_proto(proto: Proto, *, is_chunk_root: bool) -> ProtoCert:
       process-level cache spans chunks, where no such relation holds between
       the two callers, so the flag goes in the key and that argument is
       retired.
-    * The oracle identity is `verify.ledger.oracle_version()`, the same value
-      the ledger's `oracle` field records (`git log -1 --format=%H --
-      vendor native`). A `luac_sz4` rebuilt underneath a live process would
-      otherwise be certified against by proxy from the previous build's
-      verdicts, and a byte-identical ledger would NOT catch it: the stale
-      verdicts would be internally consistent and simply describe the wrong
-      compiler.
+    * The oracle identity is the `luac_sz4` binary's own `(path, mtime_ns,
+      size)`, re-read on every lookup. A `luac_sz4` rebuilt underneath a live
+      process -- or swapped by `PYLUADEC_BUILD_DIR`, which `oracle.build_dir()`
+      re-reads per compile -- would otherwise be certified against by proxy
+      from the previous build's verdicts, and a byte-identical ledger would
+      NOT catch it: the stale verdicts would be internally consistent and
+      simply describe the wrong compiler. Round 1 of the M5 task 2 review
+      demonstrated exactly that against the first version of this key, which
+      used a once-per-process `git log` hash; see `_oracle_identity` for why
+      that could never partition anything and why the hash is not kept
+      alongside.
 
     ## Why process-level, and what it costs
 
@@ -266,7 +308,7 @@ def certify_proto(proto: Proto, *, is_chunk_root: bool) -> ProtoCert:
     this module anyway to reach it -- gets its verdicts for free. Call
     `clear_certification_cache()` to drop it.
     """
-    key = (_oracle_identity(), is_chunk_root) + _memo_key(proto)
+    key = _oracle_identity() + (is_chunk_root,) + _memo_key(proto)
     hit = _CERT_CACHE.get(key)
     if hit is not None:
         return hit
@@ -276,10 +318,20 @@ def certify_proto(proto: Proto, *, is_chunk_root: bool) -> ProtoCert:
 
 
 def clear_certification_cache() -> None:
-    """Drop every memoized verdict. Nothing in-tree needs this -- the cache is
-    a pure-function memo over a key that covers everything a verdict depends
-    on -- but a long-running embedder that has finished with one corpus has no
-    other way to release the `source` bytes the chunk-root entries hold."""
+    """Drop every memoized verdict.
+
+    Nothing in-tree needs this for CORRECTNESS -- the cache is a pure-function
+    memo over a key that covers the proto in full (`_memo_key`), the procedure
+    (`is_chunk_root`), and the compiler the verdict was measured against
+    (`_oracle_identity`, re-read per lookup). It exists so a long-running
+    embedder that has finished with one corpus can release the `source` bytes
+    the chunk-root entries hold (a full 229-file pass leaves 1924 entries
+    holding ~4 MB).
+
+    Pinned by `test_clear_certification_cache_drops_every_entry`: as the only
+    escape hatch from this dict it is exactly the kind of untested helper that
+    rots into a no-op.
+    """
     _CERT_CACHE.clear()
 
 

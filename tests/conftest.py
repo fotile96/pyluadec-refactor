@@ -7,6 +7,75 @@ import pytest
 BUILD = Path(__file__).resolve().parents[1] / "build"
 
 
+@pytest.fixture(autouse=True)
+def _fence_certification_cache():
+    """Snapshot and restore `structure.structured._CERT_CACHE` around every
+    test (round-1 fix of M5 task 2's Important 2).
+
+    Since M5 task 2 that cache outlives the chunk and is shared by every test
+    in the process. `monkeypatch` restores the attribute it patched at
+    teardown; it does NOT remove cache entries computed while the patch was in
+    force. A fault-injection test that patches the printer / the reconstructor
+    / `build_cfg` and then certifies therefore writes a WRONG verdict under an
+    ORDINARY key into a dict the `decompiled` fixture and the ledger ratchet
+    both read -- a green suite carrying wrong verdicts, with the outcome
+    depending on collection order. `tests/test_structured_certify.py`'s
+    `test_a_patched_printer_writes_a_wrong_verdict_into_the_shared_cache` /
+    `test_the_poisoned_verdict_did_not_outlive_the_test_that_wrote_it` pair is
+    exactly that scenario, and the second of the two fails without this
+    fixture.
+
+    **Unconditional, and a prediction that did not survive measurement.** The
+    obvious worry is that this throws away M5 task 2's whole saving: the
+    corpus's ~1900 verdicts are computed during a test, so rolling the cache
+    back after every test should force `test_ledger_ratchet` to pay the ~10s
+    certification pass again. Measured, it does not, and the reason is fixture
+    ordering: the corpus is certified in the setup of a MODULE-scoped fixture
+    (`test_behaviour_probe.py::behaviour_traces`), and higher-scoped fixtures
+    are set up before function-scoped autouse ones -- so those entries are
+    already inside this fixture's snapshot and the restore puts them straight
+    back. `test_ledger_ratchet` stays at its post-task-2 1.66-1.69s.
+
+    Measured cost, 2026-08-12: **not resolvable against this suite's own
+    noise.** Six interleaved A/B pairs of full-suite runs on the same tree
+    (fence / fence body replaced by a bare `yield`), in two groups of three:
+
+        fence    31.98  32.42  32.09  |  33.03  33.05  33.72
+        no fence 31.80  31.67  31.69  |  33.34  33.35  33.47
+
+    The first group makes the fence look ~0.4s slower, the second ~0.3s
+    faster, while the absolute wall drifts ~2s upward across the session
+    (thermal, on this laptop) -- so 523 x (copy + rebuild) of a ~1900-entry
+    dict is somewhere under a few hundred ms and cannot be pinned tighter
+    here. Interleave if you re-measure; absolute walls from different points
+    in a session are not comparable.
+
+    A narrower version gated on `"monkeypatch" in request.fixturenames` was
+    built and measured first (31.70 / 31.82 / 31.82s, likewise
+    indistinguishable) and covers every in-tree patching mechanism, since
+    nothing here uses `unittest.mock` or import-time shims -- but it is a
+    heuristic about HOW a future test patches, and an unmeasurable cost is not
+    worth owning one. The no-fence arm of the runs above is also the standing
+    red for the poisoning pair: it reports `1 failed, 522 passed` every time.
+
+    The one thing to know if this ever shows up as a slow suite: an entry
+    written from a TEST BODY (rather than from a higher-scoped fixture's
+    setup) is discarded at that test's teardown and recomputed by the next
+    reader. That is bounded by one corpus certification pass and today costs
+    nothing, because the first population happens in the module-scoped setup
+    above.
+    """
+    from pyluadec.structure import structured
+    snapshot = dict(structured._CERT_CACHE)
+    yield
+    # Re-read the attribute: a test may have swapped it for a private dict and
+    # `monkeypatch`'s own teardown (which runs before this one, since it was
+    # set up after) has just put the real one back.
+    live = structured._CERT_CACHE
+    live.clear()
+    live.update(snapshot)
+
+
 @pytest.fixture(scope="session")
 def corpus_dir() -> Path:
     p = os.environ.get("PYLUADEC_CORPUS_DIR")
@@ -40,8 +109,10 @@ def decompiled(corpus_dir):
     verdicts back from the cache (this fixture is first in practice:
     test_behaviour_probe.py sorts before test_ledger_ratchet.py). The verdict
     is a pure function of the proto and the oracle, and the cache key covers
-    both in full (see `certify_proto`), so nothing the ratchet test asserts
-    changes. What it does mean is that the ratchet no longer re-executes
+    both in full (see `certify_proto`; as of the round-1 fix the oracle
+    component is the `luac_sz4` binary's own identity, re-read per lookup --
+    the original `git log` hash was memoized per process and did not actually
+    cover it), so nothing the ratchet test asserts changes. What it does mean is that the ratchet no longer re-executes
     `luac` per proto, so a hypothetical NON-determinism in certification would
     be masked rather than caught -- recorded here because that is a real, if
     narrow, loss of coverage and it should not be rediscovered by surprise.

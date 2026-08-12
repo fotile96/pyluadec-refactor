@@ -32,13 +32,15 @@ def test_ledger_covers_full_corpus(corpus_dir):
 # per chunk for the compile check. It was the slowest single test in the suite
 # (9.5s on macOS arm64 2026-08-11; 13.2-13.6s by the M5 task 2 baseline).
 #
-# It now measures **1.87-1.89s** in a full-suite run, because M5 task 2 made
+# It now measures **1.66-1.69s** in a full-suite run (1.87-1.89s as first
+# measured at M5 task 2; re-measured 2026-08-12 after the round-1 key change),
+# because M5 task 2 made
 # `structure.structured.certify_proto`'s memo process-wide: the corpus is
 # certified once per process, and by the time this test runs the session
 # `decompiled` fixture has already paid for it. What remains here is the real
 # work this test exists to check -- ingest, walk, print/assemble, the 229
 # whole-chunk compile checks, and the ledger write. Run ALONE (`uv run pytest
-# tests/test_ledger_ratchet.py`) it is 10.4-10.5s, since then it is the one
+# tests/test_ledger_ratchet.py`) it is 9.8-10.0s, since then it is the one
 # paying -- so the saving really is a transfer, not a disappearance. See
 # tests/conftest.py's `decompiled` docstring for what that sharing does and
 # does not cost in coverage.
