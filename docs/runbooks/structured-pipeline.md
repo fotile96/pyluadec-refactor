@@ -305,7 +305,8 @@ from leaking into the other arm or past the `end`.
 
 ### `pyluadec.emit.lua` — region tree + expression tree to Lua text
 
-`emit/lua.py` (707 lines). Public entry points:
+`emit/lua.py` (1128 lines as of M5 task 7; 707 at M3 close). Public entry
+points:
 
 - `print_chunk(proto) -> str | None` — prints a whole proto tree as a
   compilable chunk, nested closures inlined at their `CLOSURE` sites. Returns
@@ -372,9 +373,14 @@ Two consequences worth knowing before reading a v2 file:
   indent. Measured after this task: every hybrid boundary in the corpus sits
   at indent 0, so the mismatch is currently invisible in the artifact.
 - A v2 file can contain **raw multi-byte UTF-8** inside a double-quoted
-  string. It is still a byte-exact representation of the original constant —
-  see "Presentation-layer string decode" below and CLAUDE.md's red-line
-  bullet, which the amendment scopes to the printing layer only.
+  string. It is still a byte-exact representation of the original constant:
+  `emit/lua.py::_str_lit` prints raw only when the bytes decode as strict
+  UTF-8 **and** re-encode identically, and delegates to
+  `structure/fallback.py::str_lit`'s decimal escapes otherwise. That is the
+  one place in this codebase that decodes a bytecode-derived string, and it
+  is the whole of the scoped amendment recorded in CLAUDE.md's
+  「工程红线」 section — `ingest`, `lift` and the comparison layer keep the
+  absolute rule, and diagnostics still never carry corpus payload.
 
 ### `pyluadec.verify.certify` + `pyluadec.structure.structured` — the landing gate
 
