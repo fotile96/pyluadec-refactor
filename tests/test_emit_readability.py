@@ -81,13 +81,13 @@ def test_elseif_and_nested_if_in_else_compile_identically():
 def test_else_arm_that_is_a_single_if_prints_elseif():
     assert printed(ELSEIF_SRC) == (
         "if a then\n"
-        "  f()\n"
+        "    f()\n"
         "elseif b then\n"
-        "  g()\n"
+        "    g()\n"
         "elseif c then\n"
-        "  h()\n"
+        "    h()\n"
         "else\n"
-        "  k()\n"
+        "    k()\n"
         "end\n")
 
 
@@ -100,12 +100,12 @@ def test_else_arm_with_more_than_one_statement_stays_an_else():
     """
     assert printed(b"if a then f() else g() if b then h() end end") == (
         "if a then\n"
-        "  f()\n"
+        "    f()\n"
         "else\n"
-        "  g()\n"
-        "  if b then\n"
-        "    h()\n"
-        "  end\n"
+        "    g()\n"
+        "    if b then\n"
+        "        h()\n"
+        "    end\n"
         "end\n")
 
 
@@ -284,3 +284,67 @@ def test_unary_minus_precedence_table_is_the_rule():
 
 def test_negative_numeral_fixtures_certify_l3():
     certifies(NEG_SRC)
+
+
+# --------------------------------------------------------------------------
+# 4. indentation (output surface v2)
+# --------------------------------------------------------------------------
+
+INDENT_SRC = (b"local f = function(a) "
+              b"  if a then "
+              b"    local g = function() return 1 end "
+              b"    return g() + g() "
+              b"  end "
+              b"  return 0 "
+              b"end "
+              b"return f(1), f(2)")
+# `f` and `g` are each read twice on purpose. A synthesized local that is read
+# ONCE is inlined into its consumer by the reconstructor, so a single-use
+# `local f = function() ... end` never reaches the printer as a statement at
+# all -- it comes out as `return function(l1_0) ... end` and there is no
+# closure-inside-a-block to indent.
+LOCALFN_SRC = b"local function r(n) if n then return r(n) end return 0 end return r(1)"
+
+
+def test_function_bodies_are_indented_like_every_other_block():
+    """The M4 readability report's third "ours reads worse" item: the body of
+    a chunk-level `local f = function()` sat at column 0 while an `if` inside
+    it indented normally, so the function looked like it had no block at all.
+    """
+    assert printed(INDENT_SRC) == (
+        "local l0_0 = function(l1_0)\n"
+        "    if l1_0 then\n"
+        "        local l1_1 = function()\n"
+        "            return 1\n"
+        "        end\n"
+        "        return l1_1() + l1_1()\n"
+        "    end\n"
+        "    return 0\n"
+        "end\n"
+        "return l0_0(1), l0_0(2)\n")
+
+
+def test_indentation_is_four_spaces_at_every_level():
+    out = printed(INDENT_SRC)
+    starts = [line[:len(line) - len(line.lstrip(" "))] for line in out.splitlines()]
+    assert starts == ["", "    ", "        ", "            ", "        ",
+                      "        ", "    ", "    ", "", ""]
+    assert all(len(s) % 4 == 0 for s in starts)
+
+
+def test_local_function_sugar_closes_at_its_own_indent():
+    """`local function NAME` is printed by `_local_decl`, not by the generic
+    closure path, so its `end` needs the same treatment."""
+    assert printed(LOCALFN_SRC) == (
+        "local function l0_0(l1_0)\n"
+        "    if l1_0 then\n"
+        "        return l0_0(l1_0)\n"
+        "    end\n"
+        "    return 0\n"
+        "end\n"
+        "return l0_0(1)\n")
+
+
+def test_indentation_fixtures_certify_l3():
+    certifies(INDENT_SRC)
+    certifies(LOCALFN_SRC)

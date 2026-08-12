@@ -484,13 +484,19 @@ def instrumented(rec: _Recorder):
                            type(r).__name__):
             return saved["region"](self, r, indent)
 
-    def closure_parts(self, e):
+    def closure_parts(self, e, *args, **kw):
+        # `*args`/`**kw` for the same reason `_print_proto_body` below has
+        # them: production grew an argument (M5 task 7 change 4 passes the
+        # enclosing statement's indent so the closure body can be indented
+        # under it) and a seam that pins an arity silently stops matching --
+        # or, worse, keeps matching a stale call shape. Accepting what
+        # production passes is the seam's job.
         pc = self._closure_pc(e.proto_idx)
         child = self.proto.subprotos[e.proto_idx]
         with rec.pcs_frame(self.fn, (pc,), self.depth, "CLOSURE",
                            param_depth=self.depth + 1,
                            param_limit=child.numparams):
-            return saved["closure_parts"](self, e)
+            return saved["closure_parts"](self, e, *args, **kw)
 
     def _print_proto_body(proto, depth, upval_names, *args, **kw):
         # `*args`/`**kw` rather than the 3-parameter shape this used to have:

@@ -339,6 +339,43 @@ debug:
   statement of a block — printing the sibling after them is a syntax error,
   not merely dead code.
 
+#### Output surface v2 (M5 task 7)
+
+The text this printer emits is a **versioned surface**, and M5 task 7 bumps
+it to **v2**. CLAUDE.md's 下游耦合 section records that the predecessor's
+`post_process/` chain matched the *old* emitter's exact style with
+line-anchored regexes: `v\d+` naming, one statement per line, no top-level
+indentation, `name = function(...)` form, double-quoted strings. That chain
+is already incompatible with this project — our synthesized names are
+`l<depth>_<reg>`, not `v\d+`, which broke the naming anchor two milestones
+ago — and CLAUDE.md explicitly licenses a versioned replacement rather than a
+byte-level replica ("不必字节级复刻旧输出…要么显式版本化"). v1 quirks are
+therefore not preserved. What changed in v2, all of it presentation and all
+of it proven certification-invariant by `corpus/ledger.jsonl` staying
+byte-identical across each commit:
+
+| | v1 (through M5 task 6) | v2 (M5 task 7) |
+| --- | --- | --- |
+| `else` + a single `if` | `else` / nested `if` / extra `end` | `elseif` |
+| constant string key | `t["k"]`, `{["k"] = 1}` | `t.k`, `{k = 1}` (when the key is a Lua Name and not a reserved word) |
+| negative numeral | `(-1)` everywhere | `-1`, parenthesised only where unary precedence demands (`(-1) ^ 2`, `(-1)[1]`) |
+| unary `-` separator | always (`- x`) | only against a leading `-` (`- -x`), where `--` would start a comment |
+| indentation | 2 spaces, **function bodies not indented at all** | 4 spaces uniformly, function bodies included |
+| non-ASCII string constant | decimal escapes always (`"\227\128\144…"`) | raw UTF-8 when the bytes decode and re-encode identically, decimal escapes otherwise |
+
+Two consequences worth knowing before reading a v2 file:
+
+- A **hybrid** chunk's substituted subtree is emitted by
+  `structure/fallback.py`, which is deliberately not beautified (CLAUDE.md:
+  fallback 故意丑). Its lines keep their own column-0 baseline while the
+  `end` that closes the substituted `function(...)` follows the enclosing
+  indent. Measured after this task: every hybrid boundary in the corpus sits
+  at indent 0, so the mismatch is currently invisible in the artifact.
+- A v2 file can contain **raw multi-byte UTF-8** inside a double-quoted
+  string. It is still a byte-exact representation of the original constant —
+  see "Presentation-layer string decode" below and CLAUDE.md's red-line
+  bullet, which the amendment scopes to the printing layer only.
+
 ### `pyluadec.verify.certify` + `pyluadec.structure.structured` — the landing gate
 
 - `verify/certify.py` — `certify_l3(original, structured_src) -> CertResult`:

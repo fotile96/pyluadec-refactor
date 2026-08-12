@@ -121,6 +121,19 @@ _PRIMARY_PREC = _PREC["^"] + 1
 _SIMPLE_PREC = _PRIMARY_PREC - 1
 
 
+#: One indentation level. Four spaces, everywhere, function bodies included
+#: -- "output surface v2" (M5 task 7 change 4; see
+#: docs/runbooks/structured-pipeline.md). Through M5 task 6 this was two
+#: spaces AND function bodies were not indented at all, so a chunk-level
+#: `local f = function()` had its body flush at column 0 while an `if`
+#: inside that body indented normally.
+_INDENT = "    "
+
+
+def _pad(indent: int) -> str:
+    return _INDENT * indent
+
+
 def _wrap_if_primary(text: str, parent_prec: int) -> str:
     return f"({text})" if _SIMPLE_PREC < parent_prec else text
 
@@ -182,7 +195,8 @@ def _ident(name: bytes) -> str:
     return s
 
 
-def _index(base: str, key: Expr, depth: int, ctx: "Printer | None") -> str:
+def _index(base: str, key: Expr, depth: int, ctx: "Printer | None",
+           indent: int) -> str:
     """`base.k` when `key` is a constant string that is a Lua Name, else
     `base[<key>]`.
 
@@ -201,10 +215,11 @@ def _index(base: str, key: Expr, depth: int, ctx: "Printer | None") -> str:
         name = _as_ident(key.value)
         if name is not None:
             return f"{base}.{name}"
-    return f"{base}[{_expr(key, depth, 0, ctx)}]"
+    return f"{base}[{_expr(key, depth, 0, ctx, indent)}]"
 
 
-def _expr(e: Expr, depth: int, parent_prec: int, ctx: "Printer | None") -> str:
+def _expr(e: Expr, depth: int, parent_prec: int, ctx: "Printer | None",
+          indent: int) -> str:
     """The real expression-printing dispatch, shared by the context-free
     `print_expr` (ctx=None; usable on any tree with no ClosureExpr/UpvalExpr)
     and `Printer.expr` (ctx=the enclosing function's Printer, needed to name
@@ -243,12 +258,18 @@ def _expr(e: Expr, depth: int, parent_prec: int, ctx: "Printer | None") -> str:
     if isinstance(e, ClosureExpr):
         if ctx is None:
             raise ReconstructError("ClosureExpr needs Printer context; use print_function")
-        params, body = ctx.closure_parts(e)
-        return _wrap_if_primary(f"function({params})\n{body}end", parent_prec)
+        params, body = ctx.closure_parts(e, indent)
+        # The body was printed at `indent + 1` and the closing `end` sits at
+        # `indent` -- the same shape every block gets, and the reason a
+        # closure literal appearing anywhere inside an expression still lines
+        # up with the statement that contains it.
+        return _wrap_if_primary(
+            f"function({params})\n{body}{_pad(indent)}end", parent_prec)
     if isinstance(e, IndexExpr):
-        return _index(_expr(e.table, depth, _PRIMARY_PREC, ctx), e.key, depth, ctx)
+        return _index(_expr(e.table, depth, _PRIMARY_PREC, ctx, indent),
+                      e.key, depth, ctx, indent)
     if isinstance(e, TableExpr):
-        items = [_expr(x, depth, 0, ctx) for x in e.array]
+        items = [_expr(x, depth, 0, ctx, indent) for x in e.array]
         for k, v in e.hash:
             # Same sugar as `_index`, at the constructor's own syntax:
             # `lparser.c::recfield` takes `TK_NAME` -> `checkname` or `'['` ->
@@ -262,21 +283,21 @@ def _expr(e: Expr, depth: int, parent_prec: int, ctx: "Printer | None") -> str:
             # Reconstructor and a `[<expr>] = <expr>` pair can consume staged
             # registers in either slot. (A key that took the sugar is a
             # `ConstExpr` and renders nothing, so skipping it is free.)
-            key_txt = None if name is not None else _expr(k, depth, 0, ctx)
-            val = _expr(v, depth, 0, ctx)
+            key_txt = None if name is not None else _expr(k, depth, 0, ctx, indent)
+            val = _expr(v, depth, 0, ctx, indent)
             items.append(f"{name} = {val}" if name is not None
                          else f"[{key_txt}] = {val}")
         return _wrap_if_primary("{" + ", ".join(items) + "}", parent_prec)
     if isinstance(e, CallExpr):
-        args = ", ".join(_expr(a, depth, 0, ctx) for a in e.args)
-        fn_txt = _expr(e.fn, depth, _PRIMARY_PREC, ctx)
+        args = ", ".join(_expr(a, depth, 0, ctx, indent) for a in e.args)
+        fn_txt = _expr(e.fn, depth, _PRIMARY_PREC, ctx, indent)
         if e.is_method:
             assert e.method is not None
             return f"{fn_txt}:{_ident(e.method)}({args})"
         return f"{fn_txt}({args})"
     if isinstance(e, UnExpr):
         prec = _PREC["unary"]
-        inner = _expr(e.operand, depth, prec, ctx)
+        inner = _expr(e.operand, depth, prec, ctx, indent)
         # `not` always needs a separator (`notx` is one identifier). `-` needs
         # one only against another leading `-`: `--` is a Lua COMMENT, so
         # `- -x` (two UNM instructions) or `- -1` (UNM over a negative
@@ -298,12 +319,13 @@ def _expr(e: Expr, depth: int, parent_prec: int, ctx: "Printer | None") -> str:
         prec = _PREC[e.op]
         lp = prec + (1 if e.op in _RIGHT_ASSOC else 0)
         rp = prec + (0 if e.op in _RIGHT_ASSOC else 1)
-        out = f"{_expr(e.lhs, depth, lp, ctx)} {e.op} {_expr(e.rhs, depth, rp, ctx)}"
+        out = (f"{_expr(e.lhs, depth, lp, ctx, indent)} {e.op} "
+               f"{_expr(e.rhs, depth, rp, ctx, indent)}")
         return f"({out})" if prec < parent_prec else out
     raise ReconstructError(f"unprintable expression {type(e).__name__}")
 
 
-def print_expr(e: Expr, depth: int, parent_prec: int = 0) -> str:
+def print_expr(e: Expr, depth: int, parent_prec: int = 0, indent: int = 0) -> str:
     """Print an expression tree that contains no ClosureExpr/UpvalExpr node.
 
     Convenience entry point (precedence/formatting can be tested without
@@ -311,7 +333,7 @@ def print_expr(e: Expr, depth: int, parent_prec: int = 0) -> str:
     to know their enclosing function's proto/fn/upval_names, which only a
     `Printer` (see `print_function`) carries.
     """
-    return _expr(e, depth, parent_prec, None)
+    return _expr(e, depth, parent_prec, None, indent)
 
 
 class Printer:
@@ -362,8 +384,8 @@ class Printer:
         self._implicit_return_pc = _implicit_return_pc(fn)
 
     # ---- expressions --------------------------------------------------
-    def expr(self, e: Expr, parent_prec: int = 0) -> str:
-        return _expr(e, self.depth, parent_prec, self)
+    def expr(self, e: Expr, parent_prec: int = 0, *, indent: int = 0) -> str:
+        return _expr(e, self.depth, parent_prec, self, indent)
 
     def upval_name(self, idx: int) -> str:
         if not (0 <= idx < len(self.upval_names)):
@@ -376,7 +398,7 @@ class Printer:
             raise ReconstructError(f"no CLOSURE instruction found for subproto index {idx}")
         return pc
 
-    def closure_parts(self, e: ClosureExpr) -> tuple[str, str]:
+    def closure_parts(self, e: ClosureExpr, indent: int = 0) -> tuple[str, str]:
         """(params, body) for a CLOSURE literal -- `function(params)\\nbody`
         with the caller responsible for the leading `function`/`local
         function NAME` keyword and the trailing `end`.
@@ -421,7 +443,8 @@ class Printer:
         # `structured._plan_substitutions` called the 5-argument form
         # unconditionally anyway. The seam now takes what production passes.
         return params, _print_proto_body(child, self.depth + 1, tuple(names),
-                                         child_path, self.fallback_paths)
+                                         child_path, self.fallback_paths,
+                                         indent + 1)
 
     def _closure_self_ref(self, e: ClosureExpr, target_reg: int) -> bool:
         """True iff the closure captures its own assignment target as an
@@ -440,33 +463,35 @@ class Printer:
                    for ps in self.fn.closure_pseudo[pc])
 
     # ---- statements -----------------------------------------------------
-    def target(self, t: AssignTarget) -> str:
+    def target(self, t: AssignTarget, indent: int = 0) -> str:
         if isinstance(t, LocalTarget):
             return name_for(t.reg, self.depth)
         if isinstance(t, GlobalTarget):
             return _ident(t.name)
         if isinstance(t, IndexTarget):
-            return _index(self.expr(t.table, _PRIMARY_PREC), t.key, self.depth, self)
+            return _index(self.expr(t.table, _PRIMARY_PREC, indent=indent),
+                          t.key, self.depth, self, indent)
         if isinstance(t, UpvalTarget):
             return self.upval_name(t.idx)
         raise ReconstructError(f"unprintable target {type(t).__name__}")
 
-    def stmt(self, s: Stmt) -> str:
+    def stmt(self, s: Stmt, indent: int = 0) -> str:
         if isinstance(s, LocalDecl):
-            return self._local_decl(s)
+            return self._local_decl(s, indent)
         if isinstance(s, Assign):
-            tgts = ", ".join(self.target(t) for t in s.targets)
-            vals = ", ".join(self.expr(e) for e in s.exprs)
+            tgts = ", ".join(self.target(t, indent) for t in s.targets)
+            vals = ", ".join(self.expr(e, indent=indent) for e in s.exprs)
             return f"{tgts} = {vals}"
         if isinstance(s, ExprStmt):
-            return self.expr(s.call)
+            return self.expr(s.call, indent=indent)
         if isinstance(s, ReturnStmt):
             if not s.exprs:
                 return "return"
-            return "return " + ", ".join(self.expr(e) for e in s.exprs)
+            return "return " + ", ".join(self.expr(e, indent=indent)
+                                         for e in s.exprs)
         raise ReconstructError(f"unprintable statement {type(s).__name__}")
 
-    def _local_decl(self, s: LocalDecl) -> str:
+    def _local_decl(self, s: LocalDecl, indent: int = 0) -> str:
         names = ", ".join(name_for(r, self.depth) for r in s.regs)
         if not s.exprs:
             # A bare declaration (`local a, b`, no initialiser -- see the
@@ -477,12 +502,13 @@ class Printer:
         if (len(s.regs) == 1 and len(s.exprs) == 1
                 and isinstance(s.exprs[0], ClosureExpr)
                 and self._closure_self_ref(s.exprs[0], s.regs[0])):
-            params, body = self.closure_parts(s.exprs[0])
-            return f"local function {names}({params})\n{body}end"
-        vals = ", ".join(self.expr(e) for e in s.exprs)
+            params, body = self.closure_parts(s.exprs[0], indent)
+            return (f"local function {names}({params})\n"
+                    f"{body}{_pad(indent)}end")
+        vals = ", ".join(self.expr(e, indent=indent) for e in s.exprs)
         return f"local {names} = {vals}"
 
-    def condition(self, cond: LirInstr) -> str:
+    def condition(self, cond: LirInstr, indent: int = 0) -> str:
         """Render a comparison/TEST instruction as the boolean expression that
         is true exactly when control **falls through** past the JMP that
         follows it.
@@ -516,7 +542,7 @@ class Printer:
         the same way so the two cannot drift apart.)
         """
         try:
-            return self.expr(self.recon.condition_expr(cond))
+            return self.expr(self.recon.condition_expr(cond), indent=indent)
         except ReconstructError as exc:
             # Region-level refusal, as before: a region whose condition slot
             # holds a non-condition opcode is an unstructurable shape, not a
@@ -526,9 +552,10 @@ class Printer:
 
     # ---- regions --------------------------------------------------------
     def region(self, r: Region, indent: int) -> list[str]:
-        pad = "  " * indent
+        pad = _pad(indent)
         if isinstance(r, Straight):
-            return [pad + self.stmt(s) for s in self.recon.stmts_for(r.instrs)]
+            return [pad + self.stmt(s, indent)
+                    for s in self.recon.stmts_for(r.instrs)]
         if isinstance(r, Seq):
             out: list[str] = []
             for child in r.body:
@@ -547,7 +574,8 @@ class Printer:
                 # counterpart, so printing it would make the recompile emit
                 # two. See `_implicit_return_pc`.
                 return []
-            return [pad + self.stmt(s) for s in self.recon.stmts_for((r.instr,))]
+            return [pad + self.stmt(s, indent)
+                    for s in self.recon.stmts_for((r.instr,))]
         if isinstance(r, Break):
             return [pad + "break"]
         if isinstance(r, CondValue):
@@ -555,7 +583,7 @@ class Printer:
             # an inlinable temp, zero statements plus a staged expression the
             # consumer inlines). All the structure lives in the Expr tree
             # `Reconstructor.cond_value` builds; this arm stays a fold.
-            return [pad + self.stmt(s) for s in self.recon.cond_value(r)]
+            return [pad + self.stmt(s, indent) for s in self.recon.cond_value(r)]
         if isinstance(r, If):
             out = []
             # Each arm is its own Lua block: a `local` one arm declares is not
@@ -585,7 +613,7 @@ class Printer:
                 # matching where the recursive form evaluated a nested `If`'s
                 # condition (`self.condition(r.cond)` precedes
                 # `self.recon.open_scope()`).
-                cond = self.condition(node.cond)
+                cond = self.condition(node.cond, indent)
                 out.append(f"{pad}{keyword} {cond} then")
                 snap = self.recon.open_scope()
                 snaps.append(snap)
@@ -657,9 +685,9 @@ class Printer:
         if isinstance(r, NumericFor):
             a = r.prep.ri.a
             var = name_for(a + 3, self.depth)
-            init = self.expr(self.recon.take_expr(a))
-            limit = self.expr(self.recon.take_expr(a + 1))
-            step = self.expr(self.recon.take_expr(a + 2))
+            init = self.expr(self.recon.take_expr(a), indent=indent)
+            limit = self.expr(self.recon.take_expr(a + 1), indent=indent)
+            step = self.expr(self.recon.take_expr(a + 2), indent=indent)
             out = [f"{pad}for {var} = {init}, {limit}, {step} do"]
             # A loop body is its own block, same as an `if` arm. Unlike the
             # `if` case this is defensive rather than a fixed defect: a
@@ -710,7 +738,7 @@ class Printer:
             # the wrong default for a placeholder whose entire contract is
             # that it never prints.
             taken = [self.recon.take_expr(a + i) for i in range(3)]
-            iters = ", ".join(self.expr(e) for e in taken
+            iters = ", ".join(self.expr(e, indent=indent) for e in taken
                               if not (isinstance(e, MultiSpill) and e.base == a))
             out = [f"{pad}for {vars_} in {iters} do"]
             # A loop body is its own block, same as an `if` arm. Unlike the
@@ -964,24 +992,27 @@ def print_region(region: Region, printer: Printer, indent: int = 0) -> list[str]
 
 def print_function(fn: LirFunction, region: Region, rc: RegClass, depth: int,
                    upval_names: tuple[str, ...] = (), path: str = "main",
-                   fallback_paths: frozenset[str] = frozenset()) -> str:
+                   fallback_paths: frozenset[str] = frozenset(),
+                   indent: int = 0) -> str:
     """Print one function's body (its SIR region tree + register
     classification) as Lua source -- no enclosing `function(...) ... end`;
     the caller (chunk assembly for the top level, `Printer.closure_parts` for
     a nested CLOSURE) adds that.
     """
     printer = Printer(fn, rc, depth, upval_names, path, fallback_paths)
-    lines = printer.region(region, 0)
+    lines = printer.region(region, indent)
     return "\n".join(lines) + ("\n" if lines else "")
 
 
 def _print_proto_body(proto: Proto, depth: int, upval_names: tuple[str, ...],
                       path: str = "main",
-                      fallback_paths: frozenset[str] = frozenset()) -> str:
+                      fallback_paths: frozenset[str] = frozenset(),
+                      indent: int = 0) -> str:
     fn = lift_proto(proto)
     region = build_sir(fn)
     rc = classify_registers(fn)
-    return print_function(fn, region, rc, depth, upval_names, path, fallback_paths)
+    return print_function(fn, region, rc, depth, upval_names, path,
+                          fallback_paths, indent)
 
 
 def print_chunk_or_raise(proto: Proto) -> str:

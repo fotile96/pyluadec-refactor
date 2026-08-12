@@ -153,12 +153,12 @@ def test_enditer_prints_nothing():
     src = print_chunk(p)
     assert src is not None                      # the printer does not refuse
     assert src == ("while true do\n"
-                   "  while true do\n"
-                   "    if a then\n"            # <- the EndIter's arm: empty
-                   "    else\n"
-                   "      b()\n"
+                   "    while true do\n"
+                   "        if a then\n"        # <- the EndIter's arm: empty
+                   "        else\n"
+                   "            b()\n"
+                   "        end\n"
                    "    end\n"
-                   "  end\n"
                    "end\n")
 
 
@@ -307,8 +307,8 @@ def test_repeat_prints_and_recompiles_to_the_original():
     original, printed = _print_repeat_fixture()
     assert printed == (b"local l0_0 = 0\n"
                        b"repeat\n"
-                       b"  l0_0 = l0_0 + 1\n"
-                       b"  print(l0_0)\n"
+                       b"    l0_0 = l0_0 + 1\n"
+                       b"    print(l0_0)\n"
                        b"until l0_0 > 2\n")
     candidate = load_bytes(compile_source(printed, strip=True))
     for k in range(len(NORMALIZATIONS) + 1):
@@ -365,6 +365,6 @@ def test_repeat_condition_is_printed_inside_the_body_scope():
                   Return(fn.instrs[pcs[-1]], frozenset({pcs[-1]}))), frozenset())
     assert all_claimed(region) == set(fn.instrs)
     printed = print_function(fn, region, rc, 0).encode()
-    assert printed == b"repeat\n  f()\nuntil y == 1\ng()\n"
+    assert printed == b"repeat\n    f()\nuntil y == 1\ng()\n"
     candidate = load_bytes(compile_source(printed, strip=True))
     assert not compare_protos(p, candidate, level=0), printed
