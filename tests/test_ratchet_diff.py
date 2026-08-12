@@ -445,7 +445,10 @@ def test_a_malformed_new_row_is_skipped_not_blamed(committed, tmp_path, capsys):
      "TypeError: unhashable list -> caught by the diff handler -> 128"),
     ("unhashable level",
      '{"shash": "aa", "level": ["L3"], "occurrences": []}',
-     "TypeError in LEVEL_RANK.get -> caught by the diff handler -> 128"),
+     "row loads; `_rank` is never reached (shash `aa` is not in the "
+     "intersection); exit 1 via 1478 row-removed (this fixture has one row). "
+     "The 128 lives on the whole-ledger mutation, not here -- see "
+     "test_an_unhashable_level_is_skipped_not_aborted"),
     ("rung of the wrong type",
      '{"shash": "aa", "level": "L3", "l3_level": "one", "occurrences": []}',
      "row loads; exit 1 via 1478 row-removed (this fixture has one row)"),
