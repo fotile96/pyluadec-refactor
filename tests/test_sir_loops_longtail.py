@@ -265,7 +265,10 @@ def test_repeat_polarity_is_the_untouched_fallthrough_expression():
     (rep,) = _find(r, Repeat)
     assert rep.negated == (rep.cond.ri.a == 0)
     printed = print_chunk(load_bytes(compile_source(src, strip=True)))
-    assert printed is not None and printed.rstrip().endswith("until 2 < l0_0")
+    # `until l0_0 > 2` since M5 task 5: the source is `until i > 2` and
+    # `Reconstructor._reads_as_gt` recovers the `>`. Same instruction either
+    # way; the differential run below is what pins the polarity.
+    assert printed is not None and printed.rstrip().endswith("until l0_0 > 2")
     a = run_bytes(compile_source(src, strip=True), is_source=False)
     b = run_bytes(printed.encode(), is_source=True)
     # A sign-flipped `until` compiles and exits after ONE iteration.

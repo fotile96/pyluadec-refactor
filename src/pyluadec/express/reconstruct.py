@@ -39,7 +39,7 @@ from dataclasses import dataclass
 
 from pyluadec.ingest.proto import LuaNumber
 from pyluadec.lift.lift import LirFunction, LirInstr
-from pyluadec.lift.opcodes import Op, indexk, isk
+from pyluadec.lift.opcodes import ArgMode, Fmt, OP_SPECS, Op, indexk, isk
 from pyluadec.sir.regions import CondValue, VAlt, VNode, VTail
 
 from .expr import (BinExpr, CallExpr, ClosureExpr, ConstExpr, Expr, GlobalExpr,
@@ -105,6 +105,10 @@ class ReconstructError(Exception):
 
 _ARITH = {Op.ADD: "+", Op.SUB: "-", Op.MUL: "*", Op.DIV: "/", Op.MOD: "%", Op.POW: "^"}
 _CMP_SYM = {Op.EQ: "==", Op.LT: "<", Op.LE: "<="}
+# The same instruction read the other way round; see `_reads_as_gt`. `EQ` is
+# absent on purpose -- `codecomp`'s operand exchange is guarded by
+# `op != OP_EQ`, so an `EQ`'s operands are always in source order.
+_GT_SYM = {Op.LT: ">", Op.LE: ">="}
 
 
 def _local_regs_in(e: Expr) -> frozenset[int]:
@@ -242,6 +246,9 @@ class Reconstructor:
         self._consumed: set[int] = set()
         self._pc: int | None = None
         self._out: list[Stmt] = []
+        # pc -> largest constant index referenced strictly before it;
+        # built on first use by `_max_const_index_before`.
+        self._maxk_before: dict[int, int] | None = None
 
     # ---- public API (spec) --------------------------------------------
     def stmts_for(self, instrs: tuple[LirInstr, ...]) -> tuple[Stmt, ...]:
@@ -372,6 +379,107 @@ class Reconstructor:
         """
         return self.rk(x)
 
+    def _max_const_index_before(self, pc: int) -> int:
+        """The largest constant-table index any instruction BEFORE `pc`
+        references, or -1 if none does. Cached per function.
+
+        This is a proxy for "how far luac's constant table had grown by the
+        time it reached this instruction". It is a proxy rather than the exact
+        answer because `luaK_exp2RK` interns a constant *before* emitting the
+        instruction that names it -- which is exactly the phenomenon
+        `_reads_as_gt` is reading -- so a constant can carry an index lower
+        than one referenced earlier in the code. Every K-mode operand is
+        counted, taken from `OP_SPECS` (transcribed from `lopcodes.c`), so
+        `LOADK`/`GETGLOBAL`/`SETGLOBAL`'s Bx and every RK B/C slot are all in.
+        """
+        if self._maxk_before is None:
+            table: dict[int, int] = {}
+            running = -1
+            for p in sorted(self.fn.instrs):
+                table[p] = running
+                ri = self.fn.instrs[p].ri
+                spec = OP_SPECS[ri.op]
+                if spec.fmt is Fmt.iABx and spec.bmode is ArgMode.K:
+                    running = max(running, ri.bx)
+                elif spec.fmt is Fmt.iABC:
+                    if spec.bmode is ArgMode.K and isk(ri.b):
+                        running = max(running, indexk(ri.b))
+                    if spec.cmode is ArgMode.K and isk(ri.c):
+                        running = max(running, indexk(ri.c))
+            self._maxk_before = table
+        return self._maxk_before.get(pc, -1)
+
+    def _reads_as_gt(self, ri) -> bool:
+        """Was this `LT`/`LE` written `>`/`>=` in the source?
+
+        ## Why the question exists
+
+        `lcode.c`'s `codecomp` (673-686) compiles `a > b` by evaluating `a`
+        and `b` in that order and then **exchanging the operands** so it can
+        emit `OP_LT`:
+
+            OPR_LT: codecomp(OP_LT, 1, e1, e2)   ->  LT 1 RK(e1) RK(e2)
+            OPR_GT: codecomp(OP_LT, 0, e1, e2)   ->  LT 1 RK(e2) RK(e1)
+
+        (`luaK_posfix`, 775-778; both then have `cond == 1` and an enclosing
+        `if` inverts A to 0.) So `x < y` and `y > x` produce the *identical*
+        instruction, and printing every `LT` as `<` is not "the canonical
+        form" -- it is a guess about which of two sources luac saw, and when
+        the guess is wrong the recompile puts the operands' own code and
+        constants in the other order.
+
+        ## What is observable
+
+        The operands are evaluated **left to right**: `luaK_infix`'s default
+        arm (710-733) calls `luaK_exp2RK(fs, e1)` before the parser has even
+        seen `e2`. Two consequences, and they are the whole decision:
+
+        * a register operand evaluated first sits in a LOWER register (it was
+          pushed onto the expression stack first);
+        * a constant operand evaluated first is interned into the constant
+          table before anything the other operand creates, so it carries a
+          LOWER index.
+
+        In the `<` reading the operand in field B was evaluated first; in the
+        `>` reading it is the one in field C. So:
+
+        * both operands registers -> `>` iff `B > C`;
+        * both operands constants -> `>` iff `idx(B) > idx(C)`;
+        * B constant, C register -> `>` iff B's constant is newer than
+          everything the code before this instruction has referenced, i.e.
+          `idx(B) > _max_const_index_before(pc)`. That is the corpus shape:
+          `if select("#", ...) > 0 then`, where `select` and `"#"` are
+          interned by the call and `0` only afterwards, so the original pool
+          is `select, #, 0` and printing `0 < select("#", ...)` recompiles to
+          `0, select, #`.
+        * C constant, B register -> never flipped. The evidence would be
+          "C's constant is OLDER than what B's own code created", and
+          `_max_const_index_before` cannot distinguish that from the very
+          common `x < 5` where `5` was already in the pool. Both readings of
+          that shape compile identically anyway (a bare local contributes no
+          code and no constants), so there is nothing to win and a
+          false positive to lose. Recorded as a deliberate gap, not an
+          oversight; `tests/test_express_residual.py::
+          test_the_gt_recogniser_leaves_a_constant_in_field_c_alone` pins it.
+
+        ## Why being wrong is cheap
+
+        Both readings are the same boolean, so a wrong answer is never a
+        semantic error -- it costs a certification, exactly as the
+        always-`<` reading did. Certification is what adjudicates; this is a
+        reconstruction heuristic, like every other rule in this layer.
+        """
+        if ri.op not in _GT_SYM:
+            return False
+        bk, ck = isk(ri.b), isk(ri.c)
+        if not bk and not ck:
+            return ri.b > ri.c
+        if bk and ck:
+            return indexk(ri.b) > indexk(ri.c)
+        if bk:
+            return indexk(ri.b) > self._max_const_index_before(ri.pc)
+        return False
+
     def condition_expr(self, cond: LirInstr) -> Expr:
         """A comparison/`TEST` instruction as the boolean expression that is
         true exactly when control **falls through** past the JMP following it.
@@ -396,8 +504,11 @@ class Reconstructor:
         """
         ri = cond.ri
         if ri.op in _CMP_SYM:
-            base = BinExpr(_CMP_SYM[ri.op], self.cond_operand(ri.b),
-                           self.cond_operand(ri.c))
+            lhs, rhs = self.cond_operand(ri.b), self.cond_operand(ri.c)
+            sym = _CMP_SYM[ri.op]
+            if self._reads_as_gt(ri):
+                lhs, rhs, sym = rhs, lhs, _GT_SYM[ri.op]
+            base = BinExpr(sym, lhs, rhs)
             return base if ri.a == 0 else UnExpr("not", base)
         if ri.op is Op.TEST:
             operand = self.cond_operand(ri.a)

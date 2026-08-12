@@ -217,3 +217,96 @@ def test_a_multispill_is_unprintable_anywhere_else():
     from pyluadec.express.expr import MultiSpill
     with pytest.raises(ReconstructError, match="unprintable expression"):
         print_expr(MultiSpill(3), depth=0)
+
+
+# ---------------------------------------------------------------------------
+# Cluster 3: `>` / `>=` are not `<` / `<=` with the operands swapped
+#
+# `lcode.c`'s `codecomp` (673-686) compiles `a > b` by evaluating `a` then `b`
+# and then EXCHANGING the operands so it can emit `OP_LT` (`luaK_posfix`,
+# 775-778). So `x < y` and `y > x` are byte-identical instructions and
+# printing every `LT` as `<` is a guess, not a canonicalisation. When the
+# guess is wrong the recompile evaluates the two operands in the other order,
+# which reorders their own code and -- decisively -- their constants:
+# `luaK_infix`'s default arm (710-733) interns `e1` via `luaK_exp2RK` before
+# the parser has seen `e2`.
+#
+# That is the whole of what M3 and M4 measured as the "differs only by
+# constant-pool order" population and twice declined an `L3.2` normalization
+# rung for (9 protos at M3, 10 at M4 task 6, 11 re-measured at the start of
+# this task). Recovering the `>` closes it as a defect instead: re-measured
+# after this cluster with the same recursive, K-operand-aware method,
+# **0 protos** differ only by pool order. See
+# `docs/runbooks/structured-pipeline.md` for the rung's final disposition.
+#
+# Corpus movement: 1418 -> 1430 unique proto shapes at `L3` (1884 -> 1896
+# occurrences), measured 2026-08-12.
+
+GT_RECOVERY = [
+    # Both operands constants -> decided by their pool indices. Neutering the
+    # `bk and ck` arm turns these two red (verified this session).
+    (b'if 2 > 1 then print("a") end', [b"a"]),
+    (b'if 2 >= 1 then print("a") end', [b"a"]),
+    # Both operands registers -> decided by their register numbers: the
+    # operand evaluated first was pushed first and sits lower. Neutering the
+    # `not bk and not ck` arm turns this and the table-index case red.
+    (b'local function f() return 4 end local function g() return 3 end '
+     b'if f() > g() then print("a") end', [b"a"]),
+    (b'local t = {a = 2, b = 1} if t.a > t.b then print("a") end', [b"a"]),
+    # One constant, in field B -> the corpus shape. `select` and `"#"` are
+    # interned by the call and `0` only afterwards, so the original pool is
+    # `select, #, 0`; printing `0 < select("#", ...)` recompiles to
+    # `0, select, #`. Neutering the `if bk:` arm turns this red.
+    (b'local function f(...) if select("#", ...) > 0 then print("a") end end '
+     b'f(1)', [b"a"]),
+    # The `<` direction of each of the three, unchanged.
+    (b'if 1 < 2 then print("a") end', [b"a"]),
+    (b'local function f() return 3 end local function g() return 4 end '
+     b'if f() < g() then print("a") end', [b"a"]),
+    (b'local t = {a = 1, b = 2} if t.a < t.b then print("a") end', [b"a"]),
+    # `repeat ... until i > 2` -- the `until` is the same expression path.
+    (b"local i = 0 repeat i = i + 1 print(i) until i > 2",
+     [b"1", b"2", b"3"]),
+]
+
+
+@pytest.mark.parametrize("src,words", GT_RECOVERY, ids=range(len(GT_RECOVERY)))
+def test_a_comparison_is_printed_the_way_it_was_written(src, words):
+    proto, cert = _certify(src)
+    assert cert.level == "L3", (cert.reason, print_chunk(proto))
+    a = run_bytes(compile_source(src, strip=True), is_source=False)
+    b = run_bytes(print_chunk(proto).encode(), is_source=True)
+    assert a.stdout == b.stdout == b"\n".join(words) + b"\n"
+
+
+def test_the_gt_recogniser_leaves_a_constant_in_field_c_alone():
+    """The deliberate gap in `_reads_as_gt`, pinned so it stays deliberate.
+
+    `x < 5` puts the constant in field C, and so does `5 > x`. Telling them
+    apart would need "C's constant is OLDER than what B's own code created",
+    which `_max_const_index_before` cannot distinguish from the very common
+    case of `5` already being in the pool. The recogniser therefore never
+    flips this shape -- and it does not need to, because a bare local
+    contributes no code and no constants, so BOTH sources compile to the
+    identical instruction and the `<` print certifies either way. Both
+    directions are checked here; if a future refinement starts flipping this
+    shape, the second assertion is what will notice.
+    """
+    for src in (b'local x = 1 if x < 5 then print("a") end',
+                b'local x = 1 if 5 > x then print("a") end'):
+        proto, cert = _certify(src)
+        assert cert.level == "L3", (src, cert.reason)
+        assert "if l0_0 < 5 then" in print_chunk(proto), print_chunk(proto)
+
+
+def test_an_eq_is_never_flipped():
+    """`codecomp`'s operand exchange is guarded by `op != OP_EQ` (lcode.c:679),
+    so an `EQ`'s operands are always already in source order. `_GT_SYM` has no
+    `EQ` entry, and this is the fixture that would catch one being added.
+    """
+    from pyluadec.lift.opcodes import Op
+    from pyluadec.express.reconstruct import _GT_SYM
+    assert Op.EQ not in _GT_SYM
+    proto, cert = _certify(b'local x = 1 if 5 == x then print("a") end')
+    assert cert.level == "L3", cert.reason
+    assert "if 5 == l0_0 then" in print_chunk(proto), print_chunk(proto)

@@ -285,13 +285,19 @@ def test_repeat_prints_and_recompiles_to_the_original():
 
     A sign-flipped `until` still compiles -- it just compiles to `LT 1 ...`
     instead of `LT 0 ...`, which comparing the recompiled proto catches.
+
+    The expected text says `until l0_0 > 2`, not `until 2 < l0_0`, since M5
+    task 5: the fixture's source is `until i > 2` and `_reads_as_gt` now
+    recovers the `>`. Both forms compile to the same instruction (see that
+    method), so this line of the assertion is about faithfulness, and the
+    recompile comparison below is what pins polarity.
     """
     original, printed = _print_repeat_fixture()
     assert printed == (b"local l0_0 = 0\n"
                        b"repeat\n"
                        b"  l0_0 = l0_0 + 1\n"
                        b"  print(l0_0)\n"
-                       b"until 2 < l0_0\n")
+                       b"until l0_0 > 2\n")
     candidate = load_bytes(compile_source(printed, strip=True))
     for k in range(len(NORMALIZATIONS) + 1):
         if not compare_protos(original, candidate, level=k):
