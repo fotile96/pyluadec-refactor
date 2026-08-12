@@ -30,6 +30,21 @@ def decompiled(corpus_dir):
     Deliberately NOT used by test_ledger_ratchet.py: that test's whole point
     is that a *fresh* run of scripts/run_corpus.py reproduces the committed
     ledger, so it must not consume anything another test already computed.
+
+    That last sentence needs one qualification as of M5 task 2. This fixture's
+    *results* are still not shared with the ratchet test -- it re-ingests, re-
+    walks, re-prints, re-assembles and re-writes every file for itself. But
+    `structure.structured.certify_proto` now memoizes L3 verdicts for the life
+    of the PROCESS, so whichever of the two corpus passes runs first pays the
+    ~1900 `luac_sz4` certification subprocesses and the second gets those
+    verdicts back from the cache (this fixture is first in practice:
+    test_behaviour_probe.py sorts before test_ledger_ratchet.py). The verdict
+    is a pure function of the proto and the oracle, and the cache key covers
+    both in full (see `certify_proto`), so nothing the ratchet test asserts
+    changes. What it does mean is that the ratchet no longer re-executes
+    `luac` per proto, so a hypothetical NON-determinism in certification would
+    be masked rather than caught -- recorded here because that is a real, if
+    narrow, loss of coverage and it should not be rediscovered by surprise.
     """
     cache: dict[Path, object] = {}
 

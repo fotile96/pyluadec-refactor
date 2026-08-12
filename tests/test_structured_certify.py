@@ -435,3 +435,149 @@ def test_table_constructor_fold_reorders_statements_but_cannot_ship(tmp_path):
     assert out.certs["main"].level == "L1"          # ...and does not certify
     assert b"__pld_pc" in out.source                # ...so the fallback ships
     assert oracle.run_bytes(out.source, is_source=True).stdout == original_out
+
+
+# --------------------------------------------------------------------------
+# Process-level certification cache (M5 task 2)
+#
+# The three tests below pin the cache's two soundness invariants and its one
+# performance property. Each monkeypatches `_CERT_CACHE` to a private empty
+# dict rather than clearing the module's own: the real cache is warm by the
+# time this module runs (test_behaviour_probe.py and test_ledger_ratchet.py
+# both sort before it), and wiping it would silently hand the rest of the
+# suite a cold cache -- an invisible several-second regression rather than a
+# failure.
+# --------------------------------------------------------------------------
+
+def _grafted_pair(tmp_path):
+    """A genuinely-L3 nested proto and a byte-identical sibling carrying one
+    stray `LocVar`: same `structural_hash`, different `_debug_fingerprint`,
+    and genuinely different verdicts. Same construction as
+    `test_same_structural_hash_different_debug_info_certify_independently`
+    above (which pins the per-chunk case); factored out here because the
+    process-cache test needs the same counterexample across SEPARATE
+    top-level calls, which is the case the per-chunk memo never saw.
+    """
+    import dataclasses
+    from pyluadec.ingest.proto import LocVar
+
+    root = _proto(
+        "local function outer(x)\n"
+        "  local function inner(y)\n"
+        "    return x + y\n"
+        "  end\n"
+        "  return inner(1)\n"
+        "end\n"
+        "print(outer(2))\n", tmp_path)
+    grandchild = root.subprotos[0].subprotos[0]
+    fake = dataclasses.replace(
+        grandchild, locvars=(LocVar(name=None, startpc=0, endpc=1),))
+    return root, grandchild, fake
+
+
+def test_process_cache_is_live_and_keyed_on_more_than_structural_hash(
+        tmp_path, monkeypatch):
+    """Invariant 1, through the PROCESS-level cache rather than the per-chunk
+    memo: two protos sharing a `structural_hash` but not a
+    `_debug_fingerprint` must get independent verdicts even when certified by
+    two unrelated top-level calls, and repeat certifications of either must be
+    served from the cache rather than recomputed.
+
+    Both halves are load-bearing and they fail differently, which is what
+    makes this test meaningful rather than vacuous:
+
+    * With NO cache at all the `is` assertions fail -- a fresh
+      `certify_proto` call always builds a new `ProtoCert` -- so the test
+      cannot pass by the cache simply not existing.
+    * With a cache keyed on `structural_hash` alone the verdict assertions
+      fail: `fake` inherits `grandchild`'s L3 rather than earning its own L1.
+
+    Both were run as neuter proofs (task-2-report.md).
+    """
+    from pyluadec.structure import structured as S
+
+    monkeypatch.setattr(S, "_CERT_CACHE", {})
+    _, grandchild, fake = _grafted_pair(tmp_path)
+
+    a = S.certify_proto(grandchild, is_chunk_root=False)
+    b = S.certify_proto(fake, is_chunk_root=False)
+    assert a.level == "L3", a.mismatches
+    assert b.level == "L1"
+    assert a is not b
+
+    # ...and the cache is what is being tested: a repeat of either call must
+    # return the very object already computed, across call boundaries.
+    assert S.certify_proto(grandchild, is_chunk_root=False) is a
+    assert S.certify_proto(fake, is_chunk_root=False) is b
+    assert len(S._CERT_CACHE) == 2
+
+
+def test_process_cache_separates_chunk_root_from_nested_certification(
+        tmp_path, monkeypatch):
+    """`is_chunk_root` is part of the cache key, because it selects an
+    entirely different certification procedure (compile the print as a whole
+    chunk vs. wrap it in `local u0 ... return function(...) ... end`) for the
+    same `_memo_key`.
+
+    The per-chunk memo did not need this: a root and a strict descendant of
+    itself cannot share a `_memo_key` (`structural_hash` folds subprotos
+    recursively, so the key is well-founded on depth), which is the argument
+    `ProtoCert.source`'s field comment used to have to make. A process-level
+    cache spans chunks, where no such relation constrains the two callers, so
+    the flag goes in the key and the argument is no longer needed.
+
+    Observable difference: a chunk-root L3 carries `source` (the exact bytes
+    that were compiled and compared); the nested certification of the same
+    proto never does. Neuter proof: drop `is_chunk_root` from the key and the
+    second call returns the first's object, `source` included.
+    """
+    from pyluadec.structure import structured as S
+
+    monkeypatch.setattr(S, "_CERT_CACHE", {})
+    p = _proto("local a = 1 return a", tmp_path)
+
+    as_root = S.certify_proto(p, is_chunk_root=True)
+    as_nested = S.certify_proto(p, is_chunk_root=False)
+    assert as_root.level == "L3", as_root.mismatches
+    assert as_root.source is not None
+    assert as_nested is not as_root
+    assert as_nested.source is None
+    assert len(S._CERT_CACHE) == 2
+
+
+def test_process_cache_does_not_survive_an_oracle_rebuild(tmp_path, monkeypatch):
+    """Invariant 4: the cache is keyed on the oracle's identity -- the same
+    `git log -1 --format=%H -- vendor native` the ledger's `oracle` field
+    records -- so a `luac_sz4`/`lua_sz4` rebuilt underneath a live process
+    cannot be certified against by proxy from the previous build's verdicts.
+
+    A byte-identical ledger would NOT catch that failure: the stale verdicts
+    would be internally consistent and simply describe the wrong compiler.
+
+    Simulated by moving the process's memoized oracle identity, which is what
+    a rebuild-plus-commit does to `oracle_version()`'s answer. Three steps,
+    and the middle one is the neuter target: with the oracle identity dropped
+    from the key, step 2 returns `first` and the `is not` assertion fails.
+    """
+    from pyluadec.structure import structured as S
+
+    monkeypatch.setattr(S, "_CERT_CACHE", {})
+    p = _proto("local a = 1 return a", tmp_path)
+
+    real_oracle = S._oracle_identity()
+    assert real_oracle and real_oracle != "0" * 40
+
+    first = S.certify_proto(p, is_chunk_root=True)
+    assert first.level == "L3", first.mismatches
+    assert S.certify_proto(p, is_chunk_root=True) is first     # 1. cached
+
+    monkeypatch.setattr(S, "_ORACLE_ID", "0" * 40)             # 2. "rebuild"
+    after = S.certify_proto(p, is_chunk_root=True)
+    assert after is not first, (
+        "the pre-rebuild verdict was reused after the oracle identity moved")
+    assert after.level == "L3", after.mismatches
+
+    monkeypatch.setattr(S, "_ORACLE_ID", real_oracle)          # 3. back again
+    assert S.certify_proto(p, is_chunk_root=True) is first, (
+        "the real oracle's entry did not survive the detour -- the identity "
+        "is not in the key, it is merely overwriting one")

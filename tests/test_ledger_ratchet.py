@@ -27,14 +27,27 @@ def test_ledger_covers_full_corpus(corpus_dir):
     assert n_occurrences == 1944                    # 全部 proto 都有台账归属
 
 
-# This test re-runs the entire corpus pipeline: 229 files, ~1478 unique protos,
-# one `luac_sz4` subprocess per proto for certification plus one per chunk for
-# the compile check. Measured 9.5s on macOS arm64 (2026-08-11), the slowest
-# single test in the suite by 1s. The global `timeout = 60` in pyproject.toml
-# is a hang backstop sized for ordinary tests; this one is legitimately
-# subprocess-bound and would be the first to trip it on a slower host (the
-# documented primary environment is a 32-bit i686 userland under WSL2). Given
-# its own budget rather than loosening the global one -- see pyproject.toml.
+# This test re-runs the entire corpus pipeline: 229 files, 1944 proto
+# occurrences, one `luac_sz4` subprocess per proto for certification plus one
+# per chunk for the compile check. It was the slowest single test in the suite
+# (9.5s on macOS arm64 2026-08-11; 13.2-13.6s by the M5 task 2 baseline).
+#
+# It now measures **1.87-1.89s** in a full-suite run, because M5 task 2 made
+# `structure.structured.certify_proto`'s memo process-wide: the corpus is
+# certified once per process, and by the time this test runs the session
+# `decompiled` fixture has already paid for it. What remains here is the real
+# work this test exists to check -- ingest, walk, print/assemble, the 229
+# whole-chunk compile checks, and the ledger write. Run ALONE (`uv run pytest
+# tests/test_ledger_ratchet.py`) it is 10.4-10.5s, since then it is the one
+# paying -- so the saving really is a transfer, not a disappearance. See
+# tests/conftest.py's `decompiled` docstring for what that sharing does and
+# does not cost in coverage.
+#
+# The global `timeout = 60` in pyproject.toml is a hang backstop sized for
+# ordinary tests; this one is legitimately subprocess-bound and would be the
+# first to trip it on a slower host (the documented primary environment is a
+# 32-bit i686 userland under WSL2). Given its own budget rather than loosening
+# the global one -- see pyproject.toml.
 @pytest.mark.timeout(300)
 def test_ledger_is_a_reproducible_fixed_point(corpus_dir, tmp_path, monkeypatch):
     """corpus/ledger.jsonl must be a fixed point of scripts/run_corpus.py: a

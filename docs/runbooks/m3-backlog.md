@@ -1455,6 +1455,62 @@ together 54% of the wall clock. A process-level memo was estimated at ~24% of
 the subprocess cost. A review has already agreed neither test should be
 *sampled*, so caching is the only lever left. The ceiling is 45s.
 
+### Closed — M5 task 2 (commit `PENDING`)
+
+Done, and **two of the numbers above are wrong**; the mechanism that actually
+paid is not the one this item describes.
+
+- "the corpus holds 1478 unique `_memo_key`s over 1944 protos" — **false**.
+  1478 is the number of distinct `structural_hash`es (it is the ledger's own
+  unique-proto count). Distinct `_memo_key`s, which is what the memo is keyed
+  on and must stay keyed on, number **1924** over the same 1944 occurrences
+  (229 chunk roots + 1695 nested). Only 16 `structural_hash` groups carry more
+  than one debug fingerprint, but those 16 hold ~446 fingerprints between them
+  — a handful of tiny repeated closures at ~450 different `linedefined`s.
+- "~24% of the subprocess cost" — **false**, and it is 466/1944 = 24.0%, i.e.
+  arithmetic on the wrong 1478. The true *intra*-pass redundancy is
+  **20/1944 = 1.0%**. `scripts/run_corpus.py`, which makes exactly one pass,
+  gains ~1%.
+
+What actually recovered the time is **cross-pass** reuse, which this item did
+not identify: the suite certifies the whole corpus at least twice per process
+(conftest's session `decompiled` fixture, then `test_ledger_ratchet`'s fresh
+`run_corpus.main()`), and the second pass is now free. A second full corpus
+pass in one process costs **0.65s** against ~9s cold.
+
+Measured on macOS arm64, 2026-08-12, same machine both sides:
+
+| | before | after |
+|---|---|---|
+| full suite | 43.90 / 43.42 / 46.10 / 44.85 / 43.75s (516 tests) | 32.04 / 32.04 / 32.42s (519 tests) |
+| `test_ledger_ratchet` (in suite) | 13.64 / 13.17s | 1.89 / 1.87 / 1.89s |
+| `test_behaviour_probe` setup | 11.40 / 11.06s | 10.68 / 10.82 / 10.95s |
+
+**~11.9s recovered** on the median (43.90 → 32.04), against a ≥6s target. Note
+the "before" row: the item's own 11.7s/40.0s figures had already drifted to
+13.2-13.6s of 43.4-46.1s, i.e. the suite was over the 45s ceiling on one run
+of five before this landed.
+
+The behaviour-probe setup is unchanged by design — it is the *first* payer.
+`test_ledger_ratchet` run alone is still 10.4-10.5s. The saving is a transfer,
+not a disappearance.
+
+Implementation: the memo moved from `emit_certified_chunk` (per chunk) into
+`structure.structured.certify_proto` (module-level dict, per process), keyed on
+`(oracle_version(), is_chunk_root) + _memo_key(proto)`. `is_chunk_root` is new
+to the key and is a genuine soundness fix for the wider scope — it retires the
+"a proto cannot equal a strict descendant of itself" argument that
+`ProtoCert.source`'s field comment used to have to make. `corpus/ledger.jsonl`
+is byte-identical (md5 `d4a5ac56938ef0e19f22e7d36a6be0d7` before and after).
+
+Two costs, both accepted rather than hidden: a long-running process accumulates
+1924 entries holding 4.08 MB of chunk `source` bytes (`clear_certification_cache()`
+releases them), and `test_ledger_ratchet` no longer re-executes `luac` per
+proto, so a hypothetical non-determinism in certification would now be masked
+there rather than caught — recorded in `tests/conftest.py`'s `decompiled`
+docstring, which previously promised the ratchet consumed nothing another test
+computed.
+
 ## 13. Readability items surfaced by the M4 evaluation
 
 From `docs/reports/m4-readability.md`, which compares our output against the

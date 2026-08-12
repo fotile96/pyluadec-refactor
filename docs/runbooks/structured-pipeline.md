@@ -414,14 +414,41 @@ end
 and only `recompiled.subprotos[0]` is compared. The parameter names must match
 what `name_for(reg, 1)` synthesizes — the same `l{depth}_{reg}` convention.
 
-Certification results are memoized on `_memo_key = (structural_hash,
-_debug_fingerprint)`. `structural_hash` alone is *not* sufficient: it is a
-code-shape key that deliberately omits `source`, `linedefined`,
-`lastlinedefined`, `lineinfo`, `locvars` and upvalue names, all of which
-`compare_protos` checks. The two together cover every field the comparison
-examines, so equal keys imply equal verdicts by construction
-(`structure/structured.py::_debug_fingerprint`, over
-`verify/certify.py::debug_view`).
+Certification results are memoized on `(oracle_version(), is_chunk_root) +
+_memo_key`, where `_memo_key = (structural_hash, _debug_fingerprint)`, in a
+module-level dict that lives for the whole **process** (M5 task 2; it was
+per-chunk, inside `emit_certified_chunk`, through M4).
+
+`structural_hash` alone is *not* sufficient: it is a code-shape key that
+deliberately omits `source`, `linedefined`, `lastlinedefined`, `lineinfo`,
+`locvars` and upvalue names, all of which `compare_protos` checks. The two
+together cover every field the comparison examines, so equal keys imply equal
+verdicts by construction (`structure/structured.py::_debug_fingerprint`, over
+`verify/certify.py::debug_view`). Measured over the corpus 2026-08-12: 16 of
+the 1478 `structural_hash` groups carry more than one debug fingerprint, so
+this is a live hazard rather than a theoretical one.
+
+The other two key components exist because the scope is now process-wide:
+
+- `is_chunk_root` selects a different procedure (whole-chunk compile vs.
+  wrapper) and a different verdict shape (only the root form carries
+  `source`). Within one chunk it could be omitted, because a proto cannot
+  equal a strict descendant of itself; across chunks nothing constrains the
+  two callers.
+- `oracle_version()` — the same `git log -1 --format=%H -- vendor native` the
+  ledger's `oracle` field records, resolved once per process. A `luac_sz4`
+  rebuilt underneath a live process must not be certified against by proxy
+  from the previous build's verdicts, and a byte-identical ledger would not
+  catch that: the stale verdicts would be internally consistent and simply
+  describe the wrong compiler.
+
+All three components are pinned by neuter-proved tests in
+`tests/test_structured_certify.py` (`test_process_cache_*`). What the cache
+buys is almost entirely *cross-pass*: intra-pass redundancy over the corpus is
+only 20 of 1944 certifications (1.0%; there are 1924 distinct keys, not 1478),
+but a second full corpus pass in one process costs 0.65s against ~9s cold.
+`clear_certification_cache()` releases it — a full pass holds 4.08 MB of chunk
+`source` bytes.
 
 ## The normalization ladder
 

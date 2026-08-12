@@ -28,9 +28,9 @@ even 81.12% occurrences already exceeded it. The measurement scripts for all
 three rows are inlined in `docs/runbooks/structured-pipeline.md`, "Current
 capability boundary".)
 
-## Memoization key (round-1 fix, superseded in M3 task 8)
+## Memoization key (round-1 fix, superseded in M3 task 8; widened in M5 task 2)
 
-`emit_certified_chunk` memoizes `certify_proto`'s verdict. The obvious key,
+`certify_proto`'s verdict is memoized. The obvious key,
 `verify.ledger.structural_hash`, is NOT sufficient: it is a *code-shape* key
 that deliberately omits `source`, `linedefined`/`lastlinedefined`,
 `lineinfo`, `locvars`, and upvalue names, all of which `compare_protos`
@@ -42,11 +42,16 @@ Round 1 handled this by asserting the tree had uniform debug-completeness
 (true of any real `load_file`/`load_bytes` dump, which is `-s`-stripped or
 not for its entire tree). That assertion had a documented false positive and
 started firing on ordinary unstripped input once this module acquired a
-production caller. It is gone: the memo is now keyed on `_memo_key` =
+production caller. It is gone: the memo is keyed on `_memo_key` =
 `structural_hash` + `_debug_fingerprint`, which together cover every field
 `compare_protos` examines, so equal keys imply equal verdicts by
 construction and no assumption about the caller's tree is needed. See
 `_debug_fingerprint`.
+
+M5 task 2 moved that memo out of `emit_certified_chunk` (per chunk) and into
+`certify_proto` (per process), and added `is_chunk_root` and the oracle's
+identity to the key. Rationale, measured savings, and the trade of putting
+process-lifetime state in a `src/` module are all at `certify_proto`.
 """
 from __future__ import annotations
 
@@ -61,8 +66,19 @@ from pyluadec import oracle
 from pyluadec.sir.build import StructureError
 from pyluadec.structure.fallback import emit_chunk
 from pyluadec.verify.certify import carries_debug, certify_l3, debug_view
-from pyluadec.verify.ledger import structural_hash
+from pyluadec.verify.ledger import oracle_version, structural_hash
 from pyluadec.verify.normalize import Mismatch, NORMALIZATIONS, compare_protos
+
+
+# Process-level certification cache; see `certify_proto`. Keyed on
+# `(oracle identity, is_chunk_root) + _memo_key(proto)` -- never on anything
+# weaker, see `_debug_fingerprint`.
+_CERT_CACHE: dict[tuple[str, bool, str, str], "ProtoCert"] = {}
+
+# Memoized `oracle_version()`. `None` until the first certification asks:
+# resolving it costs a `git log` subprocess, and paying that per lookup would
+# cost more than the cache saves.
+_ORACLE_ID: str | None = None
 
 
 @dataclass(frozen=True)
@@ -73,13 +89,13 @@ class ProtoCert:
     # The exact bytes that were compiled and compared to reach this verdict,
     # for a chunk-root `L3` certification; `None` otherwise (non-root
     # certifications compile a wrapper, not a shippable chunk, and a non-`L3`
-    # verdict has nothing certified to hand out). One caveat on "otherwise":
-    # a descendant sharing the root's `_memo_key` would be handed the root's
-    # entry, `source` included. That cannot happen -- `structural_hash` folds
-    # subprotos recursively, so a proto cannot equal a strict descendant of
-    # itself (well-founded on depth) absent a hash collision -- and nothing
-    # reads `source` off a non-root cert. Stated because the field comment
-    # would otherwise be a stronger promise than the code makes.
+    # verdict has nothing certified to hand out). "Otherwise" used to need a
+    # caveat: a proto certified as a descendant could be handed a root's memo
+    # entry, `source` included, and the only thing ruling that out was that a
+    # proto cannot equal a strict descendant of itself (`structural_hash`
+    # folds subprotos recursively, so the key is well-founded on depth). Since
+    # M5 task 2 `is_chunk_root` is part of the cache key, so the two forms
+    # cannot share an entry at all and the promise is structural.
     # `emit_certified_chunk`
     # ships THIS object rather than calling `print_chunk` a second time, so
     # "shipped == certified" holds by construction rather than by the
@@ -177,7 +193,97 @@ def _debug_fingerprint(p: Proto) -> str:
     return hashlib.sha256(blob.encode()).hexdigest()
 
 
+def _oracle_identity() -> str:
+    """This process's oracle identity, resolved once.
+
+    `oracle_version()` shells out to `git log`; at ~1900 certifications per
+    corpus pass, paying that per cache lookup would cost more than the cache
+    saves. Memoized in a module global rather than `functools.lru_cache` so a
+    test can move it (see
+    `test_process_cache_does_not_survive_an_oracle_rebuild`).
+    """
+    global _ORACLE_ID
+    if _ORACLE_ID is None:
+        _ORACLE_ID = oracle_version()
+    return _ORACLE_ID
+
+
 def certify_proto(proto: Proto, *, is_chunk_root: bool) -> ProtoCert:
+    """Certify one proto's own subtree in isolation, memoized for the life of
+    the process. See `_certify_proto_uncached` for what certification is; this
+    wrapper is only about who pays for it.
+
+    ## The key
+
+    `(oracle identity, is_chunk_root) + _memo_key(proto)`, and every component
+    is load-bearing:
+
+    * `_memo_key` = `structural_hash` + `_debug_fingerprint`. Together they
+      cover every field `compare_protos` examines, so equal keys imply equal
+      verdicts by construction. `structural_hash` ALONE is not sufficient and
+      never was -- it is a code-shape key that drops `source`,
+      `linedefined`/`lastlinedefined`, `lineinfo`, `locvars` and upvalue
+      names, all of which the comparison checks. Measured over the corpus
+      2026-08-12: 16 of the 1478 `structural_hash` groups carry more than one
+      debug fingerprint, so this is a live hazard, not a theoretical one. See
+      `_debug_fingerprint`.
+    * `is_chunk_root` selects an entirely different procedure (compile the
+      print as a whole chunk vs. wrap it in `local u0 ... return
+      function(...) ... end`) and a different verdict shape (only the root
+      form carries `source`). The old per-chunk memo could omit it because a
+      proto cannot equal a strict descendant of itself -- `structural_hash`
+      folds subprotos recursively, so the key is well-founded on depth. A
+      process-level cache spans chunks, where no such relation holds between
+      the two callers, so the flag goes in the key and that argument is
+      retired.
+    * The oracle identity is `verify.ledger.oracle_version()`, the same value
+      the ledger's `oracle` field records (`git log -1 --format=%H --
+      vendor native`). A `luac_sz4` rebuilt underneath a live process would
+      otherwise be certified against by proxy from the previous build's
+      verdicts, and a byte-identical ledger would NOT catch it: the stale
+      verdicts would be internally consistent and simply describe the wrong
+      compiler.
+
+    ## Why process-level, and what it costs
+
+    Suite budget (M5 task 2). The corpus tests decompile all 229 files at
+    least twice per process -- once through `tests/conftest.py`'s session
+    `decompiled` fixture, once more inside
+    `test_ledger_ratchet.py`'s fresh `scripts/run_corpus.py` run -- and
+    certification's dominant cost is one `luac_sz4` subprocess per proto.
+    Note what this does NOT buy: the *intra*-pass redundancy is 1.0% (1944
+    certifications, 1924 distinct keys, measured 2026-08-12), not the ~24%
+    a planning estimate predicted from the 1478 `structural_hash` groups.
+    The saving is entirely cross-pass.
+
+    The trade taken by putting the dict in `src/` rather than in a test
+    fixture: this is a real behaviour change to a production module, and a
+    long-running process accumulates entries (a full corpus pass leaves 1924
+    of them; the chunk-root entries hold their `source` bytes, so the corpus
+    footprint is a few MB). `scripts/run_corpus.py` gets the 1.0%. In
+    exchange, `test_ledger_ratchet` -- which deliberately consumes no other
+    test's fixtures, so a conftest-scoped dict would have to be injected into
+    this module anyway to reach it -- gets its verdicts for free. Call
+    `clear_certification_cache()` to drop it.
+    """
+    key = (_oracle_identity(), is_chunk_root) + _memo_key(proto)
+    hit = _CERT_CACHE.get(key)
+    if hit is not None:
+        return hit
+    cert = _certify_proto_uncached(proto, is_chunk_root=is_chunk_root)
+    _CERT_CACHE[key] = cert
+    return cert
+
+
+def clear_certification_cache() -> None:
+    """Drop every memoized verdict. Nothing in-tree needs this -- the cache is
+    a pure-function memo over a key that covers everything a verdict depends
+    on -- but a long-running embedder that has finished with one corpus has no
+    other way to release the `source` bytes the chunk-root entries hold."""
+    _CERT_CACHE.clear()
+
+
+def _certify_proto_uncached(proto: Proto, *, is_chunk_root: bool) -> ProtoCert:
     """Certify one proto's own subtree in isolation.
 
     `is_chunk_root=True`: the proto IS the chunk main -- its structured print
@@ -258,40 +364,33 @@ def emit_certified_chunk(root: Proto) -> ChunkOutcome:
     structured print -- `print_chunk` prints the whole tree inline at each
     CLOSURE site); the semantically-exact fallback chunk otherwise.
 
-    Identical protos recurring within one chunk are certified once and the
-    result is shared -- corpus functions frequently repeat verbatim (e.g.
-    identical small helper closures), and certification's dominant cost is one
-    `luac_sz4` subprocess per proto. "Identical" here means `_memo_key`:
-    `structural_hash` (code shape) plus `_debug_fingerprint` (everything else
-    `compare_protos` looks at). Together those cover every field the
-    comparison examines, so equal keys imply equal verdicts by construction --
-    see `_debug_fingerprint` for why keying on `structural_hash` alone was not
-    enough, and for what replaced the round-1 assertion that used to stand in
-    for this.
+    Identical protos are certified once and the result is shared -- corpus
+    functions repeat verbatim (identical small helper closures), and
+    certification's dominant cost is one `luac_sz4` subprocess per proto.
+    That memo used to live here, per chunk; since M5 task 2 it lives in
+    `certify_proto` itself and spans the process, which is strictly wider (a
+    repeat decompile of the same file is now free too) and strictly stricter
+    (`is_chunk_root` joined the key). This function no longer memoizes
+    anything of its own -- every call below goes through that one cache, so
+    two protos in this tree with the same key still come back as the same
+    object.
     """
     from pyluadec.pipeline import walk_proto_paths
     protos: dict[str, Proto] = {}
     walk_proto_paths("main", root, protos)
 
-    memo: dict[tuple[str, str], ProtoCert] = {}
     certs: dict[str, ProtoCert] = {}
     # `main` is certified first and unconditionally, NOT because
     # walk_proto_paths's pre-order recursion plus dict insertion order
     # happens to put it first in `protos.items()` (true, but this does not
     # rely on it): relying on iteration order would make the "main
     # certified L3 => print succeeded" assertion below correct only by
-    # coincidence if some future change reordered `protos` or introduced a
-    # same-hash collision between `root` and one of its own descendants.
-    root_key = _memo_key(root)
-    memo[root_key] = certify_proto(root, is_chunk_root=True)
-    certs["main"] = memo[root_key]
+    # coincidence if some future change reordered `protos`.
+    certs["main"] = certify_proto(root, is_chunk_root=True)
     for path, p in protos.items():
         if path == "main":
             continue
-        k = _memo_key(p)
-        if k not in memo:
-            memo[k] = certify_proto(p, is_chunk_root=False)
-        certs[path] = memo[k]
+        certs[path] = certify_proto(p, is_chunk_root=False)
 
     # Ship the very bytes certification compiled and compared, NOT a second
     # `print_chunk(root)` call. Re-printing would make "shipped == certified"
