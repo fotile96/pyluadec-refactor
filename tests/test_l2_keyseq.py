@@ -1384,7 +1384,11 @@ def test_corpus_l2_reach_is_not_vacuous(l2_results):
 
     Measured 2026-08-12, after the static backstop landed: **one of the five
     authored files is granted** (`snr_lib.lua`, 3/3 protos entered, block
-    coverage in [0.39, 0.95] of 57 blocks). The other four all carry
+    coverage in [0.3509, 0.9123] of 57 blocks -- it was [0.386, 0.9474] before
+    M5 task 10 round 1 re-timed the sequences so that every directive actually
+    lands; two blocks were reached only by the old timing's accident of
+    holding the tail key across a `wait`, and three longer honest variants
+    were measured without recovering them). The other four all carry
     `blind-compare` sites and are refused whole-file. That is the honest
     reach, and it is much smaller than the reach before the backstop -- when
     all five were granted and four of them should not have been.
@@ -1423,8 +1427,27 @@ def test_the_sequences_actually_drive_the_corpus_loops(corpus_dir):
     L1.75 result with a better name.
 
     Also the measurement this gate exists for: under the L1.75 policy these
-    five files spend 2243-2608 of their 3000 events polling. Driven, the ones
-    that leave their loops finish in double digits.
+    five files spend 2243-2608 of their 3000 events polling. Driven, the eight
+    sequences that leave their loops finish at 38, 68, 137, 174, 233, 238, 263
+    and 542 events; the other five still run to the cap and are disclosed as
+    such in the runbook.
+
+    ## Every `k=` directive must actually LAND
+
+    Added in M5 task 10 round 1, and it is the substantive half of this test.
+    A directive is only read if the target polls on that exact frame, and the
+    frame counter moves on `wait` alone -- these loops answer an accepted press
+    with `wait(5)` and close the iteration with `wait(1)`, so a press costs 6
+    frames. Measured before the fix, on the original side: of the 13 sequences,
+    11 carry `k=` directives and **all 11 dropped at least one**; nine landed
+    only their first, `snr_common`#1 landed 2 of 5, and both `snr_music`
+    sequences landed **0** because that file's first poll is at frame 31. The
+    gate was therefore running on roughly one press per sequence while its
+    text claimed six.
+
+    Nothing detected that, because a dropped directive is silent: the trace is
+    still comparable, still polls, and still agrees. This assertion is what
+    makes it loud.
     """
     from scripts.probe_keyseq import header, poll_count
     for name, specs in sorted(KEY_SEQUENCES.items()):
@@ -1433,6 +1456,15 @@ def test_the_sequences_actually_drive_the_corpus_loops(corpus_dir):
             t = probe_raw(raw, is_source=False, spec=spec)
             assert poll_count(t) > 0, f"{name} never polled under {spec}"
             assert header(t)[0] in ("OK", "CAP"), f"{name}/{spec}: {header(t)}"
+            down = {l.split(b"|")[1] + b"@" + l.split(b"|")[2]
+                    for l in t.split(b"\n")
+                    if l.startswith(b"K|") and l.endswith(b"|true")}
+            missed = [d for d in spec.split(";") if d.startswith("k=")
+                      and (lambda f, k: k.encode() + b"@" + f.encode()
+                           not in down)(*d[2:].split(",", 1))]
+            assert not missed, (
+                f"{name}: {len(missed)} directive(s) of {spec!r} were "
+                f"delivered on a frame the target never polls: {missed}")
 
 
 def test_injected_arithmetic_swap_is_caught(corpus_dir, decompiled):

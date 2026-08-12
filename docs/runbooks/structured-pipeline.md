@@ -2837,7 +2837,7 @@ truncated by sheer `vms()` volume". Both are wrong: 220, not 224; and 101, not
 
 | file | poll events / 3001 | verdict |
 | --- | --- | --- |
-| `snr_lib.lua` | 2243 | **L2@100%** — 3/3 protos; blocks in [0.39, 0.95] of 57 |
+| `snr_lib.lua` | 2243 | **L2@100%** — 3/3 protos; blocks in [0.3509, 0.9123] of 57 |
 | `snr_music.lua` | 2502 | refused `taint-static` (compare 36, launder 1, length 1, loop 3, truthiness 2) |
 | `snr_graphic.lua` | 2606 | refused `taint-static` (compare 58, launder 1, length 7, loop 19, truthiness 9) |
 | `snr_memory.lua` | 2608 | refused `taint-static` (compare 48, launder 2, loop 10, truthiness 9) |
@@ -2865,12 +2865,15 @@ earlier version of this paragraph said all four grants were wrong; that
 claim is stronger than the evidence.
 
 Five of the thirteen sequences still run to the cap (`snr_common`#3,
-`snr_graphic`#3, `snr_lib`#3, `snr_memory`#2, `snr_music`#2). `snr_lib`#3
-(`tail=CIRCLE`, the button held from frame 1) is the deliberate control: it
-reproduces the L1.75 result, `CAP|3001` with 2243 polls, next to the driven
-sequences that finish at `OK|28` and `OK|236`. The other four are not
-controls; they are sequences whose keys do not exit their loops, disclosed
-here rather than presented as driven.
+`snr_graphic`#3, `snr_lib`#3, `snr_memory`#2, `snr_music`#2 — re-measured
+after the M5 task 10 re-timing below, and it is still exactly those five).
+`snr_lib`#3 (`tail=CIRCLE`, the button held from frame 1) is the deliberate
+control: it reproduces the L1.75 result, `CAP|3001` with 2243 polls, next to
+the driven sequences that finish at `OK|68` (UP/four-DOWN/CIRCLE) and `OK|38`
+(DOWN/DOWN/CIRCLE). The other four are not controls; they land every directive
+they carry but their keys do not exit their loops, disclosed here rather than
+presented as driven. The eight sequences that do finish land at 38, 68, 137,
+174, 233, 238, 263 and 542 events.
 
 **`snr_common.lua` and the divergence one key away.** Its third sequence is a
 whole-chunk drive with `tail=CROSS`, and it does not diverge — but only
@@ -2896,15 +2899,33 @@ checkpoint's own property **on each trace separately**:
 
 | checkpoint | property, as a statement about the trace |
 | --- | --- |
-| `systemOption.OptionMain`'s two mutually exclusive clamps (`1..5` / `0..1`) | Drive menu row 1 to both ends (4 LEFT, 6 RIGHT), move down one row, do the same (3 LEFT, 4 RIGHT). Row 1's display layer takes **5** distinct `layerClip` rectangles, row 2's takes **2**, both saturate under repeated pressing, and 5 > 2 — two ranges of different size are in force under the same two keys. |
-| `systemConfig.ConfigMain`'s CIRCLE gate/wait | Press CIRCLE on a row the gates reject, then on a row they accept. The run ends `OK` not `CAP`; the first CIRCLE-down is **not** the last poll; between it and the next iteration's poll the trace records exactly one call, `wait(1)`, and the frame advances by exactly 1; after the accepted press there is no further poll and the trace ends at the entry's return. |
+| `systemOption.OptionMain`'s two mutually exclusive clamps (`1..5` / `0..1`) | Drive menu row 1 to both ends (4 LEFT, 6 RIGHT), move down one row, do the same (3 LEFT, 4 RIGHT). Row 1's display layer takes **5** distinct `layerClip` rectangles, row 2's takes **2**, both saturate under repeated pressing, 5 > 2 — two ranges of different size are in force under the same two keys — and the two keys move row 1's rectangle in **opposite** directions. |
+| `systemConfig.ConfigMain`'s CIRCLE gate/wait | Press CIRCLE on a row the gates reject, then on the one row whose CIRCLE the `memoryFlag` gate decides. The run ends `OK` not `CAP`; the first CIRCLE-down is **not** the last poll; between it and the next iteration's poll the trace records exactly one call, `wait(1)`, and the frame advances by exactly 1; after the accepted press there is no further poll and the trace ends at the entry's return. |
+
+**Which of the three named gates checkpoint 2 actually covers**, measured
+rather than claimed — round 1 corrected a docstring that claimed all three:
+
+| gate | covered? | evidence |
+| --- | --- | --- |
+| `firstFragment` | yes | forcing it open changes the trace and fires the call-window assertion |
+| `memoryFlag` | one direction | forcing it **open** changes the trace and fires the tail assertion; forcing it **shut** leaves the trace byte-identical, because the probe environment fixes `memoryFlag` false and that is the arm the run already takes |
+| `storyLineSkip` | **no** | it is written only inside the `firstFragment == 1` region, which this environment never enters; changing the value it toggles to leaves the trace byte-identical |
+
+The first version of the sequence pressed CIRCLE only on rows the
+`memoryFlag` gate does not guard, so **all three** of those mutations were
+byte-identical. Three UPs onto the guarded row is what bought the second row
+of that table.
 
 The property is asserted on the **original's** trace as well as ours, which is
 the whole point: trace equality is already the L2 gate's job and says nothing
-if both sides regress together. Measured this session, all seven injected bug
+if both sides regress together. Measured this session, all ten injected bug
 shapes (three of them the playbook's own) still fail the property when the
 *original* side is replaced by `luac_sz4`-compiled mutated source so the two
-traces are byte-equal.
+traces are byte-equal. One of the ten is a **key-polarity swap**, found by
+review: exchanging the two direction keys' names reaches the same five
+rectangles in reverse order, which `set()` erases, so it passed every other
+clamp assertion until an explicit "the two keys move the display in opposite
+directions" check was added.
 
 Both properties are expressed in **numbers and event structure only** —
 distinct rectangle counts, poll frames, frame deltas, "was there a poll after
@@ -2916,10 +2937,55 @@ layer to be redrawn".
 **What they do not prove.** `snr_common.lua` ships **whole-file fallback** and
 its L2 verdict is `refused: taint-static`; this module does not change either,
 and adds no sequence to `KEY_SEQUENCES` (so `corpus/ledger.jsonl` is
-byte-unchanged). These are behavioural regressions over the fallback state
+byte-unchanged). Round 1 *did* re-time the sequences already in
+`KEY_SEQUENCES` — see below — but that moved no verdict and no `cov`, so the
+ledger is unchanged by it too. These are behavioural regressions over the fallback state
 machine along two input-driven paths — which is exactly the ground the L2
 badge does not cover, since the badge is `snr_lib.lua` and structured text
 only.
+
+### The frame model, and the directives that were never read (M5 task 10 r1)
+
+A `k=<frame>,<KEY>` directive is read only if the target polls on that exact
+frame, and the frame counter moves on `wait` alone (`waitf`:
+`frame += max(floor(n), 1)`). These menu loops answer an accepted press with
+`wait(5)` and close the iteration with `wait(1)` — **six frames per press** —
+so the 1-frame spacing the sequences shipped with delivered most directives
+while the loop was inside a `wait`.
+
+Measured on the original side of all five files: of the 13 sequences, 11 carry
+`k=` directives and **all 11 dropped at least one**. Nine landed exactly their
+first directive; `snr_common`#1 landed 2 of 5; and **both `snr_music`
+sequences landed 0**, because that file's first poll is at frame 31 and every
+directive was delivered before it. The gate was running on roughly one press
+per sequence while its text described six. Nothing detected it, because a
+dropped directive is silent — the trace is still comparable, still polls, and
+still agrees.
+
+Every frame is now derived by probing: directive *i* is placed at the first
+frame after directive *i-1* at which the target actually polls that key.
+Two trailing directives were **dropped** instead, because their key is not
+polled on the path the rest of the sequence takes (`snr_common`#1's trailing
+`CIRCLE`, which `OptionMain` polls only on the L/R page that key order never
+enters, and `snr_graphic`#2's second `CROSS`, after the first has left the
+loop). Re-measured: **11 of 11 land every directive.**
+
+What it cost and did not cost, measured before landing:
+
+* **No L2 verdict moved** — still 1 granted (`snr_lib.lua`) and 4
+  `taint-static`, with the same site counts.
+* **`cov` is 1.0 either way** (`snr_lib` already entered 3/3 protos), so
+  `corpus/ledger.jsonl` is byte-unchanged and `ratchet_diff.py` sees nothing.
+* The **block diagnostic** dropped: [0.386, 0.9474] → [0.3509, 0.9123] of 57
+  blocks (upper bound 54 → 52). Two blocks were reached only by the old
+  timing's accident of holding the tail key across a `wait`; three longer
+  honest variants were measured without recovering them. It never enters the
+  ledger.
+
+`tests/test_l2_keyseq.py::test_the_sequences_actually_drive_the_corpus_loops`
+now asserts every directive lands, so this cannot recur silently. Proven
+load-bearing: restoring one old sequence makes it fail naming the five
+directives that go unread.
 
 ### Why this has to be sound rather than best-effort
 
@@ -3014,8 +3080,12 @@ field-for-field correspondence with the original's).
 **Block coverage survives as a diagnostic**, reported as an interval because
 it is a bound, not a value: the upper bound credits any block sharing an
 executed line, the lower counts only blocks whose entry line names exactly one
-block. For `snr_lib` that is **[0.39, 0.95] of 57 blocks, 32 of them sharing
-an entry line**. It never enters the ledger.
+block. For `snr_lib` that is **[0.3509, 0.9123] of 57 blocks, 32 of them
+sharing an entry line**. It never enters the ledger. (It was [0.386, 0.9474]
+until M5 task 10 round 1 re-timed the sequences — see below; two blocks were
+reached only by the old timing's accident of holding the tail key across a
+`wait`, and three longer honest variants were measured without recovering
+them.)
 
 `LINE_SHIFT = 2000` blank lines are prepended for the coverage run so a probe
 line number can never collide with a target one — the probe classifies each

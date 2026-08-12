@@ -128,6 +128,41 @@ class ProbeError(RuntimeError):
 # and neither is reachable from the other.
 #
 # Grammar: see `scripts/probe_keyseq.lua`'s header.
+#
+# ## THE FRAME MODEL, and why every `k=` frame below is a measured one
+#
+# A `k=<frame>,<KEY>` directive is only ever READ if the target polls on that
+# exact frame. The frame counter is advanced by `wait` alone
+# (`probe_keyseq.lua`'s `waitf`: `frame += max(floor(n), 1)`), and these menu
+# loops answer an accepted press with `wait(5)` and then close the iteration
+# with `wait(1)` -- so an accepted press costs **6 frames**, and a directive
+# scheduled 1 or 2 frames after another is delivered while the loop is inside
+# a `wait` and is never seen.
+#
+# The sequences shipped through M5 task 9 were written on 1-frame spacing.
+# Measured in task 10 round 1, on the original side of all five files: of the
+# 13 sequences, 11 carry `k=` directives and **all 11 dropped at least one**.
+# Nine landed exactly their first directive; `snr_common`#1 landed 2 of 5; and
+# BOTH `snr_music` sequences landed **0 of their directives**, because that
+# file's first poll is at frame **31** and every directive was delivered
+# before it. Nine of the eleven were then reachable by re-timing alone; the
+# two that were not each ended in a directive whose key is not polled on the
+# path the rest of the sequence takes (`snr_common`#1's trailing `CIRCLE`,
+# which `OptionMain` polls only on the L/R page this key order never enters,
+# and `snr_graphic`#2's second `CROSS`, after the first has already left the
+# loop). Those two directives were dropped rather than left as text that is
+# delivered and never read.
+#
+# Every frame below was derived by probing: directive *i* is placed at the
+# first frame after directive *i-1* at which the target actually polls that
+# key. Re-measured after the change: **11 of 11 land every directive.** No L2
+# verdict moved (still 1 granted / 4 `taint-static`) and `snr_lib`'s badge is
+# `cov` 1.0 either way, so `corpus/ledger.jsonl` is unchanged. The one cost is
+# in the BLOCK diagnostic, which never enters the ledger: `snr_lib`'s interval
+# goes [0.386, 0.9474] -> [0.3509, 0.9123] of 57 blocks (upper bound 54 -> 52).
+# Two blocks were reached only by the old timing's accident of holding the tail
+# key across a `wait`, and three longer honest variants were measured without
+# recovering them.
 # --------------------------------------------------------------------------
 KEY_SEQUENCES: dict[str, tuple[str, ...]] = {
     # The debug menu: UP is clamped at the top, four DOWNs walk to the bottom
@@ -135,41 +170,54 @@ KEY_SEQUENCES: dict[str, tuple[str, ...]] = {
     # degenerate one -- CIRCLE held from the first frame -- kept because it
     # reaches the "already pressed" gate (`l1_2 == 0`) that the others skip.
     "snr_lib.lua": (
-        "k=1,UP;k=2,DOWN;k=3,DOWN;k=4,DOWN;k=5,DOWN;k=6,CIRCLE;tail=CIRCLE",
-        "k=1,DOWN;k=2,DOWN;k=3,CIRCLE;tail=CIRCLE",
+        "k=1,UP;k=7,DOWN;k=13,DOWN;k=19,DOWN;k=25,DOWN;k=31,CIRCLE;tail=CIRCLE",
+        "k=1,DOWN;k=7,DOWN;k=13,CIRCLE;tail=CIRCLE",
         "tail=CIRCLE",
     ),
     # The gallery browsers. Both poll eight buttons (UP/DOWN/LEFT/RIGHT/L/R/
-    # CIRCLE/CROSS); CROSS is what leaves, CIRCLE what descends.
+    # CIRCLE/CROSS); CROSS is what leaves, CIRCLE what descends. The long gaps
+    # before `CIRCLE` are not padding: they are the frame at which the loop
+    # next polls that key after the preceding press, which is what the
+    # derivation above returns. Why the loop takes that long there was not
+    # investigated.
     "snr_graphic.lua": (
-        "k=1,RIGHT;k=2,DOWN;k=3,L;k=4,R;k=5,CIRCLE;k=7,CROSS;tail=CROSS",
-        "k=1,DOWN;k=2,RIGHT;k=3,LEFT;k=4,UP;k=5,L;k=6,R;k=7,CIRCLE;"
-        "k=9,CROSS;k=11,CROSS;tail=CROSS",
-        "k=1,DOWN;k=2,DOWN;k=3,CIRCLE;tail=CIRCLE",
+        "k=1,RIGHT;k=8,DOWN;k=15,L;k=17,R;k=57,CIRCLE;k=59,CROSS;tail=CROSS",
+        "k=1,DOWN;k=8,RIGHT;k=15,LEFT;k=22,UP;k=29,L;k=31,R;k=71,CIRCLE;"
+        "k=73,CROSS;tail=CROSS",
+        "k=1,DOWN;k=8,DOWN;k=15,CIRCLE;tail=CIRCLE",
     ),
     "snr_memory.lua": (
-        "k=1,DOWN;k=2,RIGHT;k=3,LEFT;k=4,UP;k=5,L;k=6,R;k=7,CIRCLE;"
-        "k=9,CROSS;tail=CROSS",
-        "k=1,DOWN;k=2,DOWN;k=3,CIRCLE;tail=CIRCLE",
+        "k=1,DOWN;k=8,RIGHT;k=15,LEFT;k=22,UP;k=29,L;k=31,R;k=71,CIRCLE;"
+        "k=73,CROSS;tail=CROSS",
+        "k=1,DOWN;k=8,DOWN;k=15,CIRCLE;tail=CIRCLE",
     ),
+    # This file does not poll at all until frame 31 (its opening animation),
+    # which is why its directives start there rather than at 1.
     "snr_music.lua": (
-        "k=1,DOWN;k=2,RIGHT;k=3,LEFT;k=4,UP;k=5,CIRCLE;k=7,CROSS;tail=CROSS",
-        "k=1,DOWN;k=2,DOWN;k=3,CIRCLE;tail=CIRCLE",
+        "k=31,DOWN;k=36,RIGHT;k=41,LEFT;k=46,UP;k=51,CIRCLE;k=54,CROSS;"
+        "tail=CROSS",
+        "k=31,DOWN;k=36,DOWN;k=41,CIRCLE;tail=CIRCLE",
     ),
     # The two historical checkpoints from the predecessor's playbook
     # (`DEBUG_KEY_SEQUENCE_HARNESS.md`): `OptionMain`'s RIGHT/LEFT must keep
     # two mutually exclusive clamps, and `ConfigMain`'s CIRCLE branch must
     # keep its gate/wait. Both are METHODS on the instances the chunk builds
     # (`systemOption = SystemOption.new()`), not on the class tables, which is
-    # why the entry names are the lower-case globals. What those sequences
-    # ASSERT is M5 task 10's job; this file only has to make them runnable.
+    # why the entry names are the lower-case globals.
+    #
+    # These two exist to make the entry points REACHABLE by the gate. What the
+    # checkpoints ASSERT lives in `tests/test_keyseq_checkpoints.py`, which
+    # authors its own longer sequences there rather than here: those are a
+    # regression instrument for one file, and adding them here would make them
+    # part of the L2 grant rule and of `corpus/ledger.jsonl`.
     #
     # The third sequence drives the whole chunk instead, and is what makes the
     # `pressButton` loop inside `autoSystemSave` reachable.
     "snr_common.lua": (
-        "entry=systemOption.OptionMain;k=1,RIGHT;k=3,RIGHT;k=5,LEFT;"
-        "k=7,DOWN;k=9,CIRCLE;tail=CROSS",
-        "entry=systemConfig.ConfigMain;k=1,DOWN;k=3,DOWN;k=5,CIRCLE;tail=CROSS",
+        "entry=systemOption.OptionMain;k=1,RIGHT;k=7,RIGHT;k=13,LEFT;"
+        "k=19,DOWN;tail=CROSS",
+        "entry=systemConfig.ConfigMain;k=1,DOWN;k=7,DOWN;k=13,CIRCLE;"
+        "tail=CROSS",
         "tail=CROSS",
     ),
 }

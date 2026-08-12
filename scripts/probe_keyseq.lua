@@ -13,11 +13,13 @@
 --     snr_common 2557, snr_graphic 2606, snr_lib 2243, snr_memory 2608,
 --     snr_music 2502 pressButton call events out of 3001.
 -- A scripted sequence walks the loop instead: `snr_lib.lua` goes from
--- `CAP|3001` (2243 of them polls) to `OK|28` under its DOWN/DOWN/CIRCLE
--- sequence and `OK|236` under its UP/four-DOWN/CIRCLE one -- i.e. it runs to
--- completion. (An earlier version of this comment said `OK|40`; no sequence
--- this file ships produces 40, and the figure was never re-measured after the
--- sequences were chosen.)
+-- `CAP|3001` (2243 of them polls) to `OK|38` under its DOWN/DOWN/CIRCLE
+-- sequence and `OK|68` under its UP/four-DOWN/CIRCLE one -- i.e. it runs to
+-- completion. (Two earlier versions of this comment said `OK|40` and then
+-- `OK|28`/`OK|236`. 40 was never produced by any shipped sequence; 28/236 was
+-- real but measured on the pre-M5-task-10 timings, under which those two
+-- sequences landed only their FIRST directive -- see `KEY_SEQUENCES` in
+-- `scripts/probe_keyseq.py`.)
 --
 -- WHAT IS INHERITED FROM `probe_behaviour.lua`, UNCHANGED AND ON PURPOSE:
 -- the event-count budget with an instruction backstop (an instruction budget
