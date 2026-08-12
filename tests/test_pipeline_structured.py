@@ -82,16 +82,40 @@ def test_mixed_chunk_levels_are_per_proto():
 
 
 def test_uncertified_source_is_never_shipped():
-    """The one invariant emit_certified_chunk exists to hold, restated at the
-    pipeline boundary: if any proto is not L3, the emitted source must be the
-    semantically-exact fallback, never a partially-structured print."""
+    """The invariant `emit_certified_chunk` exists to hold, at the pipeline
+    boundary: no proto's structured print ships unless something compiled and
+    compared those exact bytes.
+
+    **The docstring this replaces was retired by M5 task 6 and said so nowhere**
+    (round-1 review, F6). It read "if any proto is not L3, the emitted source
+    must be the semantically-exact fallback, never a partially-structured
+    print", which was the M3/M4 all-or-nothing rule. Hybrid emission is
+    *deliberately* a partially-structured print: a root that misses `L3` ships
+    structured everywhere except at the CLOSURE sites it could not certify.
+    This test kept passing only because both fixtures below have nothing to
+    substitute -- neither root has a subproto that is both non-`L3` and
+    printable-around -- so the whole-file fallback is still the only artifact
+    available for them.
+
+    What it guards, restated for the current gate: a root that does not certify
+    and has no hybrid ships the semantically-exact state machine, and the
+    result compiles. The hybrid branch is guarded in `tests/test_hybrid_chunk.py`,
+    which is where the shipping invariant now lives in full.
+    """
     from pyluadec import oracle
     from pyluadec.ingest import load_bytes
     from pyluadec.pipeline import decompile_chunk
     for src in (_UNSTRUCTURABLE,
                 b"local t = {} t[1] = 2 return t"):
-        res = decompile_chunk(load_bytes(oracle.compile_source(src, strip=True)))
+        root = load_bytes(oracle.compile_source(src, strip=True))
+        # The premise the assertions below rest on, asserted rather than
+        # assumed: there is no hybrid for these two, so "not L3" really does
+        # mean "the whole-file fallback".
+        assert root.subprotos == ()
+        res = decompile_chunk(root)
         assert res.levels["main"] == "L1"
+        assert res.hybrid is False
+        assert all(res.shipped_fallback.values())
         assert b"__pld_pc" in res.source
         oracle.compile_source(res.source)
 

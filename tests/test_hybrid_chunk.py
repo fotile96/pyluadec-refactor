@@ -48,6 +48,57 @@ good = function(x) return n + x end
 getN = function() return n end
 """
 
+# A chunk where a REFUSING function contains a REFUSING descendant, so
+# deepest-first planning adds the descendant and then its ancestor. The shape
+# the round-1 review used to show the frontier was not an antichain; `acc[i] =
+# function() ... end` inside the numeric `for` also makes the enclosing
+# function close a loop-scoped local per iteration (`OP_CLOSE`), which the
+# substituted subtree's box protocol has to express on its own.
+LOOP_CLOSE_SOURCE = b"""
+local acc = {}
+mk = function(p, q)
+  local r = (p or q) == 1
+  for i = 1, 3 do
+    local x = i
+    acc[i] = function() local s = (p or q) == 1 return x + (s and 10 or 0) end
+  end
+  return r
+end
+getacc = function(i) return acc[i]() end
+"""
+
+# A substituted function containing a nested closure that captures BOTH kinds
+# of upvalue slot the inline emission has to mix:
+#
+#   * `slot` and `mine` are locals of the substituted `mk`, so the nested
+#     closure gets them as BOX slots (`__pld_U[i].v`), handed in as factory
+#     arguments evaluated in `mk`'s own scope;
+#   * `outer` is `mk`'s OWN upvalue, which at the hybrid boundary is a NAME
+#     slot (the enclosing structured chunk's local `l0_0`), and is therefore
+#     inherited lexically by the nested closure rather than passed.
+#
+# `slot` is loop-scoped, so each iteration closes over its own -- the
+# per-iteration-closure shape, inside a substituted subtree.
+NESTED_SOURCE = b"""
+local outer = 0
+mk = function(p, q)
+  local flag = (p or q) == 1
+  local mine = 100
+  local acc = {}
+  for i = 1, 2 do
+    local slot = i * 10
+    acc[i] = function()
+      slot = slot + 1
+      mine = mine + slot
+      outer = outer + 1
+      return slot, mine, outer
+    end
+  end
+  return acc, flag
+end
+getouter = function() return outer end
+"""
+
 # The one constant every `_FnEmitter` body carries and no structured print can:
 # the dispatch loop's own "unreachable pc" error message. Used to tell, from
 # the RECOMPILED artifact rather than from its text, which protos really
@@ -230,6 +281,35 @@ def test_shipping_check_rejects_a_tampered_artifact():
                for b in shipping_violations(root, overconfessed, hc))
 
 
+def test_a_refusing_ancestor_replaces_its_refusing_descendant_in_the_frontier():
+    """The substitution frontier must be an ANTICHAIN (M5 task 6 round 1).
+
+    `mk` refuses (`(p or q) == 1`) and so does the per-iteration closure it
+    creates. Deepest-first planning reaches `main_0_0` first and adds it, then
+    reaches `main_0` and adds that too; without `_add_to_frontier`'s prune the
+    frontier came out as `{main_0, main_0_0}`. The artifact was still correct
+    -- the printer never reaches a CLOSURE site inside an already substituted
+    subtree, so the redundant entry described a hole that does not exist -- and
+    so was the ledger's downward closure. What broke was the invariant checker:
+    `shipping_violations`' third check skips protos BELOW the frontier (their
+    shape deliberately differs) and a redundant entry is IN the frontier, so it
+    indexed into the inline factory, found no state machine and reported
+    `main_0_0: confessed as fallback but is not a state machine`.
+
+    Red without the prune (measured 2026-08-12): frontier
+    `['main_0', 'main_0_0']`, one false breach.
+    """
+    root, outcome, hc = hybrid_fixture(LOOP_CLOSE_SOURCE)
+    assert {p: c.level for p, c in outcome.certs.items()} == {
+        "main": "L1", "main_0": "L1", "main_0_0": "L1", "main_1": "L3"}
+    assert S._plan_substitutions(root, outcome.certs) == {"main_0"}
+    assert hc is not None and hc.fallback_paths == frozenset({"main_0"})
+    # The ledger's closure is unchanged by the prune: it is derived by
+    # `_excused`, which covers the whole subtree from the ancestor alone.
+    assert outcome.fallback_paths == frozenset({"main_0", "main_0_0"})
+    assert shipping_violations(root, outcome, hc) == []
+
+
 def test_shipping_check_rejects_a_gratuitous_substitution():
     """Check 4 on its own: substituting a proto whose structured print was
     perfectly good leaves every mismatch outside the substituted subtree, so
@@ -310,6 +390,68 @@ def test_a_broken_upvalue_write_at_the_boundary_diverges(monkeypatch):
     assert a != b, ("the injected boundary defect was not observed", a, b)
 
 
+def test_a_refusing_ancestor_frontier_chunk_runs_identically():
+    """The `loop_close` shape, executed. Pruning the frontier must not change
+    what the artifact does: the redundant entry never described a real hole."""
+    a, b = _run_both(
+        LOOP_CLOSE_SOURCE,
+        b"print(mk(1, 2), getacc(1), getacc(2), getacc(3), "
+        b"mk(false, false), getacc(2))\n")
+    assert a == b, (a, b)
+    assert a.strip(), "driver printed nothing -- the comparison is vacuous"
+
+
+def test_a_closure_nested_inside_a_substituted_function_runs_identically():
+    """The inline nested-closure path, differentially executed.
+
+    Measured 2026-08-12: every substituted proto in the 6 corpus hybrids has
+    zero subprotos, so nothing in the corpus reaches
+    `fallback._FnEmitter._emit_simple`'s `inline=True` CLOSURE branch -- the
+    immediately-invoked `(function(__pld_U) return function(...) ... end
+    end)({...})` factory, the mixed `_BOX`/`_NAME` slot inheritance, and the
+    ordering rule that box arguments are evaluated in the enclosing function's
+    scope BEFORE `__pld_U` shadows the name. It is also the one piece of this
+    composition the identify-or-refuse discipline structurally cannot protect,
+    because a substituted subtree is excluded from `compare_protos` by
+    construction. This is its guard.
+
+    The driver reads `outer` through `getouter` AFTER the nested closures have
+    written it, and calls `acc[1]` twice with `acc[2]` in between, so a
+    per-iteration `slot` that leaked into a shared box, a `mine` that was
+    copied instead of aliased, and an `outer` that resolved to a fresh box
+    instead of the enclosing scope's own variable would each change the
+    output."""
+    driver = (b"local a, f = mk(1, 2)\n"
+              b"print(f, getouter())\n"
+              b"print(a[1]()) print(a[2]()) print(a[1]())\n"
+              b"print(getouter())\n"
+              b"local b = mk(false, false)\n"
+              b"print(b[2]()) print(getouter())\n")
+    a, b = _run_both(NESTED_SOURCE, driver)
+    assert a == b, (a, b)
+    assert a.strip(), "driver printed nothing -- the comparison is vacuous"
+
+
+def test_a_closure_nested_inside_a_substituted_function_mixes_both_slot_kinds():
+    """The text-level reading of the same fixture, so a regression that stopped
+    MIXING the two slot kinds (e.g. boxing the inherited name) is caught as
+    itself rather than only as a behaviour diff."""
+    root, outcome, hc = hybrid_fixture(NESTED_SOURCE)
+    assert hc is not None and hc.fallback_paths == frozenset({"main_0"})
+    assert outcome.fallback_paths == frozenset({"main_0", "main_0_0"})
+    assert shipping_violations(root, outcome, hc) == []
+    # `mk` really does contain a nested function -- the property the corpus
+    # cannot supply, asserted rather than assumed.
+    assert len(root.subprotos[0].subprotos) == 1
+    src = outcome.source.decode()
+    assert "(function(__pld_U) return function()" in src   # inline factory
+    assert "__pld_U[0].v" in src and "__pld_U[1].v" in src  # box slots
+    assert "\nl0_0 = __pld_R[0]" in src                    # name slot, written
+    # ...and the box arguments are the enclosing state machine's own registers,
+    # evaluated before `__pld_U` shadows anything.
+    assert "end end)({[0]=__pld_R[" in src
+
+
 def test_dropping_the_upvalue_order_prologue_breaks_certification(monkeypatch):
     """Guard proof for `emit_inline`'s `order_prologue`.
 
@@ -386,6 +528,109 @@ def test_corpus_hybrid_invariant_on_one_file(corpus_dir):
     assert hc is not None
     assert len(hc.fallback_paths) == 2, sorted(hc.fallback_paths)
     assert shipping_violations(root, outcome, hc) == []
+
+
+# --------------------------------------------------------------------------
+# How much of the substituted code the two standing probes actually run.
+# --------------------------------------------------------------------------
+
+# Substituted functions per hybrid file (the frontier's size), measured
+# 2026-08-12. Pinned so the reach measurement below cannot silently start
+# injecting nothing.
+SENTINELS_PER_FILE = {
+    "snr_fragment_main.lua": 1, "snr_s1_10_s.lua": 1, "snr_s3_10_s.lua": 1,
+    "snr_s4_10_s.lua": 1, "snr_s5_10_s.lua": 2, "snr_story_main.lua": 2,
+}
+
+# The files whose substituted code each standing probe EXECUTES, measured
+# 2026-08-12 (round 1) by the test below. This is the honest scope of the
+# claim "the probes are the semantic gate for the hybrid boundary": they gate
+# it on 4 of the 6 files and on neither of the other two.
+#
+# `snr_fragment_main.lua`: its only global, `main`, errors after 12 recorded
+# events, and the substituted `main_1` is a chunk LOCAL called from another
+# chunk local -- nothing the invocation loop can reach.
+# `snr_s5_10_s.lua`: the run hits the 3000-event cap before the invocation
+# loop reaches the code that calls `main_42`/`main_43`. It is also the file
+# `test_corpus_hybrid_invariant_on_one_file` picks, so it is doubly the least
+# covered of the six.
+PROBE_REACH_GLOBAL_STATE: frozenset[str] = frozenset()
+PROBE_REACH_BEHAVIOUR = frozenset({
+    "snr_s1_10_s.lua", "snr_s3_10_s.lua", "snr_s4_10_s.lua",
+    "snr_story_main.lua"})
+
+
+def test_probe_reach_of_the_substituted_code(corpus_dir, decompiled,
+                                             monkeypatch):
+    """Measure, two-directionally, which hybrids' substituted code the standing
+    probes run at all.
+
+    Inject an unconditional `error("PLD_SENTINEL")` at the entry of every
+    substituted function and re-probe: if a probe's result moves, that probe
+    executes the substituted code and would therefore catch a defect in it; if
+    it does not move, the probe is blind to that file's boundary and its green
+    says nothing about it.
+
+    This exists because round 1 of this task claimed the probes were the
+    boundary's semantic evidence for all 6 hybrids. They are not -- the
+    committed injection (`test_a_broken_upvalue_write_at_the_boundary_diverges`)
+    is also a no-op on the corpus, since none of the 8 substituted functions
+    performs a `SETUPVAL` through a name slot (measured: all 6 artifacts stay
+    byte-identical under that patch). Pinned rather than asserted-away so that
+    a future hybrid landing in an unreached region is noticed: a file joining
+    or leaving either set fails here and the pin must be re-derived in the same
+    commit.
+
+    Directly driving the two unreached files' substituted functions is not
+    available: both are chunk LOCALS, and the original side is stripped
+    bytecode with no source to append a driver to, so there is no symmetric way
+    to call them. The synthetic differential tests above cover the boundary's
+    mechanisms; this test bounds what the corpus gate adds to that.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+    import scripts.probe_behaviour as probe_behaviour
+    import scripts.probe_global_state as probe_global_state
+    from pyluadec.emit import lua as emit_lua
+    from pyluadec.ingest import load_file
+
+    real = emit_lua.inline_function_parts
+
+    def injected(proto, path, upval_names):
+        params, body = real(proto, path, upval_names)
+        return params, 'error("PLD_SENTINEL")\n' + body
+
+    monkeypatch.setattr(emit_lua, "inline_function_parts", injected)
+    # Only the HYBRID memo is dropped: per-proto certification never consults
+    # `fallback_paths` (`Printer.closure_parts` takes its no-substitutions
+    # branch), so the warm `_CERT_CACHE` is still valid under the patch and
+    # re-deriving ~50 verdicts per file would dominate this test's cost. The
+    # autouse fence in conftest restores both dicts afterwards.
+    sentinel: dict[str, bytes] = {}
+    for name in HYBRID_FILES:
+        S._HYBRID_CACHE.clear()
+        out = S.emit_certified_chunk(load_file(corpus_dir / name))
+        assert out.hybrid is True, name
+        sentinel[name] = out.source
+    S._HYBRID_CACHE.clear()
+
+    assert {n: sentinel[n].count(b'error("PLD_SENTINEL")')
+            for n in HYBRID_FILES} == SENTINELS_PER_FILE
+
+    def one(name):
+        clean = decompiled(corpus_dir / name).source
+        g = (probe_global_state.probe(clean, is_source=True)
+             != probe_global_state.probe(sentinel[name], is_source=True))
+        b = (probe_behaviour.digest(probe_behaviour.probe_raw(
+                 clean, is_source=True))
+             != probe_behaviour.digest(probe_behaviour.probe_raw(
+                 sentinel[name], is_source=True)))
+        return name, g, b
+
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        seen = list(ex.map(one, HYBRID_FILES))
+
+    assert frozenset(n for n, g, _ in seen if g) == PROBE_REACH_GLOBAL_STATE
+    assert frozenset(n for n, _, b in seen if b) == PROBE_REACH_BEHAVIOUR
 
 
 def test_whole_file_fallback_still_confesses_every_proto():

@@ -54,7 +54,7 @@ def test_l3_entries_carry_a_rung_and_no_confessions():
     which was sound only while `fallback` was *defined* as `level != "L3"`.
     Since hybrid emission, `fallback` means "at least one occurrence of this
     proto shape shipped as the state machine", and that is genuinely possible
-    for an `L3` shape: 8 corpus files still ship a whole-file fallback (their
+    for an `L3` shape: 7 corpus files still ship a whole-file fallback (their
     ROOT's own reconstruction does not certify), and every certified proto
     inside one of them ships as state-machine text. Asserting `confessions ==
     []` there would mean an artifact silently shipping unstructured text for a
@@ -95,7 +95,10 @@ def test_non_l3_entries_confess():
 
     Note the last two run over EVERY row, not only the non-`L3` ones: an `L3`
     proto shipping as state-machine text inside a whole-file-fallback chunk is
-    the case this has to catch, and it is 8 files' worth of rows today.
+    the case this has to catch, and it is 7 files' worth of rows today
+    (`config`, `snr_common`, `snr_graphic`, `snr_mainmenu`, `snr_memory`,
+    `snr_music`, `snr_novel` -- re-measured from the committed ledger
+    2026-08-12; round 1 of this task wrote 8 in both places).
     """
     for e in _entries():
         if e["level"] != "L3":

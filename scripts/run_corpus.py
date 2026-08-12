@@ -34,11 +34,25 @@ def _force_l0(e) -> None:
     the fallback state machine's output, so that IS what happened. The new
     `refusal_reason` field carries the finer distinction.
     Pinned by `tests/test_ledger.py::test_forced_l0_entry_is_confessed`.
+
+    **The per-occurrence `shipped` field moves with it** (M5 task 6 round 1,
+    F8). M5 task 6 made `fallback` an aggregate *over the occurrences*, and
+    `tests/test_m3_exit.py::test_non_l3_entries_confess` asserts `fallback ==
+    any(o["shipped"] == "fallback")` over every row. Setting `fallback = True`
+    here without touching the occurrences would contradict that coupling by
+    construction rather than by accident -- still latent (229/229 files
+    compile, so no `L0` row has ever been written), but a demotion path that
+    writes a row its own exit test would reject is not a hole worth keeping.
+    A shipped chunk that does not compile cannot be a certified artifact:
+    certification compiles what it certifies, so every proto in it really did
+    ship as state-machine text.
     """
     e.level = "L0"
     e.l3_level = None
     e.fallback = True
     e.refusal_reason = _L0_REASON
+    for o in e.occurrences:
+        o["shipped"] = "fallback"
     if not e.confessions:
         e.confessions = [{"pc_lo": 1, "pc_hi": e.n_insns,
                           "reason": "fallback-state-machine",

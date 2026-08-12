@@ -473,6 +473,42 @@ def _excused(proto_path: str, fallback_paths: frozenset[str]) -> bool:
                for fp in fallback_paths)
 
 
+def _add_to_frontier(fb: set[str], path: str) -> None:
+    """Add `path` to the substitution frontier, dropping any entry it now
+    covers (M5 task 6 round 1).
+
+    A frontier is an ANTICHAIN: no member is a strict descendant of another.
+    That is not cosmetic. Two consumers read `HybridCert.fallback_paths` as
+    "the CLOSURE sites the printer left a hole at" and break on a redundant
+    entry:
+
+    * `emit.lua.Printer.closure_parts` only ever consults the frontier at a
+      site it actually reaches, and it never reaches a site *inside* an already
+      substituted subtree -- so a descendant entry describes a hole that does
+      not exist.
+    * `tests/test_hybrid_chunk.py::shipping_violations`' third check skips
+      protos below the frontier (their shape deliberately differs: nested
+      functions become immediately-invoked factories) with `_excused(path,
+      frontier) and path not in frontier`. A redundant entry IS in the
+      frontier, so the skip misses it, the check indexes into the substituted
+      function's factory shape, finds no state machine there and reports a
+      false breach. Reproduced by the round-1 review on the `loop_close`
+      fixture in that file, where `mk` and its per-iteration closure both
+      refuse: the artifact was correct and the ledger closure was correct, and
+      the invariant checker was the thing that was wrong.
+
+    Latent on this corpus only by shape luck -- all 8 substituted protos across
+    the 6 hybrids have zero subprotos (measured 2026-08-12), so no nesting can
+    arise. Pruning here rather than at the readers keeps the antichain a
+    property of the value, not an obligation on everyone who reads it.
+    """
+    if _excused(path, frozenset(fb)):
+        return                      # already covered by an ancestor (or itself)
+    for covered in [p for p in fb if p.startswith(path + "_")]:
+        fb.discard(covered)
+    fb.add(path)
+
+
 def _plan_substitutions(root: Proto, certs: dict[str, ProtoCert]) -> set[str]:
     """The protos whose own body cannot be printed at all, bottom-up.
 
@@ -484,6 +520,12 @@ def _plan_substitutions(root: Proto, certs: dict[str, ProtoCert]) -> set[str]:
     whole subtree) and minimal with respect to *printability* -- it says
     nothing yet about whether the result COMPARES equal, which is
     `certify_hybrid`'s round loop.
+
+    Minimality needs `_add_to_frontier`, not just the deepest-first order: a
+    descendant that refuses is added first, and then its ancestor can refuse
+    too (typically for an unrelated reason in its own body), at which point the
+    descendant's entry has to go. Round 1 of this task did not prune and
+    emitted a non-minimal frontier for exactly that shape.
     """
     from pyluadec.pipeline import walk_proto_paths
     protos: dict[str, Proto] = {}
@@ -500,7 +542,7 @@ def _plan_substitutions(root: Proto, certs: dict[str, ProtoCert]) -> set[str]:
             _print_proto_body(p, 1, tuple(f"u{i}" for i in range(p.nups)),
                               path, frozenset(fb))
         except (StructureError, ReconstructError, EmitError):
-            fb.add(path)
+            _add_to_frontier(fb, path)
     return fb
 
 
@@ -593,12 +635,22 @@ def _certify_hybrid_uncached(root: Proto,
             # instead of empirical. Never observed on this corpus (measured
             # 2026-08-12, all 229 files).
             return None
-        if "main" in grow or grow <= fb:
+        grown = set(fb)
+        for g in grow:
+            _add_to_frontier(grown, g)
+        if "main" in grow or grown == fb:
             # Either the chunk's own main proto is what differs (nothing left
             # to substitute), or a round made no progress. Both are "no
             # hybrid", not "substitute more".
+            #
+            # `grown == fb` rather than the round-1 `grow <= fb`: with pruning,
+            # a round CAN move the frontier without adding a new member (it
+            # replaces two entries by their common ancestor), and can also
+            # report a `grow` already covered by the frontier. "The frontier
+            # did not move" is the property meant; `grow <= fb` was a proxy for
+            # it that stops being equivalent once entries can be removed.
             return None
-        fb |= grow
+        fb = grown
     return None
 
 

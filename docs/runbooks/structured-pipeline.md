@@ -402,6 +402,14 @@ review.
 
 Pinned by `tests/test_structured_certify.py::test_printable_but_uncertified_chunk_falls_back_to_semantic_state_machine`
 and `tests/test_pipeline_structured.py::test_uncertified_source_is_never_shipped`.
+Read the second one for what it is: both of its fixtures are roots with **no
+subprotos**, so they have nothing to substitute and the whole-file fallback is
+their only alternative. It pins "an uncertified print does not ship", not "the
+whole file falls back" — those stopped being the same sentence when hybrid
+emission landed, and the docstring saying otherwise survived until the M5
+task-6 round-1 review. The hybrid form of the invariant is pinned by
+`tests/test_hybrid_chunk.py::test_hybrid_shipping_invariant_holds` and the
+`shipping_violations` fault-injection tests beside it.
 
 ### Hybrid chunks (M5 task 6)
 

@@ -270,22 +270,41 @@ Measured (re-derive): `_stack_discipline` is 462 lines / 33 `if`s / 11 nested cl
 3. Readability deltas from Task 7 (nesting depth, `elseif` counts, dot-sugar counts, a UTF-8 sample side-by-side with the predecessor).
 4. L2 reach: which files carry `L2@cov%`, at what coverage, and the taint-refusal count.
 
-**`tests/test_m5_exit.py`** (floors are commitments, not measurements — do NOT set them at achieved values):
-```python
-def test_m5_exit_quality_baseline(scored_corpus):
-    assert scored_corpus.average >= 0.997   # the spec §1 goal-4 baseline, exactly
+### AMENDED 2026-08-12 — the exit criterion was re-scoped, by the human partner's decision
 
-def test_m5_exit_no_whole_file_fallback(ledger_rows):
-    # Task 6's invariant: every file ships structured or hybrid
-    assert all(not r["whole_file_fallback"] for r in per_file(ledger_rows))
+**What was measured.** Task 3 ported the predecessor's metric and Tasks 4–6 moved it: **0.935633 → 0.946390 → 0.950580 → 0.968833**, with 17 → 7 files still shipping a whole-file state machine. The arithmetic then closed off the original gate: with 216 files at exactly 1.000000, the remaining 13 must average **≥0.947**, and even converting all 7 remaining fallbacks to hybrids *at the current hybrid quality of 0.816791* reaches only **0.9896**. Clearing 0.997 requires essentially every file at ~1.0 — i.e. closing the reconstruction residual, not just changing how chunks are assembled.
+
+**What remains, diagnosed** (this is now M6's agenda, not hand-waving): **13 compound-`if` refusals** — one defect, needing a condition tree in `regions.If`, with a committed 26-instruction repro at `tests/test_sir_longtail2.py::COMPOUND_CONDITION_EXEMPLAR` — and **4 root reconstruction defects** that hybrid emission *unmasked* (their certification previously died on a descendant's refusal before any comparison ran), of which `snr_music.lua`'s main is adjudicated: it collapses four distinct nested table constructors into one aliased table, the same `classify_registers` temp-as-local family as `snr_common.lua`'s consumed-register read.
+
+**The decision** (human partner, 2026-08-12): **re-scope M5's exit to metrics already on track, and carry 0.997 to M6 as its exit.** This modifies a spec §1 goal-4 acceptance criterion that was confirmed section-by-section with the user, so Task 12 must record it in the spec's decision log with this rationale — not merely in a runbook.
+
+**`tests/test_m5_exit.py`** — floors are commitments, **not** measurements; each sits deliberately below its achieved value so legitimate variation does not trip it, and each states its achieved value in the assert message:
+
+```python
+def test_m5_exit_quality_no_regression(scored_corpus):
+    # M5 start 0.935633 -> achieved 0.968833. NOT the predecessor's 0.997:
+    # that is M6's exit (see the spec decision log). This floor pins that M5's
+    # gain is not lost, and it is what the ratchet diff (Task 8) enforces
+    # per-row rather than in aggregate.
+    assert scored_corpus.average >= 0.96
+
+def test_m5_exit_structured_reach(ledger_rows):
+    # Proto occurrences shipping structured text: 70.9% -> 89.9% achieved.
+    occ = [o for r in ledger_rows for o in r["occurrences"]]
+    structured = sum(1 for o in occ if o["shipped"] == "structured")
+    assert structured / len(occ) >= 0.85
 
 def test_m5_exit_l3_no_regression(ledger_rows):
+    # M4 exit 94.0% -> achieved 96.8% unique.
     l3 = sum(1 for r in ledger_rows if r["level"] == "L3")
-    assert l3 / len(ledger_rows) > 0.94     # M4's achieved floor, held
+    assert l3 / len(ledger_rows) >= 0.96
 ```
-(Field names to be confirmed against the Task 6/8 schema when finalizing — read them, don't guess.) Plus: both key-sequence checkpoints green; suite ≤45s with `--durations` recorded; every runbook number measured-or-cited.
 
-**Exit checklist (verify each in-tree, evidence per item):** metric ≥0.997 · no whole-file fallback · L3 ≥94% held (report the achieved) · L2 badge on ≥ the two checkpoint files with both checkpoints green · ratchet diff wired and non-vacuous · suite ≤45s · docs current · milestone wrap via superpowers flow (controller's step).
+**Field names must be confirmed against the Task 6/8 schema when finalizing — read them, don't guess** (Task 6 redefined `fallback` and added per-occurrence `shipped`/`hybrid`).
+
+**Exit checklist (verify each in-tree, evidence per item):** quality ≥0.96 with the achieved value reported · structured reach ≥85% of occurrences · L3 ≥96% unique · both key-sequence checkpoints green · L2 badge on ≥ the two checkpoint files · ratchet diff wired and non-vacuous · suite ≤45s with `--durations` recorded · docs current, every number measured-or-cited · **the re-scope recorded in the spec decision log with the 0.997-to-M6 carry and its diagnosed agenda** · milestone wrap via superpowers flow (controller's step).
+
+**Report the whole-file-fallback count as data, not as a gate.** It went 17 → 7 and the 7 are blocked on their own root protos, which a hybrid cannot substitute; gating on zero would be gating on M6's work.
 
 ---
 

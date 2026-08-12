@@ -213,6 +213,16 @@ def test_enditer_shape_does_not_certify_and_therefore_ships_fallback():
     The invariant still holds and is what this test really guards: the
     uncertified structured print does NOT ship -- the M2 fallback does.
 
+    **Scope correction (M5 task 6 round 1, F6).** "The uncertified structured
+    print does not ship" is no longer the same statement as "the whole-file
+    fallback ships". A root that misses `L3` now gets a hybrid attempt first,
+    and a hybrid IS a partially-structured print -- certified per proto, with
+    the uncertifiable subtrees substituted. This fixture keeps the old
+    behaviour for a structural reason, asserted below rather than assumed: its
+    root has no subprotos at all, so there is no CLOSURE site to substitute and
+    no hybrid to build. What is permanent is the first sentence, not the
+    artifact shape.
+
     EXPIRY DISCHARGED, NOT LIFTED (M4 task 3). The expiry note here said
     task 3's `while <cond>` loops "may well produce an EndIter that
     certifies". They do not, and the evidence went the other way: measured on
@@ -230,8 +240,10 @@ def test_enditer_shape_does_not_certify_and_therefore_ships_fallback():
     cert = certify_proto(p, is_chunk_root=True)
     assert cert.level == "L1"
     assert cert.mismatches and cert.mismatches[0].field == "code"
+    assert p.subprotos == ()        # nothing to substitute => no hybrid
     out = emit_certified_chunk(p)
     assert out.certs["main"].level == "L1"
+    assert out.hybrid is False
     assert out.source.startswith(b"local __pld_")   # the M2 fallback preamble
 
 
