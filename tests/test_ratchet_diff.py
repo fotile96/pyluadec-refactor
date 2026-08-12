@@ -24,6 +24,15 @@ own two or three named cases (see the parametrised
 kept in the text rather than smoothed away, because "one check, one red test"
 is the claim that stopped being checked.
 
+**Round 3 then found the same disease one level up**: the guards were all
+pinned, but the *prose describing them* was not measured. Three of the eight
+committed "what happens if you delete this guard" strings described the
+realistic hazard rather than the one-row fixture they annotated, and
+`load_rows`' own docstring argued `level` needed no type check because an
+unknown one "ranks -1" -- true of `3`, `None`, `"L9"` and `True`, false of
+`["L3"]`, which raises `TypeError` out of a dict lookup. Every such string in
+this file is now a measurement, re-run this session.
+
 The mutations are deliberately minimal (one field of one row) so that a test
 going green for the wrong reason -- e.g. because the mutation also tripped a
 different check -- is visible in the asserted `kind`.
@@ -419,48 +428,55 @@ def test_a_malformed_new_row_is_skipped_not_blamed(committed, tmp_path, capsys):
     assert "shash" in err and "No verdict" in err
 
 
-@pytest.mark.parametrize("label,line,neutered_behaviour", [
-    # The guard this parametrisation exists for. Round 2 found it UNPINNED:
-    # deleting `isinstance(row, dict)` left the whole 664-test suite green,
-    # while a scalar line raised `AttributeError: 'int' object has no attribute
-    # 'get'` out of `load_rows` -- past `main`'s `(OSError, ValueError)`
-    # handler, traceback, exit 1. That is round 1's finding 2 reintroduced by
-    # round 1's fix for finding 2, which is why each guard now gets a name.
-    ("scalar row", "5", "AttributeError escapes load_rows -> exit 1"),
-    ("string row", '"not a row"', "AttributeError escapes load_rows -> exit 1"),
+@pytest.mark.parametrize("label,line,without_the_guard_this_fixture", [
+    ("scalar row", "5",
+     "AttributeError: 'int' object has no attribute 'get' -> traceback, exit 1"),
+    ("string row", '"not a row"',
+     "AttributeError: 'str' object has no attribute 'get' -> traceback, exit 1"),
     ("occurrences not a list",
      '{"shash": "aa", "level": "L3", "occurrences": {"file": "a.lua"}}',
-     "diff handler catches it -> 128 (abort), not 125"),
+     "TypeError: string indices must be integers -> traceback, exit 1"),
     ("occurrence not an object",
      '{"shash": "aa", "level": "L3", "occurrences": ["a.lua"]}',
-     "diff handler catches it -> 128 (abort), not 125"),
+     "caught by the diff handler -> 128"),
     ("unhashable occurrence key",
      '{"shash": "aa", "level": "L3", "occurrences": [{"file": ["a"], '
      '"proto_path": "main"}]}',
-     "TypeError: unhashable list -> 128 (abort), not 125"),
-    # N2: a str rung slipped past BOTH the `is None` and the `isinstance(int)`
-    # branch, so baseline rung 0 vs new rung "one" scored 0 regressions.
+     "TypeError: unhashable list -> caught by the diff handler -> 128"),
+    ("unhashable level",
+     '{"shash": "aa", "level": ["L3"], "occurrences": []}',
+     "TypeError in LEVEL_RANK.get -> caught by the diff handler -> 128"),
     ("rung of the wrong type",
      '{"shash": "aa", "level": "L3", "l3_level": "one", "occurrences": []}',
-     "rung comparison silently skipped -> exit 0, a MISSED downgrade"),
+     "row loads; exit 1 via 1478 row-removed (this fixture has one row)"),
     ("rung is a bool",
      '{"shash": "aa", "level": "L3", "l3_level": true, "occurrences": []}',
-     "bool is an int subclass; compares as rung 1"),
-    # N3: `cluster_of` does `.split(":", 1)`.
+     "row loads; exit 1 via 1478 row-removed (this fixture has one row)"),
     ("reason of the wrong type",
      '{"shash": "aa", "level": "L1", "refusal_reason": 12345, '
      '"occurrences": []}',
-     "AttributeError in cluster_of -> 128 (abort) where the contract says 125"),
+     "row loads; exit 1 via 1478 row-removed (this fixture has one row)"),
 ])
 def test_every_undiffable_row_shape_is_skipped_not_blamed(
-        committed, tmp_path, capsys, label, line, neutered_behaviour):
+        committed, tmp_path, capsys, label, line, without_the_guard_this_fixture):
     """One case per type guard in `load_rows`, each named, because round 2
     found two guards that no test touched.
 
-    The rule: a ledger this script cannot diff is **125** (git skips the
-    commit), never 1 and never a traceback. `neutered_behaviour` records what
-    each guard's removal was measured to do -- three distinct failure modes,
-    so this is not one check wearing eight hats."""
+    The rule under test is one line: a ledger this script cannot diff is
+    **125** (git skips the commit), never 1 and never a traceback.
+
+    `without_the_guard_this_fixture` says what removing the guard was
+    **measured** to do *to this exact fixture* — nine values, all re-measured
+    in round 3 after three of them turned out to be wrong. The wrong ones
+    described the *realistic* hazard instead of the fixture, which is not the
+    same thing: a one-row NEW ledger against the 1478-row baseline exits 1 via
+    `row-removed` long before any type reaches the comparison it would break.
+    What each guard actually prevents on a **whole** mutated ledger is a
+    different table, measured in round 3 and recorded in `load_rows`'
+    docstring: non-list `occurrences` -> exit 1 with a traceback; unhashable
+    `file` or `level` -> 128; a string rung -> **exit 0, a missed downgrade**;
+    a non-string `refusal_reason` -> 128 if the row also regresses, else exit
+    0. Both tables matter, and neither substitutes for the other."""
     bad = tmp_path / "bad.jsonl"
     bad.write_text(line + "\n", encoding="utf-8")
     old = _write(tmp_path / "old.jsonl", committed)
@@ -484,6 +500,60 @@ def test_a_malformed_rung_cannot_hide_a_rung_downgrade(committed, tmp_path,
 
     assert main([str(o), str(n)]) == EXIT_UNTESTABLE
     assert "l3_level" in capsys.readouterr().err
+
+
+def test_an_unhashable_level_is_skipped_not_aborted(committed, tmp_path, capsys):
+    """Round 3, New 1, as the realistic whole-ledger shape rather than a
+    one-row fixture. `_rank` is `LEVEL_RANK.get(level)` — a **dict lookup**, so
+    it raises `TypeError: cannot use 'list' as a dict key` on an unhashable
+    level rather than returning -1. Measured before the guard: a NEW ledger
+    whose rows carry `"level": ["L3"]` exited **128 (abort the bisect)** where
+    the contract says 125 (skip this commit).
+
+    Measured on the same run, and the reason `level` was left unchecked for a
+    round: before the guard, `3`, `None`, `"L9"` and `True` really did rank -1
+    and read as a downgrade. The claim was right about every value anyone would
+    expect and wrong about the two that crash.
+
+    With the guard, re-measured: any PRESENT non-string level is 125 (`3` and
+    `true` included, not just the unhashable ones), while `null`/absent and an
+    unknown string like `"L9"` still rank -1 and exit 1. Absent stays a schema
+    fact; malformed becomes untestable."""
+    new = copy.deepcopy(committed)
+    for row in new:
+        row["level"] = ["L3"]
+    old = _write(tmp_path / "old.jsonl", committed)
+    n = _write(tmp_path / "new.jsonl", new)
+
+    assert main([str(old), str(n)]) == EXIT_UNTESTABLE
+    err = capsys.readouterr().err
+    assert "level" in err and "No verdict" in err
+
+
+def test_a_baseline_without_shipped_needs_no_guard(committed, tmp_path, capsys):
+    """Round 3, New 3. The shipping comparison used to open with
+    `if os_ is None or ns is None: continue`, for a baseline predating M5
+    task 6's `shipped`. That conditional was provably dead — `None ==
+    "structured"` is already False — and deleting it left every test green, so
+    it was deleted rather than left as decoration.
+
+    This test is what actually covers the case, and it covers it by BEHAVIOUR:
+    a baseline with no `shipped` at all must produce no shipping finding in
+    either direction, whatever the new side says."""
+    old = copy.deepcopy(committed)
+    for r in old:
+        for o in r["occurrences"]:
+            o.pop("shipped", None)
+    new = copy.deepcopy(committed)
+    for r in new:
+        for o in r["occurrences"]:
+            o["shipped"] = "fallback"
+
+    rep = diff_ledgers(old, new)
+    assert [r.kind for r in rep.regressions] == []
+    assert rep.shipping_lost == 0 and rep.shipping_gained == 0
+    rc, _ = _run(tmp_path, old, new, capsys)
+    assert rc == 0
 
 
 def test_duplicate_rows_are_rejected_rather_than_last_wins(committed, tmp_path,

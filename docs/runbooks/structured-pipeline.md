@@ -1525,7 +1525,7 @@ the original instruction stream actually did.
 ### Run the suite
 
 ```bash
-PYLUADEC_CORPUS_DIR=<corpus> uv run pytest              # 673 tests, 35.3-37.6s over 3 runs (measured 2026-08-12, M5 task 8 round 2)
+PYLUADEC_CORPUS_DIR=<corpus> uv run pytest              # 676 tests, 35.0-35.3s over 3 runs (measured 2026-08-12, M5 task 8 round 3)
 PYLUADEC_CORPUS_DIR=<corpus> uv run pytest tests/test_effects_emitter_consistency.py -v
 ```
 
@@ -1544,12 +1544,15 @@ stays available:
 PYLUADEC_GENERATED_CASE_LIMIT=24 uv run pytest tests/test_generated_semantic_cases.py -v
 ```
 
-Measured 2026-08-12 on macOS arm64 over 5 runs: **24 cases in 2.29–2.54s**,
-against **0.29s** for the standing 3 — so the fold-in costs the ratchet ~2.2s
-and the per-commit suite nothing. (An earlier revision of this section said
-"~1.7s" for the full sweep, measured 2026-08-11; that figure did not
-reproduce. A single-figure "2.48s" was then quoted for two rounds; at this
-scale the measurement is noisy enough that a range is the honest form. Why it grew was not investigated — five M5 tasks landed in between and
+Measured on macOS arm64: the full 24 cases run in **under 3 seconds**, against
+**~0.3s** for the standing 3 — so the fold-in costs the ratchet ~2s and the
+per-commit suite nothing. (The history of this one number is a small lesson.
+It was "~1.7s" measured 2026-08-11, which did not reproduce; then a
+single-figure "2.48s" quoted for two rounds; then "2.29–2.54s over 5 runs",
+which the very next three runs fell below. Thirteen runs across this task span
+**2.21–2.54s**. A range tight enough for a routine run to falsify is not more
+honest than an order of magnitude, just wider, so the standing claim is the
+ceiling. Why it grew was not investigated — five M5 tasks landed in between and
 attributing it without measuring would be a guess.)
 
 ### Ratchet the ledger against a baseline (M5 task 8)
@@ -1562,7 +1565,7 @@ Three gates: the full suite (which contains `tests/test_ledger_ratchet.py`,
 i.e. the proof that `corpus/ledger.jsonl` is a byte-exact fixed point of
 `scripts/run_corpus.py`), the baseline diff, and the full 24-case generated
 sweep. `BASELINE_REF` defaults to `eb08890`, the last merged milestone tip.
-Measured end-to-end 2026-08-12 (round 2): **40.5s**.
+Measured end-to-end 2026-08-12 (round 3): **37.9s**.
 
 The diff on its own:
 
@@ -1616,7 +1619,7 @@ tripwire. Both gaps are the same gap, and this closes it: floors catch
 catastrophes without churning, the baseline diff catches the one-row
 regression that stays inside them.
 
-**Non-vacuity.** `tests/test_ratchet_diff.py` (34 tests) feeds hand-mutated
+**Non-vacuity.** `tests/test_ratchet_diff.py` (37 tests) feeds hand-mutated
 copies of the real committed ledger, one named case per failure mode, and
 asserts a non-zero exit that names the offending row. Verified by mutation
 three times, and **the mutation pass found something it had missed on each of
@@ -1637,6 +1640,19 @@ neutered":
   handler, to a traceback and **exit 1 — a bad-commit verdict from an
   instrument fault**, i.e. round 1's own finding 2 reintroduced by round 1's
   fix for it. Now pinned by a parametrised case per guard.
+- Round 3: the guards were pinned but the **prose about them was not
+  measured**. Round 2's docstring argued `level` needed no check because an
+  unknown one "ranks -1"; true of `3`, `None`, `"L9"` and `True`, false of
+  `["L3"]` and `{"a": 1}` — `LEVEL_RANK.get` is a dict lookup, so those raise
+  `TypeError` and exited **128 (abort)** where the contract says 125. Three of
+  the eight committed "what happens if you delete this guard" strings also
+  described the realistic hazard rather than the fixture they annotated. Both
+  are corrected against measurement, and one provably dead conditional
+  (`if os_ is None or ns is None`) was deleted rather than left as decoration.
+
+The pattern across the three rounds is the same one every time: **the check
+was real and the sentence about it was not**. Assume the next such sentence is
+also unmeasured until someone runs it.
 
 The standing claim is therefore the weaker, true one: neutering any one check
 turns at least one named case red, and only cases belonging to that check.
@@ -1811,7 +1827,7 @@ fixture, and pinning one inside `pytest` would either freeze it at one
 milestone or re-derive it from `git` on every run. The check lives in
 `scripts/ratchet_job.sh`, which is run at a wrap and before any merge that
 touches the ledger. What the suite gained is the guarantee that the instrument
-works: `tests/test_ratchet_diff.py` (34 tests, no corpus needed) is the
+works: `tests/test_ratchet_diff.py` (37 tests, no corpus needed) is the
 non-vacuity proof.
 
 ### The ledger's grouping key — pinned, not split (M5 task 8)

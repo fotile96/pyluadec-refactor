@@ -223,23 +223,41 @@ def load_rows(path: Path | str) -> list[dict]:
 
     Every field `diff_ledgers` DEREFERENCES rather than merely compares:
 
-    | field | why the diff would break without the check |
-    | --- | --- |
-    | the row itself | `.get` on a scalar -> `AttributeError`, which is not `ValueError` and so escaped `main`'s handler entirely (round 2, N1) |
-    | `shash` | dict key and row identity |
-    | `occurrences` | iterated, and each entry is `.get`-ed |
-    | `file` / `proto_path` | tuple-keyed into `_occurrence_index`; a list here is unhashable -> `TypeError` |
-    | `l3_level` | compared with `>`; a str slipped past both the `is None` and the `isinstance(int)` branch, so rung `0` -> `"one"` scored 0 regressions (round 2, N2) |
-    | `refusal_reason` | `.split(":", 1)` in `cluster_of`; a non-str raised out of the diff and inverted the 125/128 split (round 2, N3) |
+    | field | why the diff would break without the check | measured, guard removed |
+    | --- | --- | --- |
+    | the row itself | `.get` on a scalar -> `AttributeError`, which is not `ValueError` and so escaped `main`'s handler entirely (round 2, N1) | traceback, **exit 1** |
+    | `shash` | dict key and row identity | traceback, **exit 1** |
+    | `occurrences` | iterated, and each entry is `.get`-ed | `TypeError` traceback, **exit 1** (non-list) / **128** (list of non-objects) |
+    | `file` / `proto_path` | tuple-keyed into `_occurrence_index`; a list here is unhashable | **128** |
+    | `level` | `LEVEL_RANK.get(level)` -- a dict lookup, so an UNHASHABLE level raises `TypeError` (round 3, New 1) | **128** |
+    | `l3_level` | compared with `>`; a str slipped past both the `is None` and the `isinstance(int)` branch, so rung `0` -> `"one"` scored 0 regressions (round 2, N2) | **exit 0**, a missed downgrade |
+    | `refusal_reason` | `.split(":", 1)` in `cluster_of` (round 2, N3) | **128** -- but only when the row ALSO regresses; on a non-regressing row `cluster_of` is never called and it is **exit 0** |
 
-    Fields that are only ever COMPARED are deliberately NOT checked, because
-    the comparison already fails safe: an unknown or missing `level` ranks -1
-    via `LEVEL_RANK.get`, so it reads as a downgrade (measured: dropping
-    `level` from every NEW row yields 1478 `level-downgrade`s), and a
-    `shipped` of any type simply is not `"structured"`. Type-checking those
-    would ALSO convert the "NEW dropped a field" measurements in the module
-    docstring from findings into load errors, which is not the behaviour that
-    table describes.
+    Every "measured, guard removed" cell above was run this session against the
+    real ledger, mutated whole rather than as a one-row fixture.
+
+    **`level` is the correction round 3 had to make to this very table.** Round
+    2 argued that fields which are only COMPARED need no check, "because an
+    unknown or missing `level` ranks -1 via `LEVEL_RANK.get`, so it reads as a
+    downgrade". Measured: that is true of `3`, `None`, `"L9"` and `True`, and
+    false of `["L3"]` and `{"a": 1}` -- `_rank` raises `TypeError: cannot use
+    'list' as a dict key`, and end to end a NEW ledger with an unhashable
+    `level` exited **128 (abort)** where the contract says 125. `LEVEL_RANK.get`
+    is a dereference, not a comparison, so `level` belongs in the table above.
+
+    With the guard, measured end to end this session: a present non-string
+    `level` -- `["L3"]`, `{"a": 1}`, `3`, `true` alike -- is **125**, while
+    `null`/absent and an unknown STRING such as `"L9"` still rank -1 and read
+    as a `level-downgrade` (**exit 1**), which is what keeps the module
+    docstring's "NEW dropped `level` -> 1478 downgrades" true.
+
+    What is still deliberately NOT checked is `shipped`: it is only ever
+    compared with `==`, which is total, and a value of any type simply is not
+    `"structured"`. Nor is any field CHECKED FOR PRESENCE -- absent is not
+    malformed, so a missing field stays a schema note. That distinction is what
+    keeps the module docstring's "NEW dropped a field" measurements (1478 /
+    1430 / 0 / 0) findings rather than load errors; re-measured this session,
+    unchanged.
 
     Absent is not the same as malformed, throughout: a field that is missing
     stays missing and is reported as a schema note. Only a field that is
@@ -272,6 +290,11 @@ def load_rows(path: Path | str) -> list[dict]:
                 if f in o and not isinstance(o[f], str):
                     raise bad(n, f"occurrence `{f}` of {shash} is "
                                  f"{type(o[f]).__name__}, expected a string")
+        level = row.get("level")
+        if level is not None and not isinstance(level, str):
+            raise bad(n, f"`level` of {shash} is {type(level).__name__}; "
+                         f"`LEVEL_RANK.get` is a dict lookup, so an unhashable "
+                         f"level crashes the rank comparison")
         rung = row.get("l3_level")
         # `bool` is an `int` subclass and would compare as 0/1 -- not a rung.
         if rung is not None and (isinstance(rung, bool)
@@ -434,9 +457,18 @@ def diff_ledgers(old: list[dict], new: list[dict]) -> DiffReport:
     for key in sorted(set(old_occ) & set(new_occ)):
         _, oo = old_occ[key]
         nshash, no = new_occ[key]
+        # A baseline predating M5 task 6 has no `shipped` at all, and this
+        # comparison handles that WITHOUT a guard: `.get` returns None and
+        # `None == "structured"` is False, so both branches simply do not fire.
+        # There used to be an explicit `if os_ is None or ns is None: continue`
+        # here. Round 3 deleted it as provably dead, measured both ways: the
+        # suite is 37 passed WITH it and 37 passed WITHOUT it, and the CLI's
+        # clean-diff exit is 0 either way. A conditional whose presence changes
+        # nothing observable is decoration, and this file's whole argument is
+        # that its checks are load-bearing. The case it was meant to describe
+        # is covered by behaviour instead, in
+        # `tests/test_ratchet_diff.py::test_a_baseline_without_shipped_needs_no_guard`.
         os_, ns = oo.get("shipped"), no.get("shipped")
-        if os_ is None or ns is None:      # baseline predates M5 task 6
-            continue
         if os_ == "structured" and ns == "fallback":
             rep.shipping_lost += 1
             rep.regressions.append(Regression(
