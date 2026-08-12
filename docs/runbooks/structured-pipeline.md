@@ -2581,53 +2581,164 @@ A file is granted `L2` when, under **every** one of its authored sequences:
 1. both sides produce a recognisable trace (no probe-side failure),
 2. the two traces are **byte-equal**,
 3. the run actually consumed the sequence — at least one `K|` poll event,
-4. neither side recorded any **taint**.
+4. neither side recorded any runtime **taint** mark, and
+5. the **static backstop** finds no place where a stub-derived value could
+   decide a branch nothing observed.
 
 Anything else refuses, with a reason from
-`probe_keyseq.REFUSAL_KINDS` = `divergent | taint | no-key-poll | probe-error`.
-The badge is `cov`, the fraction of the shipped artifact's basic blocks the
-run entered.
+`probe_keyseq.REFUSAL_KINDS` = `divergent | taint | taint-static |
+no-key-poll | probe-error`. The badge is `cov`, the fraction of the shipped
+artifact's **protos** the run entered.
 
 Condition 3 is what stops the gate being L1.75 with a better name: without it
 any of the 229 files could be handed a sequence it never reads and granted on
-trace equality alone.
+trace equality alone. Condition 5 is what stops it being an *elaborate* L1.75
+— see below; it was added in round 1 after review found twelve ways to launder
+a stub value into a branch decision with the four other conditions all green.
+
+### Taint: two instruments, because one is structurally blind
+
+**Runtime marks** (`scripts/probe_keyseq.lua`) see what a metatable can see:
+`cmp:lt` / `cmp:le` / `cmp:eq` when a stub proxy reaches a comparison
+metamethod, and `intro:type` / `intro:rawequal` / `intro:getmetatable` when
+one is introspected. Where the comparison marks apply they are not an
+approximation — `lvm.c`'s `OP_LT`, `OP_LE` and `OP_EQ` produce no value, they
+select the following `JMP` — but **where they apply is much narrower than it
+looks**. `lvm.c`'s `equalobj` is
+
+```c
+ttype(o1) == ttype(o2) && luaV_equalval(L, o1, o2)
+```
+
+so `__eq` is consulted only for proxy-vs-proxy. `stub == "str"`, `stub == nil`
+and `stub == 1` fire nothing at all, and `__lt`/`__le` are narrower still
+(Lua 5.1 raises on mixed types before reaching a metamethod).
+
+Measured 2026-08-12, twelve laundering routes, **every one granted with zero
+runtime marks** before the backstop existed:
+
+```
+== "str"   == nil   ~= nil   == 1   == {}   #stub > 0   next(stub)
+tostring(stub)   tonumber(stub)   stub .. ""   select("#", stub)   pcall(stub)
+```
+
+And it is not a corner: `doScriptScene == "<literal>"` occurs **310 times
+across 20 corpus files**, and 26 of the 132 capped files spin in exactly that
+dispatch loop.
+
+**The static backstop** (`probe_keyseq.static_taint`) closes them. It is a
+conservative may-analysis over registers, per proto, to a fixed point on the
+existing `cfg.blocks.build_cfg`, run over the **original** lifted bytecode.
+Seeds are `GETGLOBAL`s of names the chunk reads and never writes, minus the
+ones the probe environment resolves for real (`_BASE_GLOBALS`, re-derived from
+the vendored interpreter by a test, and the driver overrides). It propagates
+through `MOVE`, `GETTABLE`/`SELF`, `CALL` of a stub-derived register,
+arithmetic, `CONCAT`, `UNM`/`NOT` and `LEN`; every `GETUPVAL` is stub; block
+entry takes the union of predecessors. Four flag kinds, **all of which
+refuse**:
+
+| kind | site |
+| --- | --- |
+| `blind-compare` | `EQ`/`LT`/`LE` with a stub-derived operand |
+| `blind-length` | `LEN` on a stub-derived register (`OP_LEN` never consults a metamethod for a table) |
+| `blind-launder` | a call of `type`/`next`/`tostring`/`tonumber`/`select`/`pcall`/… with a stub-derived argument |
+| `blind-truthiness` | `TEST`/`TESTSET` on a stub-derived register |
+
+`blind-truthiness` was very nearly left out, on the prediction that
+`if someGlobal then` is common enough that refusing on it would take reach to
+zero. **The prediction was wrong.** Measured: `snr_common` 17, `snr_graphic`
+9, `snr_memory` 9, `snr_music` 2, `snr_lib` **0** — so including it costs
+nothing here and makes condition 5 the literal property instead of an
+approximation of it.
+
+### What the pair still cannot see
+
+Stated as gaps, not as a complete list — the previous version of this section
+presented three blind spots as complete and was not, which is what let the
+twelve routes ship. Each of these is a committed test
+(`test_what_the_two_taint_instruments_still_cannot_see`) that *grants* and
+should not:
+
+* **Across a call boundary.** `static_taint` is intra-proto; a stub passed as
+  an ARGUMENT is a plain parameter inside the callee.
+* **Through a script-built table.** `t.x = stub` then `if t.x == "a"` is not
+  tracked; only indexing off a stub-derived table propagates.
+* **Through an aliased launderer.** `blind-launder` recognises
+  `GETGLOBAL f; …; CALL f` only, so `local ts = tostring; ts(stub)` slips
+  through. (Written first with `local ty = type`, which MEASURED as caught —
+  `type` is a driver override, so the runtime mark fires on the alias too.)
+
+The static analysis is also **path-insensitive**: a site in a function the key
+sequence never enters still refuses the whole file. That is the conservative
+direction, and it is why four of the five authored files refuse.
 
 ### Reach — measured, and not what the plan predicted
 
 The M5 plan's premise was that "the 3000-event cap truncat[es] 132/229 files
 mid-loop … the game loops block on input, and scripted input walks them". The
-mechanism is right and the count is wrong. Measured 2026-08-12 over all 229
-files on the original side under the L1.75 stub policy, **exactly five files
-reach a `pressButton` poll at all**, and those five burn most of their budget
-on it:
+mechanism is right; the arithmetic is not.
 
-| file | poll events / 3001 | L2 badge |
+Measured 2026-08-12, on the original side of all 229 files:
+
+* 132 hit the cap, 97 finish. **That reproduces exactly.**
+* Taking each capped file's most frequent recorded call over the whole trace:
+  **101 are `vms`-dominated** (linear story scripts truncated by sheer
+  volume — no key sequence changes them), **26 are `wait`-dominated** (24 of
+  those contain `doScriptScene`, i.e. they spin in the dispatch loop above),
+  and **5 are `pressButton`-dominated**.
+* **9 files contain `pressButton` at all**; **5 reach the poll**. The other 4
+  have an input loop and error before getting to it under the frozen stub
+  policy — `snr_mainmenu` (arithmetic on a nil field), `snr_novel`
+  (concatenate a nil field), `snr_fragment_main` and `snr_story_main` (compare
+  table with number). They are a live M6 lead, not dead ground.
+* The remaining **220 files contain no `pressButton` at all.**
+
+An earlier version of this section said "for 224 of the 229 files there is no
+input loop for a sequence to drive" and "the other 127 capped files are
+truncated by sheer `vms()` volume". Both are wrong: 220, not 224; and 101, not
+127.
+
+### What the badge actually covers
+
+| file | poll events / 3001 | verdict |
 | --- | --- | --- |
-| `snr_lib.lua` | 2243 | **L2@95%** (54/57 blocks = 0.9474) |
-| `snr_music.lua` | 2502 | **L2@72%** (484/669 = 0.7235) |
-| `snr_graphic.lua` | 2606 | **L2@53%** (743/1389 = 0.5349) |
-| `snr_memory.lua` | 2608 | **L2@51%** (555/1086 = 0.5110) |
-| `snr_common.lua` | 2557 | **L2@21%** (2120/10332 = 0.2052) |
+| `snr_lib.lua` | 2243 | **L2@100%** — 3/3 protos; blocks in [0.39, 0.95] of 57 |
+| `snr_music.lua` | 2502 | refused `taint-static` (compare 33, launder 1, length 1, truthiness 2) |
+| `snr_graphic.lua` | 2606 | refused `taint-static` (compare 57, launder 1, length 7, truthiness 9) |
+| `snr_memory.lua` | 2608 | refused `taint-static` (compare 47, launder 2, truthiness 9) |
+| `snr_common.lua` | 2557 | refused `taint-static` (compare 33, truthiness 17) |
 
-The other 127 capped files are the linear story scripts, truncated by sheer
-`vms()` volume; no key sequence changes that. Corpus-wide L2 was an explicit
-non-goal for M5 and would need a sequence authored per file — but the honest
-statement is stronger than "not yet": for 224 of the 229 files there is no
-input loop for a sequence to drive.
+**One of five authored files is granted.** In the ledger that is **2 rows and
+3 proto occurrences of 1944**, and all three ship STRUCTURED text — `snr_lib`
+is one of the 216 fully-structured files. So **L2 currently validates the
+structured emitter on one file and says nothing about the fallback state
+machine**: the four refused files are exactly the ones that ship fallback or
+hybrid. 164 occurrences carry `{"refused": "taint-static"}`, which is data
+rather than silence.
 
-`snr_lib.lua` is the clean demonstration. It carries three sequences, and
-the third of them is deliberately the *undriven* one (`tail=CIRCLE`, i.e. the
-button held from frame 1 and never released) which still runs to `CAP|3001`
-with 2243 polls, exactly as under L1.75. The other two drive it: the DOWN /
-DOWN / CIRCLE sequence finishes at `OK|28` and the UP / four-DOWN / CIRCLE one
-at `OK|236`. Union coverage 0.9474.
+Before the round-1 backstop all five were granted. Four of those grants were
+wrong, so the reach did not shrink — it was never there.
 
-`snr_common.lua`'s badge is low for a real reason and not a defect. Its
-denominator is all 10,332 blocks of a 20k-line file, and its three sequences
-drive two menu functions; the story code is unreachable from them. It also
-needs `entry=`: driven whole, its invocation loop hits the same `getobjname`
-naming artifact already pinned in the L1.75 gate, and the file would refuse
-as `divergent`.
+Five of the thirteen sequences still run to the cap (`snr_common`#3,
+`snr_graphic`#3, `snr_lib`#3, `snr_memory`#2, `snr_music`#2). `snr_lib`#3
+(`tail=CIRCLE`, the button held from frame 1) is the deliberate control: it
+reproduces the L1.75 result, `CAP|3001` with 2243 polls, next to the driven
+sequences that finish at `OK|28` and `OK|236`. The other four are not
+controls; they are sequences whose keys do not exit their loops, disclosed
+here rather than presented as driven.
+
+**`snr_common.lua` and the divergence one key away.** Its third sequence is a
+whole-chunk drive with `tail=CROSS`, and it does not diverge — but only
+because it caps inside `autoSystemSave` before reaching `cBrStr`. Change that
+tail key to `CIRCLE` and the same drive diverges at trace line 276
+(`R|cBrStr|bad argument #1 to 'len'` vs `to '?'`). That is the `getobjname`
+naming artifact of the fallback's `__pld_R` box model, **already pinned as an
+exact byte pair by the L1.75 gate** (`probe_behaviour.EXPECTED_DIVERGENCE`,
+for `snr_mainmenu`), so it is owned, two-directionally asserted, and would
+fail there if it changed or converged. L2 deliberately does not pin
+divergences of its own: a pin is an exemption, and this gate refuses on
+divergence rather than excusing it. `snr_common` refuses anyway, on
+`taint-static`.
 
 ### The spec grammar
 
@@ -2639,7 +2750,7 @@ A spec is `;`-joined directives, parsed by plain byte scanning:
 | `k=<frame>,<KEY>[+<KEY>]*` | the keys held on that frame (1-based) |
 | `tail=<KEY>[+<KEY>]*` | the keys held on every frame past the last `k=`; `tail=` means none |
 | `entry=<dotted.name>` | call exactly this instead of invoking every global function |
-| `cov=1` | collect executed source lines |
+| `cov=1` | collect coverage |
 
 Frame 1 is the first frame and `wait(n)` advances by `max(floor(n), 1)` —
 the predecessor's rule (`DEBUG_KEY_SEQUENCE_HARNESS.md`:
@@ -2654,90 +2765,93 @@ SystemOption.OptionMain` is an `ENTRYFAIL`, and `ENTRYFAIL`/`SPECFAIL` are
 deliberately **not** comparable values (a mistyped entry name is a property of
 the spec, not of the program, and would produce the same string on both sides).
 
-### Taint: what is proved, what is assumed, what is out of reach
+### Coverage: proto, not block, and why the badge had to change
 
-**Proved.** `cmp:lt` / `cmp:le` / `cmp:eq` — a stub proxy reached a comparison
-metamethod. In Lua 5.1 `OP_LT`, `OP_LE` and `OP_EQ` produce no value; each
-selects the following `JMP`. So the metamethod firing *is* a stub value
-deciding a branch, not an approximation of one. (`__eq` is new relative to
-`probe_behaviour.lua`, which omits it as dead surface; lvm.c consults it only
-after `rawequal` has already failed, so returning `false` is exactly the
-no-metamethod behaviour and it exists only to make the case observable.)
+The badge is **proto coverage**: distinct protos of the artifact entered
+during the run (observed from `call` hook events, de-duplicated on
+`(linedefined, lastlinedefined)` so two closures of one proto count once),
+over the number of protos in the compiled artifact.
 
-**Assumed.** `intro:type` / `intro:rawequal` / `intro:getmetatable` — a stub
-proxy was introspected. Nothing observes where the result went, so it is
-treated as if it decided a branch. Conservative over-refusal, which is the
-honest direction (spec risk R2: silent under-refusal is the failure this gate
-exists to prevent).
+It started as **block** coverage and had to stop being that. Block attribution
+has only one seam — the source line of each block's first instruction — so it
+moves when the emitter moves a newline. Measured this session on one program,
+one sequence, the same 10 blocks: the block interval reads **[0.30, 0.50]
+spread over lines and [0.00, 0.90] compacted**, while the proto badge is
+0.6667 either way. That breaks a project-level invariant, not
+just a number: CLAUDE.md defines a presentation-layer change as one that
+leaves `corpus/ledger.jsonl` byte-unchanged, and **M5 task 7 shipped five
+printer changes on exactly that evidence** — one of them `elseif`, which
+merges two lines into one. A layout-sensitive `cov` would have made those
+commits read as reach regressions and would make `ratchet_diff`'s
+`l2-coverage-downgrade` fire on cosmetics.
 
-**Out of reach**, and committed as a test
-(`test_what_the_taint_analysis_provably_cannot_catch`) rather than a claim:
+Proto coverage has no line in it. The one place a line number survives is the
+de-duplication *key*, which is sound only while it is injective over the
+artifact's protos — **checked per run**, not assumed. Measured over eight
+artifacts (the five authored files plus `snr_novel`, `snr_crd_0`, `config`):
+390 protos, 390 distinct keys. A hand-written one-liner does collide, which is
+why it is a check; a non-injective artifact refuses with `probe-error` rather
+than silently merging protos.
 
-* a raw proxy used as a truth value (`if sys.flag then`) — `OP_TEST` consults
-  no metamethod on a table, so nothing fires;
-* a stub *return* value (`if engine.IsDone() then`) — `stub_result` hands back
-  a plain `nil`/`false`/`0`/`"stub"`, and a Lua value carries no provenance;
-* an arithmetic result (`if sys.n + 1 > 0 then`) — `__add` already flattened
-  the proxy to the number `0`, so the comparison is number-vs-number.
+The original bytecode is **stripped** (`lineinfo` empty,
+`debug.getinfo(...).currentline` is `-1`), so nothing can observe which of
+*its* protos or blocks a run entered; coverage is a statement about the
+artifact, which is also why it is per file rather than per proto (for the 13
+files that ship fallback or hybrid the artifact's proto tree is not in
+field-for-field correspondence with the original's).
 
-**The corpus exercises none of the six taint routes.** Measured 2026-08-12,
-all **229** files driven on the original side under
-`k=1,CIRCLE;k=3,CROSS;tail=CROSS`: **0** taint marks, **0** probe errors.
-(Consistent with the static picture — the decompiled corpus contains no call
-to `type`, `rawequal` or `getmetatable` at all.) Every piece of evidence for
-the taint analysis is therefore synthetic, and corpus green says nothing about
-it. That is the
-normal situation here, not a gap — see MEMORY's "the corpus is a weaker oracle
-than it looks".
+**Block coverage survives as a diagnostic**, reported as an interval because
+it is a bound, not a value: the upper bound credits any block sharing an
+executed line, the lower counts only blocks whose entry line names exactly one
+block. For `snr_lib` that is **[0.39, 0.95] of 57 blocks, 32 of them sharing
+an entry line**. It never enters the ledger.
 
-### Coverage: whose blocks, and why the artifact's
+`LINE_SHIFT = 2000` blank lines are prepended for the coverage run so a probe
+line number can never collide with a target one — the probe classifies each
+distinct line once (a `getinfo` per line event costs 8×: 0.31s vs 2.39s on
+6,000,004 events), and without the shift a line number first seen from the
+probe's own source is filed as foreign for the rest of the run. Measured on a
+602-line fixture where every line executes: **60 lines lost, 10.0%**, exactly
+the probe's own executed ranges. This affects only the block diagnostic now,
+but the diagnostic is quoted here, so it has to be right.
 
-The original corpus bytecode is **stripped**: `lineinfo` is empty and
-`debug.getinfo(...).currentline` is `-1` for every frame, so no run can
-observe which of *its* blocks were entered. The badge is therefore over the
-**shipped artifact's** blocks: recompile it with `luac_sz4` (no `-s`), lift
-every proto, `cfg.blocks.build_cfg`, and take the source line of each block's
-first instruction. A block counts as entered when that line was executed.
+### The coverage run's backstop is a LINE budget, not an instruction budget
 
-That is also why the badge is **per file** rather than per proto: for the 13
-files that ship fallback or hybrid text the artifact's proto tree is not in
-field-for-field correspondence with the original's — that correspondence is
-exactly what `L3` certification establishes and those files do not have it —
-so a per-proto attribution would be inventing a mapping the pipeline does not
-have.
+`INSN_BACKSTOP` is **structurally unreachable** under a line hook, and this
+was found by review rather than by construction. With `LUA_MASKLINE` set,
+`lvm.c::traceexec` fires the count hook only when `L->hookcount` is exactly 0
+at its own entry — but the line hook's Lua body runs with
+`L->allowhook == 0` (`ldo.c::luaD_callhook`), where `traceexec` still calls
+`resethookcount` while `luaD_callhook` silently does nothing. With a hook body
+executing on most instructions the zero-crossing almost always lands inside
+it. Measured on this VM over 3,000,003 line events: mask `""` → **6** count
+events, mask `"l"` → **0**, mask `"lc"` → **0**.
 
-Two honest caveats, both reported rather than hidden:
-
-* **Over-approximation.** Blocks sharing an entry line cannot be told apart.
-  `Coverage.collisions` counts them and the CLI prints it (measured:
-  `snr_lib` 32/57, `snr_common` 7900/10332). So `cov` is an *upper bound* on
-  true block coverage, tightest where the emitter spreads statements over
-  lines and loosest inside single-line `and`/`or` chains.
-* **`LINE_SHIFT`.** The probe classifies "is this line number the target's?"
-  once per distinct line, because asking `debug.getinfo` on every line event
-  costs 8× (measured on 6,000,004 line events: 0.31s vs 2.39s). A line number
-  first seen from the *probe's* own source is then filed as foreign for the
-  rest of the run. Measured on a 602-line fixture where every line executes:
-  **60 lines lost (10.0%)**, exactly the probe's own executed ranges. The
-  coverage run therefore prepends `LINE_SHIFT = 2000` blank lines to the
-  artifact and shifts the answers back, which makes the collision impossible
-  instead of rare. Two committed tests pin it: that `LINE_SHIFT` still clears
-  both Lua probe files, and that shifting changes `lineinfo` and nothing else
-  (same `code`, same `constants`, byte-identical trace).
+Before the fix, `function main() local x = 0 while true do x = x + 1 end end`
+returned `INSN` under `tail=` and ran to the 120s subprocess timeout under
+`tail=;cov=1`. The coverage hook now carries `LINE_BACKSTOP = 20000000` line
+events instead — a genuine bound, since every line event costs at least one VM
+instruction, and ~26× the heaviest measured coverage run (`snr_graphic`,
+749,049). Both constants are pinned as unconditional literals, with a
+test-only env shrink.
 
 ### Why it is a second Lua file
 
-`scripts/probe_keyseq.lua` duplicates most of `probe_behaviour.lua` — the
-recorder, the stub proxies, the determinism overrides, the shadow tables. That
-is deliberate: the L1.75 gate's traces are frozen artefacts (two divergences
+`scripts/probe_keyseq.lua` duplicates most of `probe_behaviour.lua`. That is
+deliberate: the L1.75 gate's traces are frozen artefacts (two divergences
 pinned as exact byte pairs, reach asserted as counts), and this probe changes
-the trace format (a fourth header field, `K|` events, a taint section).
-Threading both formats through one file would put the L1.75 evidence at risk
-of every edit made for L2. The price is paid back by
-`test_frozen_constants_agree_with_the_l1_75_probe`, which requires the budget
-constants and the whole `stub_result` policy to be **textually identical** in
-both files — a run under a different policy is not comparable to the L1.75
-evidence that justified this one.
+the trace format. Threading both formats through one file would put the L1.75
+evidence at risk of every edit made for L2.
+
+What is pinned, stated as a measurement rather than as "the two cannot drift":
+`difflib` reports **297 identical lines** between them, 245 of those in runs of
+five or more (re-measured this session; the review's 299/247 was taken before
+round 1 edited both files). `test_the_semantically_shared_parts_of_the_two_probes_are_identical`
+pins every region whose drift would make an L2 result incomparable with the
+L1.75 evidence that justified it — the budget constants, the whole
+stub-return policy, the proxy construction and metamethod blocks, and the
+determinism overrides — comparing code only, so comments are free to differ.
+It does **not** pin the serialisers or the recorder.
 
 ### Running it
 
@@ -2746,18 +2860,25 @@ PYLUADEC_CORPUS_DIR=<corpus> uv run python scripts/probe_keyseq.py
 ```
 
 A clean run prints one line per authored file and
-`L2: 5/5 authored file(s) granted`. The badge also lands in the ledger (see
-the field table above) and on the dashboard (`L2 files driven`, `L2 share
-(rows)`, `L2 share (occurrences)`, `L2 badge, min/median/max`, plus a refusal
-histogram). `scripts/ratchet_diff.py` treats a lost grant (`l2-lost`) or a
-dropped coverage (`l2-coverage-downgrade`) as regressions; a newly granted or
-improved badge is not.
+`L2: 1/5 authored file(s) granted, 4 refused as expected`, exiting **0** —
+the expectation lives in `EXPECTED_VERDICT` so the CLI and the gate cannot
+disagree on what "pass" means, the mistake the L1.5 CLI shipped with.
+
+The badge lands in the ledger (see the field table above) and on the dashboard
+(`L2 files driven`, `L2 share (rows)`, `L2 share (occurrences)`, `L2 badge per
+file, min/median/max` — per FILE, because a row-basis median is dominated by
+whichever driven file has the most protos — plus a refusal histogram).
+`scripts/ratchet_diff.py` treats a lost grant (`l2-lost`) or a dropped
+coverage (`l2-coverage-downgrade`) as regressions; a newly granted or improved
+badge is not.
 
 Cost, measured 2026-08-12 (three interleaved runs each way, the L2 block
-short-circuited for the second arm): the five files add **0.66s** to
-`scripts/run_corpus.py` — 10.04/10.07/10.07s without, 10.71/10.73/10.79s with
-— and the whole `tests/test_l2_keyseq.py` module (56 tests, including the
-corpus arm and two fault injections) runs in **1.9s**.
+short-circuited for the second arm): **0.19s** added to `scripts/run_corpus.py`
+— 10.03/10.14/10.14s without, 10.29/10.31/10.37s with. It is cheaper than
+before the backstop (0.66s) because four of the five files now refuse
+statically, before any coverage subprocess runs. The whole
+`tests/test_l2_keyseq.py` module — 103 tests including the corpus arm, the
+twelve laundering routes and three fault injections — runs in **2.0s**.
 
 ## The quality score — the predecessor's metric, ported (M5 task 3)
 

@@ -688,16 +688,25 @@ def test_a_better_or_newly_granted_l2_is_not_a_regression(committed, tmp_path,
                                                           capsys):
     """The asymmetry, in both directions that are allowed: coverage going up,
     and a file that had no badge acquiring one."""
-    new = copy.deepcopy(committed)
-    row = _l2_row(new)
+    # Baseline: the committed ledger with one grant HALVED, so the committed
+    # value reads as an improvement. (Bumping the new side instead does not
+    # work any more -- the one granted file is at cov 1.0.)
+    old_rows = copy.deepcopy(committed)
+    row = _l2_row(old_rows)
     occ = next(o for o in row["occurrences"]
                if isinstance(o.get("l2"), dict) and "cov" in o["l2"])
-    occ["l2"] = {"cov": min(1.0, occ["l2"]["cov"] + 0.05)}
-    fresh = next(r for r in new if all(o.get("l2") is None
-                                       for o in r["occurrences"]))
-    fresh["occurrences"][0]["l2"] = {"cov": 0.42}
+    occ["l2"] = {"cov": round(occ["l2"]["cov"] / 2, 4)}
+    fresh = next(r for r in old_rows if all(o.get("l2") is None
+                                            for o in r["occurrences"]))
+    fresh_key = (fresh["shash"], fresh["occurrences"][0]["file"],
+                 fresh["occurrences"][0]["proto_path"])
+    new = copy.deepcopy(committed)
+    nrow = next(r for r in new if r["shash"] == fresh_key[0])
+    nocc = next(o for o in nrow["occurrences"]
+                if (o["file"], o["proto_path"]) == fresh_key[1:])
+    nocc["l2"] = {"cov": 0.42}
 
-    rc, out = _run(tmp_path, committed, new, capsys)
+    rc, out = _run(tmp_path, old_rows, new, capsys)
     assert rc == 0
     assert "no regression" in out
     assert "2 occurrence(s) gained or improved" in out
@@ -718,3 +727,32 @@ def test_a_baseline_predating_l2_is_not_a_mass_regression(committed, tmp_path,
     assert rc == 0
     assert "schema: NEW adds occurrence field `l2`" in out
     assert "schema: NEW adds row field `l2`" in out
+
+
+def test_a_new_ledger_that_drops_l2_is_a_schema_note_not_an_amnesty(
+        committed, tmp_path, capsys):
+    """M6, and the asymmetric direction this tool promises in its own module
+    docstring: a field the NEW side has DROPPED is never tolerated the way a
+    missing baseline field is.
+
+    Written first predicting **0** `l2-lost` findings by analogy with
+    `refusal_reason` and `shipped`, both of which fail OPEN when the new side
+    drops them. Measured, `l2` does not: dropping it from every NEW row and
+    occurrence produces **3** `l2-lost` regressions and exit 1, because
+    `_l2_cov` reads the OLD side too and an absent NEW value is exactly the
+    "the grant is gone" case. That is the fail-SAFE direction, so the
+    prediction was wrong in the good direction and the test records the
+    measurement plus the schema note that accompanies it."""
+    new = copy.deepcopy(committed)
+    for r in new:
+        r.pop("l2", None)
+        for o in r["occurrences"]:
+            o.pop("l2", None)
+
+    rc, out = _run(tmp_path, committed, new, capsys)
+    assert "schema: NEW drops row field `l2` present in the baseline" in out
+    assert "schema: NEW drops occurrence field `l2` present in the baseline" in out
+    kinds = [r.kind for r in diff_ledgers(committed, new).regressions]
+    assert kinds == ["l2-lost"] * 3, kinds
+    assert rc == 1
+    assert "not driven" in out

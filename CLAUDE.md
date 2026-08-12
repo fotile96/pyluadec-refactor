@@ -182,14 +182,20 @@ M3–M4 的旧说法「产物为结构化 ⟺ root proto 认证 `L3`」是**替�
 
 - 全局状态探针（L1.5 门）：`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_global_state.py`。M4 task 10 起 CLI 认识那 4 条已钉住的发散（钉子已从测试挪到 `scripts/probe_global_state.py`，两个 CLI 与两个门共用 `scripts/probe_common.py::adjudicate_pins`），干净跑法打印 `225/229 identical, 4 pinned divergence(s)` 并返回 0；权威判定仍在 `tests/test_global_state_probe.py`。
 - **L2 差分执行门（M5 task 9 新增）**：`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_keyseq.py`。
-  原始字节码与产出源码在同一 stub 环境、同一**按键序列**下跑，trace 逐字节相同 +
-  序列确实被轮询 + 无 taint 才授 `L2`，徽章是产物基本块覆盖率。干净跑法打印
-  `L2: 5/5 authored file(s) granted`。**reach 只有 5 个文件，这是实测而非偷懒**：
-  全语料只有 5 个文件真的会走到 `pressButton`（snr_common/snr_graphic/snr_lib/
-  snr_memory/snr_music），其余 127 个撞上限的文件是线性剧本，被 `vms()` 数量截断，
-  按键序列对它们没有任何作用。M5 计划里「3000 事件上限截断了 132 个文件、按键序列
-  正是解药」的说法机制对、数字错。设计、语法、taint 论证、覆盖率口径见
-  `docs/runbooks/structured-pipeline.md`「The L2 gate」。
+  原始字节码与产出源码在同一 stub 环境、同一**按键序列**下跑，五个条件全过才授 `L2`：
+  trace 逐字节相同、序列确实被轮询、无运行期 taint 标记、**静态回退分析找不到任何
+  「stub 派生值决定了一个没人看见的分支」的位置**、且探针没有自身故障。徽章 `cov` 是
+  产物**被进入的 proto 比例**（不是基本块——基本块归属只能靠行号，会随排版移动，
+  实测同一程序 16 个块「铺开 0.9375 / 压紧 1.0」，那会打破 CLAUDE.md 对「呈现层变更＝
+  台账字节不变」的定义）。干净跑法打印 `L2: 1/5 authored file(s) granted, 4 refused as expected`
+  并返回 0。
+  **reach 是 1 个文件（snr_lib.lua，L2@100%，台账里 2 行 / 3 处 occurrence），这是实测**：
+  语料里只有 9 个文件含 `pressButton`、5 个真的走到轮询、其余 4 个在到达前就报错；
+  而这 5 个里有 4 个存在「stub 值与常量比较」这种运行期**看不见**的分支决定
+  （`lvm.c::equalobj` 先比类型再谈 `__eq`，所以 `stub == "字面量"` 一个元方法都不触发），
+  被静态回退分析整文件拒授。132 个撞上限的文件里 101 个是 `vms` 主导、26 个 `wait` 主导、
+  5 个 `pressButton` 主导。设计、语法、taint 的「可证/保守/仍看不见」三分、覆盖率口径与
+  两处 backstop 见 `docs/runbooks/structured-pipeline.md`「The L2 gate」。
 - 行为探针（L1.75 门，M4 task 10 新增）：`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_behaviour.py`。在打桩环境下**实际调用**每个 chunk 定义的全局函数并比对事件轨迹，干净跑法打印 `227/229 identical, 2 pinned divergence(s), 398196 recorded events`。设计、能力边界、两条钉子的指令级证据见 `docs/runbooks/m3-backlog.md`「Behaviour probe (L1.75)」节。
 - 效应表-发射器一致性门：`uv run pytest tests/test_effects_emitter_consistency.py`（语料臂 + 合成操作数网格，无需语料也能跑合成臂）。
 - **Ratchet 门（M5 task 8）**：`PYLUADEC_CORPUS_DIR=... ./scripts/ratchet_job.sh [BASELINE_REF]`——全套件 + 台账 baseline diff + 24 例全量差分执行扫描，实测 37.9s，`BASELINE_REF` 默认 `eb08890`（上一个里程碑合并点）。只要 diff：`git show <ref>:corpus/ledger.jsonl > /tmp/base.jsonl && uv run python scripts/ratchet_diff.py /tmp/base.jsonl corpus/ledger.jsonl`。
@@ -209,8 +215,11 @@ M3–M4 的旧说法「产物为结构化 ⟺ root proto 认证 `L3`」是**替�
   聚合（`verify/ledger.py::row_l2`），**每一处** occurrence 都授证才授，取最小 cov。
   `l2` **没有**并进 `key_disagreements` 的 verdict：那条 pin 管的是
   `(level, rung, refusal_reason)`（`_memo_key` 声称是 `(shash, dfp)` 的函数），而 `l2`
-  跟 `compile_ok`/`hybrid` 一样是**文件**属性，同一 shape 跨 27 个文件时天然可以不一致——
-  把它并进去只会制造假分歧并逼出一次没有健全性内容的拆键。`key_disagreements` 一字未动。
+  跟 `compile_ok`/`hybrid` 一样是**文件**属性——实测 1478 个 shape 里 13 个跨多文件、
+  最多跨 27 个，其中 **2 个**同时落在「有按键序列」与「没有按键序列」的文件上，台账里
+  正好 **2 行**的 occurrence 在 `l2` 上不一致。把它并进去只会制造假分歧并逼出一次
+  没有健全性内容的拆键（拆键也解决不了：`l2` 随**文件**变，不随 debug fingerprint 变）。
+  `key_disagreements` 一字未动。
 - `refusal_reason`（M4 task 6 新增）：非 `L3` 行**为什么**没认证；`L3` 行为 `null`。
   confession 只说"回退了"，这个字段说"回退的原因"——`build_sir` 拒绝与"打印成功但
   认证失败"以前在台账里长得一模一样。四种 kind：`structure:` / `reconstruct:` /
@@ -267,4 +276,4 @@ Phase 4 已完成。**能力边界与残差普查的权威仍是 `docs/runbooks/
 
 ### 仍未做（都在 M5 agenda）
 
-完整 ratchet CI（baseline diff、降级即失败）**M4 没做**，已由 **M5 task 8 落地**（`scripts/ratchet_diff.py` + `scripts/ratchet_job.sh`，见上文「台账约定」；本仓库无 CI runner 配置，是命令不是自动触发）；`LEN` 重新分级（M5 task 1）；L2 差分执行认证与按键序列 harness（**M5 task 9 落地**，见上文；两个历史检查点的*断言*仍是 task 10）；那 89 处残差；`_stack_discipline`（462 行、33 个 if、11 个内嵌闭包）的拆分。
+完整 ratchet CI（baseline diff、降级即失败）**M4 没做**，已由 **M5 task 8 落地**（`scripts/ratchet_diff.py` + `scripts/ratchet_job.sh`，见上文「台账约定」；本仓库无 CI runner 配置，是命令不是自动触发）；`LEN` 重新分级（M5 task 1）；L2 差分执行认证与按键序列 harness（**M5 task 9 落地**，见上文；reach 仅 1 个文件，两个历史检查点的*断言*仍是 task 10，且 snr_common 目前被静态 taint 拒授）；那 89 处残差；`_stack_discipline`（462 行、33 个 if、11 个内嵌闭包）的拆分。

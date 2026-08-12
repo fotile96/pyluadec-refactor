@@ -250,18 +250,62 @@ def test_target_pcall_cannot_defeat_the_event_cap():
     assert header(t)[0] == "CAP"
 
 
+def test_the_coverage_run_has_a_working_backstop(monkeypatch):
+    """I1. `INSN_BACKSTOP` is structurally UNREACHABLE in a coverage run, and
+    this was found by review, not by construction.
+
+    With `LUA_MASKLINE` set, `lvm.c::traceexec` fires the count hook only when
+    `L->hookcount` is exactly 0 at its own entry, but the line hook's Lua body
+    runs with `L->allowhook == 0` (`ldo.c::luaD_callhook`), where `traceexec`
+    still calls `resethookcount` while `luaD_callhook` silently does nothing;
+    with a hook body executing on most instructions the zero-crossing almost
+    always lands inside it. Measured on this VM over 3,000,003 line events:
+    mask `""` -> 6 count events, mask `"l"` -> **0**, mask `"lc"` -> **0**.
+
+    Before this fix the reviewer's `while true do x = x + 1 end` returned
+    `INSN` under `tail=` and ran to the 120s subprocess timeout under
+    `tail=;cov=1`. It now stops, on a LINE-event budget -- a genuine bound,
+    since every line event costs at least one VM instruction.
+    """
+    from scripts.probe_keyseq import _with_cov, header
+    monkeypatch.setenv("PYLUADEC_PROBE_LINE_BACKSTOP", "50000")
+    src = b"function main() local x = 0 while true do x = x + 1 end end"
+    t = probe_raw(src, is_source=True, spec=_with_cov("tail="), timeout=30.0)
+    assert header(t)[0] == "INSN"
+    # No `R|main|INSN` event here, unlike the non-coverage path: the raise
+    # comes from inside the LINE hook, which re-enters with `stopped` already
+    # set and flushes before the invocation loop can append its result. The
+    # status is the observable, and it is the one the driver reads.
+    assert not any(l.startswith(b"R|main") for l in _lines(t))
+
+
+def test_production_line_backstop_constant_is_unconditionally_20_million():
+    """Same contract as the instruction backstop's: the env var may only
+    shrink it for a test process that opts in, never change what the corpus
+    gate or the CLI run with."""
+    assert "local LINE_BACKSTOP = 20000000" in PROBE.read_text(encoding="utf-8")
+
+
 def test_production_insn_backstop_constant_is_unconditionally_400_million():
     assert "local INSN_BACKSTOP = 400000000" in PROBE.read_text(encoding="utf-8")
 
 
-def test_frozen_constants_agree_with_the_l1_75_probe():
+def test_the_semantically_shared_parts_of_the_two_probes_are_identical():
     """This probe is a SEPARATE file from `probe_behaviour.lua` on purpose --
     the L1.75 gate's traces are frozen artefacts and threading two formats
     through one script would put its evidence at risk of every L2 edit. The
-    price is duplication, and this is what keeps the duplicated parts from
-    drifting: the budget constants and the whole stub-return policy have to be
-    textually identical in both files, because a run under a different policy
-    is not comparable to the L1.75 evidence that justified this one."""
+    price is duplication.
+
+    **What this pins, stated as a measurement rather than as "the two files
+    cannot drift".** They can: `difflib` reports 297 identical lines between
+    them, in runs of 5 or more totalling 245 (re-measured this session), and
+    an earlier version of this test pinned about 14 of those. It now pins every region whose drift would
+    make an L2 result incomparable with the L1.75 evidence that justified it
+    -- the budget constants, the whole stub-return policy, the whole proxy
+    arithmetic/index/newindex/call block, and the whole determinism-override
+    block. Comments, the serialisers and the recorder are NOT pinned, and a
+    change there is free.
+    """
     from scripts.probe_behaviour import PROBE as L175
     a = L175.read_text(encoding="utf-8")
     b = PROBE.read_text(encoding="utf-8")
@@ -269,9 +313,33 @@ def test_frozen_constants_agree_with_the_l1_75_probe():
                   "local HOOK_STEP = 1000000",
                   "local INSN_BACKSTOP = 400000000"):
         assert const in a and const in b, const
-    policy = a[a.index("local function stub_result(name)"):]
-    policy = policy[:policy.index("\nend\n") + 5]
-    assert policy in b, "the stub-return policy has drifted between the probes"
+
+    def code_only(text: str) -> str:
+        # Comments are free to differ -- they document two different gates.
+        return "\n".join(l for l in text.splitlines()
+                          if l.strip() and not l.strip().startswith("--"))
+
+    def region(text, start, end):
+        i = text.index(start)
+        return code_only(text[i:text.index(end, i)])
+
+    b_code = code_only(b)
+
+    shared = [
+        ("stub-return policy",
+         region(a, "local function stub_result(name)", "\nend\n") + "\nend"),
+        ("proxy construction",
+         region(a, "local proxies = {}", "local function zero()")),
+        ("proxy index/newindex/call",
+         region(a, "proxy_mt.__index = function", "proxy_mt.__add = zero")),
+        ("proxy arithmetic",
+         region(a, "proxy_mt.__add = zero", "proxy_mt.__lt")),
+        ("determinism overrides",
+         region(a, "G.os.exit = function", "G.print = function")),
+    ]
+    for what, text in shared:
+        assert text in b_code, f"{what} has drifted between the two probes"
+    assert sum(len(t.splitlines()) for _, t in shared) > 60
 
 
 # --------------------------------------------------------------------------
@@ -343,50 +411,200 @@ end
     assert "intro:type" in r.detail
 
 
-def test_the_same_fixture_without_the_introspection_is_granted():
-    """The falsification of the test above: identical shape, identical stub
-    dependence, one call removed. If the refusal came from anything other than
-    the `type()` call, this would refuse too."""
+def test_the_same_fixture_with_the_branch_taken_off_a_local_is_granted():
+    """The falsification of the test above, in two steps, because the first
+    one measured differently than predicted.
+
+    Dropping only the `type()` call leaves `if sys.thing then` -- a raw proxy
+    as a truth value -- which the STATIC backstop now refuses as
+    `blind-truthiness`. So that is asserted too, rather than quietly rewritten
+    away: it is the same property, caught by the other instrument. Only when
+    the branch is taken off a value the stub environment did not produce does
+    the file grant."""
     from scripts.probe_keyseq import evaluate
-    src = b"""
+    truthy = b"""
 function main()
   pressButton("CIRCLE")
   if sys.thing then engine.Laundered() else engine.Real() end
 end
 """
-    r = evaluate(_bytecode(src), src, ["k=1,CIRCLE;tail="])
+    r = evaluate(_bytecode(truthy), truthy, ["k=1,CIRCLE;tail="])
+    assert (r.granted, r.reason) == (False, "taint-static")
+    assert "blind-truthiness" in r.detail
+
+    clean = b"""
+function main()
+  local n = 1
+  if pressButton("CIRCLE") == true then n = 2 end
+  if n == 1 then engine.Laundered() else engine.Real() end
+end
+"""
+    r = evaluate(_bytecode(clean), clean, ["k=1,CIRCLE;tail="])
     assert (r.granted, r.reason) == (True, None)
 
 
-def test_what_the_taint_analysis_provably_cannot_catch():
-    """Committed statement of the blind spots, so they are data rather than a
-    claim in a docstring. All three of these ARE stub values deciding
-    branches, and none of them records a mark:
+# The twelve routes that shipped granted, one parametrised case each. Every
+# one takes a stub-forced branch; NONE of them fires a metamethod, because
+# `lvm.c`'s `equalobj` is `ttype(o1) == ttype(o2) && luaV_equalval(...)` -- so
+# `__eq` is consulted only for proxy-vs-proxy. Measured 2026-08-12 before the
+# static backstop: all twelve granted with a taint count of 0.
+_LAUNDERING_ROUTES = [
+    ("eq-vs-string", b'if sys.s == "x" then hit() else miss() end'),
+    ("eq-vs-nil", b'if sys.s == nil then hit() else miss() end'),
+    ("ne-vs-nil", b'if sys.s ~= nil then hit() else miss() end'),
+    ("eq-vs-number", b'if sys.s == 1 then hit() else miss() end'),
+    ("eq-vs-plain-table", b'local t = {} if sys.s == t then hit() else miss() end'),
+    ("len", b'if #sys.s > 0 then hit() else miss() end'),
+    ("next", b'if next(sys.s) == nil then hit() else miss() end'),
+    ("tostring", b'if tostring(sys.s) == "x" then hit() else miss() end'),
+    ("tonumber", b'if tonumber(sys.s) then hit() else miss() end'),
+    ("concat", b'if sys.s .. "" == "x" then hit() else miss() end'),
+    ("select", b'if select("#", sys.s) == 1 then hit() else miss() end'),
+    ("pcall", b'if pcall(sys.s) then hit() else miss() end'),
+]
 
-    * a raw proxy as a truth value -- `OP_TEST` consults no metamethod on a
-      table, so nothing fires;
-    * a stub RETURN value -- `stub_result` hands back plain `nil`/`false`/`0`/
-      `"stub"`, and a Lua value carries no provenance;
-    * an arithmetic result -- `__add` returns the number `0`, and the
-      comparison that follows is number-vs-number.
 
-    Each line below took the stub-forced branch, and the taint count is 0.
-    """
+def _route_src(body: bytes) -> bytes:
+    return b"function main()\n  pressButton('CIRCLE')\n  " + body + b"\nend\n"
+
+
+@pytest.mark.parametrize("name,body", _LAUNDERING_ROUTES,
+                         ids=[n for n, _ in _LAUNDERING_ROUTES])
+def test_the_runtime_marks_are_blind_to_this_route(name, body):
+    """Half of the C1 pair, and the reason a static backstop exists at all:
+    the RUNTIME instrument records nothing for any of these. Asserted rather
+    than described, so that if a future change makes one of them observable
+    the claim fails instead of quietly becoming stale."""
     from scripts.probe_keyseq import header
-    t = probe_raw(b"""
-function main()
-  if sys.flag then engine.Truthy() else engine.Falsy() end
-  if engine.IsDone() then engine.Done() else engine.NotDone() end
-  if sys.n + 1 > 0 then engine.Pos() else engine.NonPos() end
-end
-""", is_source=True, spec="tail=")
+    t = probe_raw(_route_src(body), is_source=True, spec="k=1,CIRCLE;tail=")
     assert header(t)[2] == 0
-    got = [l for l in _lines(t) if l.startswith(b"C|engine.")]
-    # Measured, not predicted: the third line reads `0 > 0`, because `__add`
-    # already flattened the proxy to the number 0, so the stub-forced branch is
-    # the NEGATIVE one. Written the other way round first and corrected here.
-    assert got == [b"C|engine.Truthy|0|", b"C|engine.IsDone|0|",
-                   b"C|engine.NotDone|0|", b"C|engine.NonPos|0|"]
+    assert [l for l in _lines(t) if l.startswith(b"T|")] == []
+
+
+@pytest.mark.parametrize("name,body", _LAUNDERING_ROUTES,
+                         ids=[n for n, _ in _LAUNDERING_ROUTES])
+def test_every_laundering_route_is_refused_by_the_static_backstop(name, body):
+    """The other half: each of the twelve is refused, and the two traces agree
+    byte-for-byte while it happens -- which is exactly why trace equality on
+    its own could not be the whole grant rule."""
+    from scripts.probe_keyseq import evaluate
+    src = _route_src(body)
+    bc = _bytecode(src)
+    assert probe_raw(bc, is_source=False, spec="k=1,CIRCLE;tail=") == \
+        probe_raw(src, is_source=True, spec="k=1,CIRCLE;tail="), name
+    r = evaluate(bc, src, ["k=1,CIRCLE;tail="])
+    assert (r.granted, r.reason) == (False, "taint-static"), name
+
+
+def test_the_static_backstop_does_not_refuse_a_clean_program():
+    """Non-vacuity: a refusal rule that refuses everything is not a gate. Same
+    shape, branch taken off a local the stub environment did not produce."""
+    from scripts.probe_keyseq import static_refusal
+    from pyluadec.ingest import load_bytes
+    src = _route_src(b'local n = 0 if n == 1 then hit() else miss() end')
+    assert static_refusal(load_bytes(_bytecode(src))) == {}
+
+
+@pytest.mark.parametrize("body,kind", [
+    (b'if sys.a == "x" then hit() end', "blind-compare"),
+    (b'local v = sys.a if v == "x" then hit() end', "blind-compare"),
+    (b'if #sys.a > 0 then hit() end', "blind-length"),
+    (b'if type(sys.a) == "table" then hit() end', "blind-launder"),
+    (b'if sys.a then hit() end', "blind-truthiness"),
+    (b'if sys.a.b.c then hit() end', "blind-truthiness"),
+    (b'if sys.a() then hit() end', "blind-truthiness"),
+    (b'if sys.a + 1 == 2 then hit() end', "blind-compare"),
+])
+def test_static_taint_names_the_kind_it_found(body, kind):
+    """One case per propagation rule the analysis implements: a direct global
+    read, a `MOVE` through a local, `LEN`, a launderer call, raw truthiness,
+    a `GETTABLE` chain, a `CALL` result, and arithmetic."""
+    from scripts.probe_keyseq import static_taint
+    from pyluadec.ingest import load_bytes
+    src = b"function main() " + body + b" end"
+    counts = static_taint(load_bytes(_bytecode(src)))
+    assert counts[kind] > 0, counts
+
+
+def test_a_global_the_chunk_defines_is_not_a_stub():
+    """The analysis' seed set is globals READ and never WRITTEN, minus the
+    ones the probe environment resolves for real. A chunk that defines its own
+    global and then compares it is not stub-derived and must not refuse --
+    otherwise the backstop would refuse every file that has a state variable."""
+    from scripts.probe_keyseq import static_refusal
+    from pyluadec.ingest import load_bytes
+    src = b'mode = "a"\nfunction main() if mode == "a" then hit() end end\n'
+    assert static_refusal(load_bytes(_bytecode(src))) == {}
+
+
+def test_the_base_global_set_is_the_interpreter_s_own():
+    """`_BASE_GLOBALS` decides which `GETGLOBAL`s are NOT stubs, so a name
+    missing from it makes the backstop refuse a clean file and a name wrongly
+    in it makes the backstop miss a real stub. Re-derived from the vendored
+    interpreter rather than trusted."""
+    import subprocess
+    from pyluadec import oracle
+    from scripts.probe_keyseq import _BASE_GLOBALS
+    prog = ("local k = {} for n in pairs(_G) do if type(n) == 'string' then "
+            "k[#k+1] = n end end table.sort(k) print(table.concat(k, ' '))")
+    with __import__("tempfile").TemporaryDirectory() as td:
+        f = Path(td) / "g.lua"
+        f.write_text(prog)
+        out = subprocess.run([str(oracle.lua_sz4()), str(f)],
+                             capture_output=True, text=True, check=True).stdout
+    assert set(out.split()) == set(_BASE_GLOBALS)
+
+
+def test_what_the_two_taint_instruments_still_cannot_see():
+    """Committed statement of the RESIDUAL gaps, as data.
+
+    The previous version of this test presented three blind spots as the
+    complete list. It was not complete -- twelve laundering routes were
+    granted -- and that framing is what let them ship. These are gaps in the
+    STATIC analysis (the runtime marks are blind to all of them too), each
+    demonstrated rather than asserted in prose: the file grants, and it should
+    not.
+    """
+    from scripts.probe_keyseq import evaluate, static_refusal
+    from pyluadec.ingest import load_bytes
+
+    gaps = {
+        # Across a call boundary: `static_taint` is intra-proto, so a stub
+        # passed as an ARGUMENT is a plain parameter inside the callee.
+        "call-argument": b"""
+function decide(v) if v == "x" then hit() else miss() end end
+function main() pressButton("CIRCLE") decide(sys.a) end
+""",
+        # Through a script-built table: only indexing off a stub-derived
+        # table propagates, not a round trip through one the chunk made.
+        "table-round-trip": b"""
+function main()
+  pressButton("CIRCLE")
+  local t = {}
+  t.x = sys.a
+  if t.x == "x" then hit() else miss() end
+end
+""",
+        # Through an indirectly-reached launderer: `blind-launder` recognises
+        # `GETGLOBAL f; ...; CALL f` only, and a `MOVE` into the call window
+        # breaks that pattern.
+        #
+        # Written first with `local ty = type`, which MEASURED as caught --
+        # `type` is one of the probe's driver overrides, so the RUNTIME mark
+        # fires on the aliased call too. `tostring` has no runtime seam, so it
+        # is the honest example of this gap.
+        "aliased-launderer": b"""
+function main()
+  pressButton("CIRCLE")
+  local ts = tostring
+  if ts(sys.a) == "x" then hit() else miss() end
+end
+""",
+    }
+    for name, src in gaps.items():
+        assert static_refusal(load_bytes(_bytecode(src))) == {}, name
+        r = evaluate(_bytecode(src), src, ["k=1,CIRCLE;tail="])
+        assert r.granted, f"{name} unexpectedly refused -- update this list"
 
 
 def test_eq_metamethod_does_not_change_what_the_program_computes():
@@ -471,10 +689,10 @@ def test_the_line_shift_does_not_change_what_the_program_does():
         probe_raw(b"\n" * LINE_SHIFT + src, is_source=True, spec=spec)
 
 
-def test_coverage_counts_the_blocks_the_run_entered():
-    """Two sequences over the same artifact: one that never leaves the menu
-    and one that walks it. The second must strictly dominate, and both must be
-    under the block total (a fixture with an unreachable arm)."""
+def test_coverage_counts_the_protos_and_the_blocks_the_run_entered():
+    """Two sequences over the same artifact: one that never leaves the menu and
+    one that walks it. The block diagnostic must strictly improve and stay
+    under the total (the fixture has an arm no sequence reaches)."""
     from scripts.probe_keyseq import coverage
     # The unreachable arm has to live INSIDE a driven function: the probe's
     # invocation loop calls every global function the chunk defines, so a
@@ -503,13 +721,90 @@ end
 """
     shallow = coverage(src, ["tail="])
     deep = coverage(src, ["k=1,DOWN;k=2,DOWN;k=3,CIRCLE;tail="])
-    assert 0 < shallow.entered < deep.entered < deep.blocks
-    assert deep.fraction == round(deep.entered / deep.blocks, 4)
+    assert 0 < shallow.blocks_upper < deep.blocks_upper < deep.blocks
+    assert deep.blocks_lower <= deep.blocks_upper
+    assert deep.protos_entered == deep.protos == 2   # the chunk and `main`
+    assert deep.fraction == 1.0
 
 
-def test_coverage_takes_the_union_over_a_file_s_sequences():
-    """A file may carry several sequences -- `snr_common.lua` needs three --
-    and the badge is their union, not the best single one."""
+def test_the_badge_is_proto_coverage_and_does_not_move_with_source_layout():
+    """I3, and the reason the badge is not block coverage.
+
+    Two byte-different sources with identical semantics -- the same program,
+    one spread over lines and one compacted. Measured this session over the
+    same 10 blocks: the block interval reads [0.30, 0.50] spread and
+    [0.00, 0.90] compacted, while the proto badge is 0.6667 both times,
+    because it counts protos entered by call-hook identity and never consults
+    a line.
+
+    That is not a nicety. CLAUDE.md defines a presentation-layer change as one
+    that leaves `corpus/ledger.jsonl` byte-unchanged, and M5 task 7 shipped
+    five printer changes on exactly that evidence; a layout-sensitive `cov`
+    would have made them read as reach regressions and would make
+    `ratchet_diff`'s `l2-coverage-downgrade` fire on cosmetics.
+    """
+    from scripts.probe_keyseq import coverage
+    spread = b"""
+function main()
+  pressButton("A")
+  if sys.a then
+    engine.X()
+  elseif sys.b then
+    engine.Y()
+  else
+    engine.Z()
+  end
+end
+function never()
+  engine.N()
+end
+"""
+    compact = (b'function main() pressButton("A") '
+               b'if sys.a then engine.X() elseif sys.b then engine.Y() '
+               b'else engine.Z() end end\n'
+               b'function never()\n  engine.N()\nend\n')
+    # `entry=main`, so the probe's invocation loop does not run and `never`
+    # really is never entered -- without that the badge is 3/3 either way and
+    # the assertion below would hold vacuously.
+    a = coverage(spread, ["entry=main;k=1,A;tail="])
+    b = coverage(compact, ["entry=main;k=1,A;tail="])
+    assert a.blocks == b.blocks                      # same program
+    assert a.block_interval != b.block_interval      # layout moved the blocks
+    assert a.fraction == b.fraction                  # the badge did not
+    assert a.protos_entered == b.protos_entered == 2 and a.protos == 3
+
+
+def test_the_block_diagnostic_is_an_interval_not_a_value():
+    """`collisions` is the width of the ignorance and the interval is how it
+    is reported. The lower bound counts only blocks whose entry line names
+    exactly one block; the upper credits any block sharing an executed line."""
+    from scripts.probe_keyseq import coverage
+    c = coverage(MENU, ["k=1,DOWN;k=2,CIRCLE;tail="])
+    lo, hi = c.block_interval
+    assert 0 < lo < hi <= 1.0
+    assert c.collisions > 0
+    assert c.blocks_lower < c.blocks_upper <= c.blocks
+
+
+def test_a_non_injective_proto_key_refuses_rather_than_merging_protos():
+    """The badge's de-duplication key is `(linedefined, lastlinedefined)`, so
+    two closures of one proto count once. Measured over eight artifacts (the
+    five authored files plus snr_novel, snr_crd_0, config): 390 protos, 390
+    distinct keys. But a hand-written one-liner collides, and a silent merge
+    would under-report the badge, so the check is per run."""
+    from scripts.probe_keyseq import CoverageError, coverage
+    src = (b'function main() pressButton("A") local f = function() engine.A() end'
+           b' local g = function() engine.B() end f() g() end')
+    with pytest.raises(CoverageError) as e:
+        coverage(src, ["k=1,A;tail="])
+    assert "not injective" in str(e.value)
+
+
+def test_the_block_diagnostic_unions_the_sequences_and_the_badge_maxes_them():
+    """A file may carry several sequences -- `snr_common.lua` has three. Lines
+    are unioned (they are just numbers). Proto counts are NOT: proto identity
+    is per-process and the counts are not addable, so the badge takes the max,
+    which is the conservative read."""
     from scripts.probe_keyseq import coverage
     src = b"""
 function main()
@@ -524,7 +819,8 @@ end
     a = coverage(src, ["k=1,A;tail="])
     b = coverage(src, ["k=1,B;tail="])
     both = coverage(src, ["k=1,A;tail=", "k=1,B;tail="])
-    assert both.entered > a.entered and both.entered > b.entered
+    assert both.blocks_upper > a.blocks_upper and both.blocks_upper > b.blocks_upper
+    assert both.protos_entered == max(a.protos_entered, b.protos_entered)
 
 
 def test_collisions_are_reported_not_hidden():
@@ -600,6 +896,60 @@ end
     assert r.granted, "the A-only sequence cannot see the defect"
     r = evaluate(_bytecode(src), mutated, ["k=1,A;tail=", "k=1,B;tail="])
     assert (r.granted, r.reason) == (False, "divergent")
+
+
+def test_a_file_with_no_sequence_is_refused_not_granted():
+    """I2. With `evaluate`'s `if not specs:` removed, `evaluate(bc, src, [])`
+    returned `granted=True, cov=0.0` -- measured. The per-spec loop simply
+    never ran, so not one of the grant conditions was evaluated: the rule was
+    skipped rather than failed, which is the worst available failure mode for
+    a gate."""
+    from scripts.probe_keyseq import evaluate
+    r = evaluate(_bytecode(MENU), MENU, [])
+    assert (r.granted, r.reason, r.cov) == (False, "no-key-poll", None)
+
+
+def test_a_chunk_that_defines_pressButton_itself_wins_over_the_driver():
+    """M3, `env.__index`'s `envfields`-before-`DRIVER` precedence. Reachable,
+    not defensive: a chunk that defines its own `wait` must see its own, or
+    the probe would silently replace program logic with harness logic."""
+    t = probe_raw(b"""
+function wait(n) engine.MyWait(n) end
+function main() wait(7) end
+""", is_source=True, spec="tail=")
+    assert b"C|engine.MyWait|1|7" in _lines(t)
+    assert not any(l.startswith(b"C|wait|") for l in _lines(t))
+
+
+@pytest.mark.parametrize("call,expected", [
+    (b"pressButton(nil)", b"K|nil|1|false"),
+    (b"pressButton(7)", b"K|7|1|false"),
+    (b"pressButton('A')", b"K|A|1|true"),
+])
+def test_a_non_string_key_name_polls_false_instead_of_erroring(call, expected):
+    """M3, `press`'s `type(name) == "string"` guard. Reachable: indexing the
+    scripted key set with a non-string would not error, but it would let a
+    table-valued argument alias a key name; the guard makes the answer `false`
+    and the event still records what was asked for."""
+    t = probe_raw(b"function main() " + call + b" end", is_source=True,
+                  spec="k=1,A;tail=")
+    assert expected in _lines(t)
+
+
+def test_wait_with_a_nan_or_negative_argument_still_advances_one_frame():
+    """M3, `waitf`'s NaN and `< 1` guards. Reachable: `wait(0/0)` and
+    `wait(-5)` both appear plausible in generated code, and either would
+    freeze or rewind the frame counter, turning a scripted sequence into an
+    unreproducible one."""
+    t = probe_raw(b"""
+function main()
+  pressButton("A") wait(0/0)
+  pressButton("A") wait(-5)
+  pressButton("A")
+end
+""", is_source=True, spec="k=1,A;k=2,A;k=3,A;tail=")
+    got = [l for l in _lines(t) if l.startswith(b"K|")]
+    assert got == [b"K|A|1|true", b"K|A|2|true", b"K|A|3|true"]
 
 
 def test_the_ledger_field_never_carries_corpus_content():
@@ -681,20 +1031,41 @@ def test_corpus_l2_verdicts_are_what_is_pinned(l2_results):
 
 
 def test_corpus_l2_reach_is_not_vacuous(l2_results):
-    """The gate must not be passing because the sequences drove nothing.
+    """The gate must not be passing because the sequences drove nothing, and
+    it must not be passing because it refuses everything either.
 
-    Floors are deliberately well under the measurement (2026-08-12:
-    snr_lib 0.9474, snr_music 0.7235, snr_graphic 0.5349, snr_memory 0.5110,
-    snr_common 0.2052) so ordinary drift does not fail them, but a collapse of
-    the instrument does. `snr_common.lua`'s badge is low for a real reason and
-    not a defect: its denominator is all 10,332 blocks of a 20k-line file, and
-    three sequences driving two menu functions cannot reach the story code.
+    Measured 2026-08-12, after the static backstop landed: **one of the five
+    authored files is granted** (`snr_lib.lua`, 3/3 protos entered, block
+    coverage in [0.39, 0.95] of 57 blocks). The other four all carry
+    `blind-compare` sites and are refused whole-file. That is the honest
+    reach, and it is much smaller than the reach before the backstop -- when
+    all five were granted and four of them should not have been.
     """
     assert set(l2_results) == set(KEY_SEQUENCES)
-    for name, r in l2_results.items():
-        assert r.granted, f"{name}: {r.reason} ({r.detail})"
-        assert r.cov > 0.15, f"{name} reaches only {r.cov:.1%} of its blocks"
-    assert max(r.cov for r in l2_results.values()) > 0.8
+    granted = {n: r for n, r in l2_results.items() if r.granted}
+    assert granted, "every authored file refuses -- the gate proves nothing"
+    for name, r in granted.items():
+        assert r.cov > 0.5, f"{name} entered only {r.cov:.1%} of its protos"
+    refused = {n: r.reason for n, r in l2_results.items() if not r.granted}
+    assert set(refused.values()) <= {"taint-static"}, refused
+
+
+def test_what_the_l2_badge_actually_exercises(l2_results):
+    """Reported as a number rather than left to be inferred. The badge covers
+    `snr_lib.lua` only: 3 proto occurrences of 1944, and all three ship
+    STRUCTURED text (`snr_lib.lua` is one of the 216 fully-structured files).
+
+    So L2 currently validates the structured emitter on one file, and says
+    nothing at all about the fallback state machine -- the four refused files
+    are exactly the ones that ship fallback or hybrid.
+    """
+    rows = [json.loads(l) for l in LEDGER.read_text().splitlines() if l.strip()]
+    badged = [o for r in rows for o in r["occurrences"]
+              if o.get("l2") and "cov" in o["l2"]]
+    assert {o["file"] for o in badged} == {n for n, r in l2_results.items()
+                                           if r.granted} == {"snr_lib.lua"}
+    assert len(badged) == 3
+    assert {o["shipped"] for o in badged} == {"structured"}
 
 
 def test_the_sequences_actually_drive_the_corpus_loops(corpus_dir):

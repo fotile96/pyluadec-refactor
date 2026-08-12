@@ -1505,26 +1505,39 @@ coverage caveats: `docs/runbooks/structured-pipeline.md`, "The L2 gate".
 of 229 files mid-loop … getting past that ceiling wants a key-sequence-driven
 harness" is right that the cap binds on 132 files and right that key sequences
 are the lever for input-blocked ones — but the two sets barely overlap.
-Measured 2026-08-12 over all 229 files on the original side, **exactly five
-reach a `pressButton` poll at all**: `snr_common` (2557 poll events of 3001),
-`snr_graphic` (2606), `snr_lib` (2243), `snr_memory` (2608), `snr_music`
-(2502). The other 127 capped files are linear story scripts truncated by sheer
-`vms()` volume; no key sequence moves them. So the harness lifts the ceiling
-for 5 files, not 132 — and for the other 224 there is no input loop for a
-sequence to drive, which is a stronger statement than "not yet authored".
+Measured 2026-08-12, taking each capped file's most frequent recorded call
+over the whole trace: **101 are `vms`-dominated** (linear story scripts
+truncated by volume), **26 are `wait`-dominated** (24 of them containing
+`doScriptScene`, i.e. spinning in a dispatch loop), and only **5 are
+`pressButton`-dominated**. Nine files contain `pressButton` at all; five reach
+the poll, and the other four (`snr_mainmenu`, `snr_novel`,
+`snr_fragment_main`, `snr_story_main`) error before getting there under the
+frozen stub policy — a live M6 lead rather than dead ground.
 
-All five are granted: `snr_lib` L2@95%, `snr_music` L2@72%, `snr_graphic`
-L2@53%, `snr_memory` L2@51%, `snr_common` L2@21%. `snr_lib.lua` is the clean
-demonstration — the same file that runs to `CAP|3001` with 2243 polls under
-its deliberately-undriven third sequence finishes at `OK|28` under its
-driven one.
+**Reach delivered: one file.** `snr_lib.lua` at L2@100% (3/3 protos entered,
+block coverage in [0.39, 0.95] of 57). The other four authored files are
+refused `taint-static`. In the committed ledger that is 2 rows / 3 proto
+occurrences badged and 164 occurrences carrying an explicit refusal.
+
+**The reason reach is one and not five** is the round-1 Critical: runtime
+taint marking is structurally blind to `stub == "literal"`, because `lvm.c`'s
+`equalobj` checks `ttype(o1) == ttype(o2)` before ever consulting `__eq`.
+Twelve laundering routes were measured granted with zero marks, and the idiom
+is the corpus' dominant one (`doScriptScene == "<literal>"`, 310 sites across
+20 files). A static stub-taint analysis over the original lifted bytecode now
+refuses them. It is path-insensitive, so a single site anywhere in a file
+refuses the whole file — conservative on purpose.
 
 **What is still open after this.** The two historical checkpoints from
-`DEBUG_KEY_SEQUENCE_HARNESS.md` are *runnable* (their sequences are authored
-and granted: `entry=systemOption.OptionMain`, `entry=systemConfig.ConfigMain`)
-but what they ASSERT — the `OptionMain` double-clamp and the `ConfigMain`
-CIRCLE gate/wait — is M5 task 10. Corpus-wide L2 remains out of reach for the
-reason above, not for want of authoring effort.
+`DEBUG_KEY_SEQUENCE_HARNESS.md` are *runnable* (their sequences are authored:
+`entry=systemOption.OptionMain`, `entry=systemConfig.ConfigMain`) but
+`snr_common.lua` refuses on `taint-static`, so they carry no badge; what they
+ASSERT is M5 task 10 either way. Making the static analysis path-sensitive
+(only refusing on sites the sequences actually reach) is the obvious lever for
+reach and needs proto correspondence between original and artifact that the
+fallback files do not have. The three named gaps in the analysis — call
+arguments, script-table round trips, aliased launderers — are each a committed
+failing-by-construction test in `tests/test_l2_keyseq.py`.
 
 ## 7. Extract `express/names.py::_stack_discipline`
 

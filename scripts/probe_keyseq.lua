@@ -13,7 +13,11 @@
 --     snr_common 2557, snr_graphic 2606, snr_lib 2243, snr_memory 2608,
 --     snr_music 2502 pressButton call events out of 3001.
 -- A scripted sequence walks the loop instead: `snr_lib.lua` goes from
--- `CAP|3001` (2243 of them polls) to `OK|40`, i.e. it runs to completion.
+-- `CAP|3001` (2243 of them polls) to `OK|28` under its DOWN/DOWN/CIRCLE
+-- sequence and `OK|236` under its UP/four-DOWN/CIRCLE one -- i.e. it runs to
+-- completion. (An earlier version of this comment said `OK|40`; no sequence
+-- this file ships produces 40, and the figure was never re-measured after the
+-- sequences were chosen.)
 --
 -- WHAT IS INHERITED FROM `probe_behaviour.lua`, UNCHANGED AND ON PURPOSE:
 -- the event-count budget with an instruction backstop (an instruction budget
@@ -88,6 +92,13 @@ local MAX_EVENTS = 3000          -- the real budget
 local HOOK_STEP = 1000000        -- debug hook granularity, VM instructions
 local INSN_BACKSTOP = 400000000  -- backstop only; see probe_behaviour.lua
 
+-- The COVERAGE run's backstop, in LINE events rather than VM instructions.
+-- `INSN_BACKSTOP` is structurally unreachable there and this replaces it; see
+-- the `want_cov` hook below for the measurement and the lvm.c/ldo.c reason.
+-- 20,000,000 line events is ~26x the heaviest measured coverage run
+-- (snr_graphic, 749,049) and costs ~1s of hook if it is ever reached.
+local LINE_BACKSTOP = 20000000
+
 -- TEST-ONLY override, read once here (before the os.getenv determinism
 -- override further down replaces the global -- this reads the REAL one). Same
 -- contract as `probe_behaviour.lua`'s: production runs never set it, and
@@ -96,6 +107,8 @@ local INSN_BACKSTOP = 400000000  -- backstop only; see probe_behaviour.lua
 -- unconditional 400000000.
 local backstop_override = os.getenv("PYLUADEC_PROBE_INSN_BACKSTOP")
 if backstop_override then INSN_BACKSTOP = tonumber(backstop_override) end
+local line_override = os.getenv("PYLUADEC_PROBE_LINE_BACKSTOP")
+if line_override then LINE_BACKSTOP = tonumber(line_override) end
 
 local target, spec = ...
 
@@ -136,9 +149,12 @@ local function idof(v)
 end
 
 -- One event is one line, so a byte that would break that (or the "|" field
--- separator) is escaped. Strings from this corpus are Japanese game text and
--- are frequently not UTF-8; they are passed through byte-for-byte otherwise,
--- never decoded or normalised.
+-- separator) is escaped. Strings from this corpus are Japanese game text; they
+-- are passed through byte-for-byte, never decoded or normalised. (An earlier
+-- version of this comment said they are "frequently not UTF-8". CLAUDE.md
+-- records that as measured-FALSE: 49063 string constants, 17411 non-ASCII,
+-- **0** non-UTF-8. The reason nothing here decodes is the red line itself, not
+-- an encoding fact.)
 local function esc(s)
   if not (sfind(s, "\\", 1, true) or sfind(s, "\n", 1, true)
           or sfind(s, "\r", 1, true) or sfind(s, "|", 1, true)) then
@@ -282,6 +298,10 @@ local stopped = nil   -- nil | "CAP" | "INSN"
 -- sorted after the events so both sides' taint is compared too.
 local taint, ntaint = {}, 0
 local cov_ours, cov_seen = {}, {}
+-- Proto-level coverage: keyed on (linedefined, lastlinedefined) so two
+-- CLOSURES of the same proto count once. See the `want_cov` hook.
+local cov_protos, n_cov_protos = {}, 0
+local n_lines = 0
 local tsource = nil
 
 local function flush_and_exit()
@@ -299,6 +319,8 @@ local function flush_and_exit()
     for i = 1, nls do ls[i] = "" .. ls[i] end
     n = n + 1
     out[n] = "COV|" .. tconcat(ls, ",")
+    n = n + 1
+    out[n] = "COVF|" .. n_cov_protos
   end
   iowrite(tconcat(out, "\n"), "\n")
   osexit(0)
@@ -572,39 +594,64 @@ tsource = getinfo(f, "S").source
 local hook_calls = 0
 local hook
 if want_cov then
-  -- Coverage collection. `cov_seen[line]` is a first-sight classification:
-  -- `true` when the line belongs to the target's chunk, `false` when it
-  -- belongs to this probe (the recorder and the proxy metamethods run
-  -- interleaved with the target). Classifying once per DISTINCT line rather
-  -- than on every line event is what makes this affordable -- measured
-  -- 2026-08-12 on 6,000,004 line events: 0.31s cached vs 2.39s with a
-  -- `getinfo` every time.
+  -- Coverage collection, two measurements in one hook.
   --
-  -- The residual error is one-directional: if a line NUMBER is first seen
-  -- from this probe's own source, the target's line with that number is
-  -- classified foreign for the rest of the run and never counted. Coverage
-  -- can therefore be UNDER-reported, never over-reported by this mechanism.
-  -- `tests/test_l2_keyseq.py::test_coverage_line_classification_only_ever_
-  -- undercounts` builds the collision and pins the direction.
+  -- PROTO coverage ("call" events) is what the ledger badge is made of, and
+  -- it is deliberately NOT line-based: `linedefined`/`lastlinedefined` are
+  -- only a de-duplication key here (two CLOSUREs of one proto must count
+  -- once), and the number reported is a COUNT of distinct protos entered.
+  -- Nothing about it moves when the emitter changes where newlines go, which
+  -- is the property `corpus/ledger.jsonl` needs -- see `coverage` in
+  -- `scripts/probe_keyseq.py`.
+  --
+  -- LINE coverage ("line" events) drives the block-level DIAGNOSTIC only.
+  -- `cov_seen[line]` is a first-sight classification: `true` when the line
+  -- belongs to the target's chunk, `false` when it belongs to this probe (the
+  -- recorder and the proxy metamethods run interleaved with the target).
+  -- Classifying once per DISTINCT line rather than on every line event is what
+  -- makes it affordable -- measured 2026-08-12 on 6,000,004 line events: 0.31s
+  -- cached vs 2.39s with a `getinfo` every time. The caller prepends
+  -- `LINE_SHIFT` blank lines so a probe line number can never collide with a
+  -- target one.
+  --
+  -- `INSN_BACKSTOP` IS NOT REACHABLE HERE, and this is measured, not assumed.
+  -- With `LUA_MASKLINE` set, `lvm.c::traceexec` fires the count hook only when
+  -- `L->hookcount` is exactly 0 at its own entry -- but the line hook's own
+  -- Lua body runs with `L->allowhook == 0` (ldo.c::luaD_callhook), where
+  -- `traceexec` still calls `resethookcount` while `luaD_callhook` silently
+  -- does nothing. With a hook body executing on most instructions the
+  -- zero-crossing almost always lands inside it. Measured on this VM,
+  -- 3,000,003 line events: mask "" -> 6 count events, mask "l" -> **0**, mask
+  -- "lc" -> 0. So the backstop here is a LINE-event budget instead, which is
+  -- a genuine bound (every line event is at least one VM instruction) and is
+  -- pinned by `test_the_coverage_run_has_a_working_backstop`.
   hook = function(evt, ln)
-    if evt == "line" then
-      local s = cov_seen[ln]
-      if s == nil then
-        local info = getinfo(2, "S")
-        s = (info ~= nil and info.source == tsource)
-        cov_seen[ln] = s
+    if evt == "call" then
+      local info = getinfo(2, "S")
+      if info ~= nil and info.source == tsource then
+        local k = info.linedefined .. ":" .. info.lastlinedefined
+        if cov_protos[k] == nil then
+          cov_protos[k] = true
+          n_cov_protos = n_cov_protos + 1
+        end
       end
-      if s then cov_ours[ln] = true end
       return
     end
     if stopped then flush_and_exit() end
-    hook_calls = hook_calls + 1
-    if hook_calls * HOOK_STEP >= INSN_BACKSTOP then
+    n_lines = n_lines + 1
+    if n_lines >= LINE_BACKSTOP then
       stopped = "INSN"
       error("__PLD_INSN__", 0)
     end
+    local s = cov_seen[ln]
+    if s == nil then
+      local info = getinfo(2, "S")
+      s = (info ~= nil and info.source == tsource)
+      cov_seen[ln] = s
+    end
+    if s then cov_ours[ln] = true end
   end
-  sethook(hook, "l", HOOK_STEP)
+  sethook(hook, "lc")
 else
   hook = function()
     -- See probe_behaviour.lua's flush_and_exit comment: a previous raise was

@@ -99,6 +99,7 @@ def main() -> int:
                          if o.get("l2") and "refused" in o["l2"])
     l2_files = {o["file"] for o in occs if o.get("l2")}
     l2_files_granted = {o["file"] for o in l2_occs}
+    l2_by_file = {o["file"]: o["l2"]["cov"] for o in l2_occs}
 
     l3 = levels.get("L3", 0)
     # Occurrence basis as well as unique-shape basis: the ledger dedups by
@@ -127,11 +128,16 @@ def main() -> int:
                             f"({len(l2_rows) / len(entries):.1%})"),
         ("L2 share (occurrences)", f"{len(l2_occs)}/{n_occ} "
                                    f"({len(l2_occs) / n_occ:.1%})"),
-        *([("L2 badge, min/median/max",
+        # Per FILE, not per row. A row-basis median is dominated by whichever
+        # driven file happens to have the most protos -- with the M5 task 9
+        # sequence set that was snr_common, 147 of 161 badged rows, so the
+        # panel printed its badge as both the min and the median of a
+        # five-file population. Files are the population `l2` is measured over.
+        *([("L2 badge per file, min/median/max",
             "L2@{:.0%} / L2@{:.0%} / L2@{:.0%}".format(
-                min(e["l2"]["cov"] for e in l2_rows),
-                sorted(e["l2"]["cov"] for e in l2_rows)[len(l2_rows) // 2],
-                max(e["l2"]["cov"] for e in l2_rows)))] if l2_rows else []),
+                min(l2_by_file.values()),
+                sorted(l2_by_file.values())[len(l2_by_file) // 2],
+                max(l2_by_file.values())))] if l2_by_file else []),
         *[(f"L2 refused: {k}", v) for k, v in l2_refused.most_common()],
         # `(kv[0] is None, kv[0])`, not `kv[0]`: an `L3` row is supposed to
         # carry a rung, but if one ever did not, plain `sorted` would raise
