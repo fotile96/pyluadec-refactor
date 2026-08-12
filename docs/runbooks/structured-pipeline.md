@@ -1671,7 +1671,8 @@ tripwire. Both gaps are the same gap, and this closes it: floors catch
 catastrophes without churning, the baseline diff catches the one-row
 regression that stays inside them.
 
-**Non-vacuity.** `tests/test_ratchet_diff.py` (37 tests) feeds hand-mutated
+**Non-vacuity.** `tests/test_ratchet_diff.py` (43 tests: 37 at M5 task 8's close, plus 6 that
+task 9 added for the `l2-lost` and `l2-coverage-downgrade` kinds) feeds hand-mutated
 copies of the real committed ledger, one named case per failure mode, and
 asserts a non-zero exit that names the offending row. Verified by mutation
 three times, and **the mutation pass found something it had missed on each of
@@ -1881,7 +1882,7 @@ fixture, and pinning one inside `pytest` would either freeze it at one
 milestone or re-derive it from `git` on every run. The check lives in
 `scripts/ratchet_job.sh`, which is run at a wrap and before any merge that
 touches the ledger. What the suite gained is the guarantee that the instrument
-works: `tests/test_ratchet_diff.py` (37 tests, no corpus needed) is the
+works: `tests/test_ratchet_diff.py` (43 tests, no corpus needed) is the
 non-vacuity proof.
 
 ### The ledger's grouping key — pinned, not split (M5 task 8)

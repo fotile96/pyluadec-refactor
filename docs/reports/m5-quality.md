@@ -271,8 +271,9 @@ What *is* green is the pair of checkpoints themselves:
 `tests/test_keyseq_checkpoints.py` drives `snr_common.lua` under scripted key
 sequences and asserts the two historical bug properties (the `OptionMain`
 double clamp, the `ConfigMain` CIRCLE gate/wait) **on the original's trace as
-well as ours**, with seven parametrised both-sides injections proving the
-assertions fire. Those tests do not need the L2 badge and do not claim it; the
+well as ours**, with **10** parametrised both-sides injections proving the
+assertions fire (re-counted 2026-08-13; task 10's report said seven, its
+round-0 figure). Those tests do not need the L2 badge and do not claim it; the
 badge would have added a coverage measurement, not the property.
 
 ---

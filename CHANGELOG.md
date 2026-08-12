@@ -49,7 +49,9 @@
   silently naming innocent commits; and the documented predicate skipped
   exactly the loudest regression class it exists for. Both fixed and both
   demonstrated by running a real bisect against an injected **compile**
-  regression. `tests/test_ratchet_diff.py` (37 cases, no corpus needed) exists
+  regression. `tests/test_ratchet_diff.py` (**43** cases, no corpus needed —
+  37 at task 8's close, plus 6 that task 9 added for the `l2-lost` and
+  `l2-coverage-downgrade` kinds) exists
   solely to prove the tool can fail.
 - **L2 differential certification is online, and its measured reach is one
   file.** Key-sequence driving under a stubbed environment, proto-level
@@ -70,8 +72,9 @@
 - **The two historical key-sequence checkpoints are regression tests.**
   `tests/test_keyseq_checkpoints.py` drives `snr_common.lua` and asserts the
   `OptionMain` double clamp and the `ConfigMain` CIRCLE gate/wait **on the
-  original bytecode's trace as well as ours**, with seven parametrised
-  both-sides injections proving each assertion fires. Two things worth
+  original bytecode's trace as well as ours**, with **10** parametrised
+  both-sides injections proving each assertion fires (re-counted 2026-08-13;
+  task 10's own report says seven, which was its round-0 figure). Two things worth
   recording: a menu option's *value* is invisible to the probe, so the property
   is expressed through the `layerClip` rectangle the redraw produces and no
   menu row is ever named (the bytes red line, navigated rather than dodged);

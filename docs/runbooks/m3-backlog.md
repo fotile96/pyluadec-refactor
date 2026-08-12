@@ -1358,7 +1358,9 @@ diff → git aborts). The internal-error case matters on its own: an uncaught
 reported as a tree verdict.
 
 Non-vacuity is the deliverable and was treated as one. `tests/test_ratchet_diff.py`
-is 37 tests, one named case per failure mode plus the CLI contract, each
+is **43** tests (37 at this task's close; M5 task 9 added 6 more for the
+`l2-lost` and `l2-coverage-downgrade` kinds — re-counted 2026-08-13),
+one named case per failure mode plus the CLI contract, each
 feeding a hand-mutated copy of the real committed ledger and asserting a
 non-zero exit **naming the row**. The standing claim is that neutering any one
 check turns at least one named case red and only cases belonging to that
