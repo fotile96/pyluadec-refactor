@@ -507,15 +507,30 @@ def test_while_header_refusal_is_a_reconstructor_scope_defect_not_a_while_defect
     set outside the `open_scope`/`close_scope` block model, so every later
     write to that slot is treated as a reassignment.
 
-    Measured: dropping the `declared` gate makes the header stage cleanly and
-    the refusal disappear -- and the proto STILL does not reach `L3`, it
-    lands on `mismatch: maxstacksize`. So this cluster is a symptom of the
-    same live-range/scope modelling the three `register N is read again after
-    its staged value was consumed` leaves belong to, and closing it would move
-    the proto between residual clusters rather than to `L3`.
+    Measured at the time: dropping the `declared` gate makes the header stage
+    cleanly and the refusal disappear -- and the proto STILL did not reach
+    `L3`, it landed on `mismatch: maxstacksize`.
+
+    ## CLOSED by M5 task 5 (2026-08-12), and not by touching that gate
+
+    `snr_novel.lua:main_13` now certifies `L3`. Bisected across task 5's three
+    commits, the one that released it is cluster 2 (the generic-`for` iterator
+    staging), not cluster 1 (the `for`-slot windows) and not any change to
+    `write_reg`. The chain: what put register 1 into `declared` in the first
+    place is the `CALL 0 2 4` at pc 26, which stages the iterator triple for
+    the `TFORLOOP` at pc 35 and which `_emit_multi` used to materialize as
+    `local l1_0, l1_1, l1_2 = ...`. With that staged instead, register 1 is
+    never declared and the `declared` gate never fires on the header at all.
+
+    So the diagnosis above was right about the mechanism and right that the
+    two `While` fixes proposed for it were wrong, and the fix came from a
+    third place neither of them named. The gate itself is unchanged and this
+    test still pins its presence, because the diagnosis is what has value
+    here -- the same gate is still the reason the three `register N is read
+    again after its staged value was consumed` leaves materialize.
 
     Kept as a pure documentation test (no corpus access): it asserts the two
-    facts the paragraph above rests on that are checkable without the corpus.
+    facts the paragraphs above rest on that are checkable without the corpus.
     """
     # `while <cond>` with operand code in the header stages, does not
     # materialise, when the register has not been declared earlier.

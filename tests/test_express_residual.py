@@ -310,3 +310,53 @@ def test_an_eq_is_never_flipped():
     proto, cert = _certify(b'local x = 1 if 5 == x then print("a") end')
     assert cert.level == "L3", cert.reason
     assert "if 5 == l0_0 then" in print_chunk(proto), print_chunk(proto)
+
+
+# ---------------------------------------------------------------------------
+# The residual, pinned with its diagnosis rather than fixed.
+
+def test_a_multiple_assignment_prints_as_separate_statements():
+    """`snr_common.lua:main_77_0` -- the smallest residual proto in the corpus
+    (5 instructions), and NOT what the M4 final review recorded.
+
+    That review called it "a genuine upvalue-index divergence". The index
+    divergence is real but it is the symptom; the mechanism is a **multiple
+    assignment**. Measured this session by reverse-engineering the source and
+    recompiling it: `u0, u1 = 1, 0` reproduces the original proto exactly
+    (`compare_protos(..., level=1) == []`, asserted below).
+
+    `lparser.c`'s `assignment` (:1052-1090) resolves every left-hand variable,
+    left to right, BEFORE `explist1` evaluates the right-hand side, and then
+    stores them in REVERSE order as its own recursion unwinds. So `u0` becomes
+    upvalue 0 and `u1` upvalue 1 (`singlevar` -> `indexupvalue` appends in
+    order of first lexical reference), while the two `SETUPVAL`s come out
+    `u1` first:
+
+        LOADK 0 K(1)   LOADK 1 K(0)   SETUPVAL 1 -> upval 1   SETUPVAL 0 -> upval 0
+
+    Printing that as three separate statements -- which is what `Reconstructor`
+    does, one statement per instruction -- makes `u1` the first upvalue
+    *referenced*, so the recompiled closure numbers the upvalues the other way
+    round and the two `SETUPVAL` operands swap.
+
+    Not fixed, and deliberately: recognising this needs lookahead over an
+    emitted-statement run (a descending run of stores immediately after a
+    matching run of value producers), which is a peephole over this layer's
+    own output -- the shape this project exists to avoid -- and the whole
+    229-file corpus contains **exactly one** instance of the signature
+    (measured this session: one descending `SETUPVAL`/`SETGLOBAL` run of
+    length >= 2, in this proto). Recorded here so the next census inherits the
+    diagnosis instead of re-deriving it.
+    """
+    src = b"local u0, u1\nreturn function()\nu0, u1 = 1, 0\nend\n"
+    original = load_bytes(compile_source(src, strip=True)).subprotos[0]
+    # The reverse-engineered source really is this proto, bit for bit.
+    from pyluadec.verify.normalize import compare_protos
+    from pyluadec.emit.lua import _print_proto_body
+    body = _print_proto_body(original, depth=1, upval_names=("u0", "u1"))
+    wrapper = f"local u0, u1\nreturn function()\n{body}end\n".encode()
+    candidate = load_bytes(compile_source(wrapper, strip=True)).subprotos[0]
+    diffs = compare_protos(original, candidate, level=1)
+    assert [d.field for d in diffs] == ["code"], diffs
+    # ... and what we print instead is the three-statement form.
+    assert body.splitlines() == ["local l1_0 = 1", "u1 = 0", "u0 = l1_0"], body

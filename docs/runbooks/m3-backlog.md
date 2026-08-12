@@ -407,8 +407,9 @@ entry is about went from 253 to 4. The 35 that remain are broken down by
 opcode-histogram delta AND by first differing field in
 `structured-pipeline.md` -> "Current capability boundary" point 3; the two
 decompositions agree exactly. The constant-pool-order sub-case below was
-re-measured at 10 (from 9) and the rung declined again — M5 agenda item 4.
-Original entry follows.*
+re-measured at 10 (from 9) and the rung declined again — M5 agenda item 4,
+which M5 task 5 then CLOSED at 0 by fixing the defect that produced the
+population (see item 4 below). Original entry follows.*
 
 These print fine and recompile to a *different* proto. All 58 differ on `code`;
 24 also on `maxstacksize`, 11 on `constants.len`, 11 on an individual constant.
@@ -1308,13 +1309,29 @@ certify" residual) and `test_if_and_elseif_conjunctions_preserved` (the
 both assertions in those two tests go stale on purpose, which is the signal
 to update them.
 
-## 4. The `L3.2 = canonical constant-pool order` rung: declined twice, decide or drop
+## 4. The `L3.2 = canonical constant-pool order` rung: CLOSED at 0 (M5 task 5)
 
-M3 measured 9 protos that differ from the original ONLY by constant-pool
-order; M4 task 6 re-measured **10** against a bar of ≥20 and declined again.
-Buying 10 rows costs a permanent widening of the certification gate — rung 2
-would have to argue that permuting a pool is meaning-preserving, and every
-future certification would then run under that admission. The full
+*Closed 2026-08-12. Do not re-open or re-measure. Original entry after the
+verdict.*
+
+**Verdict: the population is 0 and the rung is decided-not-doing.** M5 task 5
+found that every proto that had ever been in this population was one defect,
+not a normalization problem: `codecomp` (lcode.c:673-686) compiles `a > b` by
+evaluating `a` then `b` and then exchanging the operands to emit `OP_LT`, and
+`luaK_infix` interns `e1` before `e2` is parsed — so printing every `LT` as
+`<` reversed the interning order of the two operands' constants.
+`Reconstructor._reads_as_gt` recovers the `>`, and the re-measurement after
+it (same exact method) returns **0 of the 48 remaining non-`L3` protos**.
+`NORMALIZATIONS` and `LADDER_VERSION` were never touched. Full account:
+`structured-pipeline.md` → "The `L3.2 = canonical constant-pool order` rung:
+CLOSED, decided-not-doing".
+
+*Original entry:* M3 measured 9 protos that differ from the original ONLY by
+constant-pool order; M4 task 6 re-measured **10** against a bar of ≥20 and
+declined again. (M5 task 5 re-measured **11** at its start, before its
+fixes.) Buying 10 rows costs a permanent widening of the certification gate —
+rung 2 would have to argue that permuting a pool is meaning-preserving, and
+every future certification would then run under that admission. The full
 measurement method (exact, not a proxy) is in `structured-pipeline.md`. Either
 argue the rung properly or close this item; it has been re-measured twice at
 essentially the same number and re-deciding it a third time is waste.
