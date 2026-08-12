@@ -88,7 +88,8 @@ from pyluadec.sir.build import StructureError, build_sir
 # the `f"{path}_{i}"` proto-path convention (`docs/runbooks/m3-backlog.md`
 # section 14) -- a third instance of "the neutral home doesn't exist yet"
 # does not get its own answer; it is recorded there rather than invented here.
-from pyluadec.structure.fallback import const_lit, inline_function_parts
+from pyluadec.structure.fallback import (const_lit, inline_function_parts,
+                                        str_lit)
 
 # Lua 5.1 operator precedence (higher binds tighter; Lua reference manual
 # §2.5.6). Used to add the minimal necessary parentheses when printing
@@ -195,6 +196,80 @@ def _ident(name: bytes) -> str:
     return s
 
 
+def _str_lit(bs: bytes) -> str:
+    """A string constant as a double-quoted Lua literal, printing readable
+    UTF-8 raw and falling back to `structure.fallback.str_lit`'s decimal
+    escapes for anything else.
+
+    ## The red line, and the amendment this implements
+
+    The standing project rule is that bytecode-derived strings are `bytes` and
+    are never decoded. CLAUDE.md's red-line bullet now scopes that: it binds
+    ingest, lift and the comparison layer absolutely, and allows the PRINTING
+    layer a **decision with a fallback** -- print raw when the bytes are
+    reversible UTF-8, decimal-escape otherwise -- because both spellings
+    compile to the same constant and the certification gate adjudicates that
+    they do. Approved by the human partner 2026-08-12; landed in M5 task 7.
+
+    It is scoped to `emit/`. `structure/fallback.py::str_lit` is unchanged and
+    still escapes everything, which is why a whole-file fallback artifact (and
+    the substituted subtree of a hybrid one) still shows `"\\227\\128\\144"`.
+    Nothing under `ingest`, `lift` or `verify` decodes anything.
+
+    Why it matters here and not in most decompilers: this corpus is a Japanese
+    visual novel's script and the artifact's whole purpose is translation.
+    `"\\227\\128\\144\\231\\155\\180\\229\\147\\137\\227\\128\\145"` against
+    the predecessor's `"【直哉】"` was named the single largest readability
+    gap in `docs/reports/m4-readability.md`.
+
+    ## The gate
+
+    Three conditions, all of which must hold to print raw:
+
+    1. `bs.decode("utf-8")` succeeds (strict: no overlongs, no surrogates,
+       nothing above U+10FFFF).
+    2. Re-encoding gives back exactly `bs`. **This second check is
+       DEFENSIVE**, not a case anyone has produced: Python's strict UTF-8
+       codec is a bijection on the sequences it accepts. Measured 2026-08-12
+       by brute force -- all 18432 decodable 1- and 2-byte sequences and all
+       61440 decodable 3-byte sequences with a lead byte in `E0..F4` re-encode
+       identically, 0 mismatches. Kept because it is the property that makes
+       the raw form provably byte-exact, and because it is one comparison
+       against a rule the whole amendment rests on.
+    3. The string is not pure ASCII. A pure-ASCII string gains nothing from
+       this path and is delegated to `str_lit`, which makes "ASCII output is
+       unchanged by the amendment" a one-line argument rather than a diff.
+
+    What still gets escaped in the raw form: `"` and `\\` (Lua would
+    misparse them), and every byte below 32 plus DEL. `llex.c::read_string`
+    errors on a raw `\\n`/`\\r` inside a string and treats EOZ as unterminated,
+    so those must not appear literally; every other byte, including every
+    multi-byte UTF-8 continuation, is copied verbatim by the lexer. That is
+    also why nothing here needs to worry about U+2028 and friends -- Lua 5.1's
+    lexer is byte-oriented and has no notion of them.
+    """
+    try:
+        s = bs.decode("utf-8")
+    except UnicodeDecodeError:
+        return str_lit(bs)
+    if s.encode("utf-8") != bs or s.isascii():
+        return str_lit(bs)
+    out = ['"']
+    for ch in s:
+        if ch == '"':
+            out.append('\\"')
+        elif ch == "\\":
+            out.append("\\\\")
+        elif ord(ch) < 32 or ord(ch) == 127:
+            # Same fixed three-digit form `str_lit` uses, and for the same
+            # reason: `"\\10" "0"` would otherwise read as `\\100`.
+            out.append("\\%03d" % ord(ch))
+        else:
+            out.append(ch)
+    out.append('"')
+    return "".join(out)
+
+
 def _index(base: str, key: Expr, depth: int, ctx: "Printer | None",
            indent: int) -> str:
     """`base.k` when `key` is a constant string that is a Lua Name, else
@@ -226,6 +301,13 @@ def _expr(e: Expr, depth: int, parent_prec: int, ctx: "Printer | None",
     upvalues and to print nested closures' bodies).
     """
     if isinstance(e, ConstExpr):
+        if isinstance(e.value, bytes):
+            # The presentation path (M5 task 7 change 5). `const_lit` would
+            # route this to `structure.fallback.str_lit`; `_str_lit` prints
+            # reversible UTF-8 raw and delegates to that same function for
+            # everything else, so the fallback emitter's spelling stays the
+            # single escape implementation.
+            return _wrap_if_primary(_str_lit(e.value), parent_prec)
         txt = const_lit(e.value, parenthesize_negative=False)
         if txt.startswith("-"):
             # A negative numeral is, to Lua's grammar, unary minus applied to

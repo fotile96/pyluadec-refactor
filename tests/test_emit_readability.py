@@ -24,6 +24,8 @@ All fixture sources are ASCII except where a test is specifically about
 non-ASCII bytes, and those tests hold their payload as `bytes` and compare
 against `bytes`.
 """
+import pytest
+
 from pyluadec.emit.lua import print_chunk
 from pyluadec.ingest import load_bytes
 from pyluadec.oracle import compile_source, run_bytes
@@ -348,3 +350,132 @@ def test_local_function_sugar_closes_at_its_own_indent():
 def test_indentation_fixtures_certify_l3():
     certifies(INDENT_SRC)
     certifies(LOCALFN_SRC)
+
+
+# --------------------------------------------------------------------------
+# 5. presentation-layer string decode
+# --------------------------------------------------------------------------
+#
+# The one place in this project where a bytecode-derived byte string is
+# decoded. CLAUDE.md's red-line bullet was amended (human partner,
+# 2026-08-12) to scope the no-decode rule to ingest/lift/comparison and allow
+# the PRINTING layer a decision with a fallback. These tests pin both halves:
+# what the decision prints, and what the fallback prints.
+#
+# `UTF8_SRC`'s payloads are held as `bytes` and compared against `bytes` --
+# the test file never assumes a decode succeeded.
+
+_HELLO = "你好".encode()            # U+4F60 U+597D, 6 bytes of UTF-8
+_LONE_CONT = b"\xff\xfe"                    # not UTF-8 in any position
+_TRUNCATED = b"\xe3\x81"                    # first two bytes of a 3-byte char
+
+
+def _lua_escaped(bs: bytes) -> bytes:
+    """`bs` spelled as a Lua source-level decimal-escaped literal body."""
+    return b"".join(b"\\%03d" % c for c in bs)
+
+
+UTF8_SRC = (b'return "' + _lua_escaped(_HELLO) + b'", "'
+            + _lua_escaped(_LONE_CONT) + b'", "' + _lua_escaped(_TRUNCATED)
+            + b'", "' + _lua_escaped(b'a\\"b\nc\x7f') + b'", "ascii"')
+
+
+def test_reversible_utf8_prints_raw_and_everything_else_stays_escaped():
+    out = printed(UTF8_SRC)
+    assert out == (
+        'return "你好", "\\255\\254", "\\227\\129", '
+        '"a\\\\\\"b\\010c\\127", "ascii"\n')
+    # Stated as bytes, since that is what reaches the compiler.
+    assert out.encode() .count(_HELLO) == 1
+
+
+def test_non_utf8_corpus_scan_found_none_so_the_fallback_is_synthetic_here():
+    """**A claim in this task's brief that did not reproduce.**
+
+    The brief and the task prompt both assert that the corpus "genuinely
+    contains non-UTF-8 constants -- the predecessor project crashed on exactly
+    this". Measured 2026-08-12 over all 229 files / 1944 protos: **49063**
+    string constants, **17411** of them non-ASCII, and **0** that fail a
+    strict UTF-8 decode. Re-derive with the loop in this task's report.
+
+    What CLAUDE.md actually records is a property of the predecessor's
+    *bridge* ("非 UTF-8 字符串会抛异常"), which is a statement about that
+    code's fragility, not evidence about this corpus's contents.
+
+    So the escape fallback's evidence is synthetic, by construction, and this
+    test exists to say so rather than to let a green corpus imply coverage it
+    does not have -- MEMORY.md's "the corpus is a weaker oracle than it
+    looks". `_LONE_CONT` and `_TRUNCATED` above are the two distinct ways a
+    byte string fails: an invalid lead byte, and a valid lead byte with the
+    continuation missing.
+    """
+    assert _HELLO.decode("utf-8")           # reversible UTF-8: takes the raw path
+    for bad in (_LONE_CONT, _TRUNCATED):
+        with pytest.raises(UnicodeDecodeError):
+            bad.decode("utf-8")
+
+
+def test_raw_utf8_recompiles_to_the_identical_constant():
+    """The whole justification for the amendment: both spellings compile to
+    the same constant, so certification is indifferent to which is used."""
+    escaped = compile_source(UTF8_SRC, strip=True)
+    raw = compile_source(printed(UTF8_SRC).encode(), strip=True)
+    assert load_bytes(escaped).constants == load_bytes(raw).constants
+    certifies(UTF8_SRC)
+
+
+def test_raw_utf8_output_runs_identically():
+    src = b'print("' + _lua_escaped(_HELLO) + b'")'
+    bc = compile_source(src, strip=True)
+    out = printed(src)
+    a = run_bytes(bc, is_source=False)
+    b = run_bytes(out.encode(), is_source=True)
+    assert (a.returncode, a.stdout, a.stderr) == (b.returncode, b.stdout, b.stderr)
+    assert a.stdout == _HELLO + b"\n"
+
+
+def test_ascii_strings_are_byte_identical_to_the_pre_amendment_spelling():
+    """The raw path is entered only for non-ASCII; a pure-ASCII constant is
+    delegated to `structure.fallback.str_lit` unchanged, so the amendment
+    cannot have moved any ASCII output."""
+    from pyluadec.emit.lua import _str_lit
+    from pyluadec.structure.fallback import str_lit
+    for bs in (b"", b"abc", b'a"b\\c', b"\x01\n\x7f", b"end", bytes(range(128))):
+        assert _str_lit(bs) == str_lit(bs)
+
+
+def test_non_ascii_table_key_keeps_its_brackets():
+    """The fourth way a string key fails `_as_ident` (see change 2): it is not
+    ASCII. Now that such a key is PRINTABLE raw, the bracketed form has to
+    survive -- `t.你好` is not a Lua Name."""
+    src = b'local t = f() t["' + _lua_escaped(_HELLO) + b'"] = 1 return t'
+    out = printed(src)
+    assert ('l0_0["你好"] = 1') in out
+    certifies(src)
+
+
+def test_a_real_corpus_string_prints_raw(corpus_dir, decompiled):
+    """The real-data arm. `snr_crd_10.lua` ships fully structured source and
+    its constants are the visual novel's Japanese script -- exactly the text a
+    translator has to read.
+    """
+    import pathlib
+    from pyluadec.ingest import load_file
+
+    f = pathlib.Path(corpus_dir) / "snr_crd_10.lua"
+    src = decompiled(f).source
+    proto = load_file(f)
+
+    def consts(p):
+        yield from (c for c in p.constants if isinstance(c, bytes))
+        for sp in p.subprotos:
+            yield from consts(sp)
+
+    non_ascii = [c for c in consts(proto) if not c.isascii()]
+    assert len(non_ascii) >= 10, len(non_ascii)
+    # Every one of them decodes, and every one appears RAW in the artifact.
+    for c in non_ascii:
+        c.decode("utf-8")
+        assert c in src, c[:16].hex()
+    # ... and no decimal escape of a non-ASCII byte survives anywhere in it.
+    assert b"\\2" not in src and b"\\1" not in src

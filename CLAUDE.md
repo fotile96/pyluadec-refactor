@@ -68,6 +68,30 @@ cmake --build cmake-build-debug --target lua luac lua51_proto_extractor
 
 `post_process/` 工具链（stage1 重命名 → translation_ir → stage2 锚点 → stage3 overlay → luac 重编译）用**行锚定正则**匹配 emitter 的确切输出风格：`v\d+` 命名、每行一条语句、顶层无缩进、`name = function(...)` 形式（而非 `function name(...)`）、双引号字符串。`rename_semantic_locals.py` 还用 `load_from_source` 做改名前后 proto 结构等价校验。Zndnovel 侧已冻结在 stage3 产物上，重构**不必**字节级复刻旧输出；但若要重新打通全链路，要么保持这个文本表面，要么显式版本化并改造 post_process 的匹配层。
 
+**已选定"显式版本化"这条路，产出即 output surface v2（M5 task 7）。** 那条链路其实**早就不兼容**了——我们的合成局部名是 `l<depth>_<reg>`，两个里程碑前就打断了 `v\d+` 锚点。v2 相对 v1 的五处变化（`elseif`、点语法、`-1`、统一 4 空格缩进含函数体、可逆 UTF-8 原样输出）逐条列在 `docs/runbooks/structured-pipeline.md`「Output surface v2」表里，v1 的怪癖一律不保留。每一处都以 `corpus/ledger.jsonl` **逐次提交字节不变**为证据：这就是"呈现层变更"的定义，动了台账的改动即属于走错了范围。
+
+## 工程红线（跨阶段，改代码前必读）
+
+- **字节码派生字符串一律 `bytes`，不解码。** 常量池里的字符串是日文游戏文本，decode 成
+  `str` 再流进分析层/比对层/诊断文本，正是原项目 bridge 抛异常的老路。诊断文本（
+  `refusal_reason`、confession）**绝不**包含语料内容，只许出现 opcode / pc / 寄存器（见
+  `emit/lua.py::_ident` 的 docstring）。
+  **2026-08-12 经 human partner 批准的作用域修订，M5 task 7 落地**：
+
+  > 字节红线适用于 ingest/lift/比对层；打印层允许做**有回退的呈现判定**（UTF-8 可逆则原样输出，否则十进制转义）——两种写法编译出相同常量，认证门裁决不变性。
+
+  修订**只落在 `emit/`**，实现是唯一的 `emit/lua.py::_str_lit`：strict UTF-8 解码成功、
+  重新编码回原字节、且非纯 ASCII 时原样输出，否则回退到 `structure/fallback.py::str_lit`
+  的十进制转义。`structure/fallback.py` 本身未改（fallback 产物仍全转义），
+  `ingest`/`lift`/`verify` 一个字节都不解码。不得扩大这个口子。
+- **实测更正（2026-08-12）**：语料里**没有**非 UTF-8 字符串常量。229 文件 / 1944 proto /
+  49063 个字符串常量，其中 17411 个非 ASCII，非 UTF-8 的 **0** 个。M4 计划文档里
+  "frequently non-UTF-8 — the predecessor crashed on exactly this" 的说法**没有复现**；
+  CLAUDE.md 记的"非 UTF-8 字符串会抛异常"是对**原项目 bridge**的描述，不是对语料内容的
+  断言。因此转义回退路径的证据全部是合成的（`tests/test_emit_readability.py` 里的
+  `_LONE_CONT` / `_TRUNCATED`），语料绿说明不了它——参见 MEMORY.md「语料是比它看起来更弱
+  的 oracle」。
+
 ## 本仓库现状
 
 Phase 1（M0）已完成：uv 骨架、vendored pristine Lua 5.1.5、序列化宽度补丁（`native/patches/0001-serial-sizet.patch`）、双宽度构建（sz4/sz8）、两条 pybind bridge、header-dispatched `pyluadec.ingest`、只读 golden baseline（`corpus/golden/`）、roundtrip 与 golden-parity 两道校验门，均已跑通并在当前 32 位环境全绿。常用命令：
@@ -218,6 +242,8 @@ Phase 4 已完成。**能力边界与残差普查的权威仍是 `docs/runbooks/
 ### 可读性（与原项目产物对比，`docs/reports/m4-readability.md`）
 
 结构化产物的行数是原项目的 **0.98 倍**（212 个文件全部落在 0.78×–1.03×），`__pld_*` 残留 **0**，212 个文件上 `while`/`break` 的行首计数与原项目**完全相同**（190/190、175/175）。**读得更差的五处（打印器层面）**：非 ASCII 字符串打成十进制转义（这是个日文视觉小说，下游就是翻译——这是最大的一处）、不发 `elseif`（208 个变成嵌套 `if`，最坏 61 层缩进对原项目的 5 层）、字符串键不用点语法（`t["k"]` 对 `t.k`）、函数体不缩进（可能是有意的下游耦合，见「下游耦合」一节）、一元负号打成 `(-1)` 而非 `-1`。外加第六处、结构性的：那 17 个 fallback 文件**按行数占语料的 47.6%**，所以"229 里 212 个"是往好里数的数法。
+
+**这五处打印器层面的差距已由 M5 task 7 全部关闭**（output surface v2，见「下游耦合」与 `docs/runbooks/structured-pipeline.md`）；台账逐次提交字节不变，认证门未做任何放松。第六处（fallback 文件的体量）由 M5 task 6 的 hybrid 发射处理，17 个整文件回退降到 7 个。M4 报告里那个 47.6% 在重测时**没有在任何口径下复现**，别再引用。
 
 ### 仍未做（都在 M5 agenda）
 
