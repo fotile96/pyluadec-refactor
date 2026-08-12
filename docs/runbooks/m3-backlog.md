@@ -1518,7 +1518,7 @@ there rather than caught — recorded in `tests/conftest.py`'s `decompiled`
 docstring, which previously promised the ratchet consumed nothing another test
 computed.
 
-**Round 1 (fix commit `PENDING`)** changed two things and re-measured a third.
+**Round 1 (fix commit `0d3d1b6`)** changed two things and re-measured a third.
 The oracle component of the key was `oracle_version()` memoized into a module
 global, which is constant for the life of a process and therefore could not
 partition the cache in any real scenario: the review demonstrated a warm cache
