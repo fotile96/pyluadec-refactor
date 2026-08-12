@@ -22,7 +22,17 @@ cd "$(dirname "$0")/.."
 # branch's fork point. Override with any ref that has a corpus/ledger.jsonl
 # (e.g. bbe74f6, the M3 tip, for a two-milestone diff).
 BASELINE_REF="${1:-eb08890}"
-BASELINE_FILE="$(mktemp -t pyluadec-ledger-baseline)"
+# Portability, not style (M5 task 8 round 1). `mktemp -t NAME` is the BSD
+# spelling and works on macOS, but GNU coreutils treats -t's argument as a
+# TEMPLATE and rejects one without trailing X's: src/mktemp.c does
+# `x_count = count_consecutive_X_s(...); if (x_count < 3) error(EXIT_FAILURE,
+# 0, _("too few X's in template %s"))`, and -t only sets `use_dest_dir`, so it
+# does not bypass that check (read from upstream coreutils master this
+# session; NOT run -- no GNU userland was available on this host). Under
+# `set -e` the job would have died on this line on Linux, i.e. on the
+# project's documented primary environment. A positional template with six X's
+# is the one spelling both accept, and it was run on macOS here.
+BASELINE_FILE="$(mktemp "${TMPDIR:-/tmp}/pyluadec-ledger-baseline.XXXXXX")"
 trap 'rm -f "$BASELINE_FILE"' EXIT
 
 echo "== gate 1: full test suite (includes the ledger fixed point) =="

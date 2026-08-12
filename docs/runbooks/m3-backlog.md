@@ -1299,27 +1299,51 @@ All three parts landed. Authority for the details is
 baseline", "The `git bisect run` predicate", "CI: there is none", and "The
 ledger's grouping key — pinned, not split".
 
-**1. `scripts/ratchet_diff.py OLD NEW`.** Exits 1 on six regressions — level
+**1. `scripts/ratchet_diff.py OLD NEW`.** Exits 1 on seven regressions — level
 downgrade, rung downgrade (a *higher* `l3_level` is a *weaker* proof), removed
-row, an `L3` row carrying a `refusal_reason`, a per-occurrence `shipped` going
-`structured` → `fallback`, and a row arriving at `L0` — printing the offending
-rows grouped by `refusal_reason` cluster. 0 on upgrades, added rows and
-schema-only differences; 2, never 1, on an unreadable input (bisect reads 1 as
-"bad"). Two real diffs at the M5 task-8 commit: `eb08890` → HEAD is **41
+row, an occurrence no longer walked while its row survives, an `L3` row
+carrying a `refusal_reason`, a per-occurrence `shipped` going `structured` →
+`fallback`, and a row arriving at `L0` — printing the offending rows grouped by
+`refusal_reason` cluster. 0 on upgrades, added rows and fields the *baseline*
+lacks. Two real diffs at the M5 task-8 commit: `eb08890` → HEAD is **41
 upgraded, 0 downgraded** (L3 1389 → 1430); `bbe74f6` → HEAD is **318 upgraded,
 0 downgraded** (1112 → 1430).
 
+**Exit codes, corrected in round 1.** This entry previously said "2, never 1,
+on an unreadable input (bisect reads 1 as 'bad')". That protection did not
+exist: `git-bisect(1)` reads **every** code in 1..127 except 125 as bad, so 2
+was a verdict too, and a mistyped predicate would have converged silently on an
+innocent commit (measured on a scratch repo — `git bisect run` with an
+unconditional `exit 2` announced a first bad commit). The non-verdict codes are
+now **125** (this tree cannot be judged: the ledger under test is missing,
+malformed, or has duplicate `shash` rows → git skips) and **128** (the
+instrument is misconfigured: usage, a bad baseline, or an internal error in the
+diff → git aborts). The internal-error case matters on its own: an uncaught
+`KeyError` used to escape `main` and become exit 1, i.e. an instrument fault
+reported as a tree verdict.
+
 Non-vacuity is the deliverable and was treated as one. `tests/test_ratchet_diff.py`
-is 16 tests, one per failure mode, each feeding a hand-mutated copy of the real
-committed ledger and asserting a non-zero exit **naming the row**; and each of
-the seven checks was individually neutered, with exactly its own test(s) going
-red (level-downgrade takes 3 tests with it, the other six take 1 each).
+is 25 tests, one per failure mode plus the CLI contract, each feeding a
+hand-mutated copy of the real committed ledger and asserting a non-zero exit
+**naming the row**; every check was individually neutered with exactly its own
+test(s) going red. Round 1's mutation pass found one vacuity in its own new
+tests — they were written against the exit-code *symbols*, so reverting both
+constants to 2 left all 24 green — and pinned the literal integers.
 
 The `git bisect run` predicate was **verified by running a bisect**, not
-described: a scratch branch with four commits, one of which injects an early
-`StructureError` into `sir/build.py`, was bisected against this commit's ledger
-as baseline; it found the injecting commit in 20.1s / 2 probes and reported 681
-clustered regressions. Scratch branch deleted.
+described. Round 1 rewrote it: the original `run_corpus.py … || exit 125`
+mapped a **compile regression** to *skip*, because `run_corpus.py` returns 1
+when a file fails to compile *after* writing a ledger full of `L0` rows — so
+the loudest regression class the ratchet exists for was unbisectable, and the
+original verification (an injected `StructureError`, which falls back and still
+compiles) never touched that path. The predicate now asks whether a ledger was
+produced (`rm -f corpus/ledger.jsonl` … `test -s corpus/ledger.jsonl || exit
+125`) rather than what `run_corpus.py` returned, and was re-verified against an
+injected compile regression: at the injecting commit `run_corpus.py` exits 1
+with `compiled 222/229` and a ledger holding **188 `L0` rows**, the old
+predicate returns **125 (skip)**, and the new one bisects to that commit in
+**22s / 2 probes** with 191 clustered regressions. Details and evidence:
+`structured-pipeline.md` → "The `git bisect run` predicate".
 
 **2. The ledger key: PINNED, not split. The ledger did not move** —
 `corpus/ledger.jsonl` is byte-identical. Re-measured 2026-08-12 and reproducing
@@ -1342,11 +1366,12 @@ and the per-commit suite nothing.
 **CI: there is none.** Checked — no `.github/workflows/`, no `.gitlab-ci.yml`,
 no runner config anywhere in the repo. No workflow was invented for a repo that
 has never had one; the ratchet is `scripts/ratchet_job.sh` (suite + baseline
-diff + full sweep, 40.6s end to end), run at a wrap and before any merge that
+diff + full sweep, 40.3s end to end), run at a wrap and before any merge that
 touches the ledger. If a runner is ever added, that script is the job body.
 
-Suite after: **655 passed in 36.6s** (636 in 36.0s before), against the 45s
-ceiling; +19 tests, +0.6s, and the 16 new `ratchet_diff` tests need no corpus.
+Suite after round 1: **664 passed in 37.0-38.1s** (3 runs) (636 in 36.0s before the
+task, 655 in 36.7s at the task commit), against the 45s ceiling; +28 tests and
+~+1.2s over the whole task, and the 25 `ratchet_diff` tests need no corpus.
 
 ## 3. The 89 non-`L3` unique protos, and the 17 files still on fallback
 

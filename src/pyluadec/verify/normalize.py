@@ -72,9 +72,11 @@ def _strip_lineinfo(p: Proto) -> Proto:
     while `oracle.compile_source(..., strip=True)` produces `source = None`;
     and the 1715 non-main corpus protos kept their ORIGINAL file's
     `linedefined`/`lastlinedefined`, which a re-printed source with a different
-    line layout cannot reproduce. Measured over `corpus/ledger.jsonl`: 0 of the
-    `L3` entries certify at rung 0, all 1389 of them are at rung 1. Without this
-    rung the L3 rate on this corpus would be exactly zero.
+    line layout cannot reproduce. Re-measured over `corpus/ledger.jsonl`
+    2026-08-12: 0 of the `L3` entries certify at rung 0, all 1430 of them are
+    at rung 1. Without this rung the L3 rate on this corpus would be exactly
+    zero. (The count read 1389 from M4's wrap until M5 task 8 round 1; the
+    claim it supports never depended on it.)
     """
     import dataclasses
     return dataclasses.replace(

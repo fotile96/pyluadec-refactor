@@ -1525,7 +1525,7 @@ the original instruction stream actually did.
 ### Run the suite
 
 ```bash
-PYLUADEC_CORPUS_DIR=<corpus> uv run pytest              # 655 tests, 36.6s (measured 2026-08-12, M5 task 8)
+PYLUADEC_CORPUS_DIR=<corpus> uv run pytest              # 664 tests, 37.0-38.1s (3 runs, measured 2026-08-12, M5 task 8 round 1)
 PYLUADEC_CORPUS_DIR=<corpus> uv run pytest tests/test_effects_emitter_consistency.py -v
 ```
 
@@ -1561,7 +1561,7 @@ Three gates: the full suite (which contains `tests/test_ledger_ratchet.py`,
 i.e. the proof that `corpus/ledger.jsonl` is a byte-exact fixed point of
 `scripts/run_corpus.py`), the baseline diff, and the full 24-case generated
 sweep. `BASELINE_REF` defaults to `eb08890`, the last merged milestone tip.
-Measured end-to-end 2026-08-12: **40.6s**.
+Measured end-to-end 2026-08-12 (round 1): **40.3s**.
 
 The diff on its own:
 
@@ -1572,13 +1572,30 @@ uv run python scripts/ratchet_diff.py /tmp/baseline.jsonl corpus/ledger.jsonl
 
 It exits **1** on any per-row `level` downgrade, `l3_level` rung downgrade
 (remember a HIGHER rung is a WEAKER proof — rung k means `NORMALIZATIONS[:k]`
-were applied before comparing), removed row, `L3` row carrying a
-`refusal_reason`, per-occurrence `shipped` going `structured` → `fallback`, or
-row arriving at `L0`; **0** on upgrades, added rows and fields present on one
-side only; and **2**, never 1, on an unreadable input. Offending rows print
-grouped by `refusal_reason` cluster, which is what M4 added that field for: a
-regression that reads "12 rows, all `structure: … back edge`" names the
-recognizer that broke.
+were applied before comparing), removed row, **occurrence that is no longer
+walked** while its row survives, `L3` row carrying a `refusal_reason`,
+per-occurrence `shipped` going `structured` → `fallback`, or row arriving at
+`L0`; and **0** on upgrades, added rows and fields the *baseline* lacks.
+Offending rows print grouped by `refusal_reason` cluster, which is what M4
+added that field for: a regression that reads "12 rows, all `structure: … back
+edge`" names the recognizer that broke.
+
+**Exit codes are not free choices — see the next section for the contract.**
+`125` means *this tree cannot be judged* (the ledger under test is missing,
+unreadable, malformed, or carries duplicate `shash` rows) and makes `git bisect
+run` **skip**; `128` means *the instrument is misconfigured* (wrong arguments,
+or a baseline that is itself unusable) and makes `git bisect run` **abort**.
+Round 1 of this task removed exit **2**, which the previous revision advertised
+as "not a verdict": it is one, see below.
+
+Two directions of schema tolerance, which are not symmetric. Fields the
+**baseline** lacks are tolerated per-row and per-field, so an older ledger
+stays diffable on what it does carry; fields the **new** ledger has dropped are
+not. Measured 2026-08-12 by dropping one field from every row of the committed
+ledger: `level` → 1478 `level-downgrade`s, `l3_level` → 1430 `rung-downgrade`s,
+`refusal_reason` → 0, per-occurrence `shipped` → 0. The first two are
+fail-safe; the last two fail open and are covered only by the printed schema
+note.
 
 Two real diffs, run 2026-08-12 at this commit:
 
@@ -1598,10 +1615,15 @@ tripwire. Both gaps are the same gap, and this closes it: floors catch
 catastrophes without churning, the baseline diff catches the one-row
 regression that stays inside them.
 
-**Non-vacuity.** `tests/test_ratchet_diff.py` feeds hand-mutated copies of the
-real committed ledger, one test per failure mode, and asserts a non-zero exit
-that names the offending row. Verified by mutation at M5 task 8: each of the
-seven checks was neutered in turn and exactly its own test(s) went red.
+**Non-vacuity.** `tests/test_ratchet_diff.py` (25 tests) feeds hand-mutated
+copies of the real committed ledger, one test per failure mode, and asserts a
+non-zero exit that names the offending row. Verified by mutation, twice: at M5
+task 8 each of the seven checks was neutered in turn and exactly its own
+test(s) went red; round 1 repeated the pass over its own additions and found a
+vacuity in them — the exit-code tests were written against the *symbols*
+`EXIT_UNTESTABLE` / `EXIT_BROKEN`, so reverting both constants to the old,
+wrong value of 2 left all 24 tests green. The literal integers are now pinned
+by `test_the_exit_codes_are_literally_the_ones_git_treats_as_non_verdicts`.
 
 ### The `git bisect run` predicate
 
@@ -1615,7 +1637,9 @@ export PYLUADEC_CORPUS_DIR=<corpus>
 
 git bisect start <bad> <good>
 git bisect run sh -c '
-  uv run python scripts/run_corpus.py >/dev/null 2>&1 || exit 125
+  rm -f corpus/ledger.jsonl
+  uv run python scripts/run_corpus.py >/dev/null
+  test -s corpus/ledger.jsonl || { git checkout -- corpus/ledger.jsonl; exit 125; }
   uv run python /tmp/rd.py /tmp/baseline.jsonl corpus/ledger.jsonl
   rc=$?
   git checkout -- corpus/ledger.jsonl
@@ -1624,20 +1648,65 @@ git bisect run sh -c '
 
 Each probe **regenerates** the ledger rather than reading the committed one:
 at an arbitrary bisected commit the committed file is not known to be current,
-and it is the code under test that must produce the verdict. `exit 125` is
-git's "skip" — a commit where the corpus run itself fails cannot judge the
-ratchet — and the `git checkout --` restores the ledger so the next checkout
-finds a clean tree. Nothing else run_corpus writes is tracked
-(`build/decompiled/` is gitignored).
+and it is the code under test that must produce the verdict. The
+`git checkout --` restores the ledger so the next checkout finds a clean tree.
+Nothing else `run_corpus` writes is tracked (`build/decompiled/` is
+gitignored). Only stdout is discarded, so any `COMPILE FAIL <file>` lines stay
+in the bisect log.
 
-**Verified 2026-08-12**, not just written down: on a scratch branch off this
-commit, four commits were laid down (two empty, one injecting an early
-`StructureError` for functions over 200 instructions into `sir/build.py`, one
-empty), the baseline was this commit's ledger, and the invocation above found
-`d54ea11` — the injection — as the first bad commit in **20.1s / 2 probes**,
-reporting 681 regressions grouped by cluster. The scratch branch was deleted;
-`scripts/run_corpus.py` is ~11s per probe on this host, so a 100-commit range
-is ~7 probes / ~80s.
+**Why the skip test is "was a ledger produced", not "did `run_corpus` exit 0".**
+`scripts/run_corpus.py` returns `0 if n_ok == len(files) else 1` — it returns
+**1 when a file failed to compile, *after* writing a complete ledger whose rows
+say `L0`.** The predicate this task originally documented was
+`… run_corpus.py … || exit 125`, which mapped that to **skip**, so the loudest
+regression class the ratchet exists for — a decompiler change whose output no
+longer compiles, surfacing as `new-l0` and level downgrades to `L0` — was
+silently unbisectable. (M5 task 8's original verification injected a
+`StructureError`, which falls back and still compiles, so it never touched this
+path.) `rm -f` plus `test -s` asks the question that actually matters: a
+commit that could not produce a ledger at all cannot judge the ratchet, and one
+that produced a ledger full of `L0` rows is exactly the commit being hunted.
+`ratchet_diff.py`'s own 125/128 flow through the final `exit $rc`.
+
+**Exit codes: the measured contract.** `git-bisect(1)` (git 2.39.5 on this
+host) says the script *"should exit with code 0 if the current source code is
+good/old, and exit with a code between 1 and 127 (inclusive), except 125, if
+the current source code is bad/new. Any other exit code will abort the bisect
+process. The special exit code 125 should be used when the current source code
+cannot be tested."* **Exit 2 is therefore BAD, identically to 1** — the claim
+that it was "not a verdict" was wrong wherever it appeared, and is corrected in
+`scripts/ratchet_diff.py`, its tests, the backlog and CLAUDE.md. Measured on a
+six-commit scratch repo:
+
+| predicate | `git bisect run` says |
+| --- | --- |
+| `exit 2` everywhere | "b07bfbd … is the first bad commit" — **an innocent commit blamed, silently** |
+| `exit 125` everywhere | "There are only 'skip'ped commits left to test. … We cannot bisect more!" |
+| `exit 128` everywhere | "error: bisect run failed: exit code 128 … is < 0 or >= 128" |
+
+So `ratchet_diff.py` now returns **125** when the *tree's* ledger is unusable
+and **128** when the *instrument* is (usage, unreadable baseline, or an
+internal error in the diff itself — the last because an uncaught exception
+would otherwise exit 1 and read as "bad").
+
+**Verified 2026-08-12 (round 1) against a real COMPILE regression** — the case
+the old predicate skipped. Scratch branch off the round-1 commit: two empty
+commits, then one changing a single `end` to `edn` in the fallback emitter's
+`OP_TEST` tail (`structure/fallback.py`), then one more empty commit. The
+injection has to be in the **fallback** emitter, not the structured one: a
+structured emitter that produces uncompilable Lua simply fails to certify and
+falls back, so the chunk still compiles — measured, an equivalent typo in
+`emit/lua.py`'s `if` header left `compiled 229/229` and only dropped L3 from
+96.8% to 53.9%. The fallback emitter is the floor and has no certification gate
+above it, which is exactly why an `L0` can only come from there.
+
+| | result |
+| --- | --- |
+| `run_corpus.py` at the injected commit | **exit 1**, `compiled 222/229`, 7 `COMPILE FAIL` lines, and a **complete ledger containing 188 `L0` rows** |
+| **old** predicate (`… \|\| exit 125`) at that same commit | **exit 125 = SKIP** — the regression was unbisectable |
+| **new** predicate, full `git bisect run` over the 4 commits | found the injecting commit as *"the first bad commit"* in **22s / 2 probes**, reporting 191 regressions (188 `level-downgrade`, all `L3 -> L0` with `refusal_reason` `compile: shipped chunk did not compile`, plus 3 `shipping-regression`), with the `COMPILE FAIL <file>` lines visible in the bisect log |
+
+Scratch branch deleted; `git diff 3a7528a..HEAD` touches no `src/` file.
 
 ### CI: there is none, and this task did not invent one
 
@@ -1713,7 +1782,7 @@ fixture, and pinning one inside `pytest` would either freeze it at one
 milestone or re-derive it from `git` on every run. The check lives in
 `scripts/ratchet_job.sh`, which is run at a wrap and before any merge that
 touches the ledger. What the suite gained is the guarantee that the instrument
-works: `tests/test_ratchet_diff.py` (16 tests, no corpus needed) is the
+works: `tests/test_ratchet_diff.py` (25 tests, no corpus needed) is the
 non-vacuity proof.
 
 ### The ledger's grouping key — pinned, not split (M5 task 8)

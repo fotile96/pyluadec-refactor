@@ -3,12 +3,43 @@
 
     uv run python scripts/ratchet_diff.py OLD.jsonl NEW.jsonl
 
-Exit codes -- chosen for `git bisect run`, which reads 0 as good, 125 as skip,
-and anything else in 1..127 as bad:
+## Exit codes, and the `git bisect run` contract they are built against
 
-    0   no regression (upgrades, added rows and schema differences are fine)
-    1   at least one regression; the offending rows are printed
-    2   usage / unreadable input -- NOT a verdict about the tree
+`git-bisect(1)` (git 2.39.5, verified on this host 2026-08-12) says: *"the
+script ... should exit with code 0 if the current source code is good/old, and
+exit with a code between 1 and 127 (inclusive), **except 125**, if the current
+source code is bad/new. Any other exit code will abort the bisect process. The
+special exit code 125 should be used when the current source code cannot be
+tested."*
+
+**So there is no low exit code that means "no verdict".** An earlier revision
+of this script returned 2 for usage/IO errors and claimed that was safer than
+1; it is not -- 2 is in 1..127 and is read as BAD, exactly like 1. Measured, on
+a scratch repo with six commits and a predicate that unconditionally `exit 2`s:
+`git bisect run` reported *"b07bfbd ... is the first bad commit"*, i.e. it
+blamed the first commit after the known-good one. A mistyped predicate would
+therefore have converged, silently and confidently, on an innocent commit.
+(`python /tmp/rd.py` on a path that does not exist also exits 2 -- from the
+interpreter, before this file is even read -- so 2 was doubly the wrong choice.)
+
+The two codes that are genuinely not a verdict are 125 and >=128, and both were
+measured on the same scratch repo:
+
+    0     good: no regression (upgrades, added rows, schema additions)
+    1     bad:  at least one regression; the offending rows are printed
+    125   this TREE cannot be judged -- the NEW ledger is missing, unreadable
+          or malformed. git SKIPS the commit; a predicate that returns it
+          everywhere ends the bisect with "There are only 'skip'ped commits
+          left to test", which names the problem instead of blaming a commit.
+    128   this INSTRUMENT is misconfigured -- wrong arguments, or a baseline
+          that cannot be read or is itself malformed. Neither depends on the
+          commit under test, so the right response is to stop the whole run,
+          and git does: "error: bisect run failed: exit code 128 ... is < 0 or
+          >= 128".
+
+Both non-verdict codes are also outside the range CPython itself produces (1 on
+an uncaught exception, 2 on a missing script or an argparse error), so a fault
+in the *runner* can never be confused with a verdict from this script.
 
 ## What this adds that the existing gates do not
 
@@ -29,16 +60,28 @@ and this is the instrument that closes it: the floors keep catching
 catastrophes without churning, and the baseline diff catches the 1-row
 regression that stays inside them.
 
-## The six regressions
+## The seven regressions
 
 | kind | meaning |
 | --- | --- |
 | `level-downgrade` | a row's `level` fell (`L3` -> `L1`, anything -> `L0`) |
 | `rung-downgrade` | a row is `L3` in both but needed MORE normalization, or lost its rung entirely |
 | `row-removed` | a `shash` present in the baseline is gone |
+| `occurrence-removed` | a `(file, proto_path)` the baseline walked is no longer walked, while its row survives |
 | `reason-regression` | an `L3` row carries a `refusal_reason` |
 | `shipping-regression` | an occurrence's `shipped` went `structured` -> `fallback` |
 | `new-l0` | a row arrived at `L0` |
+
+`occurrence-removed` covers the shape a per-ROW diff cannot see: the ledger's
+1944 occurrences are 1478 rows, so a proto vanishing from `walk_proto_paths`
+leaves every row intact and only shortens one `occurrences` list. It is pinned
+inside `scripts/ratchet_job.sh` by gate 1 (`tests/test_ledger_ratchet.py` fixes
+the count at 1944), but the `git bisect run` predicate runs this script ALONE,
+where before M5 task 8 round 1 a lost proto was invisible: measured on the
+committed ledger, popping one occurrence off a two-occurrence row gave 0
+regressions and exit 0 while the summary line printed `1944 -> 1943` two lines
+above. Occurrences whose row also disappeared are reported once, as
+`row-removed`, rather than twice.
 
 `rung-downgrade` reads the ladder in the right direction: `l3_level` = k means
 `verify/normalize.NORMALIZATIONS[:k]` were applied before comparing, so a
@@ -52,14 +95,26 @@ where 12 unequal strings name nothing.
 
 ## What is deliberately NOT a regression
 
-Added rows, level upgrades, rung improvements, `fallback -> structured`
-shipping changes, and fields present on one side only. The last is the
-"schema-annotated change" case: a baseline written before M4's
-`refusal_reason` or M5 task 6's per-occurrence `shipped` must stay diffable on
-what it does carry, and the omission is reported in the summary rather than
-read as a mass regression. Schema tolerance is per-field and per-row, so a
-level downgrade in a ledger whose baseline lacks `refusal_reason` still fails
+Added rows, level upgrades, rung improvements, and `fallback -> structured`
+shipping changes.
+
+Also **fields the OLD side lacks** -- the "schema-annotated change" case: a
+baseline written before M4's `refusal_reason` or M5 task 6's per-occurrence
+`shipped` must stay diffable on what it does carry, and the omission is
+reported in the summary rather than read as a mass regression. Tolerance is
+per-field and per-row, so a level downgrade in a ledger whose baseline lacks
+`refusal_reason` still fails
 (`tests/test_ratchet_diff.py::test_a_missing_field_does_not_hide_a_real_downgrade`).
+
+The **other** direction -- a field the NEW side has DROPPED -- is not tolerated,
+and deliberately so: the checks read NEW's own words, so a dropped field either
+reads as the regression it would be or is reported as a schema note. Measured
+on the committed ledger, dropping a field from every NEW row: `level` -> 1478
+`level-downgrade`s, `l3_level` -> 1430 `rung-downgrade`s (every `L3` row loses
+its evidence), `refusal_reason` -> 0 (its check fires on what NEW says, and NEW
+says nothing), per-occurrence `shipped` -> 0 (the comparison needs both sides).
+The first two are fail-safe, the last two fail-open but are covered by the
+schema note. Do not read the "schema" line as an amnesty in either direction.
 
 Non-vacuity is the deliverable: every kind above has its own committed test
 that feeds a hand-mutated copy of the real ledger and asserts a non-zero exit
@@ -80,6 +135,13 @@ from pathlib import Path
 LEVEL_RANK = {"L0": 0, "L1": 1, "L2": 2, "L3": 3}
 
 NO_REASON = "(no reason recorded)"
+
+# See the module docstring for the measured `git bisect run` contract behind
+# these four values. 2 is NOT among them: git reads it as "bad".
+EXIT_OK = 0
+EXIT_REGRESSION = 1
+EXIT_UNTESTABLE = 125     # git bisect: skip this commit
+EXIT_BROKEN = 128         # git bisect: abort the run
 
 
 def cluster_of(reason: str | None) -> str:
@@ -112,6 +174,7 @@ class DiffReport:
     common: int = 0
     removed: int = 0
     added: int = 0
+    occurrences_removed: int = 0
     level_upgrades: int = 0
     level_downgrades: int = 0
     rung_downgrades: int = 0
@@ -130,21 +193,59 @@ class DiffReport:
 
 
 def load_rows(path: Path | str) -> list[dict]:
-    """Parse a ledger jsonl into plain dicts.
+    """Parse a ledger jsonl into plain dicts, and check the little the diff
+    actually relies on. Raises `ValueError` (or `OSError`) on anything it
+    cannot diff; `main` turns that into a non-verdict exit code.
 
     Deliberately NOT `verify.ledger.read_ledger`: that constructs
     `LedgerEntry`, which would reject a baseline carrying a field this version
     has since dropped and would silently DEFAULT one it has since added --
     both of which this script needs to see as schema facts rather than have
     normalized away. Plain dicts also keep the script importable from a copy
-    outside the tree."""
+    outside the tree.
+
+    Validating here rather than inside `diff_ledgers` is what keeps a malformed
+    ledger from being reported as a verdict about the tree. Before M5 task 8
+    round 1 a row missing `shash` raised `KeyError: 'shash'` out of
+    `diff_ledgers`, straight past `main`'s handler (which wrapped only the
+    parse), and CPython turned the traceback into exit 1 -- which `git bisect
+    run` reads as "bad commit". An instrument fault must never be reported as a
+    tree verdict.
+
+    Row identity is `shash`, so duplicates are rejected too: `dict`
+    construction downstream is last-wins, and a downgraded duplicate placed
+    BEFORE the good row was measured to pass with 0 regressions (it fails
+    correctly when placed after). `write_ledger` cannot emit duplicates and
+    `tests/test_ledger_ratchet.py` pins uniqueness, but the bisect predicate
+    runs this script alone, against files it did not produce.
+    """
     out = []
     for n, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), 1):
-        if line.strip():
-            try:
-                out.append(json.loads(line))
-            except json.JSONDecodeError as e:
-                raise ValueError(f"{path}:{n}: not JSON: {e}") from e
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"{path}:{n}: not JSON: {e}") from e
+        if not isinstance(row, dict):
+            raise ValueError(f"{path}:{n}: ledger row is {type(row).__name__}, "
+                             f"expected a JSON object")
+        shash = row.get("shash")
+        if not isinstance(shash, str) or not shash:
+            raise ValueError(f"{path}:{n}: ledger row has no usable `shash` "
+                             f"({shash!r}); row identity is undefined")
+        occ = row.get("occurrences", ())
+        if not isinstance(occ, (list, tuple)) or any(
+                not isinstance(o, dict) for o in occ):
+            raise ValueError(f"{path}:{n}: `occurrences` of {shash} is not a "
+                             f"list of objects")
+        out.append(row)
+    seen: set[str] = set()
+    for row in out:
+        if row["shash"] in seen:
+            raise ValueError(f"{path}: duplicate row for shash "
+                             f"{row['shash']}; row identity must be unique")
+        seen.add(row["shash"])
     return out
 
 
@@ -269,6 +370,23 @@ def diff_ledgers(old: list[dict], new: list[dict]) -> DiffReport:
                 detail=f"certified L3 yet claims a refusal reason {r!r}"))
 
     old_occ, new_occ = _occurrence_index(old), _occurrence_index(new)
+    # A proto the baseline walked and this ledger does not. Rows survive it
+    # (1944 occurrences live in 1478 rows), so the per-row loop above sees
+    # nothing; only `old_occurrences -> new_occurrences` in the summary moved,
+    # and a summary line is not a verdict. Occurrences whose ROW also vanished
+    # are already reported as `row-removed`, so they are skipped here: one
+    # cause, one finding, and the cluster counts stay row counts.
+    for key in sorted(set(old_occ) - set(new_occ)):
+        oshash, oo = old_occ[key]
+        if oshash not in new_by:
+            continue
+        rep.occurrences_removed += 1
+        rep.regressions.append(Regression(
+            kind="occurrence-removed", shash=oshash,
+            cluster=cluster_of(new_by[oshash].get("refusal_reason")),
+            detail=f"{key[0]}:{key[1]} was walked in the baseline "
+                   f"(shipped {oo.get('shipped', '?')}) and is not walked now, "
+                   f"though its row survives"))
     for key in sorted(set(old_occ) & set(new_occ)):
         _, oo = old_occ[key]
         nshash, no = new_occ[key]
@@ -310,6 +428,8 @@ def format_report(rep: DiffReport, old_path: str, new_path: str) -> str:
                f"{rep.new_occurrences} occurrences)")
     out.append(f"  rows:     {rep.common} common, {rep.removed} removed, "
                f"{rep.added} added")
+    out.append(f"  protos:   {rep.occurrences_removed} occurrence(s) no longer "
+               f"walked (surviving rows)")
     out.append(f"  levels:   {rep.level_upgrades} upgraded, "
                f"{rep.level_downgrades} downgraded")
     out.append(f"  rungs:    {rep.rung_downgrades} downgraded")
@@ -344,22 +464,55 @@ def format_report(rep: DiffReport, old_path: str, new_path: str) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """The CLI, and the `git bisect run` predicate.
+
+    Every path that is not a verdict about the tree returns 125 or 128 -- see
+    the module docstring for the measured contract. The split is by whose fault
+    it is: the BASELINE and the argument list are the same at every bisected
+    commit, so a fault there should abort the whole run (128) rather than mark
+    a hundred commits skipped; the NEW ledger is produced by the tree under
+    test, so a fault there means only that THIS commit cannot be judged (125).
+    """
     args = sys.argv[1:] if argv is None else list(argv)
     if len(args) != 2:
-        print("usage: ratchet_diff.py OLD.jsonl NEW.jsonl\n"
-              "  compares two corpus/ledger.jsonl snapshots; exits 1 on any "
-              "downgrade,\n  2 on a usage or I/O error (never 1 -- `git bisect "
-              "run` reads 1 as 'bad').", file=sys.stderr)
-        return 2
+        print(f"usage: ratchet_diff.py OLD.jsonl NEW.jsonl\n"
+              f"  Compares two corpus/ledger.jsonl snapshots. Exit "
+              f"{EXIT_OK}=no regression, {EXIT_REGRESSION}=regression,\n"
+              f"  {EXIT_UNTESTABLE}=NEW unreadable (git bisect skips), "
+              f"{EXIT_BROKEN}=usage or bad baseline (git bisect aborts).\n"
+              f"  Not 2: `git bisect run` reads every code in 1..127 except "
+              f"125 as 'bad commit'.", file=sys.stderr)
+        return EXIT_BROKEN
     try:
         old = load_rows(args[0])
+    except (OSError, ValueError) as e:
+        print(f"ratchet_diff: baseline {args[0]} is unusable: {e}\n"
+              f"  This is the instrument, not the tree: exiting "
+              f"{EXIT_BROKEN} so `git bisect run` aborts rather than blaming "
+              f"a commit.", file=sys.stderr)
+        return EXIT_BROKEN
+    try:
         new = load_rows(args[1])
     except (OSError, ValueError) as e:
-        print(f"ratchet_diff: cannot read ledger: {e}", file=sys.stderr)
-        return 2
-    rep = diff_ledgers(old, new)
+        print(f"ratchet_diff: ledger under test {args[1]} is unusable: {e}\n"
+              f"  No verdict is possible for this tree: exiting "
+              f"{EXIT_UNTESTABLE} so `git bisect run` skips it.",
+              file=sys.stderr)
+        return EXIT_UNTESTABLE
+    try:
+        rep = diff_ledgers(old, new)
+    except Exception as e:                     # noqa: BLE001 -- see docstring
+        # A crash HERE is a bug in this script, not evidence about the tree.
+        # Letting it propagate would print a traceback and exit 1, which git
+        # reads as "bad commit" -- the exact confusion this file exists to
+        # avoid. Abort the run instead, loudly.
+        print(f"ratchet_diff: internal error while diffing "
+              f"({type(e).__name__}: {e}); this is a bug in ratchet_diff.py, "
+              f"not a verdict. Exiting {EXIT_BROKEN} to abort the bisect.",
+              file=sys.stderr)
+        return EXIT_BROKEN
     print(format_report(rep, args[0], args[1]))
-    return 0 if rep.ok else 1
+    return EXIT_OK if rep.ok else EXIT_REGRESSION
 
 
 if __name__ == "__main__":

@@ -28,7 +28,11 @@ testpaths = ["tests"]
 # never returns -- no failure name, no diff, easy to mistake for flakiness
 # and re-run.
 #
-# Sizing (re-measured 2026-08-12 on macOS arm64, 523 tests, corpus present,
+# Sizing (test count re-counted 2026-08-12 at M5 task 8 round 1: 664 tests,
+# corpus present -- it read 523 from M5 task 2 through task 8 and was already
+# stale when task 8 landed; the wall-clock analysis below is unaffected, since
+# what sizes this backstop is the slowest SINGLE entry, not the count. The
+# timings were measured 2026-08-12 on macOS arm64,
 # AFTER M5 task 2's process-level certification cache -- an earlier revision of
 # this comment carried the same date and the pre-cache numbers, ~40s suite /
 # 12.0s ratchet / 10.0s probe, which are all now wrong):

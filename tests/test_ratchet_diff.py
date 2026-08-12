@@ -24,6 +24,7 @@ from pathlib import Path
 import pytest
 
 from scripts.ratchet_diff import (
+    EXIT_BROKEN, EXIT_OK, EXIT_REGRESSION, EXIT_UNTESTABLE,
     Regression, cluster_of, diff_ledgers, load_rows, main,
 )
 
@@ -168,6 +169,42 @@ def test_a_removed_row_fails_naming_the_row(committed, tmp_path, capsys):
     assert _kinds(committed, new) == ["row-removed"]
 
 
+def test_a_proto_dropping_out_of_the_walk_fails(committed, tmp_path, capsys):
+    """The 1944 occurrences live in 1478 rows, so a proto vanishing from
+    `walk_proto_paths` leaves every ROW intact and only shortens one
+    `occurrences` list. Measured before this check existed: popping one
+    occurrence off a two-occurrence row gave 0 regressions and exit 0, with
+    `1944 -> 1943` printed two lines above. Gate 1 of `scripts/ratchet_job.sh`
+    covers it (`test_ledger_ratchet.py` pins 1944), but the `git bisect run`
+    predicate runs the diff ALONE."""
+    new = copy.deepcopy(committed)
+    row = next(r for r in new if len(r["occurrences"]) > 1)
+    lost = row["occurrences"].pop()
+
+    rc, out = _run(tmp_path, committed, new, capsys)
+    assert rc == 1
+    assert row["shash"] in out
+    assert "occurrence-removed" in out
+    assert lost["file"] in out and lost["proto_path"] in out
+    assert _kinds(committed, new) == ["occurrence-removed"]
+    assert diff_ledgers(committed, new).occurrences_removed == 1
+
+
+def test_a_removed_row_is_reported_once_not_per_occurrence(committed, tmp_path,
+                                                           capsys):
+    """One cause, one finding. A vanished row takes its occurrences with it;
+    reporting both would multiply a single regression by its occurrence count
+    and stop the cluster counts from being row counts."""
+    new = copy.deepcopy(committed)
+    gone = next(r for r in new if len(r["occurrences"]) > 1)
+    new.remove(gone)
+
+    rc, _ = _run(tmp_path, committed, new, capsys)
+    assert rc == 1
+    assert _kinds(committed, new) == ["row-removed"]
+    assert diff_ledgers(committed, new).occurrences_removed == 0
+
+
 def test_an_l3_row_acquiring_a_refusal_reason_fails(committed, tmp_path, capsys):
     new = copy.deepcopy(committed)
     row = _pick(new, "L3")
@@ -298,13 +335,123 @@ def test_a_missing_field_does_not_hide_a_real_downgrade(committed, tmp_path, cap
 # CLI contract (this is a `git bisect run` predicate).
 # --------------------------------------------------------------------------
 
-def test_a_missing_file_exits_2_not_1(tmp_path, capsys):
-    """`git bisect run` reads 1 as "bad commit" and would blame an innocent
-    commit for an unreadable file. 2 is distinguishable, and 125 (skip) is
-    what the documented bisect wrapper turns a failed regeneration into."""
+def test_the_exit_codes_are_literally_the_ones_git_treats_as_non_verdicts():
+    """Every other test in this section is written in terms of the SYMBOLS, so
+    without this one they all stay green if the values are wrong — verified by
+    mutation: setting both non-verdict constants back to 2 left all 24 tests
+    passing. The contract is about the integers, so the integers are pinned
+    here.
+
+    `git-bisect(1)`, git 2.39.5, read on this host 2026-08-12: *"exit with code
+    0 if the current source code is good/old, and exit with a code between 1
+    and 127 (inclusive), except 125, if the current source code is bad/new. Any
+    other exit code will abort the bisect process. The special exit code 125
+    should be used when the current source code cannot be tested."*
+
+    So the only non-verdicts are 125 and >=128. **2 is a verdict**: measured on
+    a scratch repo, a predicate that unconditionally `exit 2`s made
+    `git bisect run` announce a first bad commit."""
+    assert EXIT_OK == 0
+    assert EXIT_REGRESSION == 1
+    assert EXIT_UNTESTABLE == 125
+    assert EXIT_BROKEN >= 128
+    # The trap this round closed: anything in 1..127 except 125 reads as "bad".
+    for code in (EXIT_UNTESTABLE, EXIT_BROKEN):
+        assert not (1 <= code <= 127 and code != 125), (
+            f"{code} is in git's bad-commit range")
+
+
+def test_an_unreadable_new_ledger_is_untestable_not_bad(tmp_path, capsys):
+    """`git bisect run` reads EVERY code in 1..127 except 125 as "bad commit"
+    -- 2 included. Measured 2026-08-12 with git 2.39.5 on a scratch repo: a
+    predicate that unconditionally `exit 2`s makes bisect announce a first bad
+    commit, blaming the first commit after the known-good one. So an
+    unreadable ledger under test must be 125 (skip), never 1 and never 2."""
     good = _write(tmp_path / "a.jsonl", [])
-    assert main([str(good), str(tmp_path / "nope.jsonl")]) == 2
-    assert "nope.jsonl" in capsys.readouterr().err
+    assert main([str(good), str(tmp_path / "nope.jsonl")]) == EXIT_UNTESTABLE
+    err = capsys.readouterr().err
+    assert "nope.jsonl" in err and "skips it" in err
+
+
+def test_an_unreadable_baseline_aborts_the_whole_bisect(tmp_path, capsys):
+    """The baseline is the same file at every bisected commit, so a fault in
+    it is not "this commit cannot be tested" but "this run is misconfigured".
+    >=128 makes git stop: measured, `git bisect run` prints "error: bisect run
+    failed: exit code 128 ... is < 0 or >= 128" and halts."""
+    good = _write(tmp_path / "b.jsonl", [])
+    assert main([str(tmp_path / "nope.jsonl"), str(good)]) == EXIT_BROKEN
+    assert "baseline" in capsys.readouterr().err
+
+
+def test_a_usage_error_aborts_rather_than_condemning_a_commit(tmp_path, capsys):
+    """Wrong argument count cannot depend on the commit, so it must not
+    produce a per-commit verdict of any kind."""
+    assert main([]) == EXIT_BROKEN
+    assert main(["only-one.jsonl"]) == EXIT_BROKEN
+    assert "usage" in capsys.readouterr().err
+
+
+def test_a_malformed_new_row_is_skipped_not_blamed(committed, tmp_path, capsys):
+    """Regression test for the fault this round fixed: a ledger line without
+    `shash` used to raise `KeyError: 'shash'` out of `diff_ledgers`, past
+    `main`'s handler (which wrapped only the parse), and CPython turned the
+    traceback into exit 1 -- read by `git bisect run` as "bad commit". An
+    instrument fault reported as a tree verdict is the one outcome a bisect
+    predicate must never produce."""
+    bad = tmp_path / "bad.jsonl"
+    bad.write_text('{"level": "L3"}\n', encoding="utf-8")
+    old = _write(tmp_path / "old.jsonl", committed)
+    assert main([str(old), str(bad)]) == EXIT_UNTESTABLE
+    err = capsys.readouterr().err
+    assert "shash" in err and "No verdict" in err
+
+
+def test_duplicate_rows_are_rejected_rather_than_last_wins(committed, tmp_path,
+                                                           capsys):
+    """`shash` is row identity, and the diff builds `{r["shash"]: r}` on both
+    sides -- last wins. Measured on the committed ledger: a downgraded
+    duplicate appended AFTER the good row is caught (1 regression), but the
+    same duplicate inserted BEFORE it yields 0. Uniqueness is pinned by
+    `tests/test_ledger_ratchet.py`, but the bisect predicate runs the diff
+    alone, against files it did not produce."""
+    dup = copy.deepcopy(_pick(committed, "L3"))
+    dup["level"] = "L1"
+    dup["l3_level"] = None
+    idx = next(i for i, r in enumerate(committed) if r["shash"] == dup["shash"])
+    rows = copy.deepcopy(committed)
+    rows.insert(idx, dup)                        # the order that used to pass
+    path = _write(tmp_path / "dup.jsonl", rows)
+    good = _write(tmp_path / "good.jsonl", committed)
+
+    assert main([str(good), str(path)]) == EXIT_UNTESTABLE
+    assert main([str(path), str(good)]) == EXIT_BROKEN
+    assert "duplicate row" in capsys.readouterr().err
+
+
+def test_an_internal_crash_aborts_instead_of_condemning_the_commit(
+        committed, tmp_path, capsys, monkeypatch):
+    """`load_rows` now rejects the malformed inputs we know about, so the
+    handler around `diff_ledgers` is defence in depth — and defence in depth
+    that is never exercised is decoration. Forced here: any residual bug in
+    the diff must abort the run (128), never exit 1 and be recorded as a bad
+    commit."""
+    import scripts.ratchet_diff as rd
+
+    def boom(_old, _new):
+        raise RuntimeError("synthetic")
+
+    monkeypatch.setattr(rd, "diff_ledgers", boom)
+    path = _write(tmp_path / "x.jsonl", committed)
+    assert rd.main([str(path), str(path)]) == EXIT_BROKEN
+    err = capsys.readouterr().err
+    assert "internal error" in err and "not a verdict" in err
+
+
+def test_a_clean_diff_of_the_committed_ledger_exits_zero(tmp_path, capsys):
+    """The `git bisect run` "good" verdict, through the CLI rather than
+    `diff_ledgers`, so the exit constants themselves are covered."""
+    assert main([str(LEDGER), str(LEDGER)]) == EXIT_OK
+    assert "no regression" in capsys.readouterr().out
 
 
 def test_regression_rows_are_hashable_and_ordered():
