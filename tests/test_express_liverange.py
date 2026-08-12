@@ -112,7 +112,7 @@ LOCAL_CASES = [
     # post-increment definition is disqualified because it survives pending
     # all the way to the function's trailing `RETURN`, which unconditionally
     # promotes whatever is still pending. So this case is pinned by
-    # `_stack_discipline`'s baseline read-count/statement-boundary
+    # `stack_discipline`'s baseline read-count/statement-boundary
     # accounting, not by anything M4 task 13 added -- nothing in
     # `TEMP_CASES`/`LOCAL_CASES` currently isolates `_same_block` or
     # `_bar_literal_operands` as load-bearing for this specific shape.
@@ -282,7 +282,7 @@ def test_reading_a_consumed_staging_register_again_is_refused():
     A definition graded a temporary is staged, not emitted; the first read
     pops and inlines it. A SECOND read has nothing to name -- `LocalExpr(reg)`
     would print an identifier this function never declares, which Lua resolves
-    as a *global*. `_stack_discipline`'s pop-once accounting is a heuristic
+    as a *global*. `stack_discipline`'s pop-once accounting is a heuristic
     (see that module's docstring, "Soundness"), and it mis-grades real luac
     output: this refusal is reachable from the committed corpus, not merely a
     defensive check for a hypothetical mistake in the accounting.

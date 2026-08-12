@@ -165,7 +165,7 @@ ingest -> lift -> cfg -> sir.build -> express.reconstruct -> emit.lua
 ```
 
 - `pyluadec.sir`（新增）：`regions.py`（冻结区域节点 + `all_claimed`）、`build.py`（`build_sir(fn) -> Region`、`has_back_edge`、`StructureError`）。支配树在此被**真正消费**（`_verify_single_entry` 用 `immediate_dominators` 校验分支/循环体单入口），不是建而不用。纪律：**识别或 `StructureError`，绝不猜结构**；每次 `build_sir` 出口强制 pc 认领审计 `all_claimed(region) == set(fn.instrs)`。
-- `pyluadec.express`（新增）：`expr.py`（表达式节点）、`names.py`（`classify_registers` / `name_for`）、`reconstruct.py`（`Reconstructor`：`stmts_for` / `take_expr` / `cond_operand` / `open_scope`+`close_scope`）。**M3 task 8 删除了 `_adjacent_pure` 与 `EffectMode` 旋钮**，改为模拟 `lparser.c` 的 `freereg = nactvar` 分配纪律（`_stack_discipline`）——实测：放宽效应屏障 +0.0 个 proto，freereg 模拟 +63.6 个百分点。
+- `pyluadec.express`（新增）：`expr.py`（表达式节点）、`names.py`（`classify_registers` / `name_for`，外加「`for` 头拥有哪些槽、在哪些 pc 上拥有」这半边分析）、`freereg.py`（`stack_discipline`，另半边；**M5 task 11 从 `names.py` 拆出**，拆点就是原有的四个回调，所以是纯文本搬迁——台账逐次提交字节不变）、`reconstruct.py`（`Reconstructor`：`stmts_for` / `take_expr` / `cond_operand` / `open_scope`+`close_scope`）。**M3 task 8 删除了 `_adjacent_pure` 与 `EffectMode` 旋钮**，改为模拟 `lparser.c` 的 `freereg = nactvar` 分配纪律（`freereg.stack_discipline`）——实测：放宽效应屏障 +0.0 个 proto，freereg 模拟 +63.6 个百分点。
 - `pyluadec.emit.lua`（新增）：`print_chunk` / `print_function` / `Printer`。**纯结构折叠**：只走一遍类型化的树，绝不回读或后处理自己发出的字符串（无 peephole、无定点循环、无数 `do/then/end`）。`tests/test_engineering_practice.py` 静态禁止 `src/pyluadec/{ingest,lift,cfg,sir,express,emit,verify,structure}` 里出现 `re`。
 - `pyluadec.structure.structured`（新增）：`certify_proto(proto, *, is_chunk_root)`、`emit_certified_chunk(root) -> ChunkOutcome`。
 - `pyluadec.verify.certify`（新增）：`certify_l3(original, structured_src) -> CertResult`。
@@ -285,4 +285,4 @@ Phase 4 已完成。**能力边界与残差普查的权威仍是 `docs/runbooks/
 
 ### 仍未做（都在 M5 agenda）
 
-完整 ratchet CI（baseline diff、降级即失败）**M4 没做**，已由 **M5 task 8 落地**（`scripts/ratchet_diff.py` + `scripts/ratchet_job.sh`，见上文「台账约定」；本仓库无 CI runner 配置，是命令不是自动触发）；`LEN` 重新分级（M5 task 1）；L2 差分执行认证与按键序列 harness（**M5 task 9 落地**，见上文；reach 仅 1 个文件，两个历史检查点的*断言*仍是 task 10，且 snr_common 目前被静态 taint 拒授）；那 89 处残差；`_stack_discipline`（462 行、33 个 if、11 个内嵌闭包）的拆分。
+完整 ratchet CI（baseline diff、降级即失败）**M4 没做**，已由 **M5 task 8 落地**（`scripts/ratchet_diff.py` + `scripts/ratchet_job.sh`，见上文「台账约定」；本仓库无 CI runner 配置，是命令不是自动触发）；`LEN` 重新分级（M5 task 1）；L2 差分执行认证与按键序列 harness（**M5 task 9 落地**，见上文；reach 仅 1 个文件，两个历史检查点的*断言*仍是 task 10，且 snr_common 目前被静态 taint 拒授）；那 89 处残差；`_stack_discipline` 的拆分（**M5 task 11 落地**：拆成 `express/freereg.py`，`names.py` 968 → 494 行、被拆的走查本体 467 → 308 行；顺带发现「四道屏障各有一个 neuter 用例钉在 `tests/test_express_liverange.py`」这句只对前三道成立，第 4 道的钉子在 `tests/test_sir_loops_longtail.py` 与台账不动点测试上——它也是四道里唯一一动就让台账变的）。

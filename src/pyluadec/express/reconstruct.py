@@ -14,7 +14,7 @@ loop) is still in `self.env` when the loop header (built by Task 6/7) calls
 `take_expr` on it.
 
 Reading a *staged* register pops its definition out of the environment.
-Single-use is what `express.names._stack_discipline` proves before a
+Single-use is what `express.freereg.stack_discipline` proves before a
 definition is ever classified a temporary: it simulates `lparser.c`'s
 `freereg = nactvar` allocation discipline and disqualifies any definition
 read zero times or more than once (see that module's docstring -- this used
@@ -592,7 +592,7 @@ class Reconstructor:
         would key on `self._pc`, whatever instruction the shared dispatch
         loop last processed -- not necessarily anything to do with this
         chain). Using an earlier alternative's write instead of the last one
-        would consult a definition `_stack_discipline` grades by how the
+        would consult a definition `stack_discipline` grades by how the
         *next* alternative overwrote it (a `TESTSET`'s write is popped with
         zero reads by the alternative that follows it, so it always grades
         local) rather than by how the chain's result is actually used.
@@ -694,7 +694,7 @@ class Reconstructor:
         M4 task 13 `classify_registers` answers per DEFINITION rather than per
         register number, so a slot that is a local elsewhere in the function
         no longer drags this operand's definition down with it. What can still
-        reach here is a definition one of `_stack_discipline`'s own barriers
+        reach here is a definition one of `stack_discipline`'s own barriers
         refuses (`_same_block`, the RK/literal barrier, the `MOVE`-from-a
         -lower-slot rule) or that `declared` already holds from an exited
         scope. Kept as a loud refusal, not an assert; the chunk then falls
@@ -805,7 +805,7 @@ class Reconstructor:
             # `reg` was inlined into some earlier expression and popped; there
             # is no `local` carrying it, so emitting `LocalExpr(reg)` here
             # would print a name this function never declares -- which Lua
-            # resolves as a GLOBAL read, silently. `_stack_discipline` only
+            # resolves as a GLOBAL read, silently. `stack_discipline` only
             # grades a definition a temp when its value is read exactly once
             # before the statement ends, so a second read means the pc-linear
             # simulation mismodelled this shape (its own documented

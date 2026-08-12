@@ -286,12 +286,24 @@ inside `_structure_range_impl`).
 
 ### `pyluadec.express` — LIR to statement/expression IR
 
-- `express/expr.py` (73 lines) — the expression nodes, all frozen dataclasses:
+(Line counts re-derived 2026-08-13, M5 task 11. The three this section used
+to carry — 73 / 836 / 1143 — were all stale; only `names.py`'s changed in
+that task.)
+
+- `express/expr.py` (89 lines) — the expression nodes, all frozen dataclasses:
   `ConstExpr`, `LocalExpr`, `GlobalExpr`, `UpvalExpr`, `IndexExpr`, `BinExpr`,
   `UnExpr`, `CallExpr`, `VarargExpr`, `ClosureExpr`, `TableExpr`.
-- `express/names.py` (836 lines) — `classify_registers(fn) -> RegClass`
+- `express/names.py` (494 lines) — `classify_registers(fn) -> RegClass`
   (`locals` / `temps` / `loop_vars`) and `name_for(reg, depth) -> "l{depth}_{reg}"`.
-- `express/reconstruct.py` (1143 lines) — the `Reconstructor`: statement nodes
+  It owns the half of the analysis that is about `for` headers: which slots a
+  loop header genuinely owns, and over which pcs.
+- `express/freereg.py` (558 lines) — `stack_discipline(...)`, the simulation of
+  `lparser.c`'s `freereg = nactvar` allocation discipline, split out of
+  `names.py` by M5 task 11. It knows nothing about `for` headers or `RegClass`;
+  the four callbacks in its signature are its entire interface to `names.py`,
+  and were already so before the split, which is what made the split textual.
+  See "Register classification" below.
+- `express/reconstruct.py` (1427 lines) — the `Reconstructor`: statement nodes
   (`LocalDecl`, `Assign`, `ExprStmt`, `ReturnStmt`) and targets (`LocalTarget`,
   `GlobalTarget`, `IndexTarget`, `UpvalTarget`), plus the API the printer
   drives: `stmts_for(instrs)`, `take_expr(reg)`, `cond_operand(x)`,
@@ -870,7 +882,7 @@ been given debug info to compare.
 
 ## Register classification: simulating `lparser.c`'s `freereg`
 
-`express/names.py::_stack_discipline`. This is M3's central analytical idea and
+`express/freereg.py::stack_discipline`. This is M3's central analytical idea and
 the one worth understanding before touching anything in `express/`.
 
 Every register **definition** is classified `local` (gets a real
@@ -916,8 +928,11 @@ exactly one tracked def and one tracked use, in that order, with no
   rate, so the net was zero. **The effect model was never answering the
   question being asked.**
 
-`_adjacent_pure` and the `EffectMode` knob it read no longer exist in
-`express/names.py`.
+`_adjacent_pure` is gone, and nothing in `express/` reads `EffectMode` any
+more — neither `names.py` nor the `freereg.py` it was split into so much as
+imports it (checked 2026-08-13). `EffectMode` itself is alive in
+`lift/effects.py`, where the lattice lives; it is simply no longer a knob on
+register classification.
 
 ### What is there now
 
@@ -930,7 +945,7 @@ occupy registers. So
 
 That is simulable straight from the bytecode without knowing `nactvar`, because
 `freereg` after any value-producing instruction is its target register plus one.
-`_stack_discipline` keeps a `pending` stack of pushed-but-unconsumed values:
+`stack_discipline` keeps a `pending` stack of pushed-but-unconsumed values:
 
 - a value producer targeting `a` pops every pending entry at or above `a`
   (exactly the operands it just consumed) and pushes its own results;
@@ -939,7 +954,7 @@ That is simulable straight from the bytecode without knowing `nactvar`, because
   write whose target is already a known local) pops its own operands and then
   **promotes everything still pending to local** — surviving a statement
   boundary is the definition of being one. (`CLOSE`/`FORLOOP`/`TFORLOOP` share
-  one arm in `express/names.py::_stack_discipline`, the
+  one arm in `express/freereg.py::stack_discipline`, the
   `op in (Op.CLOSE, Op.FORLOOP, Op.TFORLOOP)` branch: a loop's back edge is a statement
   boundary too, and nothing may stay pending across it.)
 - `SETTABLE`/`SETLIST` pop only *above* the table's own register, leaving the
@@ -963,8 +978,24 @@ other definition of the same register number down with it.
 The pop-once accounting alone is not sufficient once verdicts are per
 definition; four extra rules disqualify definitions the walk would otherwise
 grade temporaries. Each was found by a *measured* regression, and each is
-pinned by a fixture that fails when it is neutered (see
-`tests/test_express_liverange.py`).
+pinned by a fixture that fails when it is neutered. **Where those pins live
+was re-measured 2026-08-13 (M5 task 11), by neutering each of the four in
+turn and running the suite** — barriers 1–3 are pinned in
+`tests/test_express_liverange.py` as this section used to say of all four,
+but barrier 4 is not: with it neutered, all 126 tests in the five
+`tests/test_express_*.py` modules still pass, and what fails is
+`tests/test_sir_loops_longtail.py::
+test_repeat_fixture_claims_every_pc_and_certifies[6]` together with
+`tests/test_ledger_ratchet.py::test_ledger_is_a_reproducible_fixed_point`
+— i.e. barrier 4 is the only one of the four whose absence *moves the
+committed ledger*. Named failing test ids for all four, before and after
+that task's extraction, are in its report.
+
+Since M5 task 11 the three state-independent barriers are module-level
+functions in `express/freereg.py` under this same heading (`_same_block`,
+and `_bar_literal_operands` carrying both 2 and 3); barrier 4 is two lines
+inside `stack_discipline`'s `do_read`, where it is marked as such, because
+it is inseparable from the walk's own `last_def` bookkeeping.
 
 1. **`_same_block`** — a definition and its read must be in the same CFG basic
    block. Two properties depend on it. Execution counts: a definition read
@@ -1041,7 +1072,7 @@ writes happen *mid*-statement.
 
 ### The two `promote_all()` calls are not interchangeable
 
-Documented in `express/names.py::_stack_discipline`, under the comment
+Documented in `express/freereg.py::stack_discipline`, under the comment
 beginning "NOTE on the two intermediate `promote_all()` calls below"; both
 were separately fault-injected
 after a review found a comment that lumped them together and got the first one

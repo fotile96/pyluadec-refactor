@@ -423,7 +423,7 @@ population (see item 4 below). Original entry follows.*
 These print fine and recompile to a *different* proto. All 58 differ on `code`;
 24 also on `maxstacksize`, 11 on `constants.len`, 11 on an individual constant.
 This is the residual approximation in the freereg simulation
-(`express/names.py::_stack_discipline`) — statement grouping and register
+(`express/freereg.py::stack_discipline`) — statement grouping and register
 allocation that do not quite match luac's.
 
 (An earlier pass of this breakdown also reported 1 of the 58 differing on
@@ -1564,7 +1564,11 @@ fallback files do not have. The three named gaps in the analysis — call
 arguments, script-table round trips, aliased launderers — are each a committed
 failing-by-construction test in `tests/test_l2_keyseq.py`.
 
-## 7. Extract `express/names.py::_stack_discipline`
+## 7. Extract `express/names.py::_stack_discipline` — DONE (M5 task 11)
+
+*Everything until "Closed" below is the record as it stood before the
+change. Three of its five figures did not reproduce; see the Closed
+section.*
 
 Deferred during M4 task 13 and recorded **only in a gitignored report**, which
 is exactly the failure mode this file exists to prevent. Re-derived
@@ -1583,6 +1587,103 @@ gate — which will refuse any behaviour change, making this unusually safe —
 not for leaving it alone. (An earlier note put `names.py` at 832 lines; it is
 831. Trivial, recorded because carried-forward numbers are how this project
 gets bitten.)
+
+### Closed — M5 task 11 (commits `61f55af`, `b01894a`, and this one)
+
+Split into `src/pyluadec/express/freereg.py`, exporting `stack_discipline`.
+`names.py` keeps the half of the analysis that is about `for` headers (which
+slots a loop header owns, over which pcs) and calls the other half through the
+four callbacks that were **already** its whole interface — `_stack_discipline`
+never closed over `classify_registers`' state, which is why step 1 could move
+the body textually.
+
+**Three of the five figures above did not reproduce** (re-derived 2026-08-13 at
+`e1dc62c` by AST, before any edit):
+
+| figure | this item said | measured |
+| --- | --- | --- |
+| `_stack_discipline` lines | 462 | **467** |
+| `if`s in it | 33 | 33 ✓ |
+| nested closures in it | 11 | 11 ✓ |
+| `names.py` lines | 831 | **968** |
+| `classify_registers` lines / closures | 278 / 4 | **410 / 11** |
+| "one function is 56% of the module" | 56% | **48.2%** |
+
+The module and `classify_registers` had both grown since 2026-08-12 (M5 task 5
+put the loop-ownership windows in), which is the whole reason the fraction
+moved the *opposite* way from what a growing extraction target would suggest.
+
+After (measured the same way at the tip):
+
+| | before | after |
+| --- | --- | --- |
+| `names.py` | 968 lines | **494** |
+| `freereg.py` | — | **558** |
+| the walk itself | 467 lines / 33 `if` / 11 closures | **308 / 22 / 7** |
+
+A fourth figure worth recording because it reframes the item: of the walk's 467
+lines, **only ~192 were code** — 121 docstring, 117 comment-only, 37 blank. The
+prose is the asset here (each claim in it was individually verified in an M4
+review), so "extract" had to mean *move the evidence with the code it
+describes*, not compress it. Nothing was deleted except one dangling
+half-sentence (below).
+
+What changed inside, beyond the move:
+
+- The three state-independent barriers became module-level functions
+  (`_same_block(block_floor, d, r)`, `_renders_as_literal(fn, def_pc)`,
+  `_bar_literal_operands(fn, li, pending)`) under a section heading matching
+  `structured-pipeline.md`'s "The four barriers on top of the pop-once rule",
+  so the runbook's map and the module's layout are isomorphic. The fourth
+  barrier stayed put and is marked in place — see the finding below.
+- The `pending` entry was a 4-element list read by magic index (`ent[3] = 1`);
+  it is now a `@dataclass(slots=True)` `_Pending` (`ent.bad = True`). Crossing
+  a function boundary with the raw list would have made the indices worse, not
+  better.
+- `push` was defined **inside** the `for pc in ordered` loop, rebuilt once per
+  instruction. It now takes `pc` and is defined once.
+- Deleted a dangling half-sentence comment, "`# Back-edge spans [target,
+  source]. luac's loops are natural and its`", which has sat above
+  `_same_block` since M4 task 13 (`783d15c`) describing nothing in the code.
+
+**Finding: the "four barriers" pin claim was true of three of them.**
+`structured-pipeline.md` said each of the four "is pinned by a fixture that
+fails when it is neutered (see `tests/test_express_liverange.py`)". Neutering
+each in turn (2026-08-13, before and again after the extraction, with identical
+results both times):
+
+| barrier | failing test ids with it neutered |
+| --- | --- |
+| 1 `_same_block` | `test_express_liverange.py::test_genuine_locals_are_not_inlined_away_cert_only[0]`, `test_express_testset.py::test_fixtures_certify_l3` |
+| 2 RK/literal | `test_express_liverange.py::test_genuine_locals_are_not_inlined_away[5,8,9]`, `test_express_testset.py::test_fixtures_certify_l3`, three in `test_express_reconstruct.py` |
+| 3 `MOVE d, s` | `test_express_liverange.py::test_genuine_locals_are_not_inlined_away[13,14]` |
+| 4 read-poison blame | **nothing in any `test_express_*.py`** (126/126 still pass); `test_sir_loops_longtail.py::test_repeat_fixture_claims_every_pc_and_certifies[6]` and `test_ledger_ratchet.py::test_ledger_is_a_reproducible_fixed_point` |
+
+So barrier 4 is load-bearing — it is in fact the only one of the four whose
+absence *moves the committed ledger* — but its pin is nowhere near where the
+runbook sent a reader. Both the runbook and the code now say so.
+
+**Acceptance.** `corpus/ledger.jsonl` regenerated and byte-identical after each
+of the three commits. Suite 833 passed. Timing, interleaved OLD/NEW with
+`-p no:randomly`, three pairs: OLD 37.40 / 37.93 / 38.61s, NEW 37.82 / 37.80 /
+38.42s — means 37.98 vs 38.01s, a 0.03s difference against a 1.21s spread
+*within* the OLD arm, i.e. no measurable change and no regression of M5 task
+2's recovery. Because the suite is dominated by `luac_sz4` subprocesses and
+would hide even a large regression in this function, `classify_registers` was
+also benchmarked directly over all 1944 corpus protos (best of 5, three
+interleaved pairs): OLD 509.6 / 507.9 / 511.7 ms, NEW 492.6 / 477.0 / 489.9 ms
+— **4.6% faster**, plausibly the per-instruction closure construction that
+`push` no longer does. That benchmark also sums `len(temp_defs)` over all 1944
+protos and gets **157236** on both arms, which is a behaviour-identity check
+that does not route through the ledger.
+
+**What corpus invariance does and does not prove.** A byte-identical ledger and
+an identical `temp_defs` total say the 1944 corpus protos classify identically.
+They say nothing about inputs the corpus lacks — and the corpus reaches 33 of
+38 opcodes, so the `VARARG` and `SETLIST`-open arms of the dispatch, among
+others, are exercised only by synthetic fixtures in the suite. Those fixtures
+pass; that is the evidence, and it is weaker than the corpus number looks.
+
 
 ## 8. The ledger's `refusal_reason` drops `Mismatch.path`
 

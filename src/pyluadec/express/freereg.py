@@ -7,16 +7,24 @@ maintains, and nothing else -- it knows nothing about `for` headers, loop
 ownership windows or `RegClass`. The four callbacks in its signature are the
 entire interface to the caller's half of the analysis.
 
-Split out of `names.py` in M5 task 11. The split is exactly where the
-callback interface already was: `_stack_discipline` never closed over
-`classify_registers`' state, so the move is textual.
+Split out of `names.py` in M5 task 11, at exactly the seam the callback
+interface already drew: `_stack_discipline` never closed over
+`classify_registers`' state, which is what let the first of that task's two
+code commits move the body across byte for byte. The second one then did
+change things here -- the three state-independent barriers became the
+module-level functions below, `pending` entries became `_Pending` instead of
+4-element lists read by index, and `push` stopped being rebuilt once per
+instruction inside the walk's own loop. Every step was checked by
+regenerating `corpus/ledger.jsonl` and requiring it byte-identical, which
+proves those 1944 protos classify the same and proves nothing about shapes
+the corpus lacks (it reaches 33 of 38 opcodes).
 """
 from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from pyluadec.lift.lift import LirFunction
+from pyluadec.lift.lift import LirFunction, LirInstr
 from pyluadec.lift.opcodes import OP_SPECS, ArgMode, Fmt, Op, isk
 
 # lopcodes.h's `MAXINDEXRK` (`BITRK - 1`, BITRK = 1 << (SIZE_B - 1) = 256):
@@ -69,7 +77,8 @@ def _pending_def(pending: list[_Pending], r: int) -> _Pending | None:
 def _same_block(block_floor: Callable[[int], int], d: int, r: int) -> bool:
     """True iff pcs `d` and `r` are in the same CFG basic block.
 
-    THE control-flow requirement on per-definition staging. A staged
+    Barrier 1 of the four (see the section header), and THE control-flow
+    requirement on per-definition staging. A staged
     definition is not a statement: it lives only in the reconstructor's
     register environment until a read pops and inlines it. Two things
     follow, and both are violated as soon as a definition and its read
@@ -169,11 +178,18 @@ def _renders_as_literal(fn: LirFunction, def_pc: int) -> bool:
     return False
 
 
-def _bar_literal_operands(fn: LirFunction, li, pending: list[_Pending]) -> None:
+def _bar_literal_operands(fn: LirFunction, li: LirInstr,
+                          pending: list[_Pending]) -> None:
     """Disqualify pending definitions that this instruction reads in a
     position where luac would never have used a register at all.
 
-    Two ways that happens, both of them in `lcode.c`:
+    Barriers 2 AND 3 of the four (see the section header): they are one
+    function because both ask the same shape of question about an operand
+    position and both need the same lookup into `pending`. Barrier 3, the
+    `MOVE d, s` rule, is the `if ri.op is Op.MOVE` block in the body and is
+    documented there; the rest of this docstring is barrier 2.
+
+    Two ways barrier 2 happens, both of them in `lcode.c`:
 
     * an **RK operand** (`OP_SPECS`' `ArgMode.K` slots, transcribed from
       `lopcodes.c`): `luaK_exp2RK` encodes a literal straight into B/C
@@ -194,7 +210,8 @@ def _bar_literal_operands(fn: LirFunction, li, pending: list[_Pending]) -> None:
     """
     ri = li.ri
     if ri.op is Op.MOVE and ri.b < ri.a:
-        # `MOVE d, s` with `s < d` proves `s` held a NAMED LOCAL, not a
+        # BARRIER 3. `MOVE d, s` with `s < d` proves `s` held a NAMED
+        # LOCAL, not a
         # temporary. `luaK_exp2nextreg` runs `freeexp` first, and
         # `freeexp` only releases a VNONRELOC expression sitting at
         # `freereg - 1` (it asserts exactly that), so discharging a

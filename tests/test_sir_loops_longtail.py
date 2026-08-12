@@ -301,7 +301,7 @@ def test_empty_while_body_is_a_register_classification_gap_not_a_loop_defect():
     """`while a do end` structures and refuses to print, for a reason that has
     nothing to do with loops.
 
-    `_stack_discipline` (express/names.py) is a pc-LINEAR simulation of luac's
+    `express/freereg.py::stack_discipline` is a pc-LINEAR simulation of luac's
     `freereg = nactvar` discipline with no control-flow model. With an empty
     body, nothing between the header's `GETGLOBAL a` and the function's
     trailing `RETURN` ever pops register 0, so the final `promote_all()` grades
