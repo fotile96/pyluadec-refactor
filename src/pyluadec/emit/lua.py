@@ -471,18 +471,101 @@ class Printer:
             # `Reconstructor.cond_value` builds; this arm stays a fold.
             return [pad + self.stmt(s) for s in self.recon.cond_value(r)]
         if isinstance(r, If):
-            cond = self.condition(r.cond)
-            out = [f"{pad}if {cond} then"]
+            out = []
             # Each arm is its own Lua block: a `local` one arm declares is not
             # in scope in the other, nor after the `end`. See
             # Reconstructor.open_scope for what went wrong without this.
-            snap = self.recon.open_scope()
-            out += self.region(r.then_body, indent + 1)
-            self.recon.close_scope(snap)
-            if r.else_body is not None:
-                out.append(f"{pad}else")
-                out += self.region(r.else_body, indent + 1)
+            #
+            # ONE snapshot PER RUNG, kept on a stack, not one shared by the
+            # whole chain. That distinction is load-bearing and was measured
+            # the hard way: sharing a single snapshot made
+            # tests/test_semantic_regressions.py::
+            # test_while_true_break_guard_recovers_loop drop from `L3` to `L1`
+            # (the printer refused outright with "register 0 is being given a
+            # new value while the expression staged in register 2 still refers
+            # to it by name"). The recursive form's inner `If` called
+            # `open_scope()` AFTER its own condition -- and after any staging
+            # its `Straight` prefix did -- so its snapshot legitimately
+            # contains staged temps that the outer snapshot predates. Rolling
+            # a later rung back to the outer snapshot discards them.
+            #
+            # The stack is unwound after the loop, innermost first, which is
+            # exactly the sequence of `close_scope(snap)` calls the recursive
+            # form made on its way back out.
+            snaps: list = []
+            node, keyword = r, "if"
+            while True:
+                # Rendered INSIDE the loop and before this rung's snapshot,
+                # matching where the recursive form evaluated a nested `If`'s
+                # condition (`self.condition(r.cond)` precedes
+                # `self.recon.open_scope()`).
+                cond = self.condition(node.cond)
+                out.append(f"{pad}{keyword} {cond} then")
+                snap = self.recon.open_scope()
+                snaps.append(snap)
+                out += self.region(node.then_body, indent + 1)
                 self.recon.close_scope(snap)
+                nested, prefix = _split_else(node.else_body)
+                staged: list[str] = []
+                if nested is not None:
+                    # The else-arm of an `elseif` is never *just* the nested
+                    # `If`: `sir.build` gives the nested condition's operand
+                    # code (`GETGLOBAL b`, ...) its own `Straight` sibling in
+                    # front of it. Those siblings reconstruct to ZERO
+                    # statements -- pure staging into the Reconstructor's env
+                    # -- and that is exactly the condition under which the
+                    # collapse is safe. Rendering them first and checking that
+                    # they produced no lines is what makes it a fold: they are
+                    # rendered once, in program order, at the indent they
+                    # would need in the `else` spelling, and their emptiness
+                    # (not their text) picks the keyword. A sibling that DOES
+                    # produce statements falls through to a real `else` below
+                    # with those statements in place -- printing `elseif`
+                    # there would silently drop them.
+                    for pre in prefix:
+                        staged += self.region(pre, indent + 1)
+                if nested is not None and not staged:
+                    # `else` + exactly one `if` IS `elseif`, and this is a
+                    # spelling change only. `lparser.c::ifstat` handles ELSEIF
+                    # by `luaK_concat(escapelist, luaK_jump())` +
+                    # `luaK_patchtohere(flist)` + `test_then_block`, and ELSE
+                    # by the same two calls + `block()`; the only difference
+                    # is the wrapper `enterblock`/`leaveblock` that `block()`
+                    # adds around the inner `ifstat`, which emits an
+                    # instruction only when `bl->upval` is set -- and
+                    # `markupval` sets that on the inner THEN block, never on
+                    # the wrapper. Both forms then close with
+                    # `luaK_patchtohere(escapelist)` at the same `fs->pc`.
+                    # Mechanized in tests/test_emit_readability.py::
+                    # test_elseif_and_nested_if_in_else_compile_identically
+                    # (the two spellings compile byte-identically).
+                    #
+                    # This is a fold, not a post-pass: the chain is walked
+                    # once, top down, and no emitted line is ever revisited.
+                    node, keyword = nested, "elseif"
+                    continue
+                if nested is not None:
+                    # Collapse refused: the arm has real statements before its
+                    # `if`. `prefix` has already been rendered into `staged`
+                    # (in program order, at the `else` block's indent), so
+                    # emit the `else` header, then those lines, then the
+                    # trailing `If` -- the same text the plain recursive
+                    # `self.region(else_body, indent + 1)` would have produced.
+                    out.append(f"{pad}else")
+                    out += staged
+                    out += self.region(nested, indent + 1)
+                    self.recon.close_scope(snap)
+                elif node.else_body is not None:
+                    out.append(f"{pad}else")
+                    out += self.region(node.else_body, indent + 1)
+                    self.recon.close_scope(snap)
+                break
+            # Unwind the enclosing rungs' snapshots, innermost first. The
+            # innermost (`snaps[-1]`) was already closed inside the loop, by
+            # whichever arm ended the chain -- the same double `close_scope`
+            # the recursive form did for a leaf `If`.
+            for outer in reversed(snaps[:-1]):
+                self.recon.close_scope(outer)
             out.append(f"{pad}end")
             return out
         if isinstance(r, NumericFor):
@@ -652,6 +735,67 @@ class Printer:
             # identical instruction stream.
             return []
         raise StructureError(f"unprintable region {type(r).__name__}")
+
+
+def _sole_if(r: Region | None) -> "If | None":
+    """The single `If` that `r` consists of, or None.
+
+    `sir.build._structure_range` always returns a `Seq` (line 1079), so an
+    else-arm holding one `if` statement arrives wrapped rather than as a bare
+    `If`. A `Seq` claims no pcs of its own and prints its children at its own
+    indent, so looking through a single-child one changes nothing but the
+    spelling.
+    """
+    while isinstance(r, Seq) and len(r.body) == 1:
+        r = r.body[0]
+    return r if isinstance(r, If) else None
+
+
+def _split_else(r: Region | None) -> tuple["If | None", tuple[Region, ...]]:
+    """Split an else-arm into `(trailing If, everything before it)`, or
+    `(None, ())` if it does not end in an `If` at all.
+
+    An `elseif` candidate is an else-arm whose LAST region is an `If`. It is
+    not usually the arm's *only* region: `sir.build` puts the nested
+    condition's operand code in a `Straight` sibling ahead of it. Whether that
+    sibling is really "nothing" is a reconstruction question, not a structural
+    one, so this function does not try to answer it -- the caller renders the
+    prefix and collapses only if it printed no lines.
+
+    The one structural refusal here is a prefix region that `_terminates`:
+    after an unconditional `return`/`break` the `Seq` arm of `Printer.region`
+    stops, so the trailing `If` would never be printed at all, and pulling it
+    out to an `elseif` would resurrect unreachable code (which recompiles to
+    extra instructions, i.e. costs the proto its certification).
+
+    **That refusal is DEFENSIVE, not proven by a failing test.** Measured
+    2026-08-12 by wrapping this function over the whole 229-file corpus: the
+    `_terminates` branch fires **0** times against **504** collapses that do
+    happen, and deleting it leaves the full suite green. Three synthetic
+    shapes were tried to reach it and none did: `if x then f() else if a then
+    return 1 else return 2 end if b then g() end end` and its `return`-only
+    variant both make the printer refuse the whole chunk for unrelated
+    reasons (so nothing is printed at all), and the single-armed `if a then
+    return end` variant does not `_terminate` (one arm falls through), so the
+    guard is not consulted. Source-level Lua cannot write the shape directly
+    either -- `return`/`break` are `laststat`, legal only as the final
+    statement of a block. Kept because "print whatever precedes the `if`" is
+    the wrong default for a region the recursive form would have suppressed.
+    """
+    sole = _sole_if(r)
+    if sole is not None:
+        return sole, ()
+    while isinstance(r, Seq) and len(r.body) == 1:
+        r = r.body[0]
+    if not isinstance(r, Seq) or not r.body:
+        return None, ()
+    last = _sole_if(r.body[-1])
+    if last is None:
+        return None, ()
+    prefix = r.body[:-1]
+    if any(_terminates(p) for p in prefix):
+        return None, ()
+    return last, prefix
 
 
 def _implicit_return_pc(fn: LirFunction) -> int | None:
