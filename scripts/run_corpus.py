@@ -15,6 +15,80 @@ _RANK = {"L0": 0, "L1": 1, "L2": 2, "L3": 3}
 _L0_REASON = "compile: shipped chunk did not compile"
 
 
+def key_disagreements(observed: dict[str, list[dict]]) -> list[str]:
+    """Rows whose `structural_hash` group does not agree on its certification
+    verdict. Empty list = the ledger's grouping key is sound for this run.
+
+    ## The gap this closes
+
+    The ledger's primary key is `structural_hash` ALONE, and the walk below
+    resolves any disagreement inside a group by taking the higher level.
+    `structure.structured._memo_key` deliberately does NOT make that
+    assumption: it keys the certification memo on `(structural_hash,
+    _debug_fingerprint)`, because `structural_hash` drops `source`,
+    `linedefined`/`lastlinedefined`, `lineinfo`, `locvars` and upvalue names,
+    every one of which `verify.normalize.compare_protos` checks. So "one
+    structural hash implies one verdict" was an assumption this script MADE and
+    did not CHECK, and the max-by-rank that papers over a violation is not
+    reached on this corpus -- meaning a violation would have shipped a row
+    whose `level` came from a different proto than its `n_insns` did.
+
+    ## Pin, not split -- and what would flip that
+
+    Measured 2026-08-12 (M5 task 8, re-measured from the M4 figures and
+    reproducing them exactly): **16 of the 1478 shash groups carry more than
+    one debug fingerprint**, holding **462** fingerprints between them (446
+    more than one each), and **0 groups disagree on (level, rung, reason)** --
+    so the max-by-rank is vacuous today. Splitting the key to `(shash, dfp)`
+    would take the committed ledger from **1478 rows to 1924** (also measured),
+    all 446 additions being duplicate verdicts, and would land in the same
+    commit as `scripts/ratchet_diff.py`, whose whole job is to diff the ledger
+    by row identity -- the first baseline diff would read as 1478 removed +
+    1924 added. The soundness content is not the extra rows, it is that the
+    assumption stops being unchecked: this function turns it into a per-run
+    assertion, and `main()` refuses to write a ledger that violates it.
+
+    **If this ever returns non-empty, the fix is to split the key**, not to
+    weaken this. A disagreement means two protos with equal code shape and
+    unequal debug fields certified differently, which is exactly the case
+    `_debug_fingerprint` exists for.
+
+    ## What is pinned, and what is not
+
+    Pinned: the CERTIFICATION verdict `(level, rung, refusal_reason)` from
+    `decompile_chunk`, which is what `_memo_key` claims is a function of
+    `(shash, dfp)`. NOT pinned: the compile-adjusted level the ledger stores
+    (`level if compile_ok else "L0"`). Two occurrences of one shape can
+    legitimately differ there, because whether the whole CHUNK compiled is a
+    property of the file, not of the shape -- and that case is already handled
+    downstream by `_force_l0`, which AND-s `compile_ok` across the group.
+
+    `observed` maps shash -> list of per-occurrence dicts with keys
+    `file`, `proto_path`, `dfp`, `level`, `rung`, `reason`. A pure function
+    over already-collected observations so it can be exercised against input
+    that VIOLATES it (`tests/test_ledger_ratchet.py::
+    test_key_disagreement_check_actually_rejects_a_split_group`) -- a check
+    written inline over a corpus that satisfies it would go on passing if it
+    were quietly weakened.
+    """
+    bad = []
+    for shash, obs in sorted(observed.items()):
+        verdicts = {(o["level"], o["rung"], o["reason"]) for o in obs}
+        if len(verdicts) <= 1:
+            continue
+        fps = len({o["dfp"] for o in obs})
+        detail = "; ".join(
+            f"{o['file']}:{o['proto_path']} -> "
+            f"({o['level']}, rung {o['rung']}, {o['reason']!r})"
+            for o in sorted(obs, key=lambda o: (o["file"], o["proto_path"])))
+        bad.append(
+            f"{shash}: {len(verdicts)} distinct verdicts across {len(obs)} "
+            f"occurrence(s) / {fps} debug fingerprint(s) -- the ledger key "
+            f"(structural_hash alone) is not sufficient here; split it to "
+            f"(structural_hash, _debug_fingerprint). {detail}")
+    return bad
+
+
 def _force_l0(e) -> None:
     """Demote an entry whose SHIPPED CHUNK did not compile, and make it say so.
 
@@ -82,6 +156,10 @@ def main() -> int:
     from pyluadec import oracle
     from pyluadec.ingest import load_file
     from pyluadec.pipeline import walk_proto_paths, decompile_chunk
+    # Private on purpose (see its docstring): the ledger key check below needs
+    # exactly the fingerprint the certification memo uses, and a second,
+    # public transcription of that field list is the drift this import avoids.
+    from pyluadec.structure.structured import _debug_fingerprint
     from pyluadec.verify.ledger import (LedgerEntry, oracle_version, structural_hash,
                                         write_ledger)
     from pyluadec.verify.normalize import LADDER_VERSION
@@ -99,6 +177,8 @@ def main() -> int:
     # that confesses when at least one occurrence really did fall back is the
     # conservative reading. The per-occurrence `shipped` field is exact.
     shipped_fallback_any: dict[str, bool] = {}
+    # shash -> every occurrence's certification verdict, for `key_disagreements`.
+    observed: dict[str, list[dict]] = {}
     n_ok = 0
     n_protos = 0
     n_structured = 0
@@ -139,6 +219,12 @@ def main() -> int:
                    "shipped": "fallback" if shipped_fb else "structured",
                    "hybrid": res.hybrid}
             level = res.levels[path] if compile_ok else "L0"
+            # The un-compile-adjusted verdict, which is what `_memo_key`
+            # claims is a function of `(structural_hash, _debug_fingerprint)`.
+            observed.setdefault(h, []).append(
+                {"file": f.name, "proto_path": path, "dfp": _debug_fingerprint(p),
+                 "level": res.levels[path], "rung": res.rungs[path],
+                 "reason": res.reasons[path]})
             if level == "L3":
                 n_structured += 1
             if not shipped_fb:
@@ -153,21 +239,17 @@ def main() -> int:
                 # evidence rather than silently keeping whichever file happened
                 # to be walked first.
                 #
-                # KNOWN GAP, deliberately not closed here (M5 item; see
-                # `docs/runbooks/m3-backlog.md`). The ledger groups by
-                # `structural_hash` ALONE, and that key is NOT sufficient to
-                # imply an equal verdict -- `structure.structured._memo_key`
-                # keys its certification memo on `(structural_hash,
-                # _debug_fingerprint)` precisely because `structural_hash`
-                # drops `source`/`linedefined`/`lineinfo`/`locvars`/upvalue
-                # names, all of which `compare_protos` checks (see
-                # `_debug_fingerprint`'s docstring). So "a disagreement means a
-                # bug" is an assumption this script makes and does not check.
-                # Measured 2026-08-12: 16 of the 1478 shash groups contain more
-                # than one debug fingerprint, and 0 groups disagree on level or
-                # rung -- the max-by-rank above is vacuous today. Splitting the
-                # ledger key would MOVE `corpus/ledger.jsonl`, so it is an M5
-                # change made together with the ratchet CI, not a drive-by one.
+                # The gap this used to carry -- "one structural hash implies
+                # one verdict" was assumed and not checked -- is CLOSED as of
+                # M5 task 8, by assertion rather than by splitting the key:
+                # `key_disagreements` above is evaluated over every occurrence
+                # before the ledger is written, and `main()` refuses to write a
+                # ledger that violates it. The max-by-rank below therefore
+                # still cannot silently paper over a real disagreement; it
+                # remains vacuous on this corpus (measured 0 disagreements),
+                # and if it ever stops being vacuous the run fails loudly with
+                # the shash and the disagreeing occurrences named. See
+                # `key_disagreements`' docstring for why pin rather than split.
                 if _RANK[level] > _RANK[e.level]:
                     e.level = level
                     e.l3_level = res.rungs[path]
@@ -196,8 +278,28 @@ def main() -> int:
                            "pass": "structure.fallback"}] if e.fallback else [])
         if not e.compile_ok:
             _force_l0(e)
+    # BEFORE writing: refuse to emit a ledger whose grouping key is unsound.
+    # A disagreement here means a row's `level` came from a different proto
+    # than its `n_insns` did, which is not something to discover by reading a
+    # diff later.
+    bad_keys = key_disagreements(observed)
+    if bad_keys:
+        print(f"LEDGER KEY UNSOUND: {len(bad_keys)} structural_hash group(s) "
+              f"disagree on their certification verdict; ledger NOT written.",
+              file=sys.stderr)
+        for line in bad_keys:
+            print(f"  {line}", file=sys.stderr)
+        return 1
     write_ledger(list(by_hash.values()), ROOT / "corpus" / "ledger.jsonl")
     n_l3 = sum(1 for e in by_hash.values() if e.level == "L3")
+    # Report the exposure the check above covers, so the figure quoted in
+    # `key_disagreements`' docstring is re-derivable from an ordinary run
+    # rather than from a scratch script.
+    multi_fp = [obs for obs in observed.values() if len({o["dfp"] for o in obs}) > 1]
+    n_fps = sum(len({o["dfp"] for o in obs}) for obs in multi_fp)
+    print(f"ledger key: {len(multi_fp)}/{len(by_hash)} shash group(s) carry >1 "
+          f"debug fingerprint ({n_fps} fingerprints between them); "
+          f"{len(bad_keys)} disagree on (level, rung, reason)")
     print(f"compiled {n_ok}/{len(files)}; ledger: {len(by_hash)} unique protos "
           f"({sum(len(e.occurrences) for e in by_hash.values())} occurrences)")
     print(f"structured {n_structured}/{n_protos} protos "
