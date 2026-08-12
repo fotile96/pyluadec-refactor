@@ -1928,6 +1928,134 @@ reach is bimodal, not a uniform deepening: the 3000-event cap truncates 132 of
 a median of **10** events each. Both are documented in
 `docs/runbooks/m3-backlog.md`; neither is L2.
 
+## The quality score — the predecessor's metric, ported (M5 task 3)
+
+`src/pyluadec/verify/semantic_score.py` is a mechanism-equivalent port of
+`/root/pyluadec/pyluadec/semantic_eval.py`, the metric that produced the
+predecessor's stated `avg_score 0.997` — the number spec §1 goal 4 and §7's
+M5 row commit us not to regress against. It had never been run against our
+output before this task, because it lives in the predecessor's 32-bit
+in-process bridge pipeline.
+
+**It is an evaluation instrument and gates nothing.** `verify/normalize.py`
+and `verify/certify.py` decide what is `L3`; a high score cannot promote
+anything, and no test in the tree lets it. What it adds is the one thing
+certification structurally cannot give: certification is a *predicate*, so it
+can say a proto does not match but not how far off it is. The score grades the
+non-matching ones.
+
+Definition, in one paragraph: per proto, nine component similarities —
+`cfg_reachable` 0.10, `cfg_all` 0.05, `opcode_family` 0.20, `global_reads`
+0.10, `global_writes` 0.10, `call_targets` 0.20, `call_shapes` 0.10,
+`return_arity` 0.05, `const_fingerprint` 0.10 — where the counter components
+are `1 - L1(a,b)/(|a|+|b|)` and the two CFG ones are 0/1 on an exact shape
+triple. The file score is the `code_len`-weighted mean over protos. Every
+weight, threshold and signature field is transcribed from the predecessor;
+the module docstring lists the eight places the port had to choose between
+reproducing their *comparison* and reproducing their bridge's *losses*
+(`svalue()` NUL truncation, `py::str` on non-UTF-8, the `VARARG_HASARG`-only
+vararg flag, the debug-section-derived upvalue count), with the corpus
+measurement that shows each choice cannot move this corpus's number.
+
+### Running it
+
+```bash
+PYLUADEC_CORPUS_DIR=... uv run python scripts/quality_score.py
+PYLUADEC_CORPUS_DIR=... uv run python scripts/quality_score.py --all --strict
+```
+
+Read-only: it writes nothing, and in particular never touches
+`corpus/ledger.jsonl`. A full sweep costs **11.4s** wall (2026-08-12), which
+is why it is a CLI and not a suite member;
+`tests/test_semantic_score.py::test_corpus_smoke_three_small_files` is the
+committed arm (0.01s in-suite) and only pins that the path works.
+
+### First measurement — 2026-08-12, at M5 task 3
+
+```
+files scored      : 229
+avg_score         : 0.935579
+below 0.997       : 17
+on M2 fallback    : 17  (avg 0.132206)
+structured        : 212  (avg 1.000000)
+status            : pass=212  warn=0  fail=17
+```
+
+**It does not clear 0.997.** This is the honest state of the milestone at M5
+start, and it is the baseline every later re-measurement is compared against.
+
+The distribution is as clean as it could be: every one of the 212 files whose
+root certifies `L3` scores **exactly 1.000000**, and every one of the 17 files
+below the threshold is exactly a file that ships M2 fallback. So on today's
+corpus the score is, at file granularity, a monotone function of the
+certification verdict — it currently discovers no defect certification missed,
+which is a real (if negative) result about the instrument, and the reason it
+still earns its place is the grading it does *inside* the failing 17:
+
+| file | score | file | score |
+|---|---|---|---|
+| `snr_lib.lua` | 0.040488 | `snr_s4_10_s.lua` | 0.146561 |
+| `snr_fragment_main.lua` | 0.044070 | `snr_novel.lua` | 0.147137 |
+| `snr_mainmenu.lua` | 0.075326 | `snr_s2_10_s.lua` | 0.151972 |
+| `snr_memory.lua` | 0.104022 | `snr_s6_10_s.lua` | 0.153946 |
+| `snr_story_main.lua` | 0.106464 | `snr_music.lua` | 0.154160 |
+| `snr_graphic.lua` | 0.126425 | `snr_common.lua` | 0.161667 |
+| `snr_s3_10_s.lua` | 0.139208 | `config.lua` | 0.180702 |
+| `snr_s1_10_s.lua` | 0.142074 | `snr_e1_10_s.lua` | 0.230723 |
+| `snr_s5_10_s.lua` | 0.142553 | | |
+
+All 17 are `status=fail` with `drift_type=semantic_candidate` and hard issues
+(`function_shape_mismatch`, `proto_path_set_mismatch`) — the fallback lifts
+every nested function to a top-level `__pld_F` factory, so the recompiled
+proto *tree* has a different shape, not merely different code.
+
+### What the number implies for the exit gate — arithmetic, not opinion
+
+229 × 0.997 = 228.313. The 212 structured files already contribute 212.000, so
+the remaining 17 must contribute **≥ 16.313, i.e. average ≥ 0.9596**. They
+average 0.1322 today. There is no partial-credit path: a fallback file scores
+around 0.13 whatever else is true of it, so **reaching 0.997 requires
+essentially all 17 to start certifying** (or a comparable structural fix that
+makes their artifact stop being a pc-dispatch state machine). Closing 16 of 17
+leaves the average at 0.9962 — still short. This is the sharpest statement of
+what Tasks 4–7 have to deliver.
+
+### Calibration — why the number is believable
+
+`tests/test_semantic_score.py` holds the two properties that make it
+trustworthy, both proven by neutering (2026-08-12):
+
+- **No false alarms.** A proto scored against itself is 1.0 on every
+  component. Neuter: mistranscribe one weight (`cfg_all` 0.05 → 0.04) →
+  `test_identical_protos_score_one_on_every_component` fails. This is what
+  makes "212 files at exactly 1.000000" mean something.
+- **Not blind.** The M2 fallback of a chunk that *does* certify scores
+  **0.276364**, far under 1.0. Neuter: `_counter_similarity` returns a
+  constant 1.0 → the score rises to **0.904545** (the two CFG components are
+  not counters and keep firing, which is why blinding it does not reach 1.0)
+  and `test_m2_fallback_of_an_l3_chunk_scores_below_one` fails against its
+  `< 0.5` bound. That bound was set from both measurements rather than picked
+  round; `< 0.9` would have let the neuter pass by 0.0045. Had the metric
+  been unable to see the fallback, the corpus average would have been
+  measuring almost nothing — the fallback files are **46.1%** of the corpus
+  by instruction volume.
+
+The first test additionally asserts its own non-vacuity: an all-empty Counter
+pair scores 1.0 for free, so the sample must light up every counter and at
+least one back edge.
+
+### A brief number that did not reproduce
+
+The M5 plan describes the 17 fallback files as "47.6% of the corpus by line
+volume". Measured five ways on 2026-08-12, none lands on 47.6%: decompiled
+output lines **80.1%** (120246/150144), bytecode instructions **46.1%**
+(99289/215218), bytecode bytes **42.1%**, original source lines via
+`lastlinedefined` **42.7%**, proto occurrences **40.2%** (781/1944). The
+closest basis is instruction volume at 46.1%. Nothing in this task depends on
+the figure; it is recorded so the next reader quotes a measured one. The other
+two figures in that description — 17 fallback files and 212 structured — both
+reproduce exactly.
+
 ## Relationship to the fallback runbook
 
 `docs/runbooks/decompile-pipeline.md` documents the M2 fallback path and stays
