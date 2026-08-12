@@ -352,13 +352,11 @@ def test_reading_a_consumed_staging_register_again_is_refused():
 # drafted alongside, so the next census (Task 6) inherits the diagnosis rather
 # than re-deriving it.
 KNOWN_RESIDUAL = [
-    # `_emit_multi`: a `CALL` with several fixed results is one `Expr` and
-    # cannot be split into independently-inlinable per-register pieces, so
-    # every target is materialized. A generic `for` over `pairs(t)` therefore
-    # prints `local l0_1, l0_2, l0_3 = pairs(l0_0)` where luac left the triple
-    # in the control slots, and the recompile grows three MOVEs. Nothing to do
-    # with register classification: all three slots are already in `rc.temps`.
-    b"local t = {} for k, v in pairs(t) do f(k, v) g(k) end",
+    # (The `_emit_multi` entry that used to lead this list -- a generic `for`
+    # over `pairs(t)` printing `local l0_1, l0_2, l0_3 = pairs(l0_0)` -- was
+    # closed by M5 task 5 and promoted, per this test's own instruction, to
+    # `tests/test_express_residual.py::GENERIC_FOR_ITERATOR`.)
+    #
     # NEWTABLE's size hints. The constructor fold turns a following
     # `t.k = s` statement into `{["k"] = s}`, so the recompiled NEWTABLE
     # carries a hash-size hint of 1 where the original had 0.

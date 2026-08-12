@@ -43,7 +43,8 @@ from pyluadec.lift.opcodes import Op, indexk, isk
 from pyluadec.sir.regions import CondValue, VAlt, VNode, VTail
 
 from .expr import (BinExpr, CallExpr, ClosureExpr, ConstExpr, Expr, GlobalExpr,
-                   IndexExpr, LocalExpr, TableExpr, UnExpr, UpvalExpr, VarargExpr)
+                   IndexExpr, LocalExpr, MultiSpill, TableExpr, UnExpr, UpvalExpr,
+                   VarargExpr)
 from .names import RegClass
 
 
@@ -775,6 +776,18 @@ class Reconstructor:
         if len(regs) == 1:
             self.write_reg(regs[0], expr)
             return
+        if self._is_generic_for_iterator(regs):
+            # `for k, v in pairs(t) do` -- one source expression adjusted to
+            # three values, which `forlist` (lparser.c:1102-1130) stages
+            # straight into the control triple. Materializing it prints
+            # `local a, b, c = pairs(t)  for k, v in a, b, c do`, which is
+            # semantically identical and compiles to three more registers and
+            # three `MOVE`s. Staged instead, `emit.lua`'s `GenericFor` arm
+            # takes all three back and prints the single expression.
+            self.stage(regs[0], expr)
+            for r in regs[1:]:
+                self.stage(r, MultiSpill(regs[0]))
+            return
         flags = [r in self.declared for r in regs]
         if all(flags):
             self._out.append(Assign(tuple(LocalTarget(r) for r in regs), (expr,)))
@@ -808,6 +821,44 @@ class Reconstructor:
             self.env[r] = LocalExpr(r)
             self._pending.discard(r)
             self._consumed.discard(r)
+
+    def _is_generic_for_iterator(self, regs: tuple[int, ...]) -> bool:
+        """Is this multi-register write the staging of a generic `for`'s
+        iterator triple, and may it be staged rather than materialized?
+
+        Three conditions, all necessary:
+
+        * `regs` is exactly `(a, a+1, a+2)` and this function contains a
+          `TFORLOOP` based at that same `a`. That is the bytecode signature of
+          `forlist`: `explist1` adjusted to exactly 3 values landing in the
+          three slots `TFORLOOP` then reads every iteration. `local x, y, z =
+          f()` produces the same `CALL ... 4` and is told apart by the next
+          condition, since its three targets survive the statement.
+        * every one of the three definitions is a temporary at THIS pc
+          (`rc.temp_defs`, or the whole-register `rc.temps` for a hand-built
+          `RegClass`). A generic-for whose control slots the classifier had to
+          call locals -- because the register numbers do other work elsewhere
+          in the function that `classify_registers` could not separate -- must
+          keep the materialized form; staging it would inline the iterator
+          into a header whose slots something else is relying on.
+        * none of the three is already `declared`, i.e. already a live named
+          local in the printed output. Same rule as `write_reg`'s.
+
+        Nothing here is a soundness argument for the OUTPUT -- certification
+        is that. It is the "is this the shape luac compiled from" question,
+        and every one of the three conditions failing sends the shape back to
+        the materialized print, which is always valid Lua.
+        """
+        if len(regs) != 3 or regs != tuple(range(regs[0], regs[0] + 3)):
+            return False
+        a = regs[0]
+        if not any(li.ri.op is Op.TFORLOOP and li.ri.a == a
+                   for li in self.fn.instrs.values()):
+            return False
+        pc = self._pc
+        return all(r not in self.declared
+                   and (r in self.rc.temps or (pc, r) in self.rc.temp_defs)
+                   for r in regs)
 
     def _consume_open(self, start: int) -> tuple[Expr, ...]:
         """Build the expression tuple for an open range [start, dynamic top):

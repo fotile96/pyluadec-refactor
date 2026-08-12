@@ -548,8 +548,14 @@ _WRAPPED_ACCESSORS = frozenset({
 # gate's `named()` wrapper does record; wrapping this too would count the
 # same registers a second time against whichever opcode's frame happened to
 # be open.
+# `_is_generic_for_iterator` (M5 task 5) is a pure PREDICATE over `regs`: it
+# reads `rc`/`declared`/`fn.instrs` and returns a bool. It neither reads nor
+# writes any register's slot -- whichever way it answers, the registers are
+# then touched by `stage` or by the materializing branch below it, both of
+# which this gate already wraps.
 _UNWRAPPED_BY_DESIGN = frozenset({"_refuse_stale_reference",
-                                  "declare_loop_vars"})
+                                  "declare_loop_vars",
+                                  "_is_generic_for_iterator"})
 
 # `_consume_open(start)` is not in either set: its parameter is a range start
 # rather than a register, and every slot it reads goes through `_read_reg`.

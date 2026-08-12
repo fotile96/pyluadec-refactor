@@ -59,7 +59,8 @@ from __future__ import annotations
 
 from pyluadec.express.expr import (BinExpr, CallExpr, ClosureExpr, ConstExpr,
                                    Expr, GlobalExpr, IndexExpr, LocalExpr,
-                                   TableExpr, UnExpr, UpvalExpr, VarargExpr)
+                                   MultiSpill, TableExpr, UnExpr, UpvalExpr,
+                                   VarargExpr)
 from pyluadec.express.names import RegClass, classify_registers, name_for
 from pyluadec.express.reconstruct import (Assign, AssignTarget, ExprStmt,
                                           GlobalTarget, IndexTarget,
@@ -469,7 +470,16 @@ class Printer:
         if isinstance(r, GenericFor):
             a, c = r.call.ri.a, r.call.ri.c
             vars_ = ", ".join(name_for(a + 3 + i, self.depth) for i in range(c))
-            iters = ", ".join(self.expr(self.recon.take_expr(a + i)) for i in range(3))
+            # `for k, v in pairs(t) do` staged ONE expression across the whole
+            # control triple, so slots a+1/a+2 come back as `MultiSpill`
+            # placeholders and the header prints the single expression (see
+            # `Reconstructor._emit_multi`). `for k, v in next, t do` stages
+            # three independent expressions and prints all three. A
+            # `MultiSpill` reaching any other position is unprintable and
+            # refuses in `_expr`.
+            taken = [self.recon.take_expr(a + i) for i in range(3)]
+            iters = ", ".join(self.expr(e) for e in taken
+                              if not isinstance(e, MultiSpill))
             out = [f"{pad}for {vars_} in {iters} do"]
             # A loop body is its own block, same as an `if` arm. Unlike the
             # `if` case this is defensive rather than a fixed defect: a

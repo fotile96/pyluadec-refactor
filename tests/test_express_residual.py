@@ -43,6 +43,7 @@ import pytest
 from pyluadec.emit.lua import print_chunk
 from pyluadec.ingest import load_bytes
 from pyluadec.oracle import compile_source, run_bytes
+from pyluadec.express.reconstruct import ReconstructError
 from pyluadec.structure.structured import certify_proto
 
 
@@ -126,3 +127,93 @@ def test_the_printed_source_computes_what_the_bytecode_computes(src, words):
     # measured from the original; `words` above is only a tripwire against a
     # fixture that has quietly stopped exercising anything.
     assert a.stdout.splitlines() == words
+
+
+# ---------------------------------------------------------------------------
+# Cluster 2: a generic `for` over a CALL is one expression, not three
+#
+# `forlist` (lparser.c:1113-1130) parses the header's `explist1` and
+# `adjust_assign`s it to exactly 3 values, so `for k, v in pairs(t) do`
+# compiles to `CALL a b 4` writing the control triple directly -- one source
+# expression across three slots. `Reconstructor._emit_multi` had no way to
+# express that (no `Expr` node means "the second value of `f()`") and
+# materialized all three, printing
+#
+#     local l0_1, l0_2, l0_3 = pairs(l0_0)
+#     for l0_4, l0_5 in l0_1, l0_2, l0_3 do
+#
+# which is semantically identical and costs three registers and three `MOVE`s
+# -- recorded as a known residual in `structured-pipeline.md` since M4.
+#
+# The fix stages the call into the base slot and puts a `MultiSpill`
+# placeholder in the other two; `emit.lua`'s `GenericFor` arm drops the
+# spills and prints the single expression. `MultiSpill` is deliberately
+# unprintable, so a spill reaching any other position refuses instead of
+# emitting something wrong.
+#
+# Corpus movement: 1415 -> 1418 unique proto shapes at `L3` (1881 -> 1884
+# occurrences), measured 2026-08-12.
+
+GENERIC_FOR_ITERATOR = [
+    # The shape itself, both stdlib iterators.
+    (b"local t = {7, 8, 9} for k, v in ipairs(t) do print(k, v) end "
+     b"print(1, 2, 3, 4)", [b"1\t7", b"2\t8", b"3\t9", b"1\t2\t3\t4"]),
+    (b"local t = {7, 8, 9} for k, v in pairs(t) do print(k, v) end "
+     b"print(1, 2, 3)", [b"1\t7", b"2\t8", b"3\t9", b"1\t2\t3"]),
+    # The NEGATIVE side of the same rule: an explicit iterator list is three
+    # independent expressions and must keep printing as three. `explist1`
+    # gives 2 values here and `adjust_assign` pads with a LOADNIL, which is
+    # why the printed header is `next, t, nil` and not `next, t`.
+    (b"local t = {7, 8, 9} for k, v in next, t do print(k, v) end "
+     b"print(1, 2, 3)", [b"1\t7", b"2\t8", b"3\t9", b"1\t2\t3"]),
+    # The other negative: the same `CALL ... 4` bytecode whose three targets
+    # are genuine locals (they survive the statement), so it must stay
+    # materialized. There is no TFORLOOP at that base, so the recogniser
+    # rejects it on its first condition.
+    (b"local a, b, c = string.find('xyz', 'y') print(a, b, c)", [b"2\t2\tnil"]),
+    # The exact shape that was `tests/test_express_liverange.py`'s
+    # `KNOWN_RESIDUAL[0]` from M4 task 13 until this task closed it (promoted
+    # here per that test's own instruction).
+    (b"local t = {} for k, v in pairs(t) do f(k, v) g(k) end", None),
+    # Cluster 1 and cluster 2 in one function: a numeric `for` whose slots are
+    # reused, then a generic `for` over a call.
+    (b'local n = 0 for i = 0, 20 do n = n + i end print(0, "", 60) '
+     b'local c = 0 for k in pairs(_G) do c = c + 1 end print(n, c)', None),
+]
+
+
+@pytest.mark.parametrize("src,words", GENERIC_FOR_ITERATOR,
+                         ids=range(len(GENERIC_FOR_ITERATOR)))
+def test_a_generic_for_over_a_call_prints_one_iterator_expression(src, words):
+    proto, cert = _certify(src)
+    assert cert.level == "L3", (cert.reason, print_chunk(proto))
+    if words is not None:
+        a = run_bytes(compile_source(src, strip=True), is_source=False)
+        b = run_bytes(print_chunk(proto).encode(), is_source=True)
+        assert a.stdout == b.stdout == b"\n".join(words) + b"\n"
+
+
+def test_the_iterator_recogniser_rejects_a_multi_assign_to_real_locals():
+    """`local a, b, c = f()` and `for k, v in f() do` compile to the same
+    `CALL a b 4`. The first must NOT be staged -- its three targets survive
+    the statement -- and the thing that separates them is the presence of a
+    `TFORLOOP` at the same base, checked directly here so a future
+    simplification of `_is_generic_for_iterator` cannot quietly drop it.
+    """
+    proto = load_bytes(compile_source(
+        b"local a, b, c = string.find('xyz', 'y') print(a, b, c)", strip=True))
+    printed = print_chunk(proto)
+    assert "local l0_0, l0_1, l0_2 = " in printed, printed
+
+
+def test_a_multispill_is_unprintable_anywhere_else():
+    """`MultiSpill` has no Lua syntax, and `emit.lua._expr`'s fallback is what
+    guarantees a stray one refuses rather than printing something wrong.
+
+    Checked directly rather than trusted: this is the whole safety argument
+    for staging a value into a slot no expression can name.
+    """
+    from pyluadec.emit.lua import print_expr
+    from pyluadec.express.expr import MultiSpill
+    with pytest.raises(ReconstructError, match="unprintable expression"):
+        print_expr(MultiSpill(3), depth=0)
