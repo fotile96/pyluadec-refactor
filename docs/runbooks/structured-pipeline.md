@@ -978,24 +978,45 @@ other definition of the same register number down with it.
 The pop-once accounting alone is not sufficient once verdicts are per
 definition; four extra rules disqualify definitions the walk would otherwise
 grade temporaries. Each was found by a *measured* regression, and each is
-pinned by a fixture that fails when it is neutered. **Where those pins live
-was re-measured 2026-08-13 (M5 task 11), by neutering each of the four in
-turn and running the suite** — barriers 1–3 are pinned in
-`tests/test_express_liverange.py` as this section used to say of all four,
-but barrier 4 is not: with it neutered, all 126 tests in the five
-`tests/test_express_*.py` modules still pass, and what fails is
-`tests/test_sir_loops_longtail.py::
-test_repeat_fixture_claims_every_pc_and_certifies[6]` together with
-`tests/test_ledger_ratchet.py::test_ledger_is_a_reproducible_fixed_point`
-— i.e. barrier 4 is the only one of the four whose absence *moves the
-committed ledger*. Named failing test ids for all four, before and after
-that task's extraction, are in its report.
+pinned by a fixture that fails when it is neutered. **What each one is worth
+was measured barrier by barrier in M5 task 11 (2026-08-13, corrected in its
+round 1)** — each neutered alone, in the real source, with the full suite run
+and `corpus/ledger.jsonl` regenerated each time:
+
+| barrier | corpus protos reclassified | ledger | full-suite failures |
+| --- | --- | --- | --- |
+| 1 `_same_block` | 28 / 1944 | **moves**, 9 lines (5 rows `L1`→`L3`, 1 `L3`→`L1`) | 7 |
+| 2 RK/literal | **0 / 1944** | unchanged | 7 |
+| 3 `MOVE d, s` | 3 / 1944 | **moves**, 2 lines (2 rows `L3`→`L1`) | 6 |
+| 4 read-poison blame | 3 / 1944 | **moves**, 2 lines (no level change) | 2 |
+
+Two things to take from it. **Barrier 2 is the one the corpus cannot see**:
+neutering it — the whole literal test, and separately its RK C-slot arm alone
+— reclassifies zero corpus protos and leaves the ledger byte-identical, so its
+entire evidence is synthetic fixtures (`tests/test_express_liverange.py::
+LOCAL_CASES[5]`, `[8]`, `[9]` and three in `test_express_reconstruct.py`). And
+**barrier 4's pin is not where this section used to send a reader**: with it
+neutered all 126 tests in the five `tests/test_express_*.py` modules still
+pass, and the two failures are
+`tests/test_sir_loops_longtail.py::test_repeat_fixture_claims_every_pc_and_certifies[6]`
+and `tests/test_ledger_ratchet.py::test_ledger_is_a_reproducible_fixed_point`.
+Barriers 1–3 are pinned in `tests/test_express_liverange.py` as this section
+originally said of all four. Full failing-test-id sets are in that task's
+report.
+
+(An earlier revision of this paragraph, and of the code comment on barrier 4,
+said barrier 4 was the *only* one whose absence moves the ledger. That was
+never measured and the table above is its refutation — three of the four move
+it. Recorded rather than silently deleted, per this file's own rule about
+carried-forward claims.)
 
 Since M5 task 11 the three state-independent barriers are module-level
 functions in `express/freereg.py` under this same heading (`_same_block`,
-and `_bar_literal_operands` carrying both 2 and 3); barrier 4 is two lines
-inside `stack_discipline`'s `do_read`, where it is marked as such, because
-it is inseparable from the walk's own `last_def` bookkeeping.
+and `_bar_literal_operands` carrying both 2 and 3). Barrier 4 stays as two
+lines inside `stack_discipline`'s `do_read`, marked there — a judgement, not
+an impossibility: it could be a function taking `last_def` and `mark_def`,
+and two lines behind a call with two pieces of walk state threaded through to
+reach them is indirection with no second reader.
 
 1. **`_same_block`** — a definition and its read must be in the same CFG basic
    block. Two properties depend on it. Execution counts: a definition read

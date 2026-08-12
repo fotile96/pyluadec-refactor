@@ -1652,16 +1652,41 @@ fails when it is neutered (see `tests/test_express_liverange.py`)". Neutering
 each in turn (2026-08-13, before and again after the extraction, with identical
 results both times):
 
-| barrier | failing test ids with it neutered |
+| barrier | full-suite failing test ids with it neutered |
 | --- | --- |
-| 1 `_same_block` | `test_express_liverange.py::test_genuine_locals_are_not_inlined_away_cert_only[0]`, `test_express_testset.py::test_fixtures_certify_l3` |
-| 2 RK/literal | `test_express_liverange.py::test_genuine_locals_are_not_inlined_away[5,8,9]`, `test_express_testset.py::test_fixtures_certify_l3`, three in `test_express_reconstruct.py` |
-| 3 `MOVE d, s` | `test_express_liverange.py::test_genuine_locals_are_not_inlined_away[13,14]` |
-| 4 read-poison blame | **nothing in any `test_express_*.py`** (126/126 still pass); `test_sir_loops_longtail.py::test_repeat_fixture_claims_every_pc_and_certifies[6]` and `test_ledger_ratchet.py::test_ledger_is_a_reproducible_fixed_point` |
+| 1 `_same_block` | 7: `test_express_liverange.py::…_cert_only[0]`, `test_express_testset.py::test_fixtures_certify_l3`, `test_certify_stripmode.py::test_stricter_gate_refuses_reconstructions_that_invent_a_local[return a and b or c-…]`, `test_effects_reconstructor_consistency.py::test_the_printer_arm_is_not_carried_entirely_by_arm_one`, `…::test_closures_captured_upvalue_is_covered_by_arm_one_only`, `test_hybrid_chunk.py::test_probe_reach_of_the_substituted_code`, `test_ledger_ratchet.py::…fixed_point` |
+| 2 RK/literal | 7, all of them in `tests/test_express_*.py`: `test_express_liverange.py::test_genuine_locals_are_not_inlined_away[5,8,9]`, `test_express_testset.py::test_fixtures_certify_l3`, three in `test_express_reconstruct.py` |
+| 3 `MOVE d, s` | 6: `test_express_liverange.py::…[13]`, `[14]`, `test_hybrid_chunk.py::test_corpus_hybrid_invariant_on_one_file`, `…::test_probe_reach_of_the_substituted_code`, `test_ledger_ratchet.py::…fixed_point`, `test_semantic_regressions.py::test_counter_closure_and_dispatch_mix` |
+| 4 read-poison blame | 2, and **nothing in any `test_express_*.py`** (126/126 still pass): `test_sir_loops_longtail.py::test_repeat_fixture_claims_every_pc_and_certifies[6]`, `test_ledger_ratchet.py::…fixed_point` |
 
-So barrier 4 is load-bearing — it is in fact the only one of the four whose
-absence *moves the committed ledger* — but its pin is nowhere near where the
-runbook sent a reader. Both the runbook and the code now say so.
+The express-scoped sets (which is what the first version of this table
+reported, without saying so) are identical before and after the extraction.
+
+### What each barrier is worth on the corpus
+
+Measured in round 1 by neutering each alone and **regenerating the ledger**:
+
+| barrier | corpus protos reclassified | `corpus/ledger.jsonl` |
+| --- | --- | --- |
+| 1 `_same_block` | 28 / 1944 | moves, 9 lines — 5 rows `L1`→`L3`, 1 `L3`→`L1` |
+| 2 RK/literal | **0 / 1944** | unchanged |
+| 3 `MOVE d, s` | 3 / 1944 | moves, 2 lines — 2 rows `L3`→`L1` |
+| 4 read-poison blame | 3 / 1944 | moves, 2 lines — no level change |
+
+So barrier 4 is load-bearing, and its pin is nowhere near where the runbook
+sent a reader — that finding stands. **But this section's first version bolted
+an unmeasured superlative onto it**: "it is in fact the only one of the four
+whose absence *moves the committed ledger*". That is FALSE — three of the four
+move it. The sole exception is barrier **2**, and that is the sharper result:
+`_bar_literal_operands`' literal test (and, separately, its RK C-slot arm
+alone) reclassifies **zero** corpus protos, so the corpus can say nothing at
+all about it and its entire evidence is the seven synthetic fixtures in the
+row above. It is the cleanest instance in this module of "the corpus is a
+weaker oracle than it looks", and the first version put the sentence on the
+wrong barrier. Corrected here, in `structured-pipeline.md`, in `CLAUDE.md`,
+and in the code comment on barrier 4 — the false claim shipped in commit
+`f99f307`, whose message repeats it; the message is left as written and this
+is the record.
 
 **Acceptance.** `corpus/ledger.jsonl` regenerated and byte-identical after each
 of the three commits. Suite 833 passed. Timing, interleaved OLD/NEW with

@@ -21,7 +21,7 @@ the corpus lacks (it reaches 33 of 38 opcodes).
 """
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
 from pyluadec.lift.lift import LirFunction, LirInstr
@@ -68,21 +68,24 @@ def _pending_def(pending: list[_Pending], r: int) -> _Pending | None:
 # are "this operand position proves the slot did not hold a temporary" and
 # both need the same lookup into the pending stack.
 #
-# Barrier 4 -- read-poisoning blames the last definition -- is NOT here. It is
-# two lines inside `stack_discipline`'s `do_read`, inseparable from the walk's
-# own `last_def` bookkeeping, and it is marked there. Its neuter proof does
-# not live with the other three either; see that comment.
+# Barrier 4 -- read-poisoning blames the last definition -- is NOT here, and
+# that is a judgement rather than an impossibility. It is two lines inside
+# `stack_discipline`'s `do_read` that read the walk's `last_def` and write its
+# `def_verdict`; a `_bar_read_poison(last_def, mark_def, r)` up here would
+# work. Two lines behind a call, with two pieces of walk state threaded
+# through the signature to get there, is indirection with no second reader, so
+# it stays in place and is marked there instead. Its neuter proof does not
+# live with the other three either; see that comment.
 
 
 def _same_block(block_floor: Callable[[int], int], d: int, r: int) -> bool:
     """True iff pcs `d` and `r` are in the same CFG basic block.
 
     Barrier 1 of the four (see the section header), and THE control-flow
-    requirement on per-definition staging. A staged
-    definition is not a statement: it lives only in the reconstructor's
-    register environment until a read pops and inlines it. Two things
-    follow, and both are violated as soon as a definition and its read
-    sit in different blocks.
+    requirement on per-definition staging. A staged definition is not a
+    statement: it lives only in the reconstructor's register environment until
+    a read pops and inlines it. Two things follow, and both are violated as
+    soon as a definition and its read sit in different blocks.
 
     1. **Execution counts must match.** A definition read once per loop
        iteration but written only once before the loop must not be popped
@@ -210,9 +213,8 @@ def _bar_literal_operands(fn: LirFunction, li: LirInstr,
     """
     ri = li.ri
     if ri.op is Op.MOVE and ri.b < ri.a:
-        # BARRIER 3. `MOVE d, s` with `s < d` proves `s` held a NAMED
-        # LOCAL, not a
-        # temporary. `luaK_exp2nextreg` runs `freeexp` first, and
+        # BARRIER 3. `MOVE d, s` with `s < d` proves `s` held a NAMED LOCAL,
+        # not a temporary. `luaK_exp2nextreg` runs `freeexp` first, and
         # `freeexp` only releases a VNONRELOC expression sitting at
         # `freereg - 1` (it asserts exactly that), so discharging a
         # temporary into the next free register finds `reg ==
@@ -425,17 +427,31 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
             # contributes no `temp_defs` entry, which is the local direction
             # anyway.
             #
-            # Neuter proof, measured 2026-08-13 (M5 task 11) by replacing the
-            # `if` below with `if False and ...` and running the whole suite:
+            # Neuter proof, measured 2026-08-13 (M5 task 11, corrected in
+            # round 1) by replacing the `if` below with `if False and ...`,
+            # regenerating the ledger, and running the whole suite: 3 of 1944
+            # corpus protos reclassify, `corpus/ledger.jsonl` moves by 2 lines
+            # with no level change, and exactly two tests fail --
             # `tests/test_sir_loops_longtail.py::
-            # test_repeat_fixture_claims_every_pc_and_certifies[6]` fails, and
-            # so does `tests/test_ledger_ratchet.py::
-            # test_ledger_is_a_reproducible_fixed_point` -- i.e. the committed
-            # ledger MOVES, which the other three barriers do not do. Note
-            # where that pin is NOT: nothing in `tests/test_express_*.py` sees
-            # this line at all (126/126 of those still pass with it neutered),
-            # so the runbook's "each is pinned by a fixture ... (see
-            # tests/test_express_liverange.py)" is true of barriers 1-3 only.
+            # test_repeat_fixture_claims_every_pc_and_certifies[6]` and
+            # `tests/test_ledger_ratchet.py::
+            # test_ledger_is_a_reproducible_fixed_point`.
+            #
+            # What is worth knowing is where that pin is NOT: nothing in
+            # `tests/test_express_*.py` sees this line at all (126/126 of
+            # those still pass with it neutered), so the runbook's "each is
+            # pinned by a fixture ... (see tests/test_express_liverange.py)"
+            # is true of barriers 1-3 only.
+            #
+            # This note's first version (commit `f99f307`) also called this
+            # the only barrier whose absence moves the ledger. That was never
+            # measured and is FALSE. Per-barrier, neutered one at a time and
+            # the ledger regenerated each time: `_same_block` reclassifies 28
+            # protos and moves 9 ledger lines, the `MOVE d, s` rule 3 protos
+            # and 2 lines, this one 3 protos and 2 lines. The odd one out is
+            # `_bar_literal_operands`' literal test, which reclassifies **0**
+            # of 1944 -- the barrier the corpus genuinely cannot see, and the
+            # one whose entire evidence is synthetic fixtures.
             if r in last_def:
                 mark_def(last_def[r], r, False)
 
@@ -463,7 +479,7 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
             mark(ent.reg, False)
             mark_def(ent.def_pc, ent.reg, False)
 
-    def push(regs, pc: int) -> None:
+    def push(regs: Iterable[int], pc: int) -> None:
         for r in regs:
             if not known_local(r, pc):
                 pending.append(_Pending(r, pc))
