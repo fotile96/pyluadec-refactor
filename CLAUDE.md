@@ -193,7 +193,10 @@ M3–M4 的旧说法「产物为结构化 ⟺ root proto 认证 `L3`」是**替�
   语料里只有 9 个文件含 `pressButton`、5 个真的走到轮询、其余 4 个在到达前就报错；
   而这 5 个里有 4 个存在「stub 值与常量比较」这种运行期**看不见**的分支决定
   （`lvm.c::equalobj` 先比类型再谈 `__eq`，所以 `stub == "字面量"` 一个元方法都不触发），
-  被静态回退分析整文件拒授。132 个撞上限的文件里 101 个是 `vms` 主导、26 个 `wait` 主导、
+  被静态回退分析整文件拒授（该分析**不做**「chunk 自己定义的全局就不是 stub」豁免——
+  `env.__index` 只在写**真的执行过**之后才从 `envfields` 取值，所以「写在读之后」「写所在
+  函数没被调用」「把 stub 存进全局再比较」三种形态都能骗过那条豁免；实测删掉豁免不损失
+  任何 reach）。132 个撞上限的文件里 101 个是 `vms` 主导、26 个 `wait` 主导、
   5 个 `pressButton` 主导。设计、语法、taint 的「可证/保守/仍看不见」三分、覆盖率口径与
   两处 backstop 见 `docs/runbooks/structured-pipeline.md`「The L2 gate」。
 - 行为探针（L1.75 门，M4 task 10 新增）：`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_behaviour.py`。在打桩环境下**实际调用**每个 chunk 定义的全局函数并比对事件轨迹，干净跑法打印 `227/229 identical, 2 pinned divergence(s), 398196 recorded events`。设计、能力边界、两条钉子的指令级证据见 `docs/runbooks/m3-backlog.md`「Behaviour probe (L1.75)」节。

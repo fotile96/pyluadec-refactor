@@ -447,7 +447,10 @@ end
 # one takes a stub-forced branch; NONE of them fires a metamethod, because
 # `lvm.c`'s `equalobj` is `ttype(o1) == ttype(o2) && luaV_equalval(...)` -- so
 # `__eq` is consulted only for proxy-vs-proxy. Measured 2026-08-12 before the
-# static backstop: all twelve granted with a taint count of 0.
+# static backstop: all twelve granted with a taint count of 0. Prevalence, on
+# the ORIGINAL bytecode: the `doScriptScene == "<literal>"` shape alone is 427
+# sites across 23 of the 229 files (310 across 20 if counted in the decompiled
+# artifact text, which is the smaller and wrong population for this claim).
 _LAUNDERING_ROUTES = [
     ("eq-vs-string", b'if sys.s == "x" then hit() else miss() end'),
     ("eq-vs-nil", b'if sys.s == nil then hit() else miss() end'),
@@ -526,15 +529,110 @@ def test_static_taint_names_the_kind_it_found(body, kind):
     assert counts[kind] > 0, counts
 
 
-def test_a_global_the_chunk_defines_is_not_a_stub():
-    """The analysis' seed set is globals READ and never WRITTEN, minus the
-    ones the probe environment resolves for real. A chunk that defines its own
-    global and then compares it is not stub-derived and must not refuse --
-    otherwise the backstop would refuse every file that has a state variable."""
+@pytest.mark.parametrize("name,src", [
+    # The write is inside a function nobody calls, so `envfields` never gets it.
+    ("write-never-runs",
+     b'function setup() mode = "a" end\n'
+     b'function main() pressButton("CIRCLE")\n'
+     b'  if mode == "a" then hit() else miss() end end\n'),
+    # The write happens AFTER the read, at chunk level.
+    ("write-after-read",
+     b'function main() pressButton("CIRCLE")\n'
+     b'  if mode == "a" then hit() else miss() end end\nmode = "a"\n'),
+    # Laundering THROUGH the exemption: a stub is stored into a global, which
+    # the old rule then treated as "written, therefore not a stub".
+    ("launder-through-exemption",
+     b'function main() pressButton("CIRCLE") stash = sys.a\n'
+     b'  if stash == "x" then hit() else miss() end end\n'),
+])
+def test_a_global_the_chunk_writes_is_still_a_stub_at_every_read(name, src):
+    """**This test used to assert the opposite**, and it is the reason nothing
+    in the suite could catch the hole: round 1 seeded the analysis with
+    `read - written` over the whole chunk, with no ordering, and pinned that
+    rule as correct.
+
+    It is unsound for the same reason the runtime marks were. `env.__index`
+    consults `envfields`, which is EMPTY until the chunk actually executes the
+    write -- so a global read before its write, or whose write never runs, is a
+    proxy at that read. All three fixtures below produced byte-equal traces,
+    zero runtime marks, the stub-forced branch, and a GRANT.
+
+    The exemption is gone rather than made sound, because it was measured to
+    buy nothing: with it removed the CLI is still at 1/5 granted with the same
+    file granted. `snr_lib.lua` has 0 globals that are both read and written;
+    `snr_common.lua` has 72.
+    """
+    from scripts.probe_keyseq import evaluate, static_refusal
+    from pyluadec.ingest import load_bytes
+    bc = _bytecode(src)
+    assert static_refusal(load_bytes(bc)) == {"blind-compare": 1}, name
+    r = evaluate(bc, src, ["k=1,CIRCLE;tail="])
+    assert (r.granted, r.reason) == (False, "taint-static"), name
+
+
+def test_the_backstop_still_grants_a_program_with_only_local_state():
+    """The non-vacuity counterpart of the test above: dropping the exemption
+    must not refuse everything. A branch on a local, and a comparison on a
+    DRIVER global's return value (`pressButton(...) == true`, which every
+    authored sequence depends on), both still grant."""
     from scripts.probe_keyseq import static_refusal
     from pyluadec.ingest import load_bytes
-    src = b'mode = "a"\nfunction main() if mode == "a" then hit() end end\n'
-    assert static_refusal(load_bytes(_bytecode(src))) == {}
+    for src in (
+        b'function main() pressButton("CIRCLE") local n = 0\n'
+        b'  if n == 1 then hit() else miss() end end\n',
+        b'function main() if pressButton("CIRCLE") == true then hit() '
+        b'else miss() end end\n',
+        b'function main() pressButton("CIRCLE") local s = tostring(7)\n'
+        b'  if s == "7" then hit() else miss() end end\n',
+    ):
+        assert static_refusal(load_bytes(_bytecode(src))) == {}, src
+
+
+@pytest.mark.parametrize("name,src", [
+    # New-2: a CLEAN table indexed at a STUB-derived key.
+    ("stub-key-index",
+     b'function main() pressButton("CIRCLE") local t = {} t.real = 1\n'
+     b'  if t[sys.k] == nil then hit() else miss() end end\n'),
+    # New-3, the RETURN direction: an accessor handing an engine value back.
+    ("global-accessor",
+     b'function getMode() return sys.mode end\n'
+     b'function main() pressButton("CIRCLE")\n'
+     b'  if getMode() == "x" then hit() else miss() end end\n'),
+    ("local-accessor",
+     b'local function get() return sys.a end\n'
+     b'function main() pressButton("CIRCLE")\n'
+     b'  if get() == "x" then hit() else miss() end end\n'),
+    ("closure-built-inside-the-driven-function",
+     b'function main()\n  pressButton("CIRCLE")\n'
+     b'  local f = function() return sys.a end\n'
+     b'  if f() == "x" then hit() else miss() end\nend\n'),
+    ("local-table-accessor",
+     b'function main()\n  pressButton("CIRCLE")\n  local t = {}\n'
+     b'  t.get = function() return sys.a end\n'
+     b'  if t.get() == "x" then hit() else miss() end\nend\n'),
+])
+def test_a_stub_key_and_a_stub_return_value_are_refused(name, src):
+    """New-2 and New-3, each measured granting before the fix.
+
+    A stub *key* is a different route from a stub *value* in a table, and an
+    accessor RETURNING an engine value is the shape this corpus actually uses
+    -- the round-1 gap list documented only the argument direction. A call's
+    result is now stub-derived unless the callee is provably a base or driver
+    global, which is what covers the last three of these.
+    """
+    from scripts.probe_keyseq import evaluate
+    r = evaluate(_bytecode(src), src, ["k=1,CIRCLE;tail="])
+    assert (r.granted, r.reason) == (False, "taint-static"), name
+
+
+def test_the_driver_global_set_matches_the_probe_s_own_driver_table():
+    """New-6. `_BASE_GLOBALS` is derived from the vendored interpreter by the
+    test below; `_DRIVER_GLOBALS` was a hand copy of the Lua `DRIVER` table
+    with nothing comparing them. A name removed from the Lua side would
+    silently SHRINK the seed set -- the unsound direction, and exactly what
+    `_BASE_GLOBALS`' test exists to prevent."""
+    from scripts.probe_keyseq import _DRIVER_GLOBALS, driver_globals_in_probe
+    assert driver_globals_in_probe() == set(_DRIVER_GLOBALS)
 
 
 def test_the_base_global_set_is_the_interpreter_s_own():
@@ -558,25 +656,25 @@ def test_the_base_global_set_is_the_interpreter_s_own():
 def test_what_the_two_taint_instruments_still_cannot_see():
     """Committed statement of the RESIDUAL gaps, as data.
 
-    The previous version of this test presented three blind spots as the
-    complete list. It was not complete -- twelve laundering routes were
-    granted -- and that framing is what let them ship. These are gaps in the
-    STATIC analysis (the runtime marks are blind to all of them too), each
-    demonstrated rather than asserted in prose: the file grants, and it should
-    not.
+    Two earlier versions of this list claimed to be complete and were not --
+    round 0 missed twelve laundering routes, round 1 missed a stub table KEY,
+    an accessor's RETURN value, and three ways a global "the chunk defines"
+    is still a proxy at the point it is read. Those are all closed now. What
+    is below is what still grants and should not, demonstrated rather than
+    described.
     """
     from scripts.probe_keyseq import evaluate, static_refusal
     from pyluadec.ingest import load_bytes
 
     gaps = {
-        # Across a call boundary: `static_taint` is intra-proto, so a stub
-        # passed as an ARGUMENT is a plain parameter inside the callee.
+        # A stub passed as an ARGUMENT: the analysis is intra-proto and a
+        # parameter is a root. (The RETURN direction is now covered.)
         "call-argument": b"""
 function decide(v) if v == "x" then hit() else miss() end end
 function main() pressButton("CIRCLE") decide(sys.a) end
 """,
-        # Through a script-built table: only indexing off a stub-derived
-        # table propagates, not a round trip through one the chunk made.
+        # Stored into a script-built table and read back: `SETTABLE` is not
+        # tracked, only indexing off a stub table or at a stub key.
         "table-round-trip": b"""
 function main()
   pressButton("CIRCLE")
@@ -585,19 +683,12 @@ function main()
   if t.x == "x" then hit() else miss() end
 end
 """,
-        # Through an indirectly-reached launderer: `blind-launder` recognises
-        # `GETGLOBAL f; ...; CALL f` only, and a `MOVE` into the call window
-        # breaks that pattern.
-        #
-        # Written first with `local ty = type`, which MEASURED as caught --
-        # `type` is one of the probe's driver overrides, so the RUNTIME mark
-        # fires on the aliased call too. `tostring` has no runtime seam, so it
-        # is the honest example of this gap.
-        "aliased-launderer": b"""
-function main()
+        # A vararg the analysis cannot name as stub-derived.
+        "vararg": b"""
+function main(...)
   pressButton("CIRCLE")
-  local ts = tostring
-  if ts(sys.a) == "x" then hit() else miss() end
+  local a = ...
+  if a == "x" then hit() else miss() end
 end
 """,
     }

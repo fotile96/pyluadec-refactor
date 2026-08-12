@@ -686,6 +686,11 @@ if not stopped then
       v = v[parts[i]]
     end
     if type(v) ~= "function" then
+      -- DEFENSIVE: `die` writes and hard-exits through the real `os.exit`, so
+      -- the hook cannot fire again in between. Tried: deleting this `sethook()`
+      -- leaves every test green. It stays because a future edit that makes
+      -- `die` return rather than exit would otherwise run the rest of this
+      -- file under a live hook with `stopped` unset. (M3, round 2.)
       sethook()
       die("ENTRYFAIL", "entry '" .. entry .. "' is a " ..
           (v == nil and "nil" or type(v)) .. ", not a function")

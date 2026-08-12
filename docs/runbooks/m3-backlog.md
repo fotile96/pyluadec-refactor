@@ -1523,10 +1523,21 @@ occurrences badged and 164 occurrences carrying an explicit refusal.
 taint marking is structurally blind to `stub == "literal"`, because `lvm.c`'s
 `equalobj` checks `ttype(o1) == ttype(o2)` before ever consulting `__eq`.
 Twelve laundering routes were measured granted with zero marks, and the idiom
-is the corpus' dominant one (`doScriptScene == "<literal>"`, 310 sites across
-20 files). A static stub-taint analysis over the original lifted bytecode now
-refuses them. It is path-insensitive, so a single site anywhere in a file
-refuses the whole file — conservative on purpose.
+is the corpus' dominant one (`doScriptScene == "<literal>"`, **427 sites
+across 23 of the 229 files** measured on the original bytecode; the
+310-across-20 figure that first appeared here counts the decompiled artifact
+text, a 27% smaller population). A static stub-taint analysis over the
+original lifted bytecode now refuses them. It is path-insensitive, so a single
+site anywhere in a file refuses the whole file — conservative on purpose.
+
+Round 2 closed a hole of the same class in that analysis' own seed rule: it
+exempted globals the chunk writes, computed as `read - written` over the whole
+chunk with no ordering, and `env.__index` resolves a global from `envfields`
+only once the write has actually executed. Three fixtures granted through it,
+including laundering *through* the exemption. The exemption is deleted rather
+than made sound, because it was measured to buy no reach. Round 2 also made a
+stub table KEY and a call's RETURN value stub-derived; the remaining gaps are
+arguments, script-table round trips and `VARARG`, each a committed test.
 
 **What is still open after this.** The two historical checkpoints from
 `DEBUG_KEY_SEQUENCE_HARNESS.md` are *runnable* (their sequences are authored:

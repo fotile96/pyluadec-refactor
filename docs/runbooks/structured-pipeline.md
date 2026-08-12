@@ -2622,19 +2622,39 @@ runtime marks** before the backstop existed:
 tostring(stub)   tonumber(stub)   stub .. ""   select("#", stub)   pcall(stub)
 ```
 
-And it is not a corner: `doScriptScene == "<literal>"` occurs **310 times
-across 20 corpus files**, and 26 of the 132 capped files spin in exactly that
-dispatch loop.
+And it is not a corner. Counting on the **original bytecode** -- a
+`GETGLOBAL "doScriptScene"` whose destination register is an operand of an
+`EQ` within the next three instructions -- the idiom occurs **427 times across
+23 of the 229 corpus files**, and 26 of the 132 capped files spin in exactly
+that dispatch loop. (An earlier version of this line said "310 times across 20
+corpus files". That figure is real but it counts `doScriptScene ==` in the
+**decompiled artifact text**, where three of the 23 files ship fallback and so
+do not spell the idiom; as a statement about the corpus it undercounts by
+27%.)
 
 **The static backstop** (`probe_keyseq.static_taint`) closes them. It is a
 conservative may-analysis over registers, per proto, to a fixed point on the
 existing `cfg.blocks.build_cfg`, run over the **original** lifted bytecode.
-Seeds are `GETGLOBAL`s of names the chunk reads and never writes, minus the
-ones the probe environment resolves for real (`_BASE_GLOBALS`, re-derived from
-the vendored interpreter by a test, and the driver overrides). It propagates
-through `MOVE`, `GETTABLE`/`SELF`, `CALL` of a stub-derived register,
-arithmetic, `CONCAT`, `UNM`/`NOT` and `LEN`; every `GETUPVAL` is stub; block
-entry takes the union of predecessors. Four flag kinds, **all of which
+Seeds are `GETGLOBAL`s of **every** name the probe environment does not
+resolve for real — `_BASE_GLOBALS` (re-derived from the vendored interpreter
+by a test) and `_DRIVER_GLOBALS` (compared against the Lua `DRIVER` table by
+another). It propagates through `MOVE`, `GETTABLE`/`SELF` (table **or** key),
+`CALL` whose callee is not provably a base/driver global, arithmetic,
+`CONCAT`, `UNM`/`NOT` and `LEN`; every `GETUPVAL` is stub; block entry takes
+the union of predecessors.
+
+**There is no "the chunk defines this global, so it is not a stub"
+exemption**, and there was for one round. `read - written` over the whole
+chunk, with no ordering, is unsound in exactly the way the runtime marks were:
+`env.__index` consults `envfields`, which is empty until the chunk *executes*
+the write, so a global read before its write — or whose write lives in a
+function nobody calls — is a proxy at that read. Three fixtures granted with
+byte-equal traces and zero marks, including laundering **through** the
+exemption (`stash = sys.a` then `if stash == "x"`). A sound version would have
+to prove the write dominates every read *and* that the written value is not
+itself stub-derived; it was deleted instead, because it was measured to buy
+nothing — with it gone the CLI is still 1/5 with the same file granted.
+`snr_lib` has 0 globals that are both read and written; `snr_common` has 72. Four flag kinds, **all of which
 refuse**:
 
 | kind | site |
@@ -2659,14 +2679,18 @@ twelve routes ship. Each of these is a committed test
 (`test_what_the_two_taint_instruments_still_cannot_see`) that *grants* and
 should not:
 
-* **Across a call boundary.** `static_taint` is intra-proto; a stub passed as
-  an ARGUMENT is a plain parameter inside the callee.
-* **Through a script-built table.** `t.x = stub` then `if t.x == "a"` is not
-  tracked; only indexing off a stub-derived table propagates.
-* **Through an aliased launderer.** `blind-launder` recognises
-  `GETGLOBAL f; …; CALL f` only, so `local ts = tostring; ts(stub)` slips
-  through. (Written first with `local ty = type`, which MEASURED as caught —
-  `type` is a driver override, so the runtime mark fires on the alias too.)
+* **A stub passed as an ARGUMENT.** `static_taint` is intra-proto and a
+  parameter is a root, so `decide(sys.a)` with the comparison inside `decide`
+  is not seen. The RETURN direction — an accessor handing an engine value
+  back — was uncovered for one round and is now caught: a call's result is
+  stub-derived unless the callee is provably a base or driver global. That
+  also covers the aliased launderer (`local ts = tostring; ts(stub)`), which
+  the round-1 list named as a gap.
+* **A value stored into a script-built table and read back.** `t.x = stub`
+  then `if t.x == "a"`; `SETTABLE` is not tracked. Indexing off a stub-derived
+  table, or at a stub-derived **key** (`t[sys.k]`, a separate route that
+  granted until round 2), both are.
+* **`VARARG`.** `local a = ...` compared against a literal is not flagged.
 
 The static analysis is also **path-insensitive**: a site in a function the key
 sequence never enters still refuses the whole file. That is the conservative
@@ -2703,10 +2727,10 @@ truncated by sheer `vms()` volume". Both are wrong: 220, not 224; and 101, not
 | file | poll events / 3001 | verdict |
 | --- | --- | --- |
 | `snr_lib.lua` | 2243 | **L2@100%** — 3/3 protos; blocks in [0.39, 0.95] of 57 |
-| `snr_music.lua` | 2502 | refused `taint-static` (compare 33, launder 1, length 1, truthiness 2) |
+| `snr_music.lua` | 2502 | refused `taint-static` (compare 36, launder 1, length 1, truthiness 2) |
 | `snr_graphic.lua` | 2606 | refused `taint-static` (compare 57, launder 1, length 7, truthiness 9) |
 | `snr_memory.lua` | 2608 | refused `taint-static` (compare 47, launder 2, truthiness 9) |
-| `snr_common.lua` | 2557 | refused `taint-static` (compare 33, truthiness 17) |
+| `snr_common.lua` | 2557 | refused `taint-static` (compare 214, launder 1, truthiness 19) |
 
 **One of five authored files is granted.** In the ledger that is **2 rows and
 3 proto occurrences of 1944**, and all three ship STRUCTURED text — `snr_lib`
@@ -2716,8 +2740,18 @@ machine**: the four refused files are exactly the ones that ship fallback or
 hybrid. 164 occurrences carry `{"refused": "taint-static"}`, which is data
 rather than silence.
 
-Before the round-1 backstop all five were granted. Four of those grants were
-wrong, so the reach did not shrink — it was never there.
+Before the round-1 backstop all five were granted. **How much of that is
+"withdrawn because wrong" rather than conservative over-refusal is a
+measurement, and it does not cover all four.** Per-proto site census, taking
+each proto's own sites as its subtree total minus its children's:
+`snr_graphic` and `snr_memory` each carry **one site in the main chunk
+itself**, which every run executes, so their old grants really were wrong.
+`snr_music` has **0** there (31 of its sites are in `main_3`) and
+`snr_common` has **0** (its 234 sites are spread over 55 protos, none of them
+the chunk body). For those two the refusal rests on the analysis being
+path-insensitive — honest over-refusal, not a demonstrated wrong grant. An
+earlier version of this paragraph said all four grants were wrong; that
+claim is stronger than the evidence.
 
 Five of the thirteen sequences still run to the cap (`snr_common`#3,
 `snr_graphic`#3, `snr_lib`#3, `snr_memory`#2, `snr_music`#2). `snr_lib`#3
@@ -2739,6 +2773,20 @@ fail there if it changed or converged. L2 deliberately does not pin
 divergences of its own: a pin is an exemption, and this gate refuses on
 divergence rather than excusing it. `snr_common` refuses anyway, on
 `taint-static`.
+
+### One deliberate exposure: `probe-error` details on the console
+
+`L2Result.detail` for the `probe-error` reason is `str(ProbeError)[:400]`, and
+`ProbeError` interpolates the probe's own stdout — trace lines that can carry
+Japanese string constants. The CLI prints it.
+
+**Accepted, explicitly.** The red line is about ingest/lift/verify/comparison
+and about diagnostic text that lands in a committed artifact; this is neither.
+`detail` never reaches `corpus/ledger.jsonl` — `as_ledger_field` emits only
+`{"cov": <number>}` or `{"refused": <word from REFUSAL_KINDS>}` — and
+`scripts/probe_behaviour.py::probe_raw` has embedded `stdout[:400]` the same
+way since M4. The alternative is a probe that cannot say why it failed, which
+is the L1.5 failure this whole family of gates was built to avoid.
 
 ### The spec grammar
 

@@ -45,24 +45,27 @@ exists because of that blindness. Measured 2026-08-12, twelve laundering
 routes were granted with zero runtime marks -- `== "str"`, `== nil`,
 `~= nil`, `== 1`, `== {}`, `#stub > 0`, `next(stub)`, `tostring(stub)`,
 `tonumber(stub)`, `stub .. ""`, `select("#", stub)`, `pcall(stub)` -- and the
-idiom is not a corner (`doScriptScene == "<literal>"` occurs 310 times across
-20 corpus files). All twelve are now refused.
+idiom is not a corner: on the original bytecode it occurs **427 times across
+23 of the 229 corpus files** (a `GETGLOBAL "doScriptScene"` whose destination
+register is an `EQ` operand within three instructions). The 310-across-20
+figure this paragraph used to carry counts `doScriptScene ==` in the decompiled
+ARTIFACT text -- a different, 27% smaller population, since three of the 23
+ship fallback and never spell the idiom. All twelve routes are now refused.
 
 ## What the pair still cannot see
 
 Stated as gaps, not as a complete list -- the previous version of this comment
 claimed to be complete and was not, which is what let the twelve routes ship:
 
-* **Across a call boundary.** `static_taint` is intra-proto. A stub passed as
-  an ARGUMENT is not stub-derived inside the callee (parameters are roots).
-* **Through a script-built table.** `t.x = stub` then `if t.x == "a"` is not
-  tracked; only indexing off a stub-derived table propagates.
-* **Through an indirectly-reached launderer.** `blind-launder` recognises
-  `GETGLOBAL f; ...; CALL f` only. `local ty = type` then `ty(stub)`, or
-  `lib.tostring(stub)`, is not flagged as a launder (it may still be caught
-  by `blind-compare` if the result is compared and the table was stub-derived).
-* **Anything the analysis cannot name as stub-derived**, e.g. a value that
-  entered through `VARARG` or `SETLIST`.
+* **A stub passed as an ARGUMENT.** `static_taint` is intra-proto and a
+  parameter is a root, so `decide(sys.a)` with the comparison inside `decide`
+  is not seen. (The RETURN direction -- an accessor handing an engine value
+  back -- WAS uncovered for one round and is now caught: a call's result is
+  stub-derived unless the callee is provably a base or driver global.)
+* **A value stored into a script-built table and read back.** `t.x = stub`
+  then `if t.x == "a"`; `SETTABLE` is not tracked, only indexing off a
+  stub-derived table or at a stub-derived key.
+* **`VARARG`.** `local a = ...` compared against a literal is not flagged.
 
 A granted `L2` therefore says "these two programs behaved identically under
 this stub policy and this input, and no *directly* stub-derived value decided
@@ -210,6 +213,14 @@ def probe_raw(payload: bytes, *, is_source: bool, spec: str,
         r = subprocess.run([str(oracle.lua_sz4()), str(PROBE), str(f), spec],
                            capture_output=True, stdin=subprocess.DEVNULL,
                            timeout=timeout, cwd=td)
+    # `returncode != 0` is DEFENSIVE and subsumed in every shape I could
+    # build. Tried: neutering it leaves the module green, because the probe
+    # exits 0 through `osexit(0)` on every path it controls, and every path it
+    # does NOT control (a missing script, a segfault) produces stdout that
+    # fails the `_MARKERS` check two lines below. It survives because a crash
+    # AFTER a valid trace was written would otherwise pass, and because its
+    # message names the exit status where the marker check cannot. (M3,
+    # round 2.)
     if r.returncode != 0:
         raise ProbeError(
             f"probe exited {r.returncode} (is_source={is_source}, "
@@ -387,6 +398,11 @@ class Coverage:
         # 4 decimals: the ledger has to be a byte-stable fixed point of its
         # own generator, and a bare float would put the platform's repr in the
         # committed file.
+        # `if self.protos` is DEFENSIVE. Tried: no artifact can compile to
+        # zero protos (a chunk is itself one), so neutering it to a bare
+        # division leaves the module green; it exists so a future caller that
+        # constructs a `Coverage` by hand cannot get a ZeroDivisionError out of
+        # a property. (M3, round 2.)
         return round(self.protos_entered / self.protos, 4) if self.protos else 0.0
 
     @property
@@ -454,6 +470,12 @@ def coverage(artifact_src: bytes, specs: Sequence[str]) -> Coverage:
     for spec in specs:
         t = probe_raw(shifted, is_source=True, spec=_with_cov(spec))
         raw = covered_lines(t)
+        # `ln > LINE_SHIFT` is DEFENSIVE, not load-bearing. Tried: neutering
+        # it to `for ln in raw` leaves the whole module green, because the
+        # probe only ever puts lines it classified as the TARGET's into
+        # `cov_ours`, and every target line is past the shift. It makes the
+        # subtraction total rather than trusting that classification, which is
+        # the one thing this file already had to fix once (M3, round 2).
         hit |= {ln - LINE_SHIFT for ln in raw if ln > LINE_SHIFT}
         n = covered_protos(t)
         if n < 0:
@@ -471,8 +493,13 @@ def coverage(artifact_src: bytes, specs: Sequence[str]) -> Coverage:
     by_line: dict[int, int] = {}
     for ln in lines:
         by_line[ln] = by_line.get(ln, 0) + 1
+    # No `min(entered, n_protos)` clamp: it was unexercisable (the `call`
+    # hook filters on `info.source == tsource`, and the injectivity check
+    # above makes the de-dup key exact, so `COVF` equals the artifact's proto
+    # count at most). Neutering the clamp left the whole module green, which
+    # is the definition of decoration -- New-4.
     return Coverage(
-        protos_entered=min(entered, n_protos), protos=n_protos,
+        protos_entered=entered, protos=n_protos,
         blocks_upper=sum(1 for ln in lines if ln in hit),
         blocks_lower=sum(1 for ln in lines if ln in hit and by_line[ln] == 1),
         blocks=len(lines), collisions=collisions)
@@ -519,8 +546,11 @@ def _with_cov(spec: str) -> str:
 #     next(stub) == nil, tostring(stub) == "x", tonumber(stub),
 #     stub .. "" == "x", select("#", stub) == 1, pcall(stub)
 #
-# And it is not a corner: `doScriptScene == "<literal>"` occurs 310 times
-# across 20 corpus files.
+# And it is not a corner: on the original bytecode the idiom occurs 427
+# times across 23 of the 229 corpus files (a `GETGLOBAL "doScriptScene"` whose
+# destination is an `EQ` operand within three instructions). The 310/20 figure
+# this comment used to carry counts `doScriptScene ==` in the decompiled
+# ARTIFACT text, which is a different -- and 27% smaller -- population.
 #
 # There is no runtime fix -- no Lua 5.1 value can observe a comparison against
 # a value of a different type. So the grant gets a STATIC backstop over the
@@ -541,36 +571,74 @@ next os package pairs pcall print rawequal rawget rawset require select setfenv
 setmetatable string table tonumber tostring type unpack xpcall
 """.split())
 
-# The probe's own driver overrides (scripts/probe_keyseq.lua's `DRIVER`).
+# The probe's own driver overrides. This is a HAND COPY of
+# `scripts/probe_keyseq.lua`'s `DRIVER` table, and a name that disappears from
+# the Lua side without disappearing here would silently SHRINK the seed set --
+# the same failure `_BASE_GLOBALS`' derivation test exists to prevent, in the
+# unsound direction. `tests/test_l2_keyseq.py::
+# test_the_driver_global_set_matches_the_probe_s_own_driver_table` parses the
+# Lua table out of the probe's text and requires the two to be equal (New-6).
 _DRIVER_GLOBALS = frozenset({"pressButton", "wait", "type", "rawequal",
                              "getmetatable"})
 
 
+def driver_globals_in_probe() -> frozenset[str]:
+    """The keys of `scripts/probe_keyseq.lua`'s `DRIVER` table, read out of the
+    file. Plain byte scanning, no regex, matching the repo rule for the probe
+    side even though this is script code."""
+    text = PROBE.read_text(encoding="utf-8")
+    i = text.index("local DRIVER = {")
+    body = text[i + len("local DRIVER = {"):text.index("}", i)]
+    out = set()
+    for part in body.split(","):
+        head = part.split("=", 1)[0].strip()
+        if head:
+            out.add(head)
+    return frozenset(out)
+
+
 def _stub_globals(root) -> set[bytes]:
-    """Global names this chunk READS and never WRITES, minus the ones the
-    probe environment resolves for real. Exactly the names `env.__index` ends
-    up answering with a stub proxy."""
+    """Every global name this chunk READS that the probe environment does not
+    resolve for real. Anything else is a stub proxy at that read.
+
+    ## There is no "the chunk defines it, so it is not a stub" exemption
+
+    There was, for one round: `read - written`, computed over the whole chunk
+    with no ordering. It was unsound in exactly the way the runtime marks were
+    (round-1 C1), and by the same author. `env.__index` consults `envfields`,
+    which is EMPTY until the chunk actually executes the write, so a global
+    read before its write -- or whose write is inside a function nobody calls
+    -- is a proxy at that read. Three fixtures, each with byte-equal traces,
+    zero runtime marks, the stub-forced branch taken, and a GRANT:
+
+        function setup() mode = "a" end   -- setup is never called
+        if mode == "a" then ... end; mode = "a"    -- write after the read
+        stash = sys.a; if stash == "x" then ...    -- laundering THROUGH it
+
+    A sound exemption would have to show the write MUST precede every read
+    along all paths AND that the written value is not itself stub-derived.
+    That is a real dataflow problem, and it is not worth building here,
+    because the exemption buys **nothing**: measured 2026-08-12, removing it
+    leaves the CLI at 1/5 granted with `snr_lib` still granted. `snr_lib` has
+    **0** globals that are both read and written; `snr_common` has 72, and it
+    refuses for other reasons anyway.
+    """
     from pyluadec.lift.opcodes import Op, decode
 
     read: set[bytes] = set()
-    written: set[bytes] = set()
 
     def walk(p):
         for i, w in enumerate(p.code):
             ins = decode(w, i + 1)
             if ins.op is Op.GETGLOBAL:
                 read.add(p.constants[ins.bx])
-            elif ins.op is Op.SETGLOBAL:
-                written.add(p.constants[ins.bx])
         for sp in p.subprotos:
             walk(sp)
 
     walk(root)
-    resolved = {n.decode("latin-1") for n in written}
-    return {n for n in read - written
+    return {n for n in read
             if n.decode("latin-1") not in _BASE_GLOBALS
-            and n.decode("latin-1") not in _DRIVER_GLOBALS
-            and n.decode("latin-1") not in resolved}
+            and n.decode("latin-1") not in _DRIVER_GLOBALS}
 
 
 # Library functions that turn a stub proxy into a plain value a branch can
@@ -601,17 +669,18 @@ def static_taint(root) -> dict[str, int]:
 
     A conservative may-analysis over registers, per proto, to a fixed point on
     the existing `cfg.blocks.build_cfg`. A register is *stub-derived* if it
-    was defined by `GETGLOBAL` of a stub global, by indexing or calling a
-    stub-derived register, by `GETUPVAL` (an upvalue can hold anything and
-    tracking across closures is not attempted), or by any arithmetic /
+    was defined by `GETGLOBAL` of a stub global, by indexing a stub-derived
+    table OR indexing at a stub-derived key, by `GETUPVAL`, by a `CALL` whose
+    callee is not provably a base/driver global, or by any arithmetic /
     concatenation / length / negation whose operand is stub-derived. Block
     entry takes the UNION of predecessors. Everything that loads a constant,
     a new table or a closure kills.
 
-    Over-approximating on purpose, in three named ways: every `GETUPVAL` is
-    stub, every `CALL` of a stub-derived register makes all its results stub,
-    and the union merge ignores which path was actually taken. All three push
-    towards refusing.
+    Over-approximating on purpose, in four named ways: every `GETUPVAL` is
+    stub, every unrecognised callee returns a stub, every global the chunk
+    does not resolve for real is a stub at every read of it, and the union
+    merge ignores which path was actually taken. All four push towards
+    refusing, and all four are measured to cost no reach on this corpus.
 
     ## What is flagged
 
@@ -622,7 +691,10 @@ def static_taint(root) -> dict[str, int]:
     * `blind-length` -- `LEN` on a stub-derived register. Lua 5.1's `OP_LEN`
       never consults a metamethod for a table, so `#stub` is silently `0`.
     * `blind-launder` -- a `CALL` of one of `_LAUNDERERS` with a stub-derived
-      argument in the call window.
+      argument in the call window. Only the `GETGLOBAL f; ...; CALL f` shape
+      is recognised as naming `f`; an aliased launderer (`local ts = tostring`)
+      is not a `blind-launder`, but its RESULT is stub-derived by the rule
+      below, so a comparison on it still refuses as `blind-compare`.
     * `blind-truthiness` -- `TEST`/`TESTSET` on a stub-derived register.
 
     All four refuse. `blind-truthiness` was very nearly left out on the
@@ -663,8 +735,6 @@ def static_taint(root) -> dict[str, int]:
                 inb: set[int] = set()
                 for pred in cfg.preds.get(start, ()):
                     inb |= exits[pred]
-                if start != cfg.entry and inb == entry[start] and exits[start]:
-                    pass
                 entry[start] = inb
                 live = set(inb)
                 for li in cfg.blocks[start].instrs:
@@ -709,7 +779,12 @@ def static_taint(root) -> dict[str, int]:
             live.add(a)
             return
         if op in (Op.GETTABLE, Op.SELF):
-            hot = b in live
+            # The KEY as well as the table (New-2). `local t = {} t.real = 1
+            # if t[sys.k] == nil` reads a script table at a stub-derived key
+            # and gets nil every time; the table is clean and the result is
+            # not. Measured before this line existed: granted, stub branch
+            # taken, zero marks.
+            hot = b in live or rk_stub(p, c, live)
             if op is Op.SELF:
                 live.add(a + 1) if hot else live.discard(a + 1)
             live.add(a) if hot else live.discard(a)
@@ -734,7 +809,20 @@ def static_taint(root) -> dict[str, int]:
             fname = _called_global(p, ins)
             if fname in _LAUNDERERS and args:
                 sites[ins.pc] = "blind-launder"
-            stub_call = a in live
+            # A call's RESULT is stub-derived unless the callee is provably
+            # one of the names the probe environment resolves for real
+            # (New-3). The argument direction was the only one documented;
+            # the RETURN direction is the shape this corpus actually uses --
+            # an accessor handing back an engine value. Measured before this
+            # line: `function getMode() return sys.mode end` compared against
+            # a literal granted, and so did a closure built inside the driven
+            # function. Conservative: an unrecognised callee (a field call, a
+            # local holding a closure, anything reached through a MOVE) is
+            # treated as returning a stub.
+            fexempt = fname is not None and (
+                fname.decode("latin-1") in _BASE_GLOBALS
+                or fname.decode("latin-1") in _DRIVER_GLOBALS)
+            stub_call = (a in live) or not fexempt
             nres = (c - 1) if c > 0 else (top - a)
             for r in range(a, a + max(nres, 1)):
                 live.add(r) if stub_call else live.discard(r)
@@ -805,9 +893,22 @@ class L2Result:
     def as_ledger_field(self) -> dict | None:
         """What `scripts/run_corpus.py` writes.
 
-        No corpus content, ever: `cov` is a number and `refused` is a fixed
-        vocabulary word. `detail` -- which can quote a trace line, and a trace
-        line can carry a Japanese string constant -- stays out.
+        No corpus content, ever: `cov` is a number and `refused` is a word
+        from `REFUSAL_KINDS`. `detail` stays out, and it has to: for the
+        `probe-error` reason it is `str(ProbeError)[:400]`, which interpolates
+        the probe's own stdout -- trace lines that can carry Japanese string
+        constants.
+
+        **Decision, taken explicitly rather than left implicit (round 2,
+        New-7): that console exposure is accepted.** The red line CLAUDE.md
+        draws is about ingest/lift/verify/comparison and about the diagnostic
+        text that ends up in a committed artifact (`refusal_reason`,
+        confessions); `detail` is neither -- it is printed by a CLI a human
+        ran, is never serialised, and `scripts/probe_behaviour.py::probe_raw`
+        has embedded `stdout[:400]` the same way since M4. Suppressing it
+        would reproduce the L1.5 failure of a probe that cannot say why it
+        failed. Nothing decodes: the bytes are rendered by `repr` on a
+        `bytes.decode(errors="replace")` at the point of display only.
         """
         if self.granted:
             return {"cov": self.cov}
