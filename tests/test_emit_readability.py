@@ -127,3 +127,72 @@ def test_elseif_chain_runs_identically():
     b = run_bytes(out.encode(), is_source=True)
     assert (a.returncode, a.stdout, a.stderr) == (b.returncode, b.stdout, b.stderr)
     assert a.stdout == b"a\tb\tc\td\n"
+
+
+# --------------------------------------------------------------------------
+# 2. dot sugar
+# --------------------------------------------------------------------------
+
+DOT_SRC = (b'local t = f() t["k"] = 1 '
+           b'g(t["k"], t["a"]["b"], t[1], t["end"], t[""], t["2x"])')
+DOT_CTOR_SRC = b'return {["k"] = 1, ["end"] = 2, [1] = 3}'
+# NOT `{..., 9}`: a constructor that mixes array and hash items is a
+# PRE-EXISTING L1 gap in this printer, unrelated to dot sugar. It prints the
+# array items first (`{9, k = 1, ...}`), which reorders the constant pool, and
+# it certified L1 at 923b41b -- the commit before this task -- exactly as it
+# does now. Measured 2026-08-12; recorded here so the gap is not rediscovered
+# as a regression of this change.
+
+
+def test_bracketed_string_key_and_dot_key_compile_identically():
+    """`lparser.c`, two places, both reducing to the same `VK` constant.
+
+    * `t.k` / `t["k"]`: `primaryexp`'s `'.'` case calls `field(ls, &v)` ->
+      `checkname` -> `codestring`, and its `'['` case calls
+      `yindex` -> `expr` + `luaK_exp2val`. A string literal's `expr` is
+      already `VK`, so both arrive at `luaK_indexed` with the same
+      constant-table index.
+    * `{k = 1}` / `{["k"] = 1}`: `recfield` branches on `TK_NAME` ->
+      `checkname` vs `'['` -> `yindex`, then joins on the same
+      `luaK_codeABC(fs, OP_SETTABLE, ...)`.
+
+    So the sugar is a lexical alternative for the same constant, and the
+    discrimination that decides when it is available -- "a valid Lua Name that
+    is not a reserved word" -- is exactly what `_ident` already implements for
+    globals and method names.
+    """
+    assert (compile_source(b'local t = {} t.k = 1 print(t.k)', strip=True)
+            == compile_source(b'local t = {} t["k"] = 1 print(t["k"])', strip=True))
+    assert (compile_source(b'return {k = 1}', strip=True)
+            == compile_source(b'return {["k"] = 1}', strip=True))
+
+
+def test_identifier_string_keys_print_as_dot_access():
+    assert printed(DOT_SRC) == (
+        "local l0_0 = f()\n"
+        "l0_0.k = 1\n"
+        'g(l0_0.k, l0_0.a.b, l0_0[1], l0_0["end"], l0_0[""], l0_0["2x"])\n')
+
+
+def test_non_identifier_and_keyword_keys_keep_their_brackets():
+    """The three ways a string key fails the test, all in one line above:
+    `"end"` is a reserved word, `""` is not a Name at all, and `"2x"` does not
+    start with a Name character. A fourth -- a non-ASCII key -- is covered by
+    `test_non_ascii_table_key_keeps_its_brackets` further down, once the
+    presentation decode makes it printable at all.
+    """
+    out = printed(DOT_SRC)
+    for bad in ('l0_0["end"]', 'l0_0[""]', 'l0_0["2x"]'):
+        assert bad in out
+    assert ".end" not in out and ".2x" not in out
+
+
+def test_table_constructor_identifier_keys_lose_their_brackets():
+    assert printed(DOT_CTOR_SRC) == (
+        'local l0_0 = {k = 1, ["end"] = 2, [1] = 3}\n'
+        "return l0_0\n")
+
+
+def test_dot_sugar_fixtures_certify_l3():
+    certifies(DOT_SRC)
+    certifies(DOT_CTOR_SRC)

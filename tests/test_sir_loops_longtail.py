@@ -129,7 +129,12 @@ def test_while_header_code_is_claimed_by_the_loop_not_by_a_sibling():
     assert w.claimed_pcs == frozenset({1, 2, 3, 4, 5, 6, 9})
     src = print_chunk(load_bytes(compile_source(b"while a.b[c] do f() end", strip=True)))
     assert src is not None
-    assert src.splitlines()[0] == 'while a["b"][c] do'   # one line, inside the header
+    # One line, and the whole header is inside it -- which is what this test is
+    # about. The spelling of the index is not: `a.b` since M5 task 7's dot
+    # sugar (`t["k"]` -> `t.k` for a constant string key that is a Lua Name),
+    # `a["b"]` before it. `[c]` stays bracketed because `c` is a register, not
+    # a constant.
+    assert src.splitlines()[0] == "while a.b[c] do"
 
 
 def test_while_cond_body_break_is_a_break():

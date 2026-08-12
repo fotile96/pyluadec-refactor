@@ -125,12 +125,32 @@ def _wrap_if_primary(text: str, parent_prec: int) -> str:
     return f"({text})" if _SIMPLE_PREC < parent_prec else text
 
 
-def _ident(name: bytes) -> str:
-    """Validate+decode a constant byte-string as an emittable Lua identifier.
+def _as_ident(name: bytes) -> str | None:
+    """`name` decoded as an emittable Lua identifier, or None if it is not one.
 
     No regex (forbidden in this package -- see module docstring): Python's
     `str.isidentifier()` covers the same character class as Lua's
     `[A-Za-z_][A-Za-z0-9_]*` once the string is known to be pure ASCII.
+
+    THE single discrimination for "is this byte string a Lua Name", used in
+    both directions: `_ident` below turns a `None` into a refusal (a global's
+    name or a method name has no bracketed spelling to fall back to), while
+    the index/table-key printers turn a non-`None` into `t.k` / `{k = 1}` and
+    a `None` into `t["k"]` / `{["k"] = 1}`. Writing a second copy of the test
+    for the sugar direction is exactly how the two would drift.
+    """
+    try:
+        s = name.decode("ascii")
+    except UnicodeDecodeError:
+        return None
+    if not s.isidentifier() or s in LUA_KEYWORDS:
+        return None
+    return s
+
+
+def _ident(name: bytes) -> str:
+    """Validate+decode a constant byte-string as an emittable Lua identifier,
+    refusing if it is not one.
 
     ## Why the rejected constant is NOT in the message (M4 task 6)
 
@@ -147,15 +167,41 @@ def _ident(name: bytes) -> str:
     `luac_sz4 -l -l` output. Pinned by
     `tests/test_emit_lua.py::test_ident_refusal_messages_do_not_quote_the_constant`.
     """
-    try:
-        s = name.decode("ascii")
-    except UnicodeDecodeError as exc:
-        raise ReconstructError(
-            f"identifier constant ({len(name)} bytes) is not ASCII") from exc
-    if not s.isidentifier() or s in LUA_KEYWORDS:
+    s = _as_ident(name)
+    if s is None:
+        # The two refusals stay distinct (ASCII vs not-a-Name): they say
+        # different things about the constant and the ASCII one is the
+        # informative case for this corpus.
+        try:
+            name.decode("ascii")
+        except UnicodeDecodeError as exc:
+            raise ReconstructError(
+                f"identifier constant ({len(name)} bytes) is not ASCII") from exc
         raise ReconstructError(f"identifier constant ({len(name)} bytes) "
                                "is not emittable as a Lua name")
     return s
+
+
+def _index(base: str, key: Expr, depth: int, ctx: "Printer | None") -> str:
+    """`base.k` when `key` is a constant string that is a Lua Name, else
+    `base[<key>]`.
+
+    Sugar only. `lparser.c`'s `primaryexp` reaches `luaK_indexed` with the
+    same `VK` constant either way -- `'.'` goes through `field` ->
+    `checkname` -> `codestring`, `'['` through `yindex` -> `expr` +
+    `luaK_exp2val`, and a string literal's `expr` is already `VK`. Measured:
+    `luac_sz4` compiles `t.k = 1 print(t.k)` and `t["k"] = 1 print(t["k"])`
+    byte-identically (tests/test_emit_readability.py::
+    test_bracketed_string_key_and_dot_key_compile_identically).
+
+    Shared by the expression printer and `Printer.target` so an index and an
+    assignment to that same index cannot spell themselves differently.
+    """
+    if isinstance(key, ConstExpr) and isinstance(key.value, bytes):
+        name = _as_ident(key.value)
+        if name is not None:
+            return f"{base}.{name}"
+    return f"{base}[{_expr(key, depth, 0, ctx)}]"
 
 
 def _expr(e: Expr, depth: int, parent_prec: int, ctx: "Printer | None") -> str:
@@ -182,11 +228,26 @@ def _expr(e: Expr, depth: int, parent_prec: int, ctx: "Printer | None") -> str:
         params, body = ctx.closure_parts(e)
         return _wrap_if_primary(f"function({params})\n{body}end", parent_prec)
     if isinstance(e, IndexExpr):
-        return f"{_expr(e.table, depth, _PRIMARY_PREC, ctx)}[{_expr(e.key, depth, 0, ctx)}]"
+        return _index(_expr(e.table, depth, _PRIMARY_PREC, ctx), e.key, depth, ctx)
     if isinstance(e, TableExpr):
         items = [_expr(x, depth, 0, ctx) for x in e.array]
-        items += [f"[{_expr(k, depth, 0, ctx)}] = {_expr(v, depth, 0, ctx)}"
-                 for k, v in e.hash]
+        for k, v in e.hash:
+            # Same sugar as `_index`, at the constructor's own syntax:
+            # `lparser.c::recfield` takes `TK_NAME` -> `checkname` or `'['` ->
+            # `yindex` and joins on one `luaK_codeABC(fs, OP_SETTABLE, ...)`,
+            # so `{k = 1}` and `{["k"] = 1}` are the same constant in the same
+            # instruction (measured byte-identical).
+            name = (_as_ident(k.value)
+                    if isinstance(k, ConstExpr) and isinstance(k.value, bytes)
+                    else None)
+            # Key BEFORE value, as before: `_expr` runs against a stateful
+            # Reconstructor and a `[<expr>] = <expr>` pair can consume staged
+            # registers in either slot. (A key that took the sugar is a
+            # `ConstExpr` and renders nothing, so skipping it is free.)
+            key_txt = None if name is not None else _expr(k, depth, 0, ctx)
+            val = _expr(v, depth, 0, ctx)
+            items.append(f"{name} = {val}" if name is not None
+                         else f"[{key_txt}] = {val}")
         return _wrap_if_primary("{" + ", ".join(items) + "}", parent_prec)
     if isinstance(e, CallExpr):
         args = ", ".join(_expr(a, depth, 0, ctx) for a in e.args)
@@ -360,7 +421,7 @@ class Printer:
         if isinstance(t, GlobalTarget):
             return _ident(t.name)
         if isinstance(t, IndexTarget):
-            return f"{self.expr(t.table, _PRIMARY_PREC)}[{self.expr(t.key)}]"
+            return _index(self.expr(t.table, _PRIMARY_PREC), t.key, self.depth, self)
         if isinstance(t, UpvalTarget):
             return self.upval_name(t.idx)
         raise ReconstructError(f"unprintable target {type(t).__name__}")
