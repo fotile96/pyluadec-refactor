@@ -376,8 +376,8 @@ certifies, because a root that certified `L3` must by construction have printed
 successfully. Note that the shipped bytes are *reused from* the certification,
 not re-printed: an earlier revision called `print_chunk(root)` a second time
 here, which made "shipped == certified" contingent on `print_chunk` being
-deterministic (it is — re-measured 2026-08-12, **212/212** shipped artifacts
-re-print identically; it was 92/92 at M3 close, before the loop work — but that
+deterministic (it is — re-measured 2026-08-12, **215/215** shipped artifacts
+re-print identically; it was 92/92 at M3 close and 212/212 at M4 close — but that
 is a property of the printer, not of this gate, and no test would have noticed
 losing it).
 
@@ -483,7 +483,7 @@ fault-injection test, do not disable it.
 
 `certify_l3` tries rungs in ascending order and records the first that passes as
 `rung` / ledger `l3_level`. **Measured: 0 of the `L3` ledger entries certify at
-rung 0; all 1389 of them are at rung 1.** That is not a slack ladder, it is
+rung 0; all 1403 of them are at rung 1.** That is not a slack ladder, it is
 arithmetic: every corpus chunk carries `source = b"=?"` while a
 `luac_sz4 -s` recompile produces `source = None`, and the 1715 non-main corpus
 protos kept their original file's `linedefined`/`lastlinedefined`, which a
@@ -1190,8 +1190,8 @@ from pyluadec.emit.lua import print_chunk
 print(print_chunk(load_file(Path(os.environ['PYLUADEC_CORPUS_DIR'])/'snr_crd_0.lua')))"
 ```
 
-212 of the 229 files have an `L3` root and therefore ship real structured source
-(92 at M3 close).
+215 of the 229 files have an `L3` root and therefore ship real structured source
+(92 at M3 close, 212 at M4 close).
 
 ### Run the whole-corpus gate and regenerate the ledger
 
@@ -1210,10 +1210,11 @@ a fresh run to reproduce it byte for byte.
 uv run python scripts/ledger_dashboard.py            # or --markdown
 ```
 
-Current output (M4 task 13): 1478 unique protos / 1944 occurrences / 229
-files, `compile_ok 1478/1478`, `level L3 1389`, `level L1 89`, L3 share 94.0%
-unique / 95.4% occurrences, `L3 rung 1: 1389`, `ladder l3-ladder-v1`. (At M3
-close it was `level L3 1112` / `level L1 366`, 75.2% / 81.1%.)
+Current output (M5 task 4): 1478 unique protos / 1944 occurrences / 229
+files, `compile_ok 1478/1478`, `level L3 1403`, `level L1 75`, L3 share 94.9%
+unique / 96.1% occurrences, `L3 rung 1: 1403`, `ladder l3-ladder-v1`. (At M4
+close it was `level L3 1389` / `level L1 89`, 94.0% / 95.4%; at M3 close
+`level L3 1112` / `level L1 366`, 75.2% / 81.1%.)
 
 ### Debug one function that refuses to certify
 
@@ -1386,42 +1387,84 @@ occurrences.
 
 | stage | unique | occurrences |
 | --- | --- | --- |
-| `build_sir` accepts the proto's own body | 1447 (97.9%) | 1913 (98.4%) |
-| whole subtree prints (proto **and** every descendant) | 1424 (96.3%) | 1890 (97.2%) |
-| certifies `L3` | **1389 (94.0%)** | **1855 (95.4%)** |
+| `build_sir` accepts the proto's own body | 1465 (99.1%) | 1931 (99.3%) |
+| whole subtree prints (proto **and** every descendant) | 1447 (97.9%) | 1913 (98.4%) |
+| certifies `L3` | **1403 (94.9%)** | **1869 (96.1%)** |
 
 Three different numbers, three different causes. M4 tasks 3 and 4 moved the
 top two rows and did not move the third at all; **task 13 moved only the
-third**, from 1139/1604 to the figures above, by making register
-classification per definition rather than per register number. 212 of the 229
-files now ship structured source (92 at M3 close). Structuring refusals are
-again the largest single residual cluster.
+third**, from 1139/1604 to 1389/1855, by making register classification per
+definition rather than per register number. **M5 task 4** moved all three, to
+the figures above, by unwinding two more `jpc` absorbers and admitting the
+dead code luac emits unconditionally (details in point 1). 215 of the 229
+files now ship structured source (92 at M3 close, 212 at M4 close), and the
+corpus quality average is 0.946390 (0.935633 at M4 close).
 
-1. **1478 → 1447: `build_sir` refuses 31 unique protos** (169 before M4 task
-   3, 43 after it, 31 after task 4). 26 carry a back edge it will not claim,
-   5 are acyclic refusals. By message: 11 `else-join out of range`, 10
-   `if targets out of range` (in **every** case the if's false-exit was
-   threaded onto an *enclosing if's* else-skip by the same `luaK_jump` jpc
-   concat `_structure_if` already unwinds for loop headers — not one is
-   `jt == break_target`), 10 `branch body block ... is unreachable`.
-   `unrecognized transfer TESTSET` is gone: M4 task 4's `_match_cond_value`
-   claims the `and`/`or` VALUE idiom as a `CondValue` region, which took the 8
-   protos refused with that message plus 4 more that contain no TESTSET at all
-   (`(<gate> and X) or Y` chains whose test `patchtestreg` rewrote to a bare
-   `TEST`) and were refused as `if targets out of range`. All 16 protos that
-   contain a TESTSET are still non-`L3`, but for reasons downstream of
-   structuring — see point 3 and the note after it.
-2. **1447 → 1424: 23 more unique protos build a region tree but do not print.**
+1. **1478 → 1465: `build_sir` refuses 13 unique protos** (169 before M4 task
+   3, 43 after it, 31 after task 4, 13 after M5 task 4). By message: 11
+   `if targets out of range`, 2 `else-join out of range` — and, re-measured
+   2026-08-12, **every one of the 13 is the same defect**: a compound `if`
+   condition (`a and b`, `a or b`) on an `if` that has an else branch.
+   `regions.If` carries ONE compare instruction. `a and b` is therefore read
+   as nested `if`s, which is the same bytecode with no else branch (so
+   `if a and b then f() end` certifies) and a different one with an else,
+   because `luaK_patchtohere` sends both conjuncts' false-exits to the else
+   block while the nested reading would send the inner one to the end of the
+   outer then-block. `or` has no nested-`if` reading at all: `luaK_goiffalse`
+   (lcode.c:196-208) patches its truelist to the START of the then-block, so
+   the first compare's jump goes forward OVER the second condition. Closing
+   this needs a condition TREE — the acyclic analogue of what M4 task 4 built
+   for the VALUE idiom. A 26-instruction runnable repro of the smallest
+   corpus instance (`snr_common.lua:main_81`), reverse-engineered to its
+   source, is `tests/test_sir_longtail2.py::COMPOUND_CONDITION_EXEMPLAR`.
+
+   What M5 task 4 removed from this list, all of it one mechanism —
+   `luaK_jump` concatenating `fs->jpc` onto whatever JMP is emitted next
+   (lcode.c:59-66), which `_structure_if` already unwound for loop closings
+   via `continue_target`:
+
+   * the enclosing `if`'s **else-skip** absorbing a nested false-exit or
+     else-skip (`if a then if b then f() end else h() end`) — the new
+     `thread_target` parameter; this was the whole 11-proto `else-join` cluster
+     and 3 of the 9 `if targets` leaves;
+   * a `break` absorbing it (`if c then x() else break end`, `breakstat`,
+     lparser.c:1054-1067) — `_match_else_break`, which cannot use a
+     single-number rewrite because the join is `P+1` for a `P` that has to be
+     recovered from the layout and validated by structuring;
+   * `branch body block ... is unreachable` (10 protos) is gone entirely:
+     `ifstat` emits the else-skip and `retstat` the RETURN-after-TAILCALL
+     unconditionally, so both are dead whenever the arm ends in
+     `break`/`return`, and `_is_dead_else_skip` now admits exactly those two
+     shapes. The M4-era claim that "luac emits no dead code in if/for bodies"
+     was false.
+
+   `unrecognized transfer TESTSET` had already gone in M4 task 4, when
+   `_match_cond_value` claimed the `and`/`or` VALUE idiom as a `CondValue`
+   region.
+2. **1465 → 1447: 18 more unique protos build a region tree but do not print.**
    `print_chunk` inlines the whole tree at each `CLOSURE` site, so one
    unstructurable inner function takes its entire ancestor chain with it.
-   Re-measured 2026-08-12 by asking, for each of the 23, whether every proto
-   in its subtree prints on its own: **18 are descendant-driven and 5 are the
-   proto's own body** — 3 `register N is read again after its staged value was
-   consumed` (read-poisoning), 1 `_refuse_statements` (its own `CondValue`
-   operand code reconstructs to a statement), 1 while-header code that
-   reconstructs to a statement. (Was 139 protos before M4 task 3. An earlier
-   draft said "6 of them" were `_refuse_statements`; that is the 1.)
-3. **1424 → 1389: 35 unique protos print but do not certify.** This was the
+   Re-measured 2026-08-12 after M5 task 4: **13 are descendant-driven and 5
+   are the proto's own body** — 3 `register N is read again after its staged
+   value was consumed` (read-poisoning), 1 `_refuse_statements` (its own
+   `CondValue` operand code reconstructs to a statement), 1 while-header code
+   that reconstructs to a statement. (Was 139 protos before M4 task 3, 23
+   after task 13. An earlier draft said "6 of them" were
+   `_refuse_statements`; that is the 1.)
+
+   The while-header one is `snr_novel.lua:main_13`, and M5 task 4 measured
+   what it actually is: **not a `While` defect**. Its header is a single
+   `GETUPVAL` whose definition `classify_registers` correctly grades a temp;
+   what materialises it is `Reconstructor.write_reg`'s whole-function
+   `reg not in self.declared` gate, because that register was declared 35
+   instructions earlier. Dropping the gate removes the refusal and the proto
+   still does not certify — it lands on `mismatch: maxstacksize`. So it
+   belongs with the read-poisoning three, not with the loop recognizers, and
+   neither of the two fixes the M5 plan proposed for it (header-statement
+   hoisting, `WhileTrue` + `If` re-expression) is the right one. Pinned by
+   `tests/test_sir_longtail2.py::test_while_header_refusal_is_a_reconstructor_
+   scope_defect_not_a_while_defect`.
+3. **1447 → 1403: 44 unique protos print but do not certify.** This was the
    dominant gap until M4 task 13 (283 protos, of which 253 differed from the
    original by extra `MOVE` instructions and by nothing else at all). The
    cause was `RegClass`'s whole-function, per-register-*number* verdict, and
@@ -1432,26 +1475,29 @@ again the largest single residual cluster.
    `MOVE`s. Task 13 made classification per definition and that cluster went
    from 253 to **4**.
 
-   What is left, re-measured 2026-08-11 with the script below (89 unique
-   protos below `L3` in total; the 54 in the first row belong to point 1's
-   and point 2's causes rather than to this one):
+   What is left, re-measured 2026-08-12 with the script below, verbatim, after
+   M5 task 4 (75 unique protos below `L3` in total; the 31 in the first row
+   belong to point 1's and point 2's causes rather than to this one):
 
-   | cluster | unique |
-   | --- | --- |
-   | A. subtree refuses structuring | 54 |
-   | D. extra `MOVE`s **plus** other additions | 16 |
-   | B. same opcode histogram, operands differ | 14 |
-   | C. extra `MOVE`s only | 4 |
-   | E. other delta | 1 |
+   | cluster | unique | (2026-08-11, 89 rows) |
+   | --- | --- | --- |
+   | A. subtree refuses structuring | 31 | 54 |
+   | B. same opcode histogram, operands differ | 20 | 14 |
+   | D. extra `MOVE`s **plus** other additions | 19 | 16 |
+   | C. extra `MOVE`s only | 4 | 4 |
+   | E. other delta | 1 | 1 |
 
-   The first differing instruction is a `GETGLOBAL` for 10 of the B cluster
-   (constant-table ordering) and a `LOADK` for 10 of the D cluster. `NEWTABLE`
-   size hints account for 3. These are three genuinely different problems and
-   none of them is register classification. Re-run verbatim at M4 task 6 and
-   reproduces byte-for-byte.
+   B and D grew because M5 task 4 moved protos OUT of A: a subtree that now
+   structures gets compared for the first time, and lands wherever its
+   remaining delta puts it. The first differing instruction is a `GETGLOBAL`
+   for 11 of the B cluster (constant-table ordering) and a `LOADK` for 11 of
+   the D cluster; `NEWTABLE` size hints account for 6 (2 `NEWTABLE`, 4
+   `NEWTABLE->LOADK`). These are three genuinely different problems and none
+   of them is register classification.
 
-   Smallest exemplar per cluster (M4 task 6), with the ledger's own
-   `refusal_reason`:
+   Smallest exemplar per cluster (M4 task 6, **not re-derived since** — the
+   file/proto names below may have moved out of their clusters), with the
+   ledger's own `refusal_reason`:
 
    | cluster | exemplar | insns | reason |
    | --- | --- | --- | --- |
@@ -1463,8 +1509,10 @@ again the largest single residual cluster.
 
    (Cluster A's exemplar has 5 instructions in its OWN body: the refusal is a
    descendant's, since `print_chunk` inlines the whole tree. That is what
-   makes the A cluster's size — 54 of the 89 — a count of *ancestor chains*,
-   not of independent defects.)
+   makes the A cluster's size — 31 of the 75 — a count of *ancestor chains*,
+   not of independent defects. Cut the other way, by asking of each non-`L3`
+   proto whether every DESCENDANT certifies: 57 are leaf defects and 18 are
+   poisoned ancestors, measured 2026-08-12.)
 
    Two known-residual shapes are fixtured in
    `tests/test_express_liverange.py::KNOWN_RESIDUAL` with their causes:
@@ -1504,23 +1552,33 @@ the constant's byte LENGTH instead — pinned by
 `tests/test_emit_lua.py::test_ident_refusal_messages_do_not_quote_the_constant`.
 
 `uv run python scripts/ledger_dashboard.py` prints the histogram (numbers in
-the message collapsed to `N` for clustering). Measured 2026-08-11, 89 rows:
+the message collapsed to `N` for clustering). Re-measured 2026-08-12 after M5
+task 4, 75 rows:
 
 ```
-refusal: structure: pc N: else-join out of range                        18
-refusal: mismatch: maxstacksize                                         18
-refusal: mismatch: code                                                 17
-refusal: structure: pc N: if targets out of range                       17
-refusal: structure: pc N: branch body block at pc N is unreachable      13
-refusal: reconstruct: register N is read again after its staged ...      4
-refusal: reconstruct: pc N: and/or alternative reconstructs to N ...     1
-refusal: structure: pc N: while-header code reconstructs to N ...        1
+refusal: mismatch: code                                                 23
+refusal: mismatch: maxstacksize                                         21
+refusal: structure: pc N: if targets out of range                       18
+refusal: reconstruct: register N is read again after its staged ...      5
+refusal: structure: pc N: else-join out of range                         3
+refusal: reconstruct: pc N: and/or operand code reconstructs to N ...     2
+refusal: structure: pc N: while-header code reconstructs to N ...         2
+refusal: reconstruct: pc N: and/or alternative reconstructs to N ...      1
 ```
 
-The two decompositions agree exactly: the six refusal rows sum to 54 (cluster
-A) and the two `mismatch:` rows to 35 (clusters B–E). They are different cuts
-of the same 89 — the A/B/C/D/E table classifies by *opcode-histogram delta at
-the divergence point*, this one by *the first field `_cmp` reported*.
+(The 89-row histogram this replaced, measured 2026-08-11, led with
+`else-join out of range` 18, `mismatch: maxstacksize` 18, `mismatch: code` 17,
+`if targets out of range` 17 and `branch body block ... is unreachable` 13.
+The `unreachable` row is gone entirely and `else-join` is down to 3; see
+point 1 above for what took them.)
+
+The two decompositions still agree: the `structure:`/`reconstruct:` rows sum
+to 31 (cluster A, ancestor chains included) and the two `mismatch:` rows to 44
+(clusters B–E). They are different cuts of the same 75 — the A/B/C/D/E table
+classifies by *opcode-histogram delta at the divergence point*, this one by
+*the first field `_cmp` reported*. Note that the A/B/C/D/E table itself and
+the "Smallest exemplar per cluster" table below it are M4-era measurements
+that M5 task 4 did NOT re-derive; treat their absolute counts as history.
 
 ### The `L3.2 = canonical constant-pool order` rung: declined again, with the number
 
@@ -1648,8 +1706,8 @@ for name, S in (("accepts own body", {h for h, p in uniq.items() if accepts(p)})
 ```
 
 ```
-accepts own body         1447/1478 (97.9%)  1913/1944 (98.4%)
-whole subtree prints     1424/1478 (96.3%)  1890/1944 (97.2%)
+accepts own body         1465/1478 (99.1%)  1931/1944 (99.3%)
+whole subtree prints     1447/1478 (97.9%)  1913/1944 (98.4%)
 ```
 
 Row 3 needs no script: it is the committed ledger. `uv run python
@@ -1819,18 +1877,18 @@ for k, v in firstop.most_common(6):
 ```
 
 ```
-   54  A. subtree refuses structuring
-   16  D. extra MOVEs + other additions
-   14  B. same opcode histogram, operands differ
+   31  A. subtree refuses structuring
+   20  B. same opcode histogram, operands differ
+   19  D. extra MOVEs + other additions
     4  C. extra MOVEs only
     1  E. other delta
 
-   10  first differing instruction: B GETGLOBAL
-   10  first differing instruction: D LOADK
+   11  first differing instruction: B GETGLOBAL
+   11  first differing instruction: D LOADK
+    4  first differing instruction: B NEWTABLE->LOADK
+    3  first differing instruction: D JMP
     2  first differing instruction: B NEWTABLE
     2  first differing instruction: C JMP
-    2  first differing instruction: D JMP
-    1  first differing instruction: C NEWTABLE
 ```
 
 The print-but-do-not-certify mismatch histogram in point 3. Self-contained —
@@ -1911,10 +1969,11 @@ figures. The planning doc is a historical record and keeps its original text,
 with a correction note at the top. `tests/test_m3_exit.py` never quoted the
 figure — its only thresholds are its two `> 0.50` exit-gate assertions.
 
-**M4 settled it beyond argument.** Printability is now 1424/1478 = 96.3%
-unique and 1890/1944 = 97.2% occurrences, and the achieved `L3` rate is
-1389/1478 = 94.0% / 1855/1944 = 95.4%. The "ceiling" is exceeded by more than
-thirteen points on either basis. Kept here as a worked example of a
+**M4 settled it beyond argument, and M5 task 4 widened the margin.**
+Printability is now 1447/1478 = 97.9% unique and 1913/1944 = 98.4%
+occurrences, and the achieved `L3` rate is 1403/1478 = 94.9% / 1869/1944 =
+96.1%. The "ceiling" is exceeded by more than fourteen points on either
+basis. Kept here as a worked example of a
 planning-stage number that survived into three documents and a module
 docstring without ever being measured.
 
@@ -2003,6 +2062,12 @@ threshold, still the same 17 files.
 
 **It does not clear 0.997.** This is the honest state of the milestone at M5
 start, and it is the baseline every later re-measurement is compared against.
+
+**M5 task 4 moved it to `avg_score 0.946390`**, with 14 files below threshold
+(avg 0.123101) and 215 structured at exactly 1.000000 — three of the 17
+fallback files (`snr_e1_10_s.lua`, `snr_s2_10_s.lua`, `snr_s6_10_s.lua`)
+left fallback. The block below still describes the M5-start state; the shape
+of the distribution is unchanged, only the counts.
 
 The distribution is as clean as it could be: every one of the 212 files whose
 root certifies `L3` scores **exactly 1.000000**, and every one of the 17 files

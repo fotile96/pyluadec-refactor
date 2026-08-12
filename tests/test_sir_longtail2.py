@@ -350,15 +350,102 @@ KNOWN_REFUSALS = [
     # with `_structure_if`, and no corpus proto is refused for this reason.
     (b"if a then while true do if b then break end f() end else h() end",
      "unrecognized transfer JMP"),
-    # Compound `if` conditions. `sir.regions.If` carries ONE compare
-    # instruction, so `a and b` is read as nested `if`s -- which is the same
-    # bytecode when there is no else branch, and a DIFFERENT one when there is
-    # (the inner false-exit goes to the elseif's test, not to the outer
-    # else-skip). `or` has no nested-if reading at all. This is the residual
-    # `if targets out of range` cluster; see the M5 task-4 report.
+    # Compound `if` conditions -- THE residual after M5 task 4. All 12
+    # remaining unique structure refusals (10 `if targets out of range` + 2
+    # `else-join out of range`, plus 9 poisoned ancestors) are this, measured
+    # 2026-08-12.
+    #
+    # `sir.regions.If` carries ONE compare instruction, so `a and b` is read
+    # as nested `if`s. That is the SAME bytecode when the `if` has no else
+    # branch (which is why `if a and b then f() end` certifies today) and a
+    # DIFFERENT one when it does: with an else, both conjuncts' false-exits
+    # are patched by `luaK_patchtohere` straight to the else block, whereas
+    # the nested reading would send the inner one to the end of the outer
+    # then-block, skipping the else. `or` has no nested-`if` reading at all --
+    # its truelist is patched to the START of the then-block
+    # (`luaK_goiffalse`, lcode.c:196-208), so the first compare's jump goes
+    # FORWARD over the second condition.
+    #
+    # Closing it needs a condition TREE in `regions.If`, a matching
+    # `and`/`or` reconstruction, and a printer arm -- the acyclic analogue of
+    # what M4 task 4 built for the VALUE idiom (`CondValue`).
     (b"if a and b then f() else g() end", "if targets out of range"),
     (b"if a or b then f() end", "if targets out of range"),
 ]
+
+# The smallest corpus instance, `snr_common.lua:main_81` (26 instrs), was
+# reverse-engineered to its source on 2026-08-12 and the source below
+# reproduces its instruction stream one-for-one (only register numbers
+# differ -- main_81 takes a parameter). Recorded as a runnable fixture so the
+# follow-up task starts from a 26-instruction repro instead of a corpus file:
+# the condition is `(A and B) or C`, and the interesting part is that A's
+# false-exit (JMP@13) is flushed by `dischargejpc` at the DIV that starts C,
+# while the AND's own jump (JMP@15) is put on `fs->jpc` by `luaK_goiftrue`'s
+# `luaK_patchtohere(e->t)` and is then absorbed by the `break`'s `luaK_jump`
+# -- so the two halves of one condition end up with DIFFERENT targets, 16 and
+# 26. That is why no single-number rewrite can fix this cluster.
+COMPOUND_CONDITION_EXEMPLAR = b"""local v1, v2 = 0, 1
+while true do
+  if pb("C") ~= true then v2 = 0 end
+  if pb("C") == true and v2 == 0 or v1 / 3 <= 1 then
+    break
+  else
+    wait(1)
+  end
+  v1 = v1 + 1
+end
+"""
+
+
+def test_compound_condition_exemplar_reproduces_the_corpus_shape():
+    """Pins the reverse-engineering, not just the refusal: the jump structure
+    below is `snr_common.lua:main_81`'s, and it still refuses at the second
+    conjunct.
+    """
+    fn = lift_proto(load_bytes(compile_source(COMPOUND_CONDITION_EXEMPLAR,
+                                              strip=True)))
+    assert len(fn.instrs) == 26
+    assert fn.instrs[13].successors == (16,)    # A's false-exit, flushed at DIV@16
+    assert fn.instrs[15].successors == (26,)    # the AND's jump, on the breaklist
+    assert fn.instrs[19].successors == (26,)    # the `break`
+    assert fn.instrs[20].successors == (24,)    # the dead else-skip after it
+    with pytest.raises(StructureError) as e:
+        build_sir(fn)
+    assert "pc 14: if targets out of range" in str(e.value)
+
+
+def test_while_header_refusal_is_a_reconstructor_scope_defect_not_a_while_defect():
+    """`snr_novel.lua:main_13` is the whole `while-header code reconstructs to
+    N statement(s)` cluster (1 unique proto), and the brief's two candidate
+    fixes -- hoisting the header statement, or re-expressing as
+    `WhileTrue` + `If` -- are both wrong, measured 2026-08-12.
+
+    There is no statement in that header. It is a single `GETUPVAL A=1` at pc
+    43 whose definition `classify_registers` grades a TEMP ((43, 1) is in
+    `rc.temp_defs`). What materialises it is `Reconstructor.write_reg`'s
+    `reg not in self.declared` gate: register 1 was materialised as a named
+    local 35 instructions earlier, at pc 8, and `declared` is a whole-function
+    set outside the `open_scope`/`close_scope` block model, so every later
+    write to that slot is treated as a reassignment.
+
+    Measured: dropping the `declared` gate makes the header stage cleanly and
+    the refusal disappear -- and the proto STILL does not reach `L3`, it
+    lands on `mismatch: maxstacksize`. So this cluster is a symptom of the
+    same live-range/scope modelling the three `register N is read again after
+    its staged value was consumed` leaves belong to, and closing it would move
+    the proto between residual clusters rather than to `L3`.
+
+    Kept as a pure documentation test (no corpus access): it asserts the two
+    facts the paragraph above rests on that are checkable without the corpus.
+    """
+    # `while <cond>` with operand code in the header stages, does not
+    # materialise, when the register has not been declared earlier.
+    _certifies(b"local t = {} while t.n do t.n = t.n - 1 end")
+    # ...and `write_reg`'s gate is the thing that would change that.
+    import inspect
+    from pyluadec.express.reconstruct import Reconstructor
+    src = inspect.getsource(Reconstructor.write_reg)
+    assert "reg not in self.declared" in src
 
 
 @pytest.mark.parametrize("src,msg", KNOWN_REFUSALS,
