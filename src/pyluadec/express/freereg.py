@@ -14,6 +14,7 @@ callback interface already was: `_stack_discipline` never closed over
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from pyluadec.lift.lift import LirFunction
 from pyluadec.lift.opcodes import OP_SPECS, ArgMode, Fmt, Op, isk
@@ -22,6 +23,212 @@ from pyluadec.lift.opcodes import OP_SPECS, ArgMode, Fmt, Op, isk
 # the largest constant-table index that fits in an RK operand. Past it
 # `luaK_exp2RK` gives up and loads the constant into a register instead.
 _MAXINDEXRK = 255
+
+
+@dataclass(slots=True)
+class _Pending:
+    """One pushed-but-unconsumed value on the simulated expression stack.
+
+    `stack_discipline` keeps these in a list, reg-ascending. `bad` is set by a
+    read this definition cannot legally be inlined into even though the read
+    count is right (the barriers below); it is carried on the entry rather
+    than applied immediately so that a single pop site stays the one place a
+    verdict is recorded.
+    """
+    reg: int
+    def_pc: int
+    n_reads: int = 0
+    bad: bool = False
+
+
+def _pending_def(pending: list[_Pending], r: int) -> _Pending | None:
+    """The entry `pending` holds for register `r`, or None."""
+    for ent in pending:
+        if ent.reg == r:
+            return ent
+    return None
+
+
+# --------------------------------------------------------------------------
+# The four barriers on top of the pop-once rule
+# --------------------------------------------------------------------------
+# `docs/runbooks/structured-pipeline.md` documents these four as one group
+# under this heading, so they live under it here too. Three of them are
+# state-independent questions about what `lcode.c` would have emitted and are
+# free functions below: barrier 1 is `_same_block`; barriers 2 (RK/literal)
+# and 3 (`MOVE d, s` with `s < d`) share `_bar_literal_operands`, because both
+# are "this operand position proves the slot did not hold a temporary" and
+# both need the same lookup into the pending stack.
+#
+# Barrier 4 -- read-poisoning blames the last definition -- is NOT here. It is
+# two lines inside `stack_discipline`'s `do_read`, inseparable from the walk's
+# own `last_def` bookkeeping, and it is marked there. Its neuter proof does
+# not live with the other three either; see that comment.
+
+
+def _same_block(block_floor: Callable[[int], int], d: int, r: int) -> bool:
+    """True iff pcs `d` and `r` are in the same CFG basic block.
+
+    THE control-flow requirement on per-definition staging. A staged
+    definition is not a statement: it lives only in the reconstructor's
+    register environment until a read pops and inlines it. Two things
+    follow, and both are violated as soon as a definition and its read
+    sit in different blocks.
+
+    1. **Execution counts must match.** A definition read once per loop
+       iteration but written only once before the loop must not be popped
+       on its first textual read -- that would move the definition inside
+       the loop body and change how often it runs.
+       `local i = 0 repeat i = i + 1 until i > 5` is NOT a working example
+       of this on its own (fix round 1, F5(a), re-measured 2026-08-11):
+       neutering `_same_block` alone still certifies this shape `L3`,
+       because `i`'s definition is *already* disqualified by the ordinary
+       pop-once accounting before `_same_block` gets a say -- it is read
+       once by the `until` test AND once by the body's `i = i + 1`, two
+       textual reads of the same pending entry, which fails the "read
+       exactly once" rule regardless of blocks (see
+       `tests/test_express_liverange.py::LOCAL_CASES[2]`'s docstring for
+       the traced-through account, including what DOES require both
+       `_same_block` and the RK/literal barrier to fail this fixture).
+       The concrete shape that DOES need `_same_block` for execution-count
+       correctness, reproduced this session:
+       `local b, c = 1, 2  local a = b or c  while a do a = b or c end
+       print(a)` -- neutering `_same_block` prints
+       `while l0_0 or l0_1 do local l0_2 = l0_0 or l0_1 end
+       print(l0_0 or l0_1)`, silently turning the reassignment to `a`
+       into a fresh, unrelated local `l0_2` inside the loop rather than a
+       write to the outer `a`. Certification refuses this (a `code`/
+       `maxstacksize` mismatch), so it never ships, but it is a genuinely
+       different program, not merely an unfaithful one -- pinned as
+       `tests/test_express_liverange.py::LOCAL_CASES_CERT_ONLY[0]`.
+
+    2. **Block scoping must match.** `emit.lua` wraps every `if` arm and
+       loop body in `Reconstructor.open_scope`/`close_scope`, which
+       snapshot and restore the staging environment because a `local`
+       declared in one Lua block is out of scope in the next. A value
+       staged *before* a block and popped *inside* it has its pop rolled
+       back at `close_scope`, so whatever the block computed from it
+       disappears from the output entirely; a value staged *inside* a
+       block and read *after* it is discarded by the same rollback.
+       `snr_common.lua:main_77_20` was the shape that motivated this rule
+       during M4 task 13's development (its `if` arm's whole `CONCAT`
+       statement vanished with `_same_block` neutered at that point in the
+       change). It does NOT reproduce against the code at HEAD (fix round
+       1, F5(b), re-measured 2026-08-11: printing `main_77_20` with and
+       without the guard gives byte-identical bodies) -- some other
+       change in the same task's fix history (plausibly the RK/literal
+       barrier, added afterward) came to cover this specific shape too.
+       Historical, not a live pin; kept as the motivating example for
+       *why* the block-scoping property must hold, not as a claim this
+       exact proto currently demonstrates the failure.
+
+    A basic block cannot span a branch or a jump target, so "same block"
+    gives both properties at once. It is stronger than either strictly
+    needs -- `f(a or b)` stages the callee in one block and calls it in
+    another -- and the cost of that strictness was measured rather than
+    assumed (see the task report). Erring here materializes a named local,
+    which is always printable; the alternative is silently dropped code.
+    """
+    return block_floor(d) == block_floor(r)
+
+
+def _renders_as_literal(fn: LirFunction, def_pc: int) -> bool:
+    """True iff the definition at `def_pc` would be printed as a Lua *literal*
+    (`1`, `"s"`, `nil`, `true`) rather than as a name or a compound
+    expression -- i.e. iff `lparser.c` would read it back as VKNUM/VK/
+    VNIL/VTRUE/VFALSE.
+    """
+    d = fn.instrs[def_pc].ri
+    if d.op is Op.LOADK:
+        k = fn.proto.constants[d.bx]
+        if isinstance(k, bytes):
+            # A string literal is already `VK` when `luaK_exp2RK` sees it
+            # (`codestring` interns it through `luaK_stringK` at parse
+            # time), so lcode.c's test is on its INDEX: `e->u.s.info <=
+            # MAXINDEXRK`. Past that luac loads it into a register
+            # instead, which is exactly the shape being examined, so the
+            # barrier must not fire. The original proto's index is a proxy
+            # for the recompiled one -- being wrong costs a certification,
+            # never correctness.
+            return d.bx <= _MAXINDEXRK
+        # A NUMBER literal is `VKNUM` -- it is not in the constant table
+        # yet, and `luaK_exp2RK` tests `fs->nk <= MAXINDEXRK`, the table's
+        # SIZE, before interning it. So in a proto with more than 256
+        # constants luac loads even `1` into a register, however low the
+        # index it would eventually get. Using the index here instead
+        # (which this did in its first draft) declared that `LOADK` a
+        # local and cost `snr_crd_15.lua:main_1` and
+        # `snr_crd_20.lua:main_1` their certification -- both have >400
+        # constants, and both compare against a small integer near the
+        # end of the function.
+        return len(fn.proto.constants) <= _MAXINDEXRK
+    if d.op is Op.LOADNIL or (d.op is Op.LOADBOOL and d.c == 0):
+        # VNIL/VTRUE/VFALSE, same as VKNUM: interned at exp2RK time, so
+        # the test is on the table's size.
+        return len(fn.proto.constants) <= _MAXINDEXRK
+    return False
+
+
+def _bar_literal_operands(fn: LirFunction, li, pending: list[_Pending]) -> None:
+    """Disqualify pending definitions that this instruction reads in a
+    position where luac would never have used a register at all.
+
+    Two ways that happens, both of them in `lcode.c`:
+
+    * an **RK operand** (`OP_SPECS`' `ArgMode.K` slots, transcribed from
+      `lopcodes.c`): `luaK_exp2RK` encodes a literal straight into B/C
+      with the K bit set. So `EQ 0 R0 K"x"` proves R0 held something that
+      was *not* a literal at that point -- a local. Inlining a staged
+      `LOADK` there prints `if 1 == 2 then`, which recompiles to
+      `EQ 0 K1 K2` with no `LOADK` and a different constant table.
+    * a **unary fold**: `luaK_prefix` runs `codearith(OP_UNM)`/`codenot`,
+      and both fold a literal operand at parse time (`constfolding`,
+      `codenot`). `-1` and `not 1` never emit `UNM`/`NOT`, so an `UNM`/
+      `NOT` reading a register proves that register was not a literal.
+
+    Binary arithmetic needs no separate fold rule: its operands are RK
+    slots, so the first bullet already covers `LOADK 0 K1; ADD 0 0 K1`
+    (which is `local a = 1  a = a + 1`, the shape that made this barrier
+    necessary -- without it the two statements collapse into
+    `local a = 1 + 1`, which luac folds back to a single `LOADK`).
+    """
+    ri = li.ri
+    if ri.op is Op.MOVE and ri.b < ri.a:
+        # `MOVE d, s` with `s < d` proves `s` held a NAMED LOCAL, not a
+        # temporary. `luaK_exp2nextreg` runs `freeexp` first, and
+        # `freeexp` only releases a VNONRELOC expression sitting at
+        # `freereg - 1` (it asserts exactly that), so discharging a
+        # temporary into the next free register finds `reg ==
+        # e->u.s.info` and emits nothing at all. A copy from a lower slot
+        # upward is what luac emits instead: `luaK_dischargevars` turns
+        # `VLOCAL` into `VNONRELOC` carrying the local's own slot
+        # (`lcode.c:306-309`), and `discharge2reg`'s `VNONRELOC` arm then
+        # sees `reg != e->u.s.info` and codes the `MOVE`
+        # (`lcode.c:367-371`). `discharge2reg` itself has no `VLOCAL`
+        # case; the local's slot is below `nactvar` and must be
+        # preserved, so the copy is the only option.
+        #
+        # Without this, `local n = p  n = string.gsub(n, ...)` inlines the
+        # parameter into the call and collapses the whole chain of
+        # reassignments into one nested expression -- semantically fine,
+        # but it deletes a local the original declared and the recompile
+        # loses every `MOVE`. Measured on `snr_common.lua:main_77_1`.
+        ent = _pending_def(pending, ri.b)
+        if ent is not None:
+            ent.bad = True
+    spec = OP_SPECS[ri.op]
+    slots: list[int] = []
+    if spec.fmt is Fmt.iABC:
+        if spec.bmode is ArgMode.K and not isk(ri.b):
+            slots.append(ri.b)
+        if spec.cmode is ArgMode.K and not isk(ri.c):
+            slots.append(ri.c)
+    if ri.op in (Op.UNM, Op.NOT):
+        slots.append(ri.b)
+    for r in slots:
+        ent = _pending_def(pending, r)
+        if ent is not None and _renders_as_literal(fn, ent.def_pc):
+            ent.bad = True
 
 
 def stack_discipline(fn: LirFunction, ordered: list[int],
@@ -149,180 +356,6 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
     branches at statement boundaries, this is exact for real luac output; on
     anything else it drifts toward "promote to local", the safe direction.
     """
-    # Back-edge spans `[target, source]`. luac's loops are natural and its
-    def _same_block(d: int, r: int) -> bool:
-        """True iff pcs `d` and `r` are in the same CFG basic block.
-
-        THE control-flow requirement on per-definition staging. A staged
-        definition is not a statement: it lives only in the reconstructor's
-        register environment until a read pops and inlines it. Two things
-        follow, and both are violated as soon as a definition and its read
-        sit in different blocks.
-
-        1. **Execution counts must match.** A definition read once per loop
-           iteration but written only once before the loop must not be popped
-           on its first textual read -- that would move the definition inside
-           the loop body and change how often it runs.
-           `local i = 0 repeat i = i + 1 until i > 5` is NOT a working example
-           of this on its own (fix round 1, F5(a), re-measured 2026-08-11):
-           neutering `_same_block` alone still certifies this shape `L3`,
-           because `i`'s definition is *already* disqualified by the ordinary
-           pop-once accounting before `_same_block` gets a say -- it is read
-           once by the `until` test AND once by the body's `i = i + 1`, two
-           textual reads of the same pending entry, which fails the "read
-           exactly once" rule regardless of blocks (see
-           `tests/test_express_liverange.py::LOCAL_CASES[2]`'s docstring for
-           the traced-through account, including what DOES require both
-           `_same_block` and the RK/literal barrier to fail this fixture).
-           The concrete shape that DOES need `_same_block` for execution-count
-           correctness, reproduced this session:
-           `local b, c = 1, 2  local a = b or c  while a do a = b or c end
-           print(a)` -- neutering `_same_block` prints
-           `while l0_0 or l0_1 do local l0_2 = l0_0 or l0_1 end
-           print(l0_0 or l0_1)`, silently turning the reassignment to `a`
-           into a fresh, unrelated local `l0_2` inside the loop rather than a
-           write to the outer `a`. Certification refuses this (a `code`/
-           `maxstacksize` mismatch), so it never ships, but it is a genuinely
-           different program, not merely an unfaithful one -- pinned as
-           `tests/test_express_liverange.py::LOCAL_CASES_CERT_ONLY[0]`.
-
-        2. **Block scoping must match.** `emit.lua` wraps every `if` arm and
-           loop body in `Reconstructor.open_scope`/`close_scope`, which
-           snapshot and restore the staging environment because a `local`
-           declared in one Lua block is out of scope in the next. A value
-           staged *before* a block and popped *inside* it has its pop rolled
-           back at `close_scope`, so whatever the block computed from it
-           disappears from the output entirely; a value staged *inside* a
-           block and read *after* it is discarded by the same rollback.
-           `snr_common.lua:main_77_20` was the shape that motivated this rule
-           during M4 task 13's development (its `if` arm's whole `CONCAT`
-           statement vanished with `_same_block` neutered at that point in the
-           change). It does NOT reproduce against the code at HEAD (fix round
-           1, F5(b), re-measured 2026-08-11: printing `main_77_20` with and
-           without the guard gives byte-identical bodies) -- some other
-           change in the same task's fix history (plausibly the RK/literal
-           barrier, added afterward) came to cover this specific shape too.
-           Historical, not a live pin; kept as the motivating example for
-           *why* the block-scoping property must hold, not as a claim this
-           exact proto currently demonstrates the failure.
-
-        A basic block cannot span a branch or a jump target, so "same block"
-        gives both properties at once. It is stronger than either strictly
-        needs -- `f(a or b)` stages the callee in one block and calls it in
-        another -- and the cost of that strictness was measured rather than
-        assumed (see the task report). Erring here materializes a named local,
-        which is always printable; the alternative is silently dropped code.
-        """
-        return block_floor(d) == block_floor(r)
-    def _pending_def(r: int):
-        for ent in pending:
-            if ent[0] == r:
-                return ent
-        return None
-
-    def _renders_as_literal(ent) -> bool:
-        """True iff this pending definition would be printed as a Lua *literal*
-        (`1`, `"s"`, `nil`, `true`) rather than as a name or a compound
-        expression -- i.e. iff `lparser.c` would read it back as VKNUM/VK/
-        VNIL/VTRUE/VFALSE.
-        """
-        d = fn.instrs[ent[1]].ri
-        if d.op is Op.LOADK:
-            k = fn.proto.constants[d.bx]
-            if isinstance(k, bytes):
-                # A string literal is already `VK` when `luaK_exp2RK` sees it
-                # (`codestring` interns it through `luaK_stringK` at parse
-                # time), so lcode.c's test is on its INDEX: `e->u.s.info <=
-                # MAXINDEXRK`. Past that luac loads it into a register
-                # instead, which is exactly the shape being examined, so the
-                # barrier must not fire. The original proto's index is a proxy
-                # for the recompiled one -- being wrong costs a certification,
-                # never correctness.
-                return d.bx <= _MAXINDEXRK
-            # A NUMBER literal is `VKNUM` -- it is not in the constant table
-            # yet, and `luaK_exp2RK` tests `fs->nk <= MAXINDEXRK`, the table's
-            # SIZE, before interning it. So in a proto with more than 256
-            # constants luac loads even `1` into a register, however low the
-            # index it would eventually get. Using the index here instead
-            # (which this did in its first draft) declared that `LOADK` a
-            # local and cost `snr_crd_15.lua:main_1` and
-            # `snr_crd_20.lua:main_1` their certification -- both have >400
-            # constants, and both compare against a small integer near the
-            # end of the function.
-            return len(fn.proto.constants) <= _MAXINDEXRK
-        if d.op is Op.LOADNIL or (d.op is Op.LOADBOOL and d.c == 0):
-            # VNIL/VTRUE/VFALSE, same as VKNUM: interned at exp2RK time, so
-            # the test is on the table's size.
-            return len(fn.proto.constants) <= _MAXINDEXRK
-        return False
-
-    def _bar_literal_operands(li) -> None:
-        """Disqualify pending definitions that this instruction reads in a
-        position where luac would never have used a register at all.
-
-        Two ways that happens, both of them in `lcode.c`:
-
-        * an **RK operand** (`OP_SPECS`' `ArgMode.K` slots, transcribed from
-          `lopcodes.c`): `luaK_exp2RK` encodes a literal straight into B/C
-          with the K bit set. So `EQ 0 R0 K"x"` proves R0 held something that
-          was *not* a literal at that point -- a local. Inlining a staged
-          `LOADK` there prints `if 1 == 2 then`, which recompiles to
-          `EQ 0 K1 K2` with no `LOADK` and a different constant table.
-        * a **unary fold**: `luaK_prefix` runs `codearith(OP_UNM)`/`codenot`,
-          and both fold a literal operand at parse time (`constfolding`,
-          `codenot`). `-1` and `not 1` never emit `UNM`/`NOT`, so an `UNM`/
-          `NOT` reading a register proves that register was not a literal.
-
-        Binary arithmetic needs no separate fold rule: its operands are RK
-        slots, so the first bullet already covers `LOADK 0 K1; ADD 0 0 K1`
-        (which is `local a = 1  a = a + 1`, the shape that made this barrier
-        necessary -- without it the two statements collapse into
-        `local a = 1 + 1`, which luac folds back to a single `LOADK`).
-        """
-        ri = li.ri
-        if ri.op is Op.MOVE and ri.b < ri.a:
-            # `MOVE d, s` with `s < d` proves `s` held a NAMED LOCAL, not a
-            # temporary. `luaK_exp2nextreg` runs `freeexp` first, and
-            # `freeexp` only releases a VNONRELOC expression sitting at
-            # `freereg - 1` (it asserts exactly that), so discharging a
-            # temporary into the next free register finds `reg ==
-            # e->u.s.info` and emits nothing at all. A copy from a lower slot
-            # upward is what luac emits instead: `luaK_dischargevars` turns
-            # `VLOCAL` into `VNONRELOC` carrying the local's own slot
-            # (`lcode.c:306-309`), and `discharge2reg`'s `VNONRELOC` arm then
-            # sees `reg != e->u.s.info` and codes the `MOVE`
-            # (`lcode.c:367-371`). `discharge2reg` itself has no `VLOCAL`
-            # case; the local's slot is below `nactvar` and must be
-            # preserved, so the copy is the only option.
-            #
-            # Without this, `local n = p  n = string.gsub(n, ...)` inlines the
-            # parameter into the call and collapses the whole chain of
-            # reassignments into one nested expression -- semantically fine,
-            # but it deletes a local the original declared and the recompile
-            # loses every `MOVE`. Measured on `snr_common.lua:main_77_1`.
-            ent = _pending_def(ri.b)
-            if ent is not None:
-                ent[3] = 1
-        spec = OP_SPECS[ri.op]
-        slots: list[int] = []
-        if spec.fmt is Fmt.iABC:
-            if spec.bmode is ArgMode.K and not isk(ri.b):
-                slots.append(ri.b)
-            if spec.cmode is ArgMode.K and not isk(ri.c):
-                slots.append(ri.c)
-        if ri.op in (Op.UNM, Op.NOT):
-            slots.append(ri.b)
-        for r in slots:
-            ent = _pending_def(r)
-            if ent is not None and _renders_as_literal(ent):
-                ent[3] = 1
-
-    # [reg, def_pc, n_reads, disqualified], reg-ascending. `disqualified` is
-    # set by a read this definition cannot legally be inlined into even though
-    # the read count is right (see _same_block and the constant-folding
-    # barrier below); it is carried on the entry rather than applied
-    # immediately so that a single pop site stays the one place a verdict is
-    # recorded.
     # `block_floor` is `classify_registers._block_floor`: the first pc of the
     # basic block containing a pc. It is required, not defaulted -- a default
     # would have to be either "everything is one block" (silently unsound: it
@@ -331,7 +364,7 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
     # instruction cannot survive). Passing the caller's lazy one gets both:
     # sound, and no CFG is built for a function whose staging never crosses a
     # block boundary.
-    pending: list[list[int]] = []
+    pending: list[_Pending] = []
     verdict: dict[int, bool] = {}
     def_verdict: dict[tuple[int, int], bool] = {}
     last_def: dict[int, int] = {}           # reg -> pc of its most recent push
@@ -345,10 +378,10 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
 
     def do_read(r: int, at: int) -> None:
         for ent in pending:
-            if ent[0] == r:
-                ent[2] += 1
-                if not _same_block(ent[1], at):
-                    ent[3] = 1
+            if ent.reg == r:
+                ent.n_reads += 1
+                if not _same_block(block_floor, ent.def_pc, at):
+                    ent.bad = True
                 return
         if not known_local(r, at) and not loop_control(r, at):
             # Not pending and not a known local: either a slot this function
@@ -363,15 +396,29 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
             # and blaming the staging definition for them would materialize
             # `for i = 1, 10` as `local l0_0 = 1  for i = l0_0, 10, 1`.
             mark(r, False)
-            # Per-definition, blame the definition that produced the value
-            # being re-read -- the most recent push into this slot, which the
-            # walk has already popped. Grading THAT def local is what makes
-            # the reconstructor materialize it as a named local, so the
-            # second read has a name to refer to instead of an expression
-            # that was already inlined somewhere else. A slot with no
-            # preceding def in this function (an uninitialised read) has
-            # nothing to blame and simply contributes no `temp_defs` entry,
-            # which is the local direction anyway.
+            # BARRIER 4 of the four (see the section header above; the other
+            # three are module-level functions). Per-definition, blame the
+            # definition that produced the value being re-read -- the most
+            # recent push into this slot, which the walk has already popped.
+            # Grading THAT def local is what makes the reconstructor
+            # materialize it as a named local, so the second read has a name
+            # to refer to instead of an expression that was already inlined
+            # somewhere else. A slot with no preceding def in this function
+            # (an uninitialised read) has nothing to blame and simply
+            # contributes no `temp_defs` entry, which is the local direction
+            # anyway.
+            #
+            # Neuter proof, measured 2026-08-13 (M5 task 11) by replacing the
+            # `if` below with `if False and ...` and running the whole suite:
+            # `tests/test_sir_loops_longtail.py::
+            # test_repeat_fixture_claims_every_pc_and_certifies[6]` fails, and
+            # so does `tests/test_ledger_ratchet.py::
+            # test_ledger_is_a_reproducible_fixed_point` -- i.e. the committed
+            # ledger MOVES, which the other three barriers do not do. Note
+            # where that pin is NOT: nothing in `tests/test_express_*.py` sees
+            # this line at all (126/126 of those still pass with it neutered),
+            # so the runbook's "each is pinned by a fixture ... (see
+            # tests/test_express_liverange.py)" is true of barriers 1-3 only.
             if r in last_def:
                 mark_def(last_def[r], r, False)
 
@@ -381,22 +428,29 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
         those reads is what lets `print(string.format(...))` keep its two
         staged argument registers as temps."""
         for ent in pending:
-            if ent[0] >= base:
-                ent[2] += 1
-                if not _same_block(ent[1], at):
-                    ent[3] = 1
+            if ent.reg >= base:
+                ent.n_reads += 1
+                if not _same_block(block_floor, ent.def_pc, at):
+                    ent.bad = True
 
     def pop_ge(base: int) -> None:
-        while pending and pending[-1][0] >= base:
-            reg, dpc, n, bad = pending.pop()
-            mark(reg, n == 1 and not bad)
-            mark_def(dpc, reg, n == 1 and not bad)
+        while pending and pending[-1].reg >= base:
+            ent = pending.pop()
+            ok = ent.n_reads == 1 and not ent.bad
+            mark(ent.reg, ok)
+            mark_def(ent.def_pc, ent.reg, ok)
 
     def promote_all() -> None:
         while pending:
-            reg, dpc, _n, _bad = pending.pop()
-            mark(reg, False)
-            mark_def(dpc, reg, False)
+            ent = pending.pop()
+            mark(ent.reg, False)
+            mark_def(ent.def_pc, ent.reg, False)
+
+    def push(regs, pc: int) -> None:
+        for r in regs:
+            if not known_local(r, pc):
+                pending.append(_Pending(r, pc))
+                last_def[r] = pc
 
     # NOTE on the two intermediate `promote_all()` calls below. They are NOT
     # interchangeable and were separately fault-injected (M3 task 8, corrected
@@ -442,13 +496,7 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
         ri = li.ri
         op, a, b, c = ri.op, ri.a, ri.b, ri.c
 
-        def push(regs) -> None:
-            for r in regs:
-                if not known_local(r, pc):
-                    pending.append([r, pc, 0, 0])
-                    last_def[r] = pc
-
-        _bar_literal_operands(li)
+        _bar_literal_operands(fn, li, pending)
         for r in sorted(li.effects.reads):
             do_read(r, pc)
         if li.effects.reads_open:
@@ -459,9 +507,9 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
             if op is Op.TAILCALL or c == 1:
                 promote_all()                      # call statement / tail return
             elif c == 0:
-                push((a,))                         # open producer
+                push((a,), pc)                     # open producer
             else:
-                push(range(a, a + c - 1))
+                push(range(a, a + c - 1), pc)
         elif op is Op.RETURN:
             if b != 1:
                 pop_ge(a)
@@ -477,9 +525,9 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
             pass                                   # reads only
         elif op is Op.VARARG:
             if b == 0:
-                pop_ge(a); push((a,))
+                pop_ge(a); push((a,), pc)
             elif b >= 2:
-                pop_ge(a); push(range(a, a + b - 1))
+                pop_ge(a); push(range(a, a + b - 1), pc)
         else:
             writes = sorted(li.effects.writes)
             if writes:
@@ -487,7 +535,7 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
                 if named_local(writes[0], pc):
                     promote_all()                  # assignment to a named local
                 else:
-                    push(writes)
+                    push(writes, pc)
     promote_all()
     return ({r for r, ok in verdict.items() if ok},
             {key for key, ok in def_verdict.items() if ok})
