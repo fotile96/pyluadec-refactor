@@ -1083,17 +1083,25 @@ original's".
 
 # M5 agenda
 
-Everything below is **open**. It came out of M4 and, like the M3 material
-above, would otherwise be lost with the SDD workspace. Written at the M4 wrap
-(task 12, 2026-08-12). Numbered so items can be cited; the numbering is not a
-priority order — sizes are noted per item.
+Everything below is **open unless its heading says otherwise**. It came out of
+M4 and, like the M3 material above, would otherwise be lost with the SDD
+workspace. Written at the M4 wrap (task 12, 2026-08-12). Numbered so items can
+be cited; the numbering is not a priority order — sizes are noted per item.
+Items closed during M5 keep their record verbatim and gain a "Closed" section,
+same convention as §§1–9 above.
 
 Provenance and honesty rules, same as the sections above: every figure quoted
 here was measured this session unless it says otherwise, and where a figure
 carried forward from an earlier task did not reproduce, the discrepancy is
 stated rather than smoothed over.
 
-## 1. Regrade `LEN` at `NO_METAMETHOD`: `PURE` → `READ_HEAP` (axiom layer)
+## 1. Regrade `LEN` at `NO_METAMETHOD`: `PURE` → `READ_HEAP` (axiom layer) — DONE (M5 task 1)
+
+*Everything until "Closed — M5 task 1" below is the record as it stood before
+the change; present tense in it means "before M5 task 1". Its figures and
+citations were re-measured and all of them reproduced. The figure that did
+**not** reproduce is one the M5 plan added on top of this item — see the Closed
+section.*
 
 **This is a confirmed-wrong row in the axiom table.** It was found by M4 task
 11 and left alone deliberately, because CLAUDE.md requires an `lvm.c` citation
@@ -1127,6 +1135,67 @@ reason before and after, plus `scripts/run_corpus.py` reproducing
 follow its shape, including the synthetic fixture that proves the row is
 load-bearing even when the corpus cannot move.
 
+### Closed — M5 task 1 (commit `PENDING`)
+
+The row is now `ARB / READ_HEAP / PURE`. `src/pyluadec/lift/effects.py`'s
+`UNM | LEN` branch was **split** so the regrade could not drag `UNM` with it
+(`UNM` at `NO_METAMETHOD` genuinely is `PURE`); `tests/test_effects_len.py`
+pins both halves and owns the full record.
+
+**Citations, all re-verified against `vendor/lua-5.1/src/` after the edit** —
+the M4 ranges quoted above reproduced exactly:
+
+| range | what it is |
+| --- | --- |
+| `lvm.c:514-533` | the whole `case OP_LEN:` |
+| `lvm.c:517-520` | `case LUA_TTABLE:` → `luaH_getn` — a table never reaches the metamethod arm, so `NO_METAMETHOD` removes nothing |
+| `lvm.c:521-524` | `case LUA_TSTRING:` → `tsvalue(rb)->len`, genuinely pure |
+| `lvm.c:525-530` | `default:` → `call_binTM(..., TM_LEN)` / `luaG_typeerror` — the only metamethod arm |
+| `ltable.c:560-576` | `luaH_getn`: reads `t->sizearray`, binary-searches `t->array[...]` (561-571) |
+| `ltable.c:532-553` | `unbound_search`, the hash-part path |
+| `ltable.c:435-449` | `luaH_getnum`, called repeatedly by the above |
+
+**The differential run was null.** `classify_registers`' four fields
+(`locals`/`temps`/`loop_vars`/`temp_defs`) plus every proto's certification
+level, rung and refusal reason, swept over all **1944 proto occurrences of
+229 files** before and after: the two sweeps are byte-identical (sha256
+`5d5e4335…0efea3fe`), and `scripts/run_corpus.py` reproduced
+`corpus/ledger.jsonl` byte-for-byte (`a45d8e06…7ddb1039`; 1389/1478 unique
+`L3`, 94.0%; 1855/1944 occurrences, 95.4%).
+
+Null was predicted, and the *reason* is stronger than the prediction: not only
+does nothing in `src/` select `NO_METAMETHOD`, **nothing in `src/` reads
+`InstrEffects.effect` at all.** Downstream consumes only
+`reads`/`writes`/`reads_open`/`writes_open`; the lattice stopped being the
+inlining gate at M3 task 8 and has had no consumer since. That is measured and
+pinned (`test_nothing_in_src_reads_the_effect_field`), and it means **no
+synthetic fixture can show this row load-bearing** the way M4 task 8's
+`TAILCALL` fixture could — that row moved `classify_registers`, which reads
+`writes_open`. Stated rather than papered over: this correction is
+unobservable in today's pipeline and was made because the axiom layer is
+supposed to be true.
+
+**One knock-on, and one figure from the M5 plan that did not reproduce:**
+
+- Knock-on: `LEN` **joins `TRUSTING`'s delta**. With both looser columns at
+  `PURE`, `TRUSTING` moved nothing on this row; with `NO_METAMETHOD` at
+  `READ_HEAP`, `TRUSTING`'s own assumption ("a table read may be reordered
+  freely") is what takes it back to `PURE`. So `TRUSTING` now moves **4** rows
+  below `NO_METAMETHOD`, not 3 — `GETGLOBAL`, `GETTABLE`, `SELF`, `LEN` — and
+  all 4 are `# UNARGUED`. `NO_METAMETHOD`'s `# UNARGUED` count went 1 → 0 as
+  planned.
+- Did not reproduce: the M5 plan predicted "the 20/18 entailment split moves".
+  **It does not.** `test_mode_columns_split_20_entailed_18_relaxed` passed
+  unmodified: `LEN` was already one of the relaxed 18 (its `STRICT` column is
+  `ARBITRARY` and its looser columns were below it) and it still is. The split
+  is derived from `analyze()` rather than asserted in prose, which is exactly
+  why the test settled this instead of a person arithmetic-ing it.
+- Also re-measured and reproduced: **22 `LEN` sites** in the corpus, across
+  **8** protos of the 1944.
+
+Suite after: **516 passed in 42.09s** (4 new tests, all in
+`tests/test_effects_len.py`, which costs 0.04s on its own).
+
 ### Recorded beneath item 1, deliberately NOT to be fixed
 
 These two came out of the same review and are **not** defects to schedule.
@@ -1152,6 +1221,12 @@ They are here so they are not rediscovered and re-litigated:
   nothing checks it. If item 1 is picked up, write that convention down in the
   same pass — it is cheaper than rediscovering why a future pass that reuses
   `[b, c]` after a `CONCAT` produces wrong code.
+  **Status after M5 task 1: item 1 was picked up and this was NOT done.** The
+  task's brief scoped it to one cell of the `LEN` row plus the mode-column
+  census, and writing a scratch-register convention means auditing every
+  consumer of `CONCAT`'s operand range, which is its own piece of work. The
+  trigger is left standing here deliberately, pointed at whoever next touches
+  `express/reconstruct.py`'s handling of `CONCAT`.
 
 ## 2. Full ratchet CI — baseline diff, downgrade = fail (spec §5's complete form)
 

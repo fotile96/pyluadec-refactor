@@ -823,18 +823,21 @@ author who lands on this file first is not sent the wrong way:
   region. It is not a safe global default precisely because the unproven case
   dominates.
 - **`TRUSTING` is recommended against for any pass.** Its entire delta over
-  `NO_METAMETHOD` is three rows (`GETGLOBAL`/`GETTABLE`/`SELF` →`PURE`), and
-  the corpus *falsifies* all three rather than merely failing to support them:
+  `NO_METAMETHOD` is four rows (`GETGLOBAL`/`GETTABLE`/`SELF`/`LEN` →`PURE`),
+  and the corpus *falsifies* them rather than merely failing to support them:
   892 `SETGLOBAL` sites, 29 protos that read and write the same global name,
   1667 `SETTABLE` + 92 `SETLIST` + 44809 `CALL` sites. It is kept in the enum
-  (removing it would be an axiom-layer behaviour change) with all three
-  distinguishing rows marked `# UNARGUED`.
+  (removing it would be an axiom-layer behaviour change) with all four
+  distinguishing rows marked `# UNARGUED`. (`LEN` joined that delta at M5
+  task 1 — see below.)
 
 Two rows were found under-graded during that calibration and deliberately
 left alone pending the full axiom-change protocol (`lvm.c` citation plus a
 differential run): `LEN` at `NO_METAMETHOD`, and `NEWTABLE`/`CLOSURE`'s GC
-path. The `LEN` one is a real defect and is item 1 of the M5 agenda in
-`docs/runbooks/m3-backlog.md`.
+path. **`LEN` was corrected at M5 task 1** (`PURE` → `READ_HEAP`; citation and
+null-differential record in `tests/test_effects_len.py`, discussion in
+`structured-pipeline.md` → "The `LEN` regrade"). The GC one still stands, and
+`docs/runbooks/m3-backlog.md` §M5.1 says why it is not scheduled.
 
 ## Known semantic gaps
 

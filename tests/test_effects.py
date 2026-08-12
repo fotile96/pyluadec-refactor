@@ -398,9 +398,13 @@ _EXHAUSTIVE_CASES = [
      _mk(_Op.NOT, a=1, b=2),
      frozenset({2}), frozenset({1}), False, False, False, _PURE, _PURE, _PURE),
 
+    # NO_METAMETHOD is READ_HEAP, not PURE: the LUA_TTABLE arm (lvm.c:517-520)
+    # runs luaH_getn, which reads the table, and a table never reaches the
+    # metamethod arm at all (Lua 5.1 has no table `__len`). M5 task 1; the
+    # citation and the differential run are in tests/test_effects_len.py.
     ("LEN",  # lvm.c: table/string fast path, else Protect(call_binTM(...)) or typeerror
      _mk(_Op.LEN, a=1, b=2),
-     frozenset({2}), frozenset({1}), False, False, True, _ARB, _PURE, _PURE),
+     frozenset({2}), frozenset({1}), False, False, True, _ARB, _RH, _PURE),
 
     ("CONCAT",  # lvm.c: B..C is a register RANGE (OpArgR/OpArgR), not RK; luaV_concat can TM or concaterror
      _mk(_Op.CONCAT, a=1, b=2, c=4),

@@ -76,9 +76,11 @@ class EffectMode(Enum):
     it rather than merely failing to support it: 892 `SETGLOBAL` sites over
     108 global names that are also read, 29 protos that read and write the
     same global name, 1667 `SETTABLE` + 92 `SETLIST` sites, and 44809 `CALL`
-    sites any of which may store into any reachable table. See the three
-    `# tr:` rows below (`GETGLOBAL`, `GETTABLE`, `SELF`) -- they are the only
-    three rows TRUSTING moves at all, and all three are `# UNARGUED`.
+    sites any of which may store into any reachable table. See the four
+    `# tr:` rows below (`GETGLOBAL`, `GETTABLE`, `SELF`, `LEN`) -- they are the
+    only four rows TRUSTING moves at all, and all four are `# UNARGUED`.
+    (`LEN` joined them at M5 task 1: once `#t` is `READ_HEAP` under
+    `NO_METAMETHOD`, `TRUSTING` is what takes it back to `PURE`.)
 
     Default: `STRICT`, and the only consumer in the tree
     (`lift.lift_proto`) takes it as its default argument. See
@@ -132,12 +134,16 @@ def _rk(x: int) -> frozenset[int]:
 #       `# UNARGUED` means exactly that: this revision cannot support the
 #       grading, and says so rather than inventing a plausible sentence.
 #
-# Standing (2026-08-12): NO_METAMETHOD is argued on 37 rows and `# UNARGUED`
-# on 1 (LEN -- see the finding in that row). TRUSTING moves only 3 rows below
-# NO_METAMETHOD (GETGLOBAL, GETTABLE, SELF) and all 3 are `# UNARGUED`; the
-# other 35 are entailed. `tests/test_effects_modes.py` pins that 20/18 split
-# and the 3-row TRUSTING delta mechanically, so a future grading change that
-# silently invalidates this block fails a test.
+# Standing (2026-08-12, after M5 task 1): NO_METAMETHOD is argued on all 38
+# rows and `# UNARGUED` on 0 -- LEN was the last one, and was regraded rather
+# than argued, because the grading it carried was wrong. TRUSTING moves 4 rows
+# below NO_METAMETHOD (GETGLOBAL, GETTABLE, SELF, LEN) and all 4 are
+# `# UNARGUED`; the other 34 are entailed. The 20/18 entailment split did NOT
+# move with the regrade: LEN was already in the relaxed 18 (its STRICT column
+# is ARB and its looser columns were not), and it still is.
+# `tests/test_effects_modes.py` pins that 20/18 split and the 4-row TRUSTING
+# delta mechanically, so a future grading change that silently invalidates
+# this block fails a test.
 #
 # NOTE (finding, deliberately NOT fixed here -- an axiom-layer grading change
 # needs the full protocol): NEWTABLE (lvm.c:461-467) and CLOSURE
@@ -228,24 +234,42 @@ def _row(ri: RawInstr):
         #     luaG_aritherror on a non-coercible operand.
         # tr = nm (entailed): already PURE, nothing left to relax.
         return _rk(b) | _rk(c), F({a}), 0, 0, ARB, P, P, True
-    if op in (Op.UNM, Op.LEN):
-        # UNM  nm: PURE, exactly the arith_op argument above (lvm.c:498-508
-        #      routes the non-number case to Arith(.., TM_UNM)).
-        # LEN  nm: PURE -- # UNARGUED, and believed WRONG (finding, not fixed
-        #      here: an axiom-layer grading change needs the full protocol).
-        #      OP_LEN is lvm.c:514-533; its LUA_TTABLE arm, lvm.c:517-520,
-        #      is `setnvalue(ra, cast_num(luaH_getn(hvalue(rb))))`, and
-        #      luaH_getn (ltable.c) binary-searches the table's array part.
-        #      Removing metamethods does not make that stop reading the table,
-        #      so `#t` under NO_METAMETHOD should be READ_HEAP, not PURE: as
-        #      graded, a SETTABLE could legally be reordered across a `#t` and
-        #      change its result. 22 LEN sites in the corpus, so not vacuous.
-        #      (The LUA_TSTRING arm, lvm.c:521-524, really is PURE. The arm at
-        #      lvm.c:525-530 is the `default:` metamethod case and is not --
-        #      an earlier draft cited 523-526, which straddles the two.)
-        # tr = nm (entailed) for both. For LEN, PURE *is* what TRUSTING's own
-        #      assumption licenses, so the defect is confined to NO_METAMETHOD.
+    if op is Op.UNM:
+        # nm: PURE, exactly the arith_op argument above (lvm.c:498-508 routes
+        #     the non-number case to Arith(.., TM_UNM)).
+        # tr = nm (entailed): already PURE, nothing left to relax.
+        #
+        # UNM shared this branch with LEN until M5 task 1 regraded LEN's
+        # NO_METAMETHOD column; the branch was split so that regrade could not
+        # drag UNM with it (tests/test_effects_len.py pins both halves).
         return F({b}), F({a}), 0, 0, ARB, P, P, True
+    if op is Op.LEN:
+        # nm: READ_HEAP (M5 task 1; was PURE and unargued, a defect found
+        #     by M4 task 11 and corrected here under the full axiom protocol
+        #     -- citation + differential run, recorded in
+        #     tests/test_effects_len.py's module docstring).
+        #     OP_LEN is lvm.c:514-533 and switches on the operand's TYPE before
+        #     any metamethod is consulted: the LUA_TTABLE arm (lvm.c:517-520)
+        #     is `setnvalue(ra, cast_num(luaH_getn(hvalue(rb))))`, and a table
+        #     therefore NEVER reaches the `default:` metamethod arm
+        #     (lvm.c:525-530). Lua 5.1 has no `__len` for tables at all, so
+        #     NO_METAMETHOD's assumption removes nothing from this path.
+        #     luaH_getn (ltable.c:560-576) reads t->sizearray and t->array[...]
+        #     while binary-searching the array part (ltable.c:561-571), and for
+        #     a boundary in the hash part delegates to unbound_search
+        #     (ltable.c:532-553), which calls luaH_getnum (ltable.c:435-449)
+        #     repeatedly. That is a heap read a SETTABLE can invalidate; PURE
+        #     licensed reordering a SETTABLE across a `#t`. 22 LEN sites in the
+        #     corpus, so the row is not vacuous -- though nothing in src/ reads
+        #     InstrEffects.effect today, so the differential was null.
+        #     (The LUA_TSTRING arm, lvm.c:521-524, really is PURE -- READ_HEAP
+        #     over-approximates it. An earlier draft cited lvm.c:523-526, which
+        #     straddles the string and metamethod arms.)
+        # tr: PURE -- # UNARGUED. TRUSTING's own assumption is exactly "a table
+        #     read may be reordered freely", so PURE is what it licenses by
+        #     construction; but the corpus falsifies that assumption (1667
+        #     SETTABLE + 92 SETLIST + 44809 CALL sites), same as GETTABLE's.
+        return F({b}), F({a}), 0, 0, ARB, RH, P, True
     if op is Op.NOT:
         # nm,tr = STRICT (entailed). lvm.c:509-513 l_isfalse, no TM, no heap.
         return F({b}), F({a}), 0, 0, P, P, P, False

@@ -964,14 +964,21 @@ Derived mechanically from `analyze()` by
   UNM LEN CONCAT EQ LT LE`. Each of these carries a `# nm:` / `# tr:` line in
   `_row`.
 
-And, from `test_trusting_moves_only_three_rows_below_no_metamethod`:
-**`TRUSTING` moves exactly 3 rows below `NO_METAMETHOD` — `GETGLOBAL`,
-`GETTABLE`, `SELF`, all `READ_HEAP → PURE`.** That is the entire value
-`TRUSTING` adds over `NO_METAMETHOD`, and all three are `# UNARGUED`.
+And, from `test_trusting_moves_only_four_rows_below_no_metamethod`:
+**`TRUSTING` moves exactly 4 rows below `NO_METAMETHOD` — `GETGLOBAL`,
+`GETTABLE`, `SELF`, `LEN`, all `READ_HEAP → PURE`.** That is the entire value
+`TRUSTING` adds over `NO_METAMETHOD`, and all four are `# UNARGUED`.
 
-Standing tally: **`NO_METAMETHOD` is argued on 37 rows and `# UNARGUED` on 1
-(`LEN`, see the finding below). `TRUSTING` is argued on 35 and `# UNARGUED`
-on 3 (`GETGLOBAL`, `GETTABLE`, `SELF`).**
+Standing tally (2026-08-12, after M5 task 1): **`NO_METAMETHOD` is argued on
+all 38 rows and `# UNARGUED` on 0. `TRUSTING` is argued on 34 and `# UNARGUED`
+on 4 (`GETGLOBAL`, `GETTABLE`, `SELF`, `LEN`).** `LEN` was the last
+`NO_METAMETHOD` `# UNARGUED`, and M5 task 1 closed it by *regrading* rather
+than arguing — the grading it carried was wrong (see "The `LEN` regrade"
+below). The 20/18 entailment split above did **not** move with that regrade,
+which is worth stating because the M5 plan predicted it would: `LEN` was
+already one of the relaxed 18 (`STRICT` = `ARBITRARY`, looser columns below
+it) and it still is. The split is derived from `analyze()`, so the test
+settled it.
 
 ### The census, and its limit
 
@@ -1043,36 +1050,51 @@ table.
    wants it must establish the value class it applies to, per region. It is
    not a safe global default precisely because the unproven case dominates.
 3. **`TRUSTING` is not recommended for any pass.** Everything it buys over
-   `NO_METAMETHOD` is treating three table-read opcodes as `PURE`, and the
+   `NO_METAMETHOD` is treating four table-read opcodes as `PURE`, and the
    corpus supplies counterexamples to exactly that. It is kept in the enum
    (removing it is a behaviour change to the axiom layer, out of scope here)
-   with all three of its distinguishing rows marked `# UNARGUED`.
+   with all four of its distinguishing rows marked `# UNARGUED`.
 
-Nothing downstream needs loosening today, which is why this is a
-documentation-and-tests task and `lift/effects.py`'s behaviour is byte-for-byte
-unchanged (verified by replaying `analyze`/`successors`/`extra_words` for all
-38 opcodes over an operand grid against the pre-change file: 82080 identical
-comparisons).
+Nothing downstream needs loosening today. That is why the M4 task 11
+calibration was a documentation-and-tests task, with `lift/effects.py`'s
+behaviour byte-for-byte unchanged (verified by replaying
+`analyze`/`successors`/`extra_words` for all 38 opcodes over an operand grid
+against the pre-change file: 82080 identical comparisons). **M5 task 1 then
+changed exactly one cell** — see below.
 
-### Two findings, recorded and deliberately not fixed
+### The `LEN` regrade (M5 task 1), and one finding still not fixed
 
 An axiom-layer grading change needs the full protocol — an `lvm.c` citation
-*plus* a differential run (M4 task 8 is the worked example). Neither of these
-got one this round, so neither was touched.
+*plus* a differential run (M4 task 8 is the worked example). M4 task 11 found
+two under-gradings and, having budget for the argument but not the protocol,
+recorded both instead of touching either. M5 task 1 ran the protocol for the
+first of them; the second still stands.
 
-- **`LEN` at `NO_METAMETHOD` is believed wrong: `PURE` should be
-  `READ_HEAP`.** `OP_LEN` is `lvm.c:514-533`; its `LUA_TTABLE` arm,
-  `lvm.c:517-520`, is `setnvalue(ra, cast_num(luaH_getn(hvalue(rb))))`, and
-  `luaH_getn` binary-searches the table's array part. Removing metamethods
-  does not stop that from reading the table. As graded, a `SETTABLE` could
-  legally be reordered across a `#t` and change its result. 22 `LEN` sites in
-  the corpus, so not vacuous. (`LEN` at `TRUSTING` is fine — `PURE` is
-  precisely what `TRUSTING` licenses; the defect is confined to one column.
-  The `LUA_TSTRING` arm, `lvm.c:521-524`, really is `PURE` — it reads
-  `tsvalue(rb)->len` off an immutable string. The arm at `lvm.c:525-530` is
-  the `default:` metamethod case and is emphatically not pure; an earlier
-  draft of this bullet cited `lvm.c:523-526`, which straddles the two.) This
-  is the one `# UNARGUED` in the `NO_METAMETHOD` column.
+- **`LEN` at `NO_METAMETHOD` was wrong (`PURE`) and is now `READ_HEAP`** —
+  M5 task 1, commit in `docs/runbooks/m3-backlog.md` §M5.1. `OP_LEN` is
+  `lvm.c:514-533` and switches on the operand's *type* before any metamethod
+  is consulted, so a table never reaches the `default:` arm at all: Lua 5.1
+  has no table `__len`, and `NO_METAMETHOD`'s assumption removes nothing from
+  this path. The `LUA_TTABLE` arm, `lvm.c:517-520`, is
+  `setnvalue(ra, cast_num(luaH_getn(hvalue(rb))))`; `luaH_getn`
+  (`ltable.c:560-576`) reads `t->sizearray` and `t->array[...]`, and for a
+  boundary in the hash part delegates to `unbound_search`
+  (`ltable.c:532-553`), which calls `luaH_getnum` (`ltable.c:435-449`)
+  repeatedly. As graded before, a `SETTABLE` could legally be reordered across
+  a `#t` and change its result. 22 `LEN` sites in the corpus, so not vacuous.
+  (The `LUA_TSTRING` arm, `lvm.c:521-524`, really is `PURE` — it reads
+  `tsvalue(rb)->len` off an immutable string, so `READ_HEAP` over-approximates
+  that arm; the grading is per-opcode. The arm at `lvm.c:525-530` is the
+  `default:` metamethod case and is emphatically not pure; an M4 draft of this
+  bullet cited `lvm.c:523-526`, which straddles the two. All five ranges
+  re-verified against `vendor/` at M5 task 1.)
+  **The differential was null**, over all 1944 proto occurrences, and
+  `corpus/ledger.jsonl` did not move — for two independently measured reasons:
+  nothing in `src/` selects a looser mode, and, stronger, **no module under
+  `src/pyluadec/` reads `InstrEffects.effect` at all** (the lattice stopped
+  being the inlining gate at M3 task 8). Both legs are pinned by tests; the
+  full record lives in `tests/test_effects_len.py`'s module docstring, which
+  is where to look before making the next axiom-layer grading change.
 - **`NEWTABLE` and `CLOSURE` are graded `PURE`/`may_error=False` at all three
   modes despite being able to run arbitrary Lua.** Both end in
   `Protect(luaC_checkGC(L))` (`lvm.c:461-467`, `lvm.c:723-742`);
