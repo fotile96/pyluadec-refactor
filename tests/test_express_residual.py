@@ -168,8 +168,11 @@ GENERIC_FOR_ITERATOR = [
      b"print(1, 2, 3)", [b"1\t7", b"2\t8", b"3\t9", b"1\t2\t3"]),
     # The other negative: the same `CALL ... 4` bytecode whose three targets
     # are genuine locals (they survive the statement), so it must stay
-    # materialized. There is no TFORLOOP at that base, so the recogniser
-    # rejects it on its first condition.
+    # materialized. It fails BOTH of the recogniser's first two conditions --
+    # there is no TFORLOOP at that base AND none of the three defs is a temp
+    # at that pc (measured 2026-08-12, fix round 1) -- so it does not isolate
+    # either one; see `test_the_iterator_recogniser_needs_a_tforloop_at_the_base`
+    # for the clause-isolating pin.
     (b"local a, b, c = string.find('xyz', 'y') print(a, b, c)", [b"2\t2\tnil"]),
     # The exact shape that was `tests/test_express_liverange.py`'s
     # `KNOWN_RESIDUAL[0]` from M4 task 13 until this task closed it (promoted
@@ -196,14 +199,80 @@ def test_a_generic_for_over_a_call_prints_one_iterator_expression(src, words):
 def test_the_iterator_recogniser_rejects_a_multi_assign_to_real_locals():
     """`local a, b, c = f()` and `for k, v in f() do` compile to the same
     `CALL a b 4`. The first must NOT be staged -- its three targets survive
-    the statement -- and the thing that separates them is the presence of a
-    `TFORLOOP` at the same base, checked directly here so a future
-    simplification of `_is_generic_for_iterator` cannot quietly drop it.
+    the statement -- and this pins the outcome end to end.
+
+    What it does NOT do is isolate any single condition of
+    `_is_generic_for_iterator`. Measured 2026-08-12 (fix round 1, Important
+    1): this fixture fails the TFORLOOP condition AND the "every def is a
+    temp at this pc" condition, so deleting either one on its own leaves this
+    assertion green. The clause-level pin is
+    `test_the_iterator_recogniser_needs_a_tforloop_at_the_base` below.
     """
     proto = load_bytes(compile_source(
         b"local a, b, c = string.find('xyz', 'y') print(a, b, c)", strip=True))
     printed = print_chunk(proto)
     assert "local l0_0, l0_1, l0_2 = " in printed, printed
+
+
+def test_the_iterator_recogniser_needs_a_tforloop_at_the_base():
+    """`_is_generic_for_iterator`'s TFORLOOP condition, isolated -- the only
+    way it CAN be isolated.
+
+    The condition is defensive (see its docstring): on real `luac` output it
+    has never been observed to reject anything the temp condition does not
+    already reject, and there is a structural reason it cannot -- three
+    simultaneously-defined registers can only all be temps at one pc when
+    they are a `for` header's control triple. Measured this session: 0 of 4
+    shape-passing sites on the 229-file corpus lack a TFORLOOP at the base,
+    and 0 of 35 hand-written non-TFORLOOP `luac` shapes has all three targets
+    temp.
+
+    So the isolating fixture is real bytecode (`local a, b, c =
+    string.find(...)`, a genuine `CALL 0 3 4` with no TFORLOOP anywhere) with
+    a hand-built `RegClass` that satisfies the other two conditions by fiat:
+    all three targets temp, none `declared`. That is a legal `RegClass` --
+    `_is_generic_for_iterator`'s own docstring names `rc.temps` as the
+    hand-built-classification path -- and it is exactly the state a future
+    "simplification" that dropped the TFORLOOP clause would be relying on the
+    classifier never to produce. With the clause present the write
+    materializes; with it removed the three values are staged and two
+    unprintable `MultiSpill`s leak into the `print` call.
+    """
+    import dataclasses
+
+    from pyluadec.express.expr import MultiSpill
+    from pyluadec.express.names import classify_registers
+    from pyluadec.express.reconstruct import LocalDecl, reconstruct_straight
+    from pyluadec.lift import lift_proto
+    from pyluadec.lift.opcodes import Op
+
+    proto = load_bytes(compile_source(
+        b"local a, b, c = string.find('xyz', 'y') print(a, b, c)", strip=True))
+    fn = lift_proto(proto)
+    assert not any(li.ri.op is Op.TFORLOOP for li in fn.instrs.values())
+    rc = dataclasses.replace(classify_registers(fn),
+                             temps=frozenset({0, 1, 2}))
+    stmts = reconstruct_straight(
+        fn, tuple(fn.instrs[pc] for pc in sorted(fn.instrs)), rc, depth=0)
+
+    def spills(node) -> int:
+        if isinstance(node, MultiSpill):
+            return 1
+        total = 0
+        for f in dataclasses.fields(node) if dataclasses.is_dataclass(node) else ():
+            v = getattr(node, f.name)
+            for item in (v if isinstance(v, tuple) else (v,)):
+                if dataclasses.is_dataclass(item):
+                    total += spills(item)
+                elif isinstance(item, tuple):
+                    total += sum(spills(x) for x in item
+                                 if dataclasses.is_dataclass(x))
+        return total
+
+    assert sum(spills(s) for s in stmts) == 0, stmts
+    decls = [s for s in stmts
+             if isinstance(s, LocalDecl) and s.regs == (0, 1, 2)]
+    assert decls, stmts
 
 
 def test_a_multispill_is_unprintable_anywhere_else():
@@ -247,9 +316,12 @@ GT_RECOVERY = [
     # `bk and ck` arm turns these two red (verified this session).
     (b'if 2 > 1 then print("a") end', [b"a"]),
     (b'if 2 >= 1 then print("a") end', [b"a"]),
-    # Both operands registers -> decided by their register numbers: the
-    # operand evaluated first was pushed first and sits lower. Neutering the
-    # `not bk and not ck` arm turns this and the table-index case red.
+    # Both operands registers AND both expression-stack temporaries -> decided
+    # by their register numbers: the operand evaluated first was pushed first
+    # and sits lower. Neutering the `not bk and not ck` arm turns this and the
+    # table-index case red. The temp gate is what makes the "pushed first"
+    # argument apply at all -- see
+    # `test_the_gt_recogniser_leaves_a_local_operand_alone`.
     (b'local function f() return 4 end local function g() return 3 end '
      b'if f() > g() then print("a") end', [b"a"]),
     (b'local t = {a = 2, b = 1} if t.a > t.b then print("a") end', [b"a"]),
@@ -297,6 +369,42 @@ def test_the_gt_recogniser_leaves_a_constant_in_field_c_alone():
         proto, cert = _certify(src)
         assert cert.level == "L3", (src, cert.reason)
         assert "if l0_0 < 5 then" in print_chunk(proto), print_chunk(proto)
+
+
+def test_the_gt_recogniser_leaves_a_local_operand_alone():
+    """The SECOND deliberate gap in `_reads_as_gt` (fix round 1, Important 2),
+    pinned in the same shape as the C-constant one above.
+
+    The both-registers arm's evidence is "the operand evaluated first sits in
+    a LOWER register, because it was pushed onto the expression stack first".
+    That is a fact about the expression *stack*, and `luaK_exp2RK` on a
+    `VLOCAL` pushes nothing at all -- it returns the variable's declaration
+    slot (`discharge2anyreg`, lcode.c:400-420, never reaches
+    `luaK_reserveregs`). So in `f(0) < y` the call's result is a fresh
+    temporary allocated ABOVE every live local while `y` sits low, `B > C`
+    holds, and an ungated arm prints `y > f(0)` -- the opposite of the source,
+    on no evidence at all.
+
+    Both directions are checked, and they must print the SAME text: `y` is a
+    bare local, so it contributes no code and no constants and the two
+    sources compile to byte-identical protos. That is why withdrawing the
+    flip costs nothing (measured: the corpus `L3` count is unchanged, and the
+    ledger is byte-identical) -- and why the direction the ungated arm picked
+    was arbitrary rather than derived.
+
+    `(local, local)` is covered by the same gate for a stronger reason still:
+    two declaration slots are pure declaration order and carry no evaluation
+    information whatsoever.
+    """
+    for src in (b'local y = 1 if f(0) < y then print("a") end',
+                b'local y = 1 if y > f(0) then print("a") end'):
+        proto, cert = _certify(src)
+        assert cert.level == "L3", (src, cert)
+        assert "if f(0) < l0_0 then" in print_chunk(proto), print_chunk(proto)
+    # And the arm still fires where its argument DOES hold: two temporaries.
+    proto, cert = _certify(b'if g(1) > f(0) then print("a") end')
+    assert cert.level == "L3", cert
+    assert "if g(1) > f(0) then" in print_chunk(proto), print_chunk(proto)
 
 
 def test_an_eq_is_never_flipped():
@@ -347,6 +455,12 @@ def test_a_multiple_assignment_prints_as_separate_statements():
     (measured this session: one descending `SETUPVAL`/`SETGLOBAL` run of
     length >= 2, in this proto). Recorded here so the next census inherits the
     diagnosis instead of re-deriving it.
+
+    The corpus tie itself is asserted by
+    `test_the_multiple_assignment_residual_really_is_snr_common_main_77_0`
+    below (fix round 1, F4): until then the load-bearing sentence of this
+    docstring -- that `u0, u1 = 1, 0` IS `snr_common.lua:main_77_0` -- was a
+    recorded measurement that nothing would have noticed going stale.
     """
     src = b"local u0, u1\nreturn function()\nu0, u1 = 1, 0\nend\n"
     original = load_bytes(compile_source(src, strip=True)).subprotos[0]
@@ -360,3 +474,24 @@ def test_a_multiple_assignment_prints_as_separate_statements():
     assert [d.field for d in diffs] == ["code"], diffs
     # ... and what we print instead is the three-statement form.
     assert body.splitlines() == ["local l1_0 = 1", "u1 = 0", "u0 = l1_0"], body
+
+
+def test_the_multiple_assignment_residual_really_is_snr_common_main_77_0(corpus_dir):
+    """The corpus half of the claim above, asserted rather than recorded.
+
+    `u0, u1 = 1, 0` compiled by `luac_sz4` and `snr_common.lua:main_77_0` are
+    the same proto under the rung-1 comparison -- which is the whole reason
+    the reverse-engineering counts as a diagnosis of the residual and not
+    merely as a plausible story about it. Skipped without a corpus, like
+    every other corpus-gated test here.
+    """
+    from pyluadec.ingest import load_file
+    from pyluadec.pipeline import walk_proto_paths
+    from pyluadec.verify.normalize import compare_protos
+
+    protos: dict = {}
+    walk_proto_paths("main", load_file(corpus_dir / "snr_common.lua"), protos)
+    target = protos["main_77_0"]
+    src = b"local u0, u1\nreturn function()\nu0, u1 = 1, 0\nend\n"
+    mine = load_bytes(compile_source(src, strip=True)).subprotos[0]
+    assert compare_protos(target, mine, level=1) == []

@@ -379,6 +379,30 @@ class Reconstructor:
         """
         return self.rk(x)
 
+    def _is_stack_temp(self, reg: int, pc: int) -> bool:
+        """Is `reg` an expression-stack temporary at `pc`, rather than a live
+        named local?
+
+        The one place the register model is asked a question about *evaluation
+        order* rather than about how to print a value, so it is worth being
+        explicit about what it does and does not answer. `rc.temp_defs` is
+        keyed by DEFINITION pc, so for a read operand (which is what both
+        callers pass) the `(pc, reg)` disjunct is essentially never the one
+        that fires -- the load-bearing half is the whole-register `rc.temps`
+        verdict, "every tracked definition of this register is a luac
+        temporary". That is the conservative direction: a register the
+        classifier could not fully vouch for is treated as a local, and every
+        caller's fallback for "local" is the behaviour that was already
+        shipping.
+
+        Kept as one named predicate because `_reads_as_gt` and
+        `_is_generic_for_iterator` must agree on what "temp at this pc" means
+        -- they are the two rules in this class that consult the register
+        classification to decide the SHAPE of the source luac saw, not merely
+        how to render a value.
+        """
+        return reg in self.rc.temps or (pc, reg) in self.rc.temp_defs
+
     def _max_const_index_before(self, pc: int) -> int:
         """The largest constant-table index any instruction BEFORE `pc`
         references, or -1 if none does. Cached per function.
@@ -435,7 +459,8 @@ class Reconstructor:
         seen `e2`. Two consequences, and they are the whole decision:
 
         * a register operand evaluated first sits in a LOWER register (it was
-          pushed onto the expression stack first);
+          pushed onto the expression stack first) -- **but only if it is an
+          expression-stack temporary at all**, see the gate below;
         * a constant operand evaluated first is interned into the constant
           table before anything the other operand creates, so it carries a
           LOWER index.
@@ -443,7 +468,8 @@ class Reconstructor:
         In the `<` reading the operand in field B was evaluated first; in the
         `>` reading it is the one in field C. So:
 
-        * both operands registers -> `>` iff `B > C`;
+        * both operands registers **and both expression-stack temporaries at
+          this pc** -> `>` iff `B > C`;
         * both operands constants -> `>` iff `idx(B) > idx(C)`;
         * B constant, C register -> `>` iff B's constant is newer than
           everything the code before this instruction has referenced, i.e.
@@ -462,6 +488,41 @@ class Reconstructor:
           oversight; `tests/test_express_residual.py::
           test_the_gt_recogniser_leaves_a_constant_in_field_c_alone` pins it.
 
+        ## The second deliberate gap: a register operand that is a LIVE LOCAL
+
+        The "evaluated first sits in a lower register" step is a statement
+        about the **expression stack**, and it only holds for values that
+        were pushed onto it. `luaK_exp2RK` on a `VLOCAL` (via `luaK_exp2anyreg`
+        -> `discharge2anyreg`, lcode.c:400-420) returns the variable's
+        **existing** register and pushes nothing: `luaK_reserveregs` is never
+        called, `freereg` does not move, and the operand's register number is
+        its declaration slot -- an artefact of where the enclosing function
+        happened to declare it, carrying no information about evaluation
+        order at all. So for `f(x) < y_local`, `f(x)`'s result is a fresh
+        temporary allocated *above* every live local while `y_local` sits
+        low, the raw `B > C` test sees the flip condition satisfied, and the
+        arm would print `y_local > f(x)` -- the opposite of the source, on no
+        evidence. `(local, local)` is pure declaration order and says even
+        less.
+
+        Hence the gate: the arm fires only when **both** register operands
+        are expression-stack temporaries at this pc, using the same
+        `rc.temps` / `rc.temp_defs` predicate `_is_generic_for_iterator`
+        uses. `(temp, local)`, `(local, temp)` and `(local, local)` are
+        recorded as **undecidable** and left in the `<` reading, exactly like
+        the C-constant gap above -- and for the same reason, the cost is
+        nothing: a bare local contributes no code and no constants, so both
+        readings of those shapes compile identically and certification cannot
+        tell them apart. Measured over the corpus this session (fix round 1,
+        Important 2): 43 static both-register sites satisfy `B > C`, of which
+        only **3** are `(temp, temp)` (17 `(temp, local)`, 13
+        `(local, local)`, 10 `(local, temp)`); 20 firings reached the arm
+        while printing, of which 4 were `(temp, temp)`; and adding this gate
+        moved the corpus `L3` count by **0** protos. The ~15 flips it
+        withdraws were arbitrary readability choices dressed as an `lcode.c`
+        derivation. `tests/test_express_residual.py::
+        test_the_gt_recogniser_leaves_a_local_operand_alone` pins it.
+
         ## Why being wrong is cheap
 
         Both readings are the same boolean, so a wrong answer is never a
@@ -473,7 +534,9 @@ class Reconstructor:
             return False
         bk, ck = isk(ri.b), isk(ri.c)
         if not bk and not ck:
-            return ri.b > ri.c
+            return (ri.b > ri.c
+                    and self._is_stack_temp(ri.b, ri.pc)
+                    and self._is_stack_temp(ri.c, ri.pc))
         if bk and ck:
             return indexk(ri.b) > indexk(ri.c)
         if bk:
@@ -937,14 +1000,43 @@ class Reconstructor:
         """Is this multi-register write the staging of a generic `for`'s
         iterator triple, and may it be staged rather than materialized?
 
-        Three conditions, all necessary:
+        Three conditions. The second and third are load-bearing; the first is
+        **defensive** -- see the note below it.
 
         * `regs` is exactly `(a, a+1, a+2)` and this function contains a
           `TFORLOOP` based at that same `a`. That is the bytecode signature of
           `forlist`: `explist1` adjusted to exactly 3 values landing in the
-          three slots `TFORLOOP` then reads every iteration. `local x, y, z =
-          f()` produces the same `CALL ... 4` and is told apart by the next
-          condition, since its three targets survive the statement.
+          three slots `TFORLOOP` then reads every iteration.
+
+          **Status (fix round 1, Important 1): defensive rather than a fixed
+          defect -- no reachable leak to regress against.** The `TFORLOOP`
+          clause has never been observed to reject anything the next
+          condition does not already reject, and there is a structural reason
+          why it cannot. For all three of `(a, a+1, a+2)` to be temporaries
+          at the same pc, either they are `dedicated_controls` -- which
+          `names.classify_registers` only ever derives from a `FORPREP`/
+          `FORLOOP`/`TFORLOOP` at that base -- or the freereg simulation must
+          grade three simultaneous definitions temp, and it structurally
+          cannot: the only other way luac emits `CALL a b 4` / `VARARG a 4` is
+          `adjust_assign` to three targets, whose reverse-order stores are
+          either statement-ending (`SETGLOBAL`/`SETUPVAL`, which promotes
+          everything still pending to local) or bulk-popping (`SETTABLE`,
+          which pops every pending entry above the table's own register, so
+          all but the topmost are popped with zero reads and disqualified),
+          and three targets that survive the statement are locals by
+          definition. Measured this session: 0 of 4 shape-passing sites on
+          the 229-file corpus lack a `TFORLOOP` at the base, and 0 of 35
+          hand-written non-`TFORLOOP` `luac` shapes (`a,b,c = f()`,
+          `t[1],t[2],t[3] = f()`, `local a,b,c = ...`, the same inside `for`/
+          `while`/`repeat`/nested functions, ...) has all three targets temp.
+          So no fixture built from real `luac` output can isolate this clause,
+          and `tests/test_express_residual.py::
+          test_the_iterator_recogniser_needs_a_tforloop_at_the_base` pins it
+          the only way that is left: real bytecode with a hand-built
+          `RegClass` that satisfies the other two conditions. Kept because
+          "the `TFORLOOP` is what makes this a generic `for`" is the actual
+          proposition being tested and inferring it from the register grading
+          alone would be an accident.
         * every one of the three definitions is a temporary at THIS pc
           (`rc.temp_defs`, or the whole-register `rc.temps` for a hand-built
           `RegClass`). A generic-for whose control slots the classifier had to
@@ -967,8 +1059,7 @@ class Reconstructor:
                    for li in self.fn.instrs.values()):
             return False
         pc = self._pc
-        return all(r not in self.declared
-                   and (r in self.rc.temps or (pc, r) in self.rc.temp_defs)
+        return all(r not in self.declared and self._is_stack_temp(r, pc)
                    for r in regs)
 
     def _consume_open(self, start: int) -> tuple[Expr, ...]:

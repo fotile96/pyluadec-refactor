@@ -553,9 +553,17 @@ _WRAPPED_ACCESSORS = frozenset({
 # writes any register's slot -- whichever way it answers, the registers are
 # then touched by `stage` or by the materializing branch below it, both of
 # which this gate already wraps.
+# `_is_stack_temp(reg, pc)` (M5 task 5, fix round 1) is the shared predicate
+# `_is_generic_for_iterator` and `_reads_as_gt` both consult: it asks
+# `rc.temps`/`rc.temp_defs` whether a register is an expression-stack
+# temporary and returns a bool. Same reasoning as the entry above -- it reads
+# the CLASSIFICATION of a register, never the register's slot, and the actual
+# read of the operand it is asked about has already gone through
+# `cond_operand` -> `rk` -> `_read_reg`, which this gate wraps.
 _UNWRAPPED_BY_DESIGN = frozenset({"_refuse_stale_reference",
                                   "declare_loop_vars",
-                                  "_is_generic_for_iterator"})
+                                  "_is_generic_for_iterator",
+                                  "_is_stack_temp"})
 
 # `_consume_open(start)` is not in either set: its parameter is a range start
 # rather than a register, and every slot it reads goes through `_read_reg`.

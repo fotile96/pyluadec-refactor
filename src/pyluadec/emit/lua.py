@@ -477,9 +477,32 @@ class Printer:
             # three independent expressions and prints all three. A
             # `MultiSpill` reaching any other position is unprintable and
             # refuses in `_expr`.
+            #
+            # This is the ONE consumer that drops a `MultiSpill` instead of
+            # refusing, so it must check the spill is its own: `base` names
+            # the producer whose extra values the spill stands for, and only
+            # a spill based at `a` was left here by the very `CALL a b 4`
+            # this header is printing. A spill based anywhere else in these
+            # slots means some other multi-value producer's staging leaked
+            # into the control triple, and silently dropping it would print a
+            # short header (`for k, v in f() do` where the bytecode had three
+            # independent operands) -- exactly the class of silent wrong
+            # output `MultiSpill`'s unprintability exists to prevent. Route
+            # it to the same refusal by simply not filtering it out: `_expr`
+            # raises on it.
+            #
+            # Defensive rather than a fixed defect (fix round 1, F3): every
+            # `MultiSpill` in this codebase is created by `_emit_multi` with
+            # `base == regs[0]`, and `_is_generic_for_iterator` only stages
+            # one when a `TFORLOOP` sits at that same base, so producing a
+            # foreign spill here needs two `TFORLOOP`s based one register
+            # apart in the same function. Not observed on the corpus and not
+            # constructed. Kept because "drop whatever is in these slots" is
+            # the wrong default for a placeholder whose entire contract is
+            # that it never prints.
             taken = [self.recon.take_expr(a + i) for i in range(3)]
             iters = ", ".join(self.expr(e) for e in taken
-                              if not isinstance(e, MultiSpill))
+                              if not (isinstance(e, MultiSpill) and e.base == a))
             out = [f"{pad}for {vars_} in {iters} do"]
             # A loop body is its own block, same as an `if` arm. Unlike the
             # `if` case this is defensive rather than a fixed defect: a

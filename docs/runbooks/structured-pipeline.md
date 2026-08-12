@@ -1469,7 +1469,19 @@ M5 task 4), and the corpus quality average is 0.950580 (0.935633 at M4 close,
    reconstruction rather than the region builder: `while-header code
    reconstructs to N statement(s)` (2 protos), `and/or operand code
    reconstructs to N statement(s)` (2 protos) and `and/or alternative
-   reconstructs to N statement(s)` (1 proto) are gone.
+   reconstructs to N statement(s)` (1 proto) no longer appear anywhere in the
+   census.
+
+   **That is a statement about this list only — not all five protos were
+   released.** Re-measured 2026-08-12 (fix round 1, F5), proto by proto:
+   `snr_lib.lua:main` and `:main_1` (the `and/or operand` pair) and
+   `snr_novel.lua:main_13` (the `while-header` leaf) reached `L3`; the other
+   two **migrated to point 3's list and are still `L1`** —
+   `snr_story_main.lua:main_3` (`and/or alternative`) and `snr_novel.lua:main`
+   (the ancestor that had been carrying `main_13`'s while-header confession)
+   both now print and both now fail with `mismatch: code`. The ledger diff
+   shows this: 27 rows moved `L1` → `L3`, and neither of those two is among
+   them.
 
    The while-header one was `snr_novel.lua:main_13`, and M5 task 4 had
    already measured that it is **not a `While` defect**: its header is a
@@ -1525,7 +1537,20 @@ M5 task 4), and the corpus quality average is 0.950580 (0.935633 at M4 close,
      evaluated left to right (`luaK_infix`'s default arm interns `e1` through
      `luaK_exp2RK` before `e2` is parsed), so the one evaluated first sits in
      the lower register and, if constant, carries the lower pool index —
-     which is what `Reconstructor._reads_as_gt` reads. **+12 unique**, and it
+     which is what `Reconstructor._reads_as_gt` reads. Two operand shapes are
+     **deliberately undecidable** and stay in the `<` reading: a constant in
+     field C (`x < 5` and `5 > x` are indistinguishable once `5` is already
+     pooled), and a register operand that is a live **local** rather than an
+     expression-stack temporary — `luaK_exp2RK` on a `VLOCAL` returns the
+     declaration slot and pushes nothing, so its register number is not an
+     evaluation-order witness at all (fix round 1, Important 2; the
+     both-registers arm is gated on `rc.temps`/`rc.temp_defs` for exactly
+     this reason). Both gaps are free: a bare local contributes no code and
+     no constants, so both readings compile identically. Measured
+     2026-08-12: 43 static `B > C` both-register sites, only 3 of them
+     `(temp, temp)`; 20 firings while printing, 4 `(temp, temp)`; gating the
+     arm moved the corpus `L3` count by **0** and left `corpus/ledger.jsonl`
+     byte-identical. **+12 unique**, and it
      is what the `L3.2` rung had twice been proposed for; see the next
      section. **This is the class the M4-era "cluster B, constant-table
      ordering" label was pointing at, and it was a defect, not a
