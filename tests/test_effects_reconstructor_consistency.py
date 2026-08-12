@@ -684,12 +684,24 @@ def test_the_printer_arm_is_not_carried_entirely_by_arm_one(corpus_scan):
     reconstructor accessor having touched them first -- `by_kind` breaks down
     as `{NumericFor: 28, GenericFor: 3}` exactly, pinned below.
 
-    The counts moved in M5 task 4, from `{NumericFor: 19, GenericFor: 2}`
-    (and the corpus's structured-chunk count from 212 to 218): the
+    The counts moved in M5 task 4, from `{NumericFor: 19, GenericFor: 2}`: the
     jpc-threading and dead-code work in `sir/build.py` made more protos
     structure, so more `for` headers reach the printer at all. It is a
     POPULATION figure, not a floor -- when it moves, re-measure and say why,
     do not widen it into an inequality.
+
+    Two corpus-wide file counts moved alongside it and are easy to conflate
+    into one number, but they are NOT the same quantity, re-measured
+    separately 2026-08-12 (fix round 1): the PRINTABLE count
+    (`print_chunk(root) is not None` over all 229 files -- the whole tree
+    structures and reconstructs, whether or not it recompiles field-identical)
+    is **218**; the SHIPPED/CERTIFIED count (ledger `level == "L3"` at the
+    file root, `scripts/quality_score.py`'s `structured` row -- what actually
+    ships structured source) is **215**. 212 was the certified count
+    specifically at M4 close (`docs/runbooks/structured-pipeline.md`: "92 at
+    M3 close, 212 at M4 close"); a printable-but-uncertified proto still ships
+    fallback for its whole chunk, so the two counts are two different
+    measurements of two different gates, not one sequence.
 
     NOT included here: a `CLOSURE`'s captured `ps.b` (the printer's third
     register decode). A round-1 measurement found it passes via the *first*

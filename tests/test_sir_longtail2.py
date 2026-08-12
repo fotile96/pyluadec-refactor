@@ -335,6 +335,80 @@ def test_dead_code_of_any_other_shape_is_still_refused():
         getattr(mod, name)()
 
 
+def test_dead_return_with_non_tailcall_predecessor_still_raises():
+    """M5 task 4 fix round 1 finding: the four floor tests above pin
+    `len(blk.instrs) == 1` (they are all MOVE *chains*, so any single-
+    instruction narrowing already refuses them) -- they do NOT pin the
+    opcode/predecessor discrimination `_is_dead_else_skip` layers on top of
+    that. This hand-built shape does: a lone dead RETURN whose immediately
+    preceding instruction is a plain RETURN, not a TAILCALL.
+
+        pc1  EQ
+        pc2  JMP -> 5              (then = [3, 5), no else)
+        pc3  RETURN                (reachable: the then-body's own return)
+        pc4  RETURN                (DEAD: single-instruction block, but its
+                                     predecessor is pc3's RETURN, not a
+                                     TAILCALL -- not `retstat`'s
+                                     RETURN-after-TAILCALL shape at all)
+        pc5  RETURN                (join)
+
+    NEUTER PROOF (measured 2026-08-12, round 1): with `_is_dead_else_skip`
+    replaced by `return len(cfg.blocks[start].instrs) == 1` (the reviewer's
+    full neutering -- both the JMP/RETURN opcode test and the TAILCALL-
+    predecessor test removed), `build_sir` on this fixture ACCEPTS it,
+    producing an `If.then_body` that is a `Seq` of two `Return` regions back
+    to back (the dead second `RETURN` printed as live code) with
+    `all_claimed` still `== set(fn.instrs)`. Restored, it raises again. So
+    the TAILCALL-predecessor test is load-bearing, not merely written up as
+    one.
+    """
+    from tests.synth import mk_instr, mk_proto
+    from pyluadec.lift import lift_proto, Op
+    words = [
+        mk_instr(Op.EQ, a=0, b=0, c=1, pc=1).word,
+        mk_instr(Op.JMP, sbx=5 - 1 - 2, pc=2).word,     # jt=5, no else, then=[3,5)
+        mk_instr(Op.RETURN, a=0, b=1, pc=3).word,        # reachable, terminal
+        mk_instr(Op.RETURN, a=0, b=1, pc=4).word,        # dead; predecessor is RETURN, not TAILCALL
+        mk_instr(Op.RETURN, a=0, b=1, pc=5).word,        # join
+    ]
+    fn = lift_proto(mk_proto(words, maxstacksize=2))
+    with pytest.raises(StructureError, match="branch body block at pc 4 is unreachable"):
+        build_sir(fn)
+
+
+def test_dead_non_jmp_non_return_single_instruction_still_raises():
+    """The other half of the same gap: a lone dead instruction that is
+    neither a JMP nor a RETURN. `len(blk.instrs) == 1` alone would admit it;
+    only the `op is Op.JMP` / `op is Op.RETURN` discrimination refuses it.
+
+        pc1  EQ
+        pc2  JMP -> 5              (then = [3, 5), no else)
+        pc3  RETURN                (reachable, terminal)
+        pc4  MOVE                  (DEAD: single instruction, but neither a
+                                     JMP nor a RETURN -- not a shape `ifstat`
+                                     or `retstat` can leave behind)
+        pc5  RETURN                (join)
+
+    NEUTER PROOF (measured 2026-08-12, round 1): under the same full
+    neutering as above, this fixture is also ACCEPTED -- the dead MOVE is
+    folded into the then-body's `Straight` region and would print as a live
+    statement after the `return` two lines above it. Restored, it raises
+    again.
+    """
+    from tests.synth import mk_instr, mk_proto
+    from pyluadec.lift import lift_proto, Op
+    words = [
+        mk_instr(Op.EQ, a=0, b=0, c=1, pc=1).word,
+        mk_instr(Op.JMP, sbx=5 - 1 - 2, pc=2).word,     # jt=5, no else, then=[3,5)
+        mk_instr(Op.RETURN, a=0, b=1, pc=3).word,        # reachable, terminal
+        mk_instr(Op.MOVE, a=0, b=0, pc=4).word,          # dead; neither JMP nor RETURN
+        mk_instr(Op.RETURN, a=0, b=1, pc=5).word,        # join
+    ]
+    fn = lift_proto(mk_proto(words, maxstacksize=2))
+    with pytest.raises(StructureError, match="branch body block at pc 4 is unreachable"):
+        build_sir(fn)
+
+
 # ------------------------------------------------------------- known gaps
 #
 # Recorded, not asserted away. Each one is the SHAPE that still refuses, with
@@ -350,10 +424,15 @@ KNOWN_REFUSALS = [
     # with `_structure_if`, and no corpus proto is refused for this reason.
     (b"if a then while true do if b then break end f() end else h() end",
      "unrecognized transfer JMP"),
-    # Compound `if` conditions -- THE residual after M5 task 4. All 12
-    # remaining unique structure refusals (10 `if targets out of range` + 2
-    # `else-join out of range`, plus 9 poisoned ancestors) are this, measured
-    # 2026-08-12.
+    # Compound `if` conditions -- THE residual after M5 task 4. All 13
+    # remaining unique `build_sir` structure refusals (11 `if targets out of
+    # range` + 2 `else-join out of range`) are this one defect, re-measured
+    # 2026-08-12 (round 1). (Of the 75 unique protos below `L3` overall, 57
+    # are leaf defects and 18 are poisoned ancestors by SOME descendant's
+    # cause, not all of it this one -- see docs/runbooks/structured-pipeline.md's
+    # capability-boundary table for that broader, non-defect-specific cut; no
+    # single cut of the poisoned-ancestor set attaches cleanly to just this
+    # defect, so none is quoted here.)
     #
     # `sir.regions.If` carries ONE compare instruction, so `a and b` is read
     # as nested `if`s. That is the SAME bytecode when the `if` has no else
@@ -445,7 +524,14 @@ def test_while_header_refusal_is_a_reconstructor_scope_defect_not_a_while_defect
     import inspect
     from pyluadec.express.reconstruct import Reconstructor
     src = inspect.getsource(Reconstructor.write_reg)
-    assert "reg not in self.declared" in src
+    assert "reg not in self.declared" in src, (
+        "this is a documentation test pinning the diagnosis in this test's "
+        "own docstring: Reconstructor.write_reg's `reg not in self.declared` "
+        "gate is what materialises snr_novel.lua:main_13's while-header "
+        "GETUPVAL as a reassignment instead of a fresh local. If write_reg "
+        "changed shape (e.g. `declared` renamed) without changing that "
+        "behaviour, update this substring to match rather than treating the "
+        "failure as a regression.")
 
 
 @pytest.mark.parametrize("src,msg", KNOWN_REFUSALS,

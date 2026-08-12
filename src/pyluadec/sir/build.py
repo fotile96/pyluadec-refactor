@@ -82,10 +82,13 @@ def _is_dead_else_skip(cfg, start: int) -> bool:
 
     Deliberately narrow, and the narrowness is free. "One JMP" is not a proxy
     for "harmless dead code": it is the whole of what `ifstat` can leave
-    behind, and it is always claimed by the enclosing `If` itself as its
-    `then_last`, so admitting it adds nothing to what has to be printed. Dead
-    code of any other shape is still refused -- `tests/test_sir_build_
-    acyclic.py`'s two `test_dead_code_inside_a_claimed_*_range_raises` and
+    behind, and it is always claimed by whichever region owns the construct
+    it terminates -- usually the enclosing `If` itself, as its `then_last` /
+    else-skip pc, but a `WhileTrue` whose body ends in `return` claims its own
+    dead closing JMP the same way (`_match_while_true`) -- so admitting it
+    adds nothing to what has to be printed. Dead code of any other shape is
+    still refused -- `tests/test_sir_build_acyclic.py`'s two
+    `test_dead_code_inside_a_claimed_*_range_raises` and
     `tests/test_sir_build_loops.py`'s two `test_dead_code_inside_a_*_for_body_
     raises` are hand-built MOVE chains after a RETURN, and they still raise.
     That matters beyond tidiness: printing a dead MOVE after a `return` would
@@ -94,7 +97,31 @@ def _is_dead_else_skip(cfg, start: int) -> bool:
     Measured 2026-08-12 on the finished tree: replacing this whole check with
     an unconditional `allow_unreachable=True` gives the SAME corpus figure (75
     unique protos below `L3`) and turns all four of those tests red. So the
-    four are the neuter proof, and the narrow rule costs nothing.
+    four are the neuter proof that admitting an unreachable block at all costs
+    nothing -- but by themselves they only pin `len(blk.instrs) == 1`: all
+    four are MOVE *chains*, so any single-instruction narrowing already
+    refuses them, and they say nothing about the JMP/RETURN opcode test or
+    the TAILCALL-predecessor test below.
+
+    ## Fix round 1 (2026-08-12): the opcode/predecessor discrimination, proven
+
+    A prior round of this docstring asserted "the predecessor pc must be that
+    TAILCALL, so a RETURN dead for any other reason is still refused" without
+    a test that could tell the difference -- reviewed and found unproven: with
+    the whole function replaced by `return len(cfg.blocks[start].instrs) ==
+    1`, every test that existed at the time (the four above, plus the corpus
+    census) stayed exactly as green. Now proven by two more hand-built
+    fixtures in `tests/test_sir_longtail2.py`:
+    `test_dead_return_with_non_tailcall_predecessor_still_raises` (a lone dead
+    RETURN whose predecessor is an ordinary RETURN, not a TAILCALL) and
+    `test_dead_non_jmp_non_return_single_instruction_still_raises` (a lone
+    dead MOVE -- satisfies `len == 1` but is neither JMP nor RETURN). Under
+    the same `len == 1`-only neutering, `build_sir` ACCEPTS both -- the first
+    folds two `Return` regions back to back into the `If`'s then-body, the
+    second folds a dead `MOVE` into a `Straight` sequence after a `return` --
+    with the pc-claim audit still satisfied in both cases. Restored, both
+    raise again. So the opcode/predecessor narrowing is load-bearing exactly
+    where the four-floor-test neuter proof is silent.
     """
     blk = cfg.blocks[start]
     if len(blk.instrs) != 1:
@@ -896,11 +923,21 @@ def _structure_range_impl(fn, cfg, idoms, pc2blk, lo: int, hi: int,
     # ever passed a target INSIDE the range would silently convert a legal
     # forward jump into "end of range", dropping every statement between.
     # Nothing reaches that today (`_structure_if` normalizes a backward raw
-    # target to None just above its recursive call); the assert exists so a
+    # target to None just above its recursive call); the check exists so a
     # future miswiring is loud. Fault-injected in
     # `tests/test_sir_longtail2.py::test_a_thread_target_inside_the_range_is_
     # rejected_rather_than_silently_retargeting_a_jump`.
-    assert thread_target is None or thread_target >= hi, (thread_target, hi)
+    #
+    # Fix round 1 finding (F8): this is the SOLE mechanical backstop for the
+    # one rewrite the pc-claim audit is blind to -- a dropped/misretargeted
+    # threaded jump still partitions the pcs cleanly, so `all_claimed` would
+    # not catch it. A bare `assert` vanishes under `python -O`; raising
+    # explicitly instead means this backstop cannot be silently compiled away
+    # by an interpreter flag no other invariant in this module depends on for
+    # its safety (contrast `sites is not None and memo is not None` just
+    # above, a parameter-wiring check with no such role, left as `assert`).
+    if not (thread_target is None or thread_target >= hi):
+        raise AssertionError((thread_target, hi))
     parts: list[Region] = []
     pc = lo
     _last_pc: int | None = None
@@ -1088,6 +1125,42 @@ def _match_else_break(fn, cfg, idoms, pc2blk, sites, memo, li, pc: int,
     numeric-for whose whole body is `if t[i] ~= -1 then n = n + 1 else break
     end`, P == 14.
 
+    ## Fix round 1 (2026-08-12): `then_thread` aligned with `_structure_if`'s
+
+    The recursive `_structure_range` call over the then-body used to be handed
+    the ENCLOSING `thread_target` unchanged, while `_structure_if` 60 lines up
+    is careful to hand its then-body the RAW target of the jump that actually
+    terminates ITS range (`then_thread = raw_jt` / `raw_cand`), not whatever
+    `thread_target` it was itself called with. Reviewed and found inconsistent
+    -- not a bug (the assert `thread_target is None or thread_target >= hi`
+    still held, so the mismatch could only ever cost an acceptance, never
+    misstructure one), but the same jpc argument applies here as there: the
+    else-skip at `P-1` is what any still-pending nested false-exit inside the
+    then-body gets concatenated onto (`luaK_jump`, lcode.c:59-66), so what a
+    NESTED if's own false-exit carries when threaded is `P-1`'s raw target --
+    `join` (`P+1`) in the ordinary case, or whatever `P-1` itself was already
+    threaded onto (`continue_target`/`thread_target`) in the nested-tail case
+    `_is_else_skip`'s second branch covers -- not the enclosing `thread_target`
+    passed into this function. Aligned to `fn.instrs[P - 1].successors[0]`,
+    nulled back to `None` if it points backward of `then_hi` (the same
+    `continue_target`-already-covers-it guard `_structure_if` applies to its
+    own `then_thread`, keeping the `thread_target >= hi` invariant true for
+    the recursive call).
+
+    Measured, not merely argued: `corpus/ledger.jsonl` regenerated after this
+    change is BYTE-IDENTICAL to the one committed before it (`git diff
+    --stat corpus/ledger.jsonl` empty), and the full suite (561 tests) stays
+    green. A hand-built nested fixture exercising the code path
+    (`while true do if a then if b then x() else y() end else break end
+    end`) was tried looking for a case the old value refused and the new one
+    accepts; it structured under BOTH, i.e. it did not discriminate -- which
+    is unsurprising given the change only ever converts a refusal into an
+    acceptance and the corpus apparently never nests a same-shaped if in
+    exactly the tail position that needs it. So this is carried by the
+    `_structure_if` analogy and the ledger-neutrality measurement, not by a
+    fixture that catches a regression -- honestly stated rather than claimed
+    as proven the way the two floor-test-backed guards above are.
+
     ## Three narrowings, all measured INERT -- kept for diagnosis, not proof
 
     `pc2blk[P] not in idoms` (P must be unreachable), the last-first
@@ -1141,10 +1214,16 @@ def _match_else_break(fn, cfg, idoms, pc2blk, sites, memo, li, pc: int,
             continue
         try:
             _verify_single_entry(cfg, idoms, pc2blk, pc, then_lo, then_hi)
+            # See "Fix round 1" in this function's docstring: the raw target
+            # the else-skip at P-1 carries -- `join` when untouched, or
+            # whatever P-1 was itself already threaded onto -- not the
+            # enclosing `thread_target` unchanged.
+            raw_p = fn.instrs[P - 1].successors[0]
+            then_thread = raw_p if raw_p >= then_hi else None
             then_body = _structure_range(fn, cfg, idoms, pc2blk, then_lo,
                                          then_hi, break_target=break_target,
                                          continue_target=continue_target,
-                                         thread_target=thread_target,
+                                         thread_target=then_thread,
                                          sites=sites, memo=memo) \
                 if then_lo < then_hi else Seq((), frozenset())
             if all_claimed(then_body) != {p for p in fn.instrs
