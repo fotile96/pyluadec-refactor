@@ -311,16 +311,17 @@ class Printer:
         params = ", ".join(name_for(i, self.depth + 1) for i in range(child.numparams))
         if child.is_vararg & 2:
             params = params + (", ..." if params else "...")
-        if not self.fallback_paths:
-            # Call through the module global with the historical 3-argument
-            # shape: `tests/test_effects_reconstructor_consistency.py`
-            # monkeypatches `_print_proto_body` to instrument the whole-tree
-            # print, and that seam only ever runs with no substitutions.
-            body = _print_proto_body(child, self.depth + 1, tuple(names))
-        else:
-            body = _print_proto_body(child, self.depth + 1, tuple(names),
-                                     child_path, self.fallback_paths)
-        return params, body
+        # One call shape, always. Round 1 of M5 task 6 branched here on `if not
+        # self.fallback_paths` and called a 3-argument form, purely to keep the
+        # monkeypatch seam `tests/test_effects_reconstructor_consistency.py`
+        # installs over this module's `_print_proto_body` working unchanged.
+        # The cost of that convenience was that the hybrid print path silently
+        # bypassed the instrumentation -- the one path where a
+        # reconstructor/effects disagreement is hardest to spot -- while
+        # `structured._plan_substitutions` called the 5-argument form
+        # unconditionally anyway. The seam now takes what production passes.
+        return params, _print_proto_body(child, self.depth + 1, tuple(names),
+                                         child_path, self.fallback_paths)
 
     def _closure_self_ref(self, e: ClosureExpr, target_reg: int) -> bool:
         """True iff the closure captures its own assignment target as an

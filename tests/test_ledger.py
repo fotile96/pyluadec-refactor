@@ -110,7 +110,8 @@ def _entry(**kw):
     from pyluadec.verify.ledger import LedgerEntry
     base = dict(shash="ff" * 32, level="L3", l3_level=1, compile_ok=False,
                 fallback=False, n_insns=9, confessions=[],
-                occurrences=[{"file": "a.lua", "proto_path": "main_0"}],
+                occurrences=[{"file": "a.lua", "proto_path": "main_0",
+                              "shipped": "structured", "hybrid": True}],
                 oracle="deadbeef", ladder="l3-ladder-v1")
     base.update(kw)
     return LedgerEntry(**base)
@@ -138,6 +139,12 @@ def test_forced_l0_entry_is_confessed():
     assert [c["reason"] for c in e.confessions] == ["fallback-state-machine"]
     assert e.confessions[0]["pc_lo"] == 1 and e.confessions[0]["pc_hi"] == 9
     assert e.refusal_reason == "compile: shipped chunk did not compile"
+    # M5 task 6 round 1 (F7): the per-occurrence `shipped` field moves with
+    # `fallback`, or the row contradicts `test_m3_exit.py::
+    # test_non_l3_entries_confess`'s `fallback == any(shipped == "fallback")`
+    # coupling by construction. Deleting the loop in `_force_l0` fails here.
+    assert [o["shipped"] for o in e.occurrences] == ["fallback"]
+    assert e.fallback == any(o["shipped"] == "fallback" for o in e.occurrences)
 
 
 def test_forced_l0_keeps_an_existing_confession():

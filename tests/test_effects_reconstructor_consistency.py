@@ -492,9 +492,17 @@ def instrumented(rec: _Recorder):
                            param_limit=child.numparams):
             return saved["closure_parts"](self, e)
 
-    def _print_proto_body(proto, depth, upval_names):
+    def _print_proto_body(proto, depth, upval_names, *args, **kw):
+        # `*args`/`**kw` rather than the 3-parameter shape this used to have:
+        # `Printer.closure_parts` passes the child's proto_path and the hybrid
+        # substitution set too (M5 task 6). Round 1 of that task kept a
+        # 3-argument call in production, guarded by `if not
+        # self.fallback_paths`, just so this replacement would keep matching --
+        # which meant the hybrid print path was never instrumented. Accepting
+        # what production passes is the seam's job, not production's.
         with rec.function_frame(depth):
-            return saved["_print_proto_body"](proto, depth, upval_names)
+            return saved["_print_proto_body"](proto, depth, upval_names,
+                                              *args, **kw)
 
     def name_for(reg, depth):
         rec.named(reg, depth)

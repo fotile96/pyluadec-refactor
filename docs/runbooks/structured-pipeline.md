@@ -423,6 +423,18 @@ gate, with the *scope of the claim* narrowed and nothing else touched.
    non-`L3` protos are probed, deepest-first, each with its already-substituted
    descendants in place. What refuses (`StructureError` / `ReconstructError` /
    `EmitError`) goes into the set, and a set member covers its whole subtree.
+   The set is an **antichain**: when a refusing proto's ancestor also refuses,
+   `_add_to_frontier` drops the descendant's entry. That is what makes
+   `HybridCert.fallback_paths` readable as "the CLOSURE sites the printer left
+   a hole at" — the printer never reaches a site inside an already substituted
+   subtree, so a redundant entry names a hole that does not exist. Round 1 of
+   this task did not prune; the artifact and the ledger closure were still
+   right, and the invariant checker
+   (`tests/test_hybrid_chunk.py::shipping_violations`, whose third check skips
+   protos *below* the frontier) reported a false breach on the nested case.
+   Nothing in the corpus nests today — all 8 substituted protos across the 6
+   hybrids have zero subprotos — so the fixture is synthetic
+   (`test_a_refusing_ancestor_replaces_its_refusing_descendant_in_the_frontier`).
 2. `_hybrid_round` — print, compile with the real `luac_sz4`, and run the
    untouched `compare_protos` up the untouched ladder, discarding only the
    mismatches whose path falls **inside** a substituted subtree. A mismatch
@@ -457,12 +469,46 @@ pseudo-instructions that follow it*. That is what makes the two obligations of
 
 **What it does not claim, and what covers that instead.** The substituted
 subtrees. Certification structurally cannot bless them — they are not
-byte-exact by construction — so the semantic gate for the boundary is the two
-standing probes (`scripts/probe_global_state.py` L1.5,
-`scripts/probe_behaviour.py` L1.75), run over all 229 files, plus the
-differential-execution arm in `tests/test_hybrid_chunk.py`. Both probes are
-unchanged by hybrid emission: 225/229 and 227/229 identical with the same 4
-and 2 pinned divergences (measured 2026-08-12, after the change).
+byte-exact by construction — so the semantic evidence for the boundary comes
+from running the code: the two standing probes
+(`scripts/probe_global_state.py` L1.5, `scripts/probe_behaviour.py` L1.75) over
+all 229 files, plus the differential-execution arm in
+`tests/test_hybrid_chunk.py`. Both probes are unchanged by hybrid emission:
+225/229 and 227/229 identical with the same 4 and 2 pinned divergences
+(measured 2026-08-12, after the change).
+
+**How far the probes actually reach into the substituted code — measured, and
+smaller than round 1 of this task claimed.** Injecting an unconditional
+`error("PLD_SENTINEL")` at the entry of every substituted function (1, 1, 1, 1,
+2, 2 sentinels across the six hybrids) and re-probing:
+
+| probe | notices the sentinel | blind to it |
+| --- | --- | --- |
+| L1.5 global-state | **0 of 6** | all six |
+| L1.75 behaviour | 4 of 6 | `snr_fragment_main.lua`, `snr_s5_10_s.lua` |
+
+`snr_fragment_main.lua`'s only global (`main`) errors after 12 recorded events,
+and its substituted function is a chunk *local* called from another chunk
+local; `snr_s5_10_s.lua` hits the 3000-event cap before the invocation loop
+reaches the code that calls its two. `snr_s5_10_s.lua` is also the single file
+`test_corpus_hybrid_invariant_on_one_file` runs `shipping_violations` over, so
+it is the least-covered of the six twice over. The committed fault injection
+`test_a_broken_upvalue_write_at_the_boundary_diverges` is likewise a **no-op on
+the corpus**: no substituted function performs a `SETUPVAL` through a name
+slot, so all six artifacts stay byte-identical under that patch and both probes
+stay green.
+
+So: the probes gate the boundary on four files and say nothing about two. The
+boundary's *mechanisms* — name-slot aliasing in both directions, the upvalue
+order prologue, mixed box/name slots in a nested closure, per-iteration closures
+and `OP_CLOSE` inside a substituted subtree — are covered by the synthetic
+differential tests in `tests/test_hybrid_chunk.py`, which are the real evidence;
+the corpus arm is a breadth check on top. The reach itself is pinned
+two-directionally by `test_probe_reach_of_the_substituted_code`, so a future
+hybrid landing in an unreached region fails rather than passing quietly.
+Driving the two unreached files' substituted functions directly is not
+available: both are chunk locals, and the original side is stripped bytecode
+with no source to append a driver to.
 
 **Measured rollout, 2026-08-12.** 216 files fully structured, **6 hybrid**,
 **7 whole-file fallback** (was 216 / 0 / 13). Proto occurrences shipping

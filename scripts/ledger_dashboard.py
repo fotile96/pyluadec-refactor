@@ -65,13 +65,22 @@ def main() -> int:
     # independent since hybrid emission, and a dashboard that only reported
     # the first would not show a file quietly dropping back to a whole-file
     # state machine.
+    # Indexed, not `.get(...)`-with-a-default (M5 task 6 round 1, F8): the
+    # defaults were `"structured"` and `False`, so a pre-M5-task-6 row -- one
+    # written before the schema existed, or by a half-migrated writer -- would
+    # be silently counted as fully structured. That is exactly the "a file
+    # quietly dropped back to a whole-file state machine" case the comment
+    # above says this panel exists to show, reported as its opposite. A
+    # `KeyError` naming the missing field is the better failure: this is a
+    # read-only panel over a ledger that `scripts/run_corpus.py` regenerates
+    # whole, so there is no partial-schema ledger worth tolerating.
     occs = [o for e in entries for o in e["occurrences"]]
-    shipped = Counter(o.get("shipped", "structured") for o in occs)
+    shipped = Counter(o["shipped"] for o in occs)
     by_file: dict[str, dict] = {}
     for o in occs:
         f = by_file.setdefault(o["file"], {"hybrid": False, "fb": 0, "n": 0})
-        f["hybrid"] = f["hybrid"] or o.get("hybrid", False)
-        f["fb"] += o.get("shipped") == "fallback"
+        f["hybrid"] = f["hybrid"] or o["hybrid"]
+        f["fb"] += o["shipped"] == "fallback"
         f["n"] += 1
     n_hybrid = sum(1 for f in by_file.values() if f["hybrid"])
     n_whole_fb = sum(1 for f in by_file.values()

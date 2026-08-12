@@ -17,12 +17,18 @@ The shipping invariant that replaces it:
 VIOLATE it -- see `test_shipping_check_rejects_a_tampered_artifact`, which is
 the committed proof that the check is not vacuous.
 
+Certification structurally cannot bless a hybrid whole -- its fallback parts
+are not byte-exact by construction -- so the boundary's *semantic* evidence has
+to come from running the code. This file carries the differential-execution arm
+of that, including the injection that proves it can fail.
+
 The two standing probes (`scripts/probe_global_state.py`,
-`scripts/probe_behaviour.py`) are the *semantic* gate for the hybrid boundary,
-because certification structurally cannot bless a hybrid whole: its fallback
-parts are not byte-exact by construction. This file carries the small
-differential-execution arm of the same idea, including the injection that
-proves it can fail.
+`scripts/probe_behaviour.py`) add breadth on top, but measured (round 1, and it
+is the correction that mattered most) they add less than round 1 claimed: the
+L1.5 probe executes the substituted code of **none** of the six corpus hybrids
+and the L1.75 probe of **four**. `test_probe_reach_of_the_substituted_code`
+pins that two-directionally, and the synthetic differential tests here -- not
+the corpus arm -- are what actually covers the boundary's mechanisms.
 """
 import pytest
 
@@ -152,7 +158,13 @@ def shipping_violations(root: Proto, outcome, hybrid_cert) -> list[str]:
        one cannot. Checked over every proto that is not *inside* a substituted
        subtree (below the frontier the candidate's tree shape deliberately
        differs -- nested functions become immediately-invoked factories -- so
-       there is nothing to line up).
+       there is nothing to line up). This skip reads "in the frontier's subtree
+       but not the frontier itself", which is sound only because
+       `HybridCert.fallback_paths` is an antichain: a redundant descendant entry
+       would be *in* the frontier, escape the skip, and be checked against a
+       factory shape that legitimately has no state machine at that index. It
+       was not an antichain in round 1; see
+       `test_a_refusing_ancestor_replaces_its_refusing_descendant_in_the_frontier`.
     4. **The substitution is not gratuitous.** At least one mismatch must
        actually fall inside a substituted subtree; a hybrid that substituted a
        function whose structured print was fine would be shipping worse code
@@ -374,7 +386,12 @@ def test_a_broken_upvalue_write_at_the_boundary_diverges(monkeypatch):
     worth committing. Certification does not see it (the fallback subtree is
     excluded from the comparison by construction), the chunk still compiles,
     and only running it tells them apart -- which is precisely why the two
-    standing probes, not certification, are this boundary's gate.
+    standing probes, not certification, are the only thing that can gate this
+    boundary at all -- see `test_probe_reach_of_the_substituted_code` for how
+    far they actually reach, which on this corpus is not far. This exact patch
+    is a no-op on all 6 corpus hybrids (measured 2026-08-12: byte-identical
+    artifacts, zero `__pld_dropped`), so this synthetic fixture is the whole of
+    its evidence.
     """
     real = _FnEmitter.up_write
 
