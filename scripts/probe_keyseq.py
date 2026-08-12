@@ -914,7 +914,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  {name:<24} {badge:<22} {r.detail}{flag}")
     n_specs = sum(len(v) for v in KEY_SEQUENCES.values())
     print(f"L2: {len(granted)}/{len(results)} authored file(s) granted, "
-          f"{len(results) - len(granted)} refused as expected "
+          f"{len(results) - len(granted) - len(unexpected)} refused as "
+          f"expected "
           f"({n_specs} sequence(s) over {len(KEY_SEQUENCES)} file(s), "
           f"{len(list(corpus.glob('*.lua')))} files in the corpus)")
     if unexpected:
