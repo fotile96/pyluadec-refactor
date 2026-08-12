@@ -597,31 +597,97 @@ def driver_globals_in_probe() -> frozenset[str]:
     return frozenset(out)
 
 
+# Base globals whose VALUE is, or reflects, the environment. `env.__index`
+# resolves these for real -- they are not proxies -- but what they hand back is
+# the STUB environment's own shape, which is exactly as much an artifact as a
+# proxy is. Measured 2026-08-12: `_G` and `getfenv()` route straight to a
+# proxy (`local q = getfenv().doScriptScene` traces as `C|miss|1|@doScriptScene`
+# and granted), and `_G.doScriptScene == nil` is decided by the fact that the
+# probe keeps the chunk's globals in `envfields` rather than in `_G` at all.
+# These are therefore treated as stub seeds, not as clean reads. The corpus
+# reads none of them (measured: 0 `GETGLOBAL _G`, 0 `getfenv`), so this costs
+# nothing.
+_REFLECTIVE_BASE = frozenset({
+    "_G", "getfenv", "setfenv", "load", "loadstring", "loadfile", "dofile",
+    "require", "module", "package", "arg", "newproxy",
+})
+
+# Callees whose RESULT may be treated as clean -- and only when no argument in
+# the call window is stub-derived.
+#
+# This replaces "anything in `_BASE_GLOBALS` or `_DRIVER_GLOBALS`", which was
+# round 2's fix for New-3 and re-opened New-3 in the same breath: it declared a
+# list of callees trusted **without checking what those callees do**. Measured,
+# every one of these granted with a proxy visibly reaching the comparison:
+#
+#     local ok, v = pcall(f)   -- pcall FORWARDS the callee's returns
+#     local x = assert(sys.a)  -- assert is the identity function
+#     rawget(_G, "doScriptScene") == nil    -- reflects the environment
+#
+# So the rule is now an explicit allowlist of functions that provably cannot
+# hand back a value derived from their arguments or from the environment: the
+# probe's own driver overrides, plus the two base coercions. Everything else --
+# including every other base global -- returns a stub. The corpus calls only
+# `wait`, `pressButton`, `string`, `select`, `math` and `pairs` as recognised
+# callees, and `snr_lib.lua` (the one granted file) calls no base global at
+# all, so the narrowing costs no reach.
+_CLEAN_CALLEES = frozenset({
+    "pressButton",   # driver: returns the scripted boolean, by construction
+    "wait",          # driver: returns nil
+    "type", "rawequal", "getmetatable",   # driver overrides; string/boolean/
+                                          # our own metatable, never an argument
+    "tostring", "tonumber",               # coercions: string / number / nil
+    "print",                              # returns nothing
+})
+
+
+def _shadowed_names(root) -> set[str]:
+    """Base/driver names this chunk ever writes as a global.
+
+    `env.__index` consults `envfields` BEFORE `G`, so a chunk-level
+    `tostring = sys.conv` makes every later `tostring(...)` call a proxy.
+    Measured: that fixture granted. A shadowed name loses both exemptions --
+    it becomes a stub seed and stops being a clean callee -- for the whole
+    chunk, without any attempt to order the write against the reads (the same
+    reasoning that killed the `read - written` exemption in round 2).
+    """
+    from pyluadec.lift.opcodes import Op, decode
+
+    out: set[str] = set()
+
+    def walk(p):
+        for i, w in enumerate(p.code):
+            ins = decode(w, i + 1)
+            if ins.op is Op.SETGLOBAL:
+                n = p.constants[ins.bx].decode("latin-1")
+                if n in _BASE_GLOBALS or n in _DRIVER_GLOBALS:
+                    out.add(n)
+        for sp in p.subprotos:
+            walk(sp)
+
+    walk(root)
+    return out
+
+
 def _stub_globals(root) -> set[bytes]:
-    """Every global name this chunk READS that the probe environment does not
-    resolve for real. Anything else is a stub proxy at that read.
+    """Every global name this chunk READS that the probe environment resolves
+    to something other than a real, non-reflective library value.
 
     ## There is no "the chunk defines it, so it is not a stub" exemption
 
     There was, for one round: `read - written`, computed over the whole chunk
     with no ordering. It was unsound in exactly the way the runtime marks were
-    (round-1 C1), and by the same author. `env.__index` consults `envfields`,
-    which is EMPTY until the chunk actually executes the write, so a global
-    read before its write -- or whose write is inside a function nobody calls
-    -- is a proxy at that read. Three fixtures, each with byte-equal traces,
-    zero runtime marks, the stub-forced branch taken, and a GRANT:
+    (round-1 C1). `env.__index` consults `envfields`, which is EMPTY until the
+    chunk actually executes the write, so a global read before its write -- or
+    whose write is inside a function nobody calls -- is a proxy at that read.
+    Three fixtures granted through it, including laundering THROUGH it
+    (`stash = sys.a` then `if stash == "x"`). Removing it was measured to cost
+    no reach: `snr_lib` has 0 globals that are both read and written,
+    `snr_common` has 72.
 
-        function setup() mode = "a" end   -- setup is never called
-        if mode == "a" then ... end; mode = "a"    -- write after the read
-        stash = sys.a; if stash == "x" then ...    -- laundering THROUGH it
-
-    A sound exemption would have to show the write MUST precede every read
-    along all paths AND that the written value is not itself stub-derived.
-    That is a real dataflow problem, and it is not worth building here,
-    because the exemption buys **nothing**: measured 2026-08-12, removing it
-    leaves the CLI at 1/5 granted with `snr_lib` still granted. `snr_lib` has
-    **0** globals that are both read and written; `snr_common` has 72, and it
-    refuses for other reasons anyway.
+    What IS exempt is `_BASE_GLOBALS` -- names `env.__index` answers from the
+    real `_G` -- minus `_REFLECTIVE_BASE` and minus anything this chunk
+    shadows.
     """
     from pyluadec.lift.opcodes import Op, decode
 
@@ -636,9 +702,9 @@ def _stub_globals(root) -> set[bytes]:
             walk(sp)
 
     walk(root)
-    return {n for n in read
-            if n.decode("latin-1") not in _BASE_GLOBALS
-            and n.decode("latin-1") not in _DRIVER_GLOBALS}
+    shadowed = _shadowed_names(root)
+    exempt = (_BASE_GLOBALS | _DRIVER_GLOBALS) - _REFLECTIVE_BASE - shadowed
+    return {n for n in read if n.decode("latin-1") not in exempt}
 
 
 # Library functions that turn a stub proxy into a plain value a branch can
@@ -657,7 +723,8 @@ _LAUNDERERS = frozenset({b"type", b"rawequal", b"getmetatable", b"next",
 # local_is_granted` goes red when `_TRUTHINESS` is removed from `_DECIDING`,
 # and did not before this split.
 _TRUTHINESS = "blind-truthiness"
-_KINDS = ("blind-compare", "blind-length", "blind-launder", _TRUTHINESS)
+_LOOP = "blind-loop"
+_KINDS = ("blind-compare", "blind-length", "blind-launder", _LOOP, _TRUTHINESS)
 _DECIDING = _KINDS
 
 
@@ -716,6 +783,8 @@ def static_taint(root) -> dict[str, int]:
     from pyluadec.lift.opcodes import Op, decode
 
     stubs = _stub_globals(root)
+    shadowed = _shadowed_names(root)
+    clean_callees = _CLEAN_CALLEES - shadowed
     counts = {k: 0 for k in _KINDS}
 
     def rk_stub(p, v: int, live: set[int]) -> bool:
@@ -725,6 +794,15 @@ def static_taint(root) -> dict[str, int]:
     def walk(p):
         fn = lift_proto(p)
         cfg = build_cfg(fn)
+        # U-4: a closure created here can write the parent's local through
+        # `SETUPVAL`, and the parent's register keeps whatever this analysis
+        # last decided about it. `lift_proto` already knows which registers are
+        # captured; treating every one of them as stub-derived for the whole
+        # proto is the cheap sound answer. Measured corpus reach: 102
+        # `SETUPVAL`s in 6 of 229 files, 20 parent registers written this way,
+        # 0 of them reaching a decision operand -- and `snr_lib.lua` has 0
+        # captured registers, so this costs no reach either.
+        captured = set(fn.captured_regs)
         entry: dict[int, set[int]] = {b: set() for b in cfg.blocks}
         exits: dict[int, set[int]] = {b: set() for b in cfg.blocks}
         sites: dict[int, str] = {}
@@ -732,13 +810,21 @@ def static_taint(root) -> dict[str, int]:
         while changed:
             changed = False
             for start in sorted(cfg.blocks):
-                inb: set[int] = set()
+                inb: set[int] = set(captured)
                 for pred in cfg.preds.get(start, ()):
                     inb |= exits[pred]
                 entry[start] = inb
                 live = set(inb)
                 for li in cfg.blocks[start].instrs:
                     _step(p, li.ri, live, sites)
+                    # Re-added after EVERY instruction, not just at the block
+                    # boundaries: a captured register is written by a closure
+                    # at a point this analysis cannot see, so no `LOADK` or
+                    # `MOVE` in the parent may ever be taken as clearing it.
+                    # Measured with boundary-only seeding, the U-4 fixture
+                    # still granted -- `local v = 0` discarded it inside the
+                    # same block that then compared it.
+                    live |= captured
                 if live != exits[start]:
                     exits[start] = live
                     changed = True
@@ -746,6 +832,39 @@ def static_taint(root) -> dict[str, int]:
             counts[kind] += 1
         for sp in p.subprotos:
             walk(sp)
+
+    def _defined(p, ins) -> range:
+        """Every register `ins` writes. Used to invalidate `index_globals`'
+        holder, which used to pop only `A` -- U-8. `LOADNIL A B`,
+        multi-result `CALL`, `VARARG A B`, `SELF` and the `for` opcodes all
+        write registers other than `A`, so a stale base-global name could
+        stay attached to a register that now holds something else."""
+        op, a, b, c = ins.op, ins.a, ins.b, ins.c
+        top = p.maxstacksize
+        if op is Op.LOADNIL:
+            return range(a, b + 1)
+        if op is Op.SELF:
+            return range(a, a + 2)
+        if op in (Op.CALL, Op.TAILCALL):
+            return range(a, (a + c - 1) if c > 0 else top + 1)
+        if op is Op.VARARG:
+            return range(a, (a + b - 1) if b > 0 else top + 1)
+        if op is Op.FORLOOP:
+            return range(a, a + 4)
+        if op is Op.FORPREP:
+            return range(a, a + 1)
+        if op is Op.TFORLOOP:
+            # `TFORLOOP A C` defines R(A+3)..R(A+2+C) and then copies R(A+3)
+            # into R(A+2) when it is non-nil. Derived from C, not the
+            # hard-coded `a..a+6` window this used to carry: with more than
+            # four loop variables the tail was left CLEAN, which is a taint
+            # LOSS. Measured before the fix: `for x1..x6 in sys.iter` with the
+            # comparison on `x6` granted; with two variables it refused.
+            return range(a + 2, a + 3 + max(c, 1))
+        if op in (Op.SETGLOBAL, Op.SETUPVAL, Op.SETTABLE, Op.SETLIST,
+                  Op.JMP, Op.EQ, Op.LT, Op.LE, Op.TEST, Op.RETURN, Op.CLOSE):
+            return range(a, a)
+        return range(a, a + 1)
 
     def _step(p, ins, live: set[int], sites: dict[int, str]) -> None:
         op, a, b, c = ins.op, ins.a, ins.b, ins.c
@@ -760,7 +879,7 @@ def static_taint(root) -> dict[str, int]:
         if op is Op.TESTSET:
             if b in live:
                 sites[ins.pc] = _TRUTHINESS
-            live.discard(a) if b not in live else live.add(a)
+            live.add(a) if b in live else live.discard(a)
             return
         if op is Op.LEN:
             if b in live:
@@ -770,22 +889,32 @@ def static_taint(root) -> dict[str, int]:
         if op is Op.GETGLOBAL:
             live.add(a) if p.constants[ins.bx] in stubs else live.discard(a)
             return
-        if op is Op.SETGLOBAL or op is Op.SETTABLE or op is Op.SETUPVAL:
+        if op in (Op.SETGLOBAL, Op.SETTABLE, Op.SETUPVAL, Op.SETLIST):
             return
         if op is Op.MOVE:
             live.add(a) if b in live else live.discard(a)
             return
         if op is Op.GETUPVAL:
+            # NOT decoration, and it went unpinned for two rounds because the
+            # whole module stayed green when it was neutered. `local up = nil;
+            # function seed() up = sys.a end` then comparing `up` inside a
+            # sibling closure refuses only because of this line -- pinned by
+            # `test_a_value_written_into_an_upvalue_is_stub_derived`.
             live.add(a)
             return
         if op in (Op.GETTABLE, Op.SELF):
             # The KEY as well as the table (New-2). `local t = {} t.real = 1
             # if t[sys.k] == nil` reads a script table at a stub-derived key
             # and gets nil every time; the table is clean and the result is
-            # not. Measured before this line existed: granted, stub branch
-            # taken, zero marks.
+            # not.
             hot = b in live or rk_stub(p, c, live)
             if op is Op.SELF:
+                # DEFENSIVE: `SELF` also writes A+1 (the receiver), and luac
+                # only ever emits `SELF` immediately before a `CALL` that
+                # consumes both, so A+1 is never read as a value on its own.
+                # Tried: neutering this line leaves the whole module green.
+                # It stays because the transfer function is written against
+                # the opcode, not against luac's habits.
                 live.add(a + 1) if hot else live.discard(a + 1)
             live.add(a) if hot else live.discard(a)
             return
@@ -800,6 +929,32 @@ def static_taint(root) -> dict[str, int]:
             live.add(a) if any(r in live for r in range(b, c + 1)) \
                 else live.discard(a)
             return
+        if op in (Op.FORPREP, Op.TFORLOOP):
+            # U-5: a loop is a branch, and its TRIP COUNT can be stub-decided
+            # while the body writes a perfectly clean register. `local n = 0
+            # for k in sys.iter do n = 1 end if n == 1 then` granted before
+            # this arm existed -- the proxy's `__call` returns nil, the body
+            # never runs, and the comparison reads a clean 0.
+            #
+            # The control triple is R(A)..R(A+2) for both forms (init/limit/
+            # step, or generator/state/control).
+            if any(r in live for r in range(a, a + 3)):
+                sites[ins.pc] = _LOOP
+                for r in _defined(p, ins):
+                    live.add(r)
+            else:
+                for r in _defined(p, ins):
+                    live.discard(r)
+            return
+        if op is Op.FORLOOP:
+            if any(r in live for r in range(a, a + 3)):
+                sites[ins.pc] = _LOOP
+                for r in _defined(p, ins):
+                    live.add(r)
+            else:
+                for r in _defined(p, ins):
+                    live.discard(r)
+            return
         if op in (Op.CALL, Op.TAILCALL):
             # Argument window: a+1 .. a+b-1 (b == 0 means "to the top", which
             # this analysis cannot bound, so it reads the whole frame).
@@ -809,39 +964,36 @@ def static_taint(root) -> dict[str, int]:
             fname = _called_global(p, ins)
             if fname in _LAUNDERERS and args:
                 sites[ins.pc] = "blind-launder"
-            # A call's RESULT is stub-derived unless the callee is provably
-            # one of the names the probe environment resolves for real
-            # (New-3). The argument direction was the only one documented;
-            # the RETURN direction is the shape this corpus actually uses --
-            # an accessor handing back an engine value. Measured before this
-            # line: `function getMode() return sys.mode end` compared against
-            # a literal granted, and so did a closure built inside the driven
-            # function. Conservative: an unrecognised callee (a field call, a
-            # local holding a closure, anything reached through a MOVE) is
-            # treated as returning a stub.
-            fexempt = fname is not None and (
-                fname.decode("latin-1") in _BASE_GLOBALS
-                or fname.decode("latin-1") in _DRIVER_GLOBALS)
+            # A call's RESULT is clean only when the callee is provably one of
+            # the few functions that cannot hand back a value derived from its
+            # arguments or from the environment (`_CLEAN_CALLEES`, minus
+            # anything this chunk shadows) AND no argument is stub-derived.
+            # The allowlist half is load-bearing (neutering it back to "any
+            # base global" turns the `pcall-forwards` case red). The `not
+            # args` half is **DEFENSIVE**: tried, and neutering it to `True`
+            # leaves all 132 tests green, because every name currently in
+            # `_CLEAN_CALLEES` is either in `_LAUNDERERS` -- so a stub in the
+            # window already records `blind-launder` -- or genuinely ignores
+            # its arguments' values when computing its result (`pressButton`
+            # answers from the key script, `wait` returns nil, `print` returns
+            # nothing). It stays as the invariant a future addition to the
+            # allowlist has to satisfy, since the allowlist is the thing three
+            # rounds of review keep finding holes in.
+            fexempt = (fname is not None
+                       and fname.decode("latin-1") in clean_callees
+                       and not args)
             stub_call = (a in live) or not fexempt
-            nres = (c - 1) if c > 0 else (top - a)
-            for r in range(a, a + max(nres, 1)):
+            for r in _defined(p, ins):
                 live.add(r) if stub_call else live.discard(r)
+            if op is Op.CALL and c == 1:
+                live.discard(a)      # no results kept
             return
         if op in (Op.LOADK, Op.LOADBOOL, Op.LOADNIL, Op.NEWTABLE, Op.CLOSURE,
                   Op.VARARG):
-            hi = a if op is not Op.LOADNIL else b
-            for r in range(a, hi + 1):
+            for r in _defined(p, ins):
                 live.discard(r)
             return
-        if op in (Op.FORLOOP, Op.FORPREP, Op.TFORLOOP):
-            # The control registers become whatever the iterator yields; if
-            # any of the loop's own registers is stub-derived, treat the
-            # induction variables as stub too.
-            hot = any(r in live for r in range(a, a + 4))
-            for r in range(a, min(a + 6, p.maxstacksize) + 1):
-                live.add(r) if hot else live.discard(r)
-            return
-        # JMP, RETURN, CLOSE, SETLIST: no register definition this cares about.
+        # JMP, RETURN, CLOSE: no register definition this cares about.
 
     # `_called_global` needs the two instructions before the CALL, so it is a
     # separate scan over the proto's own code rather than part of the walk.
@@ -852,20 +1004,26 @@ def static_taint(root) -> dict[str, int]:
 
     def index_globals(p):
         # `GETGLOBAL A K` followed (not necessarily immediately) by a CALL of
-        # register A, with no intervening redefinition of A. Only the simple
-        # form is recognised; anything else is not flagged as a launder, which
-        # is a KNOWN gap and is stated in the runbook.
+        # register A, with no intervening redefinition of ANY register the
+        # holder covers. U-8: this used to pop only `x.a`, so a multi-result
+        # `CALL`, a `LOADNIL A B`, a `VARARG A B`, a `SELF` or a `for` opcode
+        # could leave a stale base-global name attached to a register that now
+        # holds something else -- and `_called_global` would then exempt a
+        # call of it. Not reachable from luac output (luac fills a call slot
+        # with an instruction whose `A` is that slot), so it was a weakness of
+        # the mechanism rather than a demonstrated grant; fixed rather than
+        # documented, since `_defined` had to exist for the loop windows
+        # anyway.
         holder: dict[int, bytes] = {}
         for i, w in enumerate(p.code):
             x = decode(w, i + 1)
             if x.op is Op.GETGLOBAL:
                 holder[x.a] = p.constants[x.bx]
-            elif x.op in (Op.CALL, Op.TAILCALL):
-                if x.a in holder:
-                    prev_global[(id(p), x.a, x.pc)] = holder[x.a]
-                holder.pop(x.a, None)
-            elif x.op is not Op.JMP:
-                holder.pop(x.a, None)
+                continue
+            if x.op in (Op.CALL, Op.TAILCALL) and x.a in holder:
+                prev_global[(id(p), x.a, x.pc)] = holder[x.a]
+            for r in _defined(p, x):
+                holder.pop(r, None)
         for sp in p.subprotos:
             index_globals(sp)
 

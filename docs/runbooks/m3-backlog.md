@@ -1530,6 +1530,17 @@ text, a 27% smaller population). A static stub-taint analysis over the
 original lifted bytecode now refuses them. It is path-insensitive, so a single
 site anywhere in a file refuses the whole file — conservative on purpose.
 
+Rounds 2 and 3 each closed further holes **inside the code written to close
+the previous one** — twelve laundering routes in round 0, four in round 2
+(the `read - written` seed exemption, a stub table key, an accessor's return
+value), eight more in round 3 (the trusted-callee list trusting `pcall` /
+`assert` / `rawget`, a shadowed base name, `_G` and `getfenv()`, a closure
+writing the parent's local, a stub-decided loop trip count, and a
+hard-coded loop-variable window that lost taint past four variables). Every
+one was a byte-equal trace with zero runtime marks and a grant. Read the
+"what the pair still cannot see" list in `structured-pipeline.md` as *what
+could be constructed*, not as a proof.
+
 Round 2 closed a hole of the same class in that analysis' own seed rule: it
 exempted globals the chunk writes, computed as `read - written` over the whole
 chunk with no ordering, and `env.__index` resolves a global from `envfields`

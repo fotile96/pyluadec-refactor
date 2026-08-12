@@ -625,6 +625,165 @@ def test_a_stub_key_and_a_stub_return_value_are_refused(name, src):
     assert (r.granted, r.reason) == (False, "taint-static"), name
 
 
+def _wrap(body: bytes) -> bytes:
+    return b'function main()\n  pressButton("CIRCLE")\n' + body + b'\nend\n'
+
+
+# Round 3. Every one of these was measured GRANTING against the round-2 tree,
+# with byte-equal traces and zero runtime marks; in the first group the value
+# that reaches `==` prints in the trace as a literal proxy (`C|miss|1|@sys.a`),
+# so there is no ambiguity about what decided the branch.
+_UNSOUND_ROUTES = [
+    # U-1: the round-2 trusted-callee rule exempted every `_BASE_GLOBALS`
+    # name without checking what those callees DO. `pcall` forwards the
+    # callee's returns, `assert` is the identity function, `rawget` reflects
+    # the environment -- and none of the three is in `_LAUNDERERS`, or has a
+    # stub in its argument window.
+    ("pcall-forwards", _wrap(b'  local f = function() return sys.a end\n'
+                             b'  local ok, v = pcall(f)\n'
+                             b'  if v == "x" then hit(v) else miss(v) end')),
+    ("assert-is-identity", _wrap(b'  local x = assert(sys.a)\n'
+                                 b'  if x == "x" then hit(x) else miss(x) end')),
+    ("rawget-reflects", _wrap(b'  if rawget(_G, "doScriptScene") == nil '
+                              b'then hit() else miss() end')),
+    # U-2: `env.__index` consults `envfields` BEFORE `G`, so a chunk that
+    # writes a base name makes every later call of it a proxy.
+    ("shadowed-base-global",
+     b'tostring = sys.conv\n' + _wrap(b'  local s = tostring(1)\n'
+                                      b'  if s == "1" then hit(s) else miss(s) end')),
+    # U-3: `_G` and `getfenv()` are not proxies, but what they hand back is
+    # the stub environment's own shape -- `getfenv().x` IS a proxy, and
+    # `_G.x == nil` is decided by the probe keeping globals in `envfields`.
+    ("getfenv-field", _wrap(b'  local q = getfenv().doScriptScene\n'
+                            b'  if q == "x" then hit(q) else miss(q) end')),
+    ("getfenv-truthiness", _wrap(b'  if getfenv().flag then hit() else miss() end')),
+    ("getfenv-length", _wrap(b'  if #getfenv().list == 0 then hit() else miss() end')),
+    ("_G-through-an-alias", _wrap(b'  local g = _G\n'
+                                  b'  if g.doScriptScene == nil then hit() '
+                                  b'else miss() end')),
+    # U-4: a closure writes the parent's local through SETUPVAL and the
+    # parent's register keeps whatever the analysis last decided.
+    ("setupval-from-a-closure",
+     _wrap(b'  local v = 0\n  local set = function() v = sys.a end\n'
+           b'  set()\n  if v == "x" then hit(v) else miss(v) end')),
+    # U-5: a loop's TRIP COUNT is a branch. The body writes a clean register,
+    # and whether it runs at all is stub-decided.
+    ("generic-for-trip-count",
+     _wrap(b'  local n = 0\n  for k in sys.iter do n = 1 end\n'
+           b'  if n == 1 then hit(n) else miss(n) end')),
+    ("numeric-for-trip-count",
+     _wrap(b'  local n = 0\n  for i = 1, sys.n do n = 1 end\n'
+           b'  if n == 1 then hit(n) else miss(n) end')),
+    # U-6: the loop window was a hard-coded `a..a+6`, so a sixth loop
+    # variable landed outside it and stayed CLEAN -- a taint LOSS, not just
+    # an unflagged decision. With two variables the same shape refused.
+    ("six-loop-variables",
+     _wrap(b'  for x1,x2,x3,x4,x5,x6 in sys.iter do\n'
+           b'    if x6 == "z" then hit() end\n  end')),
+]
+
+
+@pytest.mark.parametrize("name,src", _UNSOUND_ROUTES,
+                         ids=[n for n, _ in _UNSOUND_ROUTES])
+def test_the_route_that_granted_before_round_three_now_refuses(name, src):
+    """Twelve more ways a stub-derived value decided a branch with the gate
+    green. Three consecutive rounds have found the fresh hole inside the code
+    written to close the previous one, and eight of these twelve live in
+    round 2's trusted-callee rule, so the rule is now an explicit allowlist of
+    functions that provably cannot hand back a value derived from their
+    arguments or from the environment -- `_CLEAN_CALLEES` -- rather than "any
+    base global"."""
+    from scripts.probe_keyseq import evaluate
+    r = evaluate(_bytecode(src), src, ["k=1,CIRCLE;tail="])
+    assert (r.granted, r.reason) == (False, "taint-static"), name
+
+
+@pytest.mark.parametrize("src", [
+    # A branch on a local.
+    _wrap(b'  local n = 0\n  if n == 1 then hit() else miss() end'),
+    # The driver's return value, which every authored sequence depends on.
+    b'function main() if pressButton("CIRCLE") == true then hit() '
+    b'else miss() end end\n',
+    # An allowlisted coercion with clean arguments.
+    _wrap(b'  local s = tostring(7)\n  if s == "7" then hit(s) else miss(s) end'),
+    # A loop with a constant trip count.
+    _wrap(b'  local n = 0\n  for i = 1, 3 do n = n + 1 end\n'
+          b'  if n == 3 then hit() else miss() end'),
+])
+def test_round_three_did_not_turn_the_backstop_into_a_blanket_refusal(src):
+    """The non-vacuity counterpart. Four rounds of tightening is four chances
+    to end up refusing everything, which would be exactly as useless as
+    granting everything."""
+    from scripts.probe_keyseq import static_refusal
+    from pyluadec.ingest import load_bytes
+    assert static_refusal(load_bytes(_bytecode(src))) == {}
+
+
+def test_a_value_written_into_an_upvalue_is_stub_derived():
+    """U-7: `if op is Op.GETUPVAL: live.add(a)` is credited in three places as
+    one of the analysis' deliberate over-approximations, and it went unpinned
+    for two rounds -- neutering it to `live.discard(a)` left the whole module
+    green. This is the shape that needs it."""
+    from scripts.probe_keyseq import evaluate
+    src = (b'local up = nil\nfunction seed() up = sys.a end\n'
+           + _wrap(b'  seed()\n  if up == "x" then hit(up) else miss(up) end'))
+    r = evaluate(_bytecode(src), src, ["k=1,CIRCLE;tail="])
+    assert (r.granted, r.reason) == (False, "taint-static")
+
+
+def test_a_shadowed_name_loses_both_exemptions():
+    """U-2 at the unit level, in both directions: writing a base name makes it
+    a seed AND strips it from the clean-callee set, and a chunk that does not
+    write it keeps both."""
+    from scripts.probe_keyseq import _shadowed_names, _stub_globals
+    from pyluadec.ingest import load_bytes
+    plain = load_bytes(_bytecode(b'function main() local s = tostring(1) end\n'))
+    assert _shadowed_names(plain) == set()
+    assert b"tostring" not in _stub_globals(plain)
+
+    shadow = load_bytes(_bytecode(
+        b'tostring = sys.conv\nfunction main() local s = tostring(1) end\n'))
+    assert _shadowed_names(shadow) == {"tostring"}
+    assert b"tostring" in _stub_globals(shadow)
+
+
+def test_the_reflective_base_globals_are_seeds():
+    """U-3 at the unit level. These are resolved for real by `env.__index`, so
+    the round-2 rule treated them as clean; what they hand back is the stub
+    environment's own shape."""
+    from scripts.probe_keyseq import _REFLECTIVE_BASE, _stub_globals
+    from pyluadec.ingest import load_bytes
+    for name in ("_G", "getfenv"):
+        assert name in _REFLECTIVE_BASE
+    root = load_bytes(_bytecode(b'  local a = _G local b = getfenv()'))
+    assert {b"_G", b"getfenv"} <= _stub_globals(root)
+
+
+def test_the_loop_variable_window_is_derived_from_the_opcode():
+    """U-6. `TFORLOOP A C` defines `R(A+3)..R(A+2+C)`; the window used to be a
+    hard-coded `a..a+6`, which silently LOST taint past four loop variables.
+    Asserted on the opcode's own arithmetic rather than on a fixture, so it
+    cannot drift back to a magic number that happens to pass.
+
+    Asserted on the SITE COUNTS, not on the verdict: since `blind-loop` also
+    fires on the same `TFORLOOP`, the file refuses either way, and a
+    verdict-level assertion passes with the magic window restored (measured,
+    132/132 green). What the window decides is whether the loop VARIABLE stays
+    tainted -- measured with the magic window at six variables:
+    `{'blind-loop': 1}`, the `blind-compare` on `x6` GONE.
+    """
+    from scripts.probe_keyseq import static_taint
+    from pyluadec.ingest import load_bytes
+    for nvars in (1, 2, 4, 6, 8):
+        names = ",".join(f"x{i}" for i in range(1, nvars + 1)).encode()
+        src = _wrap(b'  for ' + names + b' in sys.iter do\n'
+                    b'    if x' + str(nvars).encode() + b' == "z" then hit() end\n'
+                    b'  end')
+        counts = static_taint(load_bytes(_bytecode(src)))
+        assert counts["blind-compare"] >= 1, (nvars, counts)
+        assert counts["blind-loop"] >= 1, (nvars, counts)
+
+
 def test_the_driver_global_set_matches_the_probe_s_own_driver_table():
     """New-6. `_BASE_GLOBALS` is derived from the vendored interpreter by the
     test below; `_DRIVER_GLOBALS` was a hand copy of the Lua `DRIVER` table

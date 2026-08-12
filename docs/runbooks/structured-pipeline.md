@@ -2636,12 +2636,14 @@ do not spell the idiom; as a statement about the corpus it undercounts by
 conservative may-analysis over registers, per proto, to a fixed point on the
 existing `cfg.blocks.build_cfg`, run over the **original** lifted bytecode.
 Seeds are `GETGLOBAL`s of **every** name the probe environment does not
-resolve for real — `_BASE_GLOBALS` (re-derived from the vendored interpreter
-by a test) and `_DRIVER_GLOBALS` (compared against the Lua `DRIVER` table by
-another). It propagates through `MOVE`, `GETTABLE`/`SELF` (table **or** key),
-`CALL` whose callee is not provably a base/driver global, arithmetic,
-`CONCAT`, `UNM`/`NOT` and `LEN`; every `GETUPVAL` is stub; block entry takes
-the union of predecessors.
+resolve to a real, non-reflective library value: `_BASE_GLOBALS` (re-derived
+from the vendored interpreter by a test) and `_DRIVER_GLOBALS` (compared
+against the Lua `DRIVER` table by another), **minus `_REFLECTIVE_BASE` and
+minus anything the chunk shadows**. It propagates through `MOVE`,
+`GETTABLE`/`SELF` (table **or** key), `CALL` whose callee is not in
+`_CLEAN_CALLEES`, arithmetic, `CONCAT`, `UNM`/`NOT` and `LEN`; every
+`GETUPVAL` is stub; every register `lift_proto` reports as **captured** is
+stub for the whole proto; block entry takes the union of predecessors.
 
 **There is no "the chunk defines this global, so it is not a stub"
 exemption**, and there was for one round. `read - written` over the whole
@@ -2663,6 +2665,7 @@ refuse**:
 | `blind-length` | `LEN` on a stub-derived register (`OP_LEN` never consults a metamethod for a table) |
 | `blind-launder` | a call of `type`/`next`/`tostring`/`tonumber`/`select`/`pcall`/… with a stub-derived argument |
 | `blind-truthiness` | `TEST`/`TESTSET` on a stub-derived register |
+| `blind-loop` | `FORPREP`/`FORLOOP`/`TFORLOOP` whose control triple `R(A)..R(A+2)` is stub-derived — a loop's **trip count** is a branch, and the body can write a perfectly clean register |
 
 `blind-truthiness` was very nearly left out, on the prediction that
 `if someGlobal then` is common enough that refusing on it would take reach to
@@ -2670,6 +2673,40 @@ zero. **The prediction was wrong.** Measured: `snr_common` 17, `snr_graphic`
 9, `snr_memory` 9, `snr_music` 2, `snr_lib` **0** — so including it costs
 nothing here and makes condition 5 the literal property instead of an
 approximation of it.
+
+### The trusted-callee rule, and why it is an allowlist
+
+Round 2 fixed "an accessor's return value is not stub-derived" by declaring
+every `_BASE_GLOBALS` and `_DRIVER_GLOBALS` name a trusted callee — that is,
+by trusting a list of callees **without checking what those callees do**. It
+re-opened the same hole it closed. Measured, each with byte-equal traces, zero
+runtime marks, and the proxy visible in the trace at the comparison:
+
+```lua
+local ok, v = pcall(f)                  -- pcall FORWARDS the callee's returns
+local x = assert(sys.a)                 -- assert is the identity function
+rawget(_G, "doScriptScene") == nil      -- reflects the environment
+tostring = sys.conv; tostring(1)        -- a SHADOWED base name is a proxy
+getfenv().doScriptScene                 -- getfenv() returns the target's env,
+                                        -- whose __index BUILDS a proxy
+local g = _G; g.doScriptScene == nil    -- decided by where the probe keeps
+                                        -- the chunk's globals, not by the code
+```
+
+The rule is now an explicit **allowlist** of callees that provably cannot hand
+back a value derived from their arguments or from the environment —
+`pressButton`, `wait`, `type`, `rawequal`, `getmetatable`, `tostring`,
+`tonumber`, `print` — minus anything the chunk shadows, and only when no
+argument in the call window is stub-derived. Everything else, including every
+other base global, returns a stub. `_G`, `getfenv`, `setfenv`, `load*`,
+`dofile`, `require`, `module`, `package`, `arg` and `newproxy` are further
+demoted to **seeds** (`_REFLECTIVE_BASE`): `env.__index` does resolve them for
+real, but what they hand back is the stub environment's own shape.
+
+Measured cost: none. `snr_lib.lua` calls no base global at all, the corpus
+reads `_G` and `getfenv` zero times, and the only recognised callees it uses
+are `wait` (4556), `pressButton` (157), `string` (95), `select` (26), `math`
+(10) and `pairs` (7).
 
 ### What the pair still cannot see
 
@@ -2679,18 +2716,32 @@ twelve routes ship. Each of these is a committed test
 (`test_what_the_two_taint_instruments_still_cannot_see`) that *grants* and
 should not:
 
+**This is what I could construct, not a proof of what exists.** Three
+consecutive review rounds each found the new hole inside the code written to
+close the previous one — twelve routes in round 0, four in round 2, eight more
+in round 3 — and each round's list of "what remains" claimed to be the whole
+of it. Treat the three below as the residue I could not close, and assume
+there are others.
+
 * **A stub passed as an ARGUMENT.** `static_taint` is intra-proto and a
   parameter is a root, so `decide(sys.a)` with the comparison inside `decide`
-  is not seen. The RETURN direction — an accessor handing an engine value
-  back — was uncovered for one round and is now caught: a call's result is
-  stub-derived unless the callee is provably a base or driver global. That
-  also covers the aliased launderer (`local ts = tostring; ts(stub)`), which
-  the round-1 list named as a gap.
+  is not seen. (The RETURN direction is covered; so is the aliased launderer
+  `local ts = tostring; ts(stub)`.)
 * **A value stored into a script-built table and read back.** `t.x = stub`
   then `if t.x == "a"`; `SETTABLE` is not tracked. Indexing off a stub-derived
-  table, or at a stub-derived **key** (`t[sys.k]`, a separate route that
-  granted until round 2), both are.
+  table, or at a stub-derived **key** (`t[sys.k]`), both are.
 * **`VARARG`.** `local a = ...` compared against a literal is not flagged.
+  **Flagged for M5 task 10:** `snr_common.lua` has 26 `VARARG`s and calls
+  `select` 26 times, so this gap and the `select` idiom meet in exactly the
+  file both checkpoints live in.
+
+Two things tried this round that did not work, recorded so they are not
+retried blind: widening the loop-variable register window does **not** catch a
+stub-decided trip count (re-run at `a+40`, still granted — the body writes a
+clean register and the decision is the loop's own, which is why `blind-loop`
+had to be a site of its own); and pinning the derived `TFORLOOP` window on the
+VERDICT does not work either, because `blind-loop` refuses the same file
+anyway — it has to be pinned on the site counts.
 
 The static analysis is also **path-insensitive**: a site in a function the key
 sequence never enters still refuses the whole file. That is the conservative
@@ -2727,10 +2778,10 @@ truncated by sheer `vms()` volume". Both are wrong: 220, not 224; and 101, not
 | file | poll events / 3001 | verdict |
 | --- | --- | --- |
 | `snr_lib.lua` | 2243 | **L2@100%** — 3/3 protos; blocks in [0.39, 0.95] of 57 |
-| `snr_music.lua` | 2502 | refused `taint-static` (compare 36, launder 1, length 1, truthiness 2) |
-| `snr_graphic.lua` | 2606 | refused `taint-static` (compare 57, launder 1, length 7, truthiness 9) |
-| `snr_memory.lua` | 2608 | refused `taint-static` (compare 47, launder 2, truthiness 9) |
-| `snr_common.lua` | 2557 | refused `taint-static` (compare 214, launder 1, truthiness 19) |
+| `snr_music.lua` | 2502 | refused `taint-static` (compare 36, launder 1, length 1, loop 3, truthiness 2) |
+| `snr_graphic.lua` | 2606 | refused `taint-static` (compare 58, launder 1, length 7, loop 19, truthiness 9) |
+| `snr_memory.lua` | 2608 | refused `taint-static` (compare 48, launder 2, loop 10, truthiness 9) |
+| `snr_common.lua` | 2557 | refused `taint-static` (compare 236, launder 3, loop 50, truthiness 20) |
 
 **One of five authored files is granted.** In the ledger that is **2 rows and
 3 proto occurrences of 1944**, and all three ship STRUCTURED text — `snr_lib`
@@ -2773,6 +2824,18 @@ fail there if it changed or converged. L2 deliberately does not pin
 divergences of its own: a pin is an exemption, and this gate refuses on
 divergence rather than excusing it. `snr_common` refuses anyway, on
 `taint-static`.
+
+### Why this has to be sound rather than best-effort
+
+`l2` is a **committed ledger field**. `corpus/ledger.jsonl` currently carries
+2 rows / 3 occurrences at `{"cov": 1.0}` and 164 occurrences at
+`{"refused": "taint-static"}`, and `scripts/ratchet_diff.py` reads them for
+`l2-lost` and `l2-coverage-downgrade`. So an unsound grant does not stay in a
+console diagnostic: it is written into a checked-in artifact and becomes the
+baseline a later run is measured against. That is the reason the analysis is
+held to "no branch may be decided by a stub-derived value without a site being
+recorded" rather than to best effort — and the reason three rounds of holes in
+it were each treated as defects rather than as refinements.
 
 ### One deliberate exposure: `probe-error` details on the console
 
