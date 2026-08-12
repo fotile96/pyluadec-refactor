@@ -260,10 +260,14 @@ consulting `__eq`, so a stub proxy compared against a string literal is
 *unobservable* to the runtime harness, and `doScriptScene == "<literal>"` is
 this corpus's central idiom (re-derived 2026-08-13 on the **original
 bytecode** — a `GETGLOBAL "doScriptScene"` whose destination is an `EQ` operand
-within three instructions: **427 sites across 23 files**, plus 879 bare reads
-in the same 23; the noun matters, an earlier count of 310/20 was taken from the
-decompiled artifact TEXT and undercounted by 27% because three of the 23 ship
-fallback and never spell the name). Four rounds of tightening in task 9 found thirty granting
+within three instructions: **427 sites across 23 files**, out of **879** total
+`GETGLOBAL "doScriptScene"` reads in those same 23 files — so 452 reads are not
+comparison sites. The 879 is the **total**, not an additional population; an
+earlier revision of this paragraph wrote "plus 879 bare reads", double-counting
+the 427. The noun matters twice over: an earlier count of 310 sites across 20
+files was taken from the decompiled artifact TEXT rather than the bytecode and
+undercounted prevalence by 27%, because three of the 23 ship fallback and never
+spell the name). Four rounds of tightening in task 9 found thirty granting
 routes and never once moved the reach off 1 of 5 — every fix refused a fixture,
 none refused a corpus file that should have been granted.
 
@@ -293,10 +297,30 @@ asserting a number nobody re-derived.
 3. **"suite ~37.7s fixed-ordering"** (carried into task 12) — measured at
    task 12's base commit, fixed ordering, `833 passed in 40.16s`. See the M5
    wrap entry in `CHANGELOG.md` for the post-task figure.
-4. **"15 `CASES` driven by a plain `for` loop"** (M5 agenda item 10) — there
+4. **"`-p no:randomly` really does change the figure"** (from M5 task 11,
+   repeated in this report's first draft, in `CLAUDE.md` and in the
+   `CHANGELOG`) — **did not survive interleaved measurement.** 5 pairs on
+   macOS 15.2 / Apple M4: fixed 42.28 / 42.25 / 42.26 / 42.99 / 43.39s
+   (mean 42.63), random 42.57 / 42.69 / 42.97 / 43.09 / 42.78s (mean 42.82).
+   A **0.19s** difference against a **1.14s** spread inside the fixed arm
+   alone. A reviewer's 10 interleaved runs on a second host reproduce the
+   non-separation *with the sign inverted* (fixed 39.76–40.08, random
+   39.36–41.13). The supported statement is narrower and duller: this suite
+   has 1–2s of run-to-run variance, and a single-run comparison across
+   sessions cannot separate ordering from noise. That noise, not ordering, is
+   where this milestone's disputed timings came from.
+5. **"15 `CASES` driven by a plain `for` loop"** (M5 agenda item 10) — there
    are **17**; they are now `pytest.mark.parametrize`d, so the count maintains
    itself.
-5. **"`sharing the snapshot OBJECT` changes nothing; only hoisting
+6. **"a chunk ships structured iff its ROOT certifies"** — false since M5
+   task 6, and the sweep for it needed three passes. Round 1 of this task
+   found two more **live production** sites that a phrase-match had missed
+   (`src/pyluadec/pipeline.py`'s module docstring and
+   `src/pyluadec/emit/__init__.py`'s), plus two places that drew the retired
+   *inference* rather than stating the rule
+   (`tests/test_structured_certify.py::test_table_constructor_fold_reorders_statements_but_cannot_ship`
+   and its runbook twin). Search for the concept, not the wording.
+7. **"`sharing the snapshot OBJECT` changes nothing; only hoisting
    reproduces"** (M5 task 7 review) — re-measured at task 12: *both* variants
    turn `test_while_true_break_guard_recovers_loop` from `L3` to `L1`, and
    there is no third variant, because `open_scope` returns a value and a value

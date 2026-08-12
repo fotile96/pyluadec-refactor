@@ -457,10 +457,17 @@ def test_table_constructor_fold_reorders_statements_but_cannot_ship(tmp_path):
     Two things this test asserts, and one it deliberately does not:
 
     * the reordering is real and observable (the two stdouts differ);
-    * it is UNSHIPPABLE -- the root does not certify, so `emit_certified_chunk`
-      ships the fallback chunk, whose stdout matches the original exactly.
-      This is the whole point of the certification gate: a reconstruction bug
-      can only ever cost L3 rate, never correctness.
+    * it is UNSHIPPABLE. Note the reasoning, which M5 task 12 had to correct:
+      a root that misses `L3` no longer implies the fallback chunk ships, since
+      M5 task 6 put a hybrid tier in between. Measured on this fixture
+      2026-08-13: `certs == {"main": "L1", "main_0": "L3"}`, `out.hybrid` is
+      **False** and `out.fallback_paths == {"main", "main_0"}` -- i.e.
+      `certify_hybrid` was tried and returned `None`, because the defect is in
+      the ROOT's own `code` (`refusal_reason` is `mismatch: code`) and a hybrid
+      can only substitute descendants. So the whole-chunk fallback ships and
+      its stdout matches the original exactly. This is the whole point of the
+      certification gate: a reconstruction bug can only ever cost L3 rate,
+      never correctness.
     * it does NOT assert the reordering is fixed. When someone does fix it,
       the `!=` below starts failing, which is the intended notification.
 

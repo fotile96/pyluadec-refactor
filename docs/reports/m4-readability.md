@@ -1,6 +1,12 @@
 # M4 readability evaluation: our output vs the predecessor's shipped text
 
-> **SUPERSEDED for every current figure — see `docs/reports/m5-quality.md`.**
+> **SUPERSEDED for every current figure AND for one invariant — see
+> `docs/reports/m5-quality.md`.** The invariant: §1.1, §2.3 and §3 state that a
+> chunk ships structured source **only if its root certifies**. That was true
+> when this was written and stopped being true at M5 task 6, which added a
+> hybrid tier: 6 corpus files ship structured-with-holes while their root does
+> not certify. Read those passages as the M4 state, not as a rule.
+>
 > This file is the M4 snapshot and is kept as one. All five printer-level gaps
 > it names were closed by M5 task 7 (output surface v2) and the sixth,
 > structural one was halved by M5 task 6 (hybrid emission): re-measured

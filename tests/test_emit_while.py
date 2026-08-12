@@ -73,8 +73,14 @@ def test_while_output_runs_identically():
     src = b"local n = 0 while true do n = n + 1 if n > 3 then break end end print(n)"
     p = load_bytes(compile_source(src, strip=True))
     out = emit_certified_chunk(p)
-    # `ChunkOutcome` has no `.structured` flag: "the artifact is structured"
-    # IS "the root certified L3" (structure/structured.py's invariant).
+    # `ChunkOutcome` has no `.structured` flag, so this asserts the level and
+    # relies on the *one-directional* rule that survives M5 task 6's hybrid
+    # emission: a root that certifies `L3` ships its own certified bytes, which
+    # are structured. The converse ("not structured => the root did not
+    # certify") is what stopped being true -- a hybrid ships structured text
+    # with fallback holes while its root does NOT certify, and 6 corpus files
+    # do exactly that. The comment here used to assert the biconditional as
+    # `structure/structured.py`'s invariant; corrected at M5 task 12.
     assert out.certs["main"].level == "L3"
     a = run_bytes(compile_source(src, strip=True), is_source=False)
     b = run_bytes(out.source, is_source=True)

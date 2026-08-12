@@ -1,9 +1,16 @@
 """反编译驱动（spec §7）。
 
 M3 起，每个 proto 都先经 `structure.structured.emit_certified_chunk` 做逐 proto
-L3 认证；等级（proof record，逐 proto）与产物源码（逐 chunk，root 认证才发结构化
-源码）**刻意解耦**——见 `structure.structured` 的模块文档。confession 只记在未认证
-的 proto 上：等级上升、confession 下降，正是台账的 ratchet 信号。
+L3 认证；等级（proof record，逐 proto）与产物源码（逐 chunk）**刻意解耦**——见
+`structure.structured` 的模块文档。confession 只记在实际发了 fallback 文本的
+proto 上：等级上升、confession 下降，正是台账的 ratchet 信号。
+
+**「root 认证才发结构化源码」这条自 M5 task 6 起不成立**（本行原文如此，M5 task 12
+更正）。产物有三档，按顺序试：root 自己认证过的字节；否则 `certify_hybrid` 认证过
+的 hybrid——结构化代码，只在无法认证的 CLOSURE 站点填入语义精确的 fallback，此时
+**root 并未认证**却仍发结构化文本；否则整块 fallback。语料上 216 / 6 / 7。不变的
+是更弱也更真的那句：产物里每个 proto 要么被「编译了这串字节」的那次认证逐字段覆盖，
+要么由 fallback 发射并在台账 confess。
 """
 from __future__ import annotations
 

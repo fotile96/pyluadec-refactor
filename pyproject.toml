@@ -28,7 +28,7 @@ testpaths = ["tests"]
 # never returns -- no failure name, no diff, easy to mistake for flakiness
 # and re-run.
 #
-# Sizing (test count re-counted 2026-08-13 at M5 task 12: 861 tests, corpus
+# Sizing (test count re-counted 2026-08-13 at M5 task 12 round 1: 860 tests, corpus
 # present -- it read 523 from M5 task 2 through task 8, then 676 from task 8
 # through task 11, stale both times. The wall-clock analysis below is
 # unaffected either way, since what sizes this backstop is the slowest SINGLE
@@ -37,9 +37,10 @@ testpaths = ["tests"]
 # revision of this comment carried the same date and the pre-cache numbers,
 # ~40s suite / 12.0s ratchet / 10.0s probe, which are all now wrong):
 # the full suite was 32-34s wall clock (12 runs, drifting upward across a
-# session on this laptop) and is 41.6-43.0s at task 12 depending on test
-# ordering -- but that total is NOT what this setting is sized against, since
-# the timeout applies per test. The slowest SINGLE entry is
+# session on this laptop) and is 42.2-43.4s at task 12 round 1 -- ordering is
+# NOT a factor there (5 interleaved pairs differ by 0.19s against a 1.14s
+# within-arm spread; see m3-backlog.md, M6 agenda 6) -- but that total is NOT
+# what this setting is sized against, since the timeout applies per test. The slowest SINGLE entry is
 # tests/test_behaviour_probe.py's corpus fixture SETUP at 10.4-11.9s -- it is
 # the first payer of the ~1900 luac_sz4 certification subprocesses, and every
 # later corpus pass now reads that cache instead (the ratchet test, previously

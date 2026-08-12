@@ -5,9 +5,16 @@
 **谁在读这张表，以及谁不读（2026-08-13 实测，M5 task 1 发现 / task 12 收口）。**
 `reads` / `writes` / `reads_open` / `writes_open` 被 `structure/fallback.py`、
 `express/`、两道 effects 一致性门实际消费。`InstrEffects.effect`（三档效应格
-本身）**在 `src/pyluadec/` 里没有任何消费者**——由
-`tests/test_effects_len.py::test_nothing_in_src_reads_the_effect_field` 以 AST
-扫描钉住（该测试失败不等于缺陷，见其 docstring）。
+本身）**没有找到任何 `src/pyluadec/` 内的消费者**——由
+`tests/test_effects_len.py::test_nothing_in_src_reads_the_effect_field` 钉住
+（该测试失败不等于缺陷，见其 docstring）。
+
+**这句话的强度以那个测试为准，不要读成绝对的完备性断言**（M5 task 12 round 1
+更正：原文写的是「没有任何消费者」，比它的钉子支持的更硬）。钉子是一次 AST 扫描，
+只认两种写法：`ast.Attribute` 名为 `effect`，以及第二个参数是常量字符串
+`"effect"` 的 `getattr` 调用。**它看不见**的写法：`getattr(fx, name)` 里 `name`
+是变量、`vars(fx)["effect"]` / `dataclasses.asdict`、`**fx.__dict__` 展开、以及
+任何运行时反射。语料/测试都不产生这些写法，但「扫不出来」与「不存在」是两件事。
 
 本 docstring 原文写的是「一切上层（内联门、pass 验证、fallback 发射）共享此处
 结论」。三个例子里有两个已经不成立：内联门自 M3 task 8 起改为模拟 `lparser.c`

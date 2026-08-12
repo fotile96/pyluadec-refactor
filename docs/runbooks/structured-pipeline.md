@@ -1577,7 +1577,8 @@ the original instruction stream actually did.
 ### Run the suite
 
 ```bash
-PYLUADEC_CORPUS_DIR=<corpus> uv run pytest              # 861 tests; 42.3-43.0s (default RANDOM order) / 41.6-42.5s (-p no:randomly), 2026-08-13, M5 task 12
+PYLUADEC_CORPUS_DIR=<corpus> uv run pytest              # 860 tests; 42.2-43.4s on macOS 15.2 / Apple M4, 39.4-41.1s on a second host (2026-08-13, M5 task 12).
+                                                        # Ordering is NOT a factor: 5 interleaved pairs differ by 0.19s against a 1.14s within-arm spread. See m3-backlog.md, M6 agenda 6.
 PYLUADEC_CORPUS_DIR=<corpus> uv run pytest tests/test_effects_emitter_consistency.py -v
 ```
 
@@ -2274,8 +2275,15 @@ committed tests, so "known" here means recorded and fenced, not tolerated.
 
    prints `1 x 2`; the structured print of it —
    `print("x")` then `local l0_1 = {["a"] = l0_0(1), ["b"] = l0_0(2)}` —
-   prints `x 1 2`. **Unshippable**: the root does not certify, so the
-   fallback chunk ships and its stdout matches the original exactly. Pinned
+   prints `x 1 2`. **Unshippable** — but not by the one-step rule this
+   sentence used to give ("the root does not certify, so the fallback ships"),
+   which M5 task 6 retired and task 12 corrected here. Measured on this
+   fixture 2026-08-13: `main` is `L1` with `mismatch: code`, `main_0` is `L3`,
+   and `emit_certified_chunk` returns `hybrid=False` with
+   `fallback_paths == {"main", "main_0"}` — `certify_hybrid` was tried and
+   returned `None`, because the defect is in the ROOT's own `code` and a hybrid
+   can only substitute descendants. So the whole-chunk
+   fallback ships and its stdout matches the original exactly. Pinned
    by `tests/test_structured_certify.py::
    test_table_constructor_fold_reorders_statements_but_cannot_ship`, which
    asserts both the divergence and the fact that it cannot escape. Note the

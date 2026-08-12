@@ -88,11 +88,21 @@
   protocol could express and the printer could not. `src/pyluadec/passes/` was
   never created, so no code was deleted. The plugin surface itself is not
   rejected; its client is M6+'s proposer.
-- **Suite: 861 tests, 41.6–42.5s fixed ordering / 42.3–43.0s random**, against
-  a 45s ceiling. `-p no:randomly` really does change the figure, which is where
-  several of this milestone's disputed timings came from. M5 task 2 recovered
+- **Suite: 860 tests, 42.2–43.4s on macOS 15.2 / Apple M4 (arm64)**, against
+  a 45s ceiling. **Test ordering makes no measurable difference**, and the
+  claim that it does — inherited from M5 task 11 and repeated here in a first
+  draft — did not survive measurement: 5 interleaved pairs on this host give
+  fixed 42.25–43.39s (mean 42.63) against random 42.57–43.09s (mean 42.82), a
+  0.19s difference inside a 1.14s spread within the fixed arm alone, and a
+  reviewer's 10 interleaved runs on a second host reproduce the
+  non-separation with the sign inverted. What is real is that this suite has a
+  second or two of run-to-run variance, so a single-run comparison across
+  sessions cannot separate ordering from noise — which is the actual source of
+  this milestone's disputed timings. M5 task 2 recovered
   ~11.9s with a process-level certification memo and the milestone spent all of
-  it; **~2s of headroom is the first item on the M6 engineering agenda.**
+  it; **1.6s of headroom at worst on this host is the first item on the M6
+  engineering agenda** (a reviewer's host measures the same tree at
+  39.4–41.1s, i.e. ~4s — quote the host with the number).
 - **Not done, and now the M6 agenda** (`docs/runbooks/m3-backlog.md`, numbered
   so items can be cited): reaching 0.997 by closing the reconstruction residual;
   corpus-wide L2 plus the taint analysis's four documented gaps (argument

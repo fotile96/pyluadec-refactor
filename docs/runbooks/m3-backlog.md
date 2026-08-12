@@ -40,9 +40,10 @@ why. Readability against the predecessor's shipped output is evaluated in
 `docs/reports/m4-readability.md`.
 
 Status at the end of M5 (all figures measured 2026-08-13 at the task-12 tree):
-229/229 still compile; **861 tests pass in 41.6–42.5s** fixed ordering,
-42.3–43.0s random (`-p no:randomly` really does change the number — several
-disputed timings in M5 trace to that alone) against a 45s ceiling; the ledger
+229/229 still compile; **860 tests pass in 42.2–43.4s** on macOS 15.2 /
+Apple M4 (arm64) against a 45s ceiling — **test ordering makes no measurable
+difference**, see the M6 agenda item 6 for the interleaved numbers and for the
+inherited claim that it does, which did not reproduce; the ledger
 holds the same 1478 unique hashes over 1944 occurrences, of which **1430 unique
 (96.8%) / 1896 occurrences (97.5%)** are `L3`, against M5 exit floors of 0.96
 on both bases plus 0.85 structured reach and 0.96 quality
@@ -1876,11 +1877,13 @@ then a fourth of the committed vocabulary is asserted but not demonstrated.
 
 ### Closed — M5 task 12, item by item
 
-The suite-time measurement pass this set was deferred for: **861 passed, 41.6–
-42.5s fixed ordering / 42.3–43.0s random**, against a 45s ceiling. That is ~2s
-of headroom, which is itself now an M6 item (agenda 6) — and it is the reason
-the three remaining entries were re-deferred rather than swept: each adds test
-code, and two of them add test *count*.
+The suite-time measurement pass this set was deferred for: **860 passed,
+42.2–43.4s** on macOS 15.2 / Apple M4 (arm64), against a 45s ceiling. That is
+**1.6s** of headroom at worst on this host (a reviewer's host measures the same
+tree at 39.4–41.1s, i.e. ~4s — quote the host with the number), which is itself
+now an M6 item (agenda 6) — and it is the reason the three remaining entries
+were re-deferred rather than swept: each adds test code, and two of them add
+test *count*.
 
 1. **"A dead loop-invariant condition inside an unpack generator" —
    CLOSED AS UNLOCATABLE, with the measurement.** Two AST scans over all 62
@@ -2278,8 +2281,8 @@ smoothed over.
 M5's own closed items keep their record in place above (§§1–14), including the
 retracted claims inside them; do not re-derive from those.
 
-**Starting state, measured 2026-08-13.** 229/229 compile; **861 tests pass in
-41.6–42.5s (fixed ordering) / 42.3–43.0s (random)** against a 45s ceiling; the
+**Starting state, measured 2026-08-13.** 229/229 compile; **860 tests pass in
+42.2–43.4s** on macOS 15.2 / Apple M4 (arm64), against a 45s ceiling; the
 ledger holds 1478 unique shapes over 1944 occurrences, of which **1430 (96.8%)
 / 1896 (97.5%)** are `L3`; **216 files ship fully structured, 6 hybrid, 7 whole-
 file fallback**; **1747/1944 (89.9%) occurrences ship structured text**; ported
@@ -2432,17 +2435,38 @@ residual in agenda 1.
 Each of these was individually decided at the M5 wrap rather than left silent;
 the per-item reasoning is in §§10, 11 and 14 above. Grouped here because they
 share one property — none changes behaviour, and several add test code to a
-suite with about **2 seconds** of headroom.
+suite whose headroom is **host-dependent and, on the tightest host measured,
+1.6 seconds**.
 
-- **Suite headroom is the first of them.** 861 tests at 41.6–43.0s against a
-  45s ceiling. M5 task 2 recovered ~11.9s with a process-level certification
+- **Suite headroom is the first of them.** 860 tests. Measured 2026-08-13 on
+  macOS 15.2 / Apple M4 (arm64): **42.2–43.4s**, i.e. **1.6s** under the 45s
+  ceiling at worst. A reviewer's host measures the same tree at **39.4–41.1s
+  over 10 runs**, i.e. ~4s. Quote the host with the number.
+
+  **Test ordering is NOT a factor, and the claim that it is did not survive
+  measurement.** M5 task 11 reported 37.2–37.6s fixed against 39.5–40.4s
+  random and that split propagated into `CLAUDE.md`, the `CHANGELOG` and this
+  file. Re-measured at task 12 round 1, **interleaved** rather than across
+  sessions, 5 pairs: fixed **42.28 / 42.25 / 42.26 / 42.99 / 43.39s** (mean
+  42.63), random **42.57 / 42.69 / 42.97 / 43.09 / 42.78s** (mean 42.82). The
+  difference is **0.19s** against a **1.14s** spread inside the fixed arm
+  alone, and the reviewer's 10 interleaved runs on its own host reproduce the
+  non-separation *with the sign inverted* (fixed 39.76–40.08, random
+  39.36–41.13). What is real is 1–2s of run-to-run variance, which is why a
+  single-run comparison across sessions has repeatedly "shown" an effect that
+  is not there.
+
+  M5 task 2 recovered ~11.9s with a process-level certification
   memo and the milestone spent all of it. The two biggest single costs are
   `tests/test_behaviour_probe.py`'s corpus fixture (11.3s, and it is the *first
   payer* — the saving is a transfer, not a disappearance) and, new at task 12,
   `tests/test_m5_exit.py::test_m5_exit_quality_no_regression` (2.4s, 229
-  `luac_sz4` runs). Raising the ceiling is not the answer; the honest options
-  are memoizing `oracle.compile_source` (it has no cache today and every call
-  is a subprocess) or splitting the corpus-wide arms behind a marker.
+  `luac_sz4` runs). Raising the ceiling is not the answer. The concrete lever,
+  and it is a real one: **`oracle.compile_source` has no cache and every call
+  is a subprocess**, while `tests/test_corpus_compile.py` calls it on the
+  *identical* 229 sources this new test does — memoizing it collapses one of
+  the two passes outright. Failing that, split the corpus-wide arms behind a
+  marker.
 - Three hand-rolled region walks that should be one `_CHILDREN`-driven
   generator (§10).
 - The one `mismatches[0].field` assertion that pins `_cmp`'s field *ordering*,

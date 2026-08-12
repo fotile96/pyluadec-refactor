@@ -61,14 +61,46 @@ def _rows():
     return [json.loads(l) for l in LEDGER.read_text().splitlines() if l.strip()]
 
 
+# The three ledger-derived floors, as `name -> (numerator, denominator, floor)`
+# computed by ONE pure function over already-parsed rows.
+#
+# Pure and parameterised on `rows` deliberately: an assertion written inline
+# over the committed ledger only ever runs against data that satisfies it, so
+# it cannot be shown to fail. `test_the_ledger_metrics_actually_reject_a_worse_ledger`
+# feeds this same function rows that have been mutated to look like a
+# regression, which is the only way the floors below are more than decoration.
+LEDGER_FLOORS = {"unique L3": 0.96, "occurrence L3": 0.96, "structured reach": 0.85}
+
+#: The fourth floor. Not in `LEDGER_FLOORS` because it is not derived from the
+#: ledger at all -- `test_m5_exit_quality_no_regression` re-decompiles and
+#: recompiles the whole corpus to get it.
+QUALITY_FLOOR = 0.96
+
+
+def ledger_metrics(rows) -> dict[str, tuple[int, int]]:
+    occ = [o for r in rows for o in r["occurrences"]]
+    return {
+        "unique L3": (sum(1 for r in rows if r["level"] == "L3"), len(rows)),
+        "occurrence L3": (sum(len(r["occurrences"]) for r in rows
+                              if r["level"] == "L3"), len(occ)),
+        "structured reach": (sum(1 for o in occ if o["shipped"] == "structured"),
+                             len(occ)),
+    }
+
+
+def _check(rows, name):
+    num, den = ledger_metrics(rows)[name]
+    floor = LEDGER_FLOORS[name]
+    frac = num / den
+    assert frac >= floor, f"{name} {num}/{den} = {frac:.1%}, floor {floor:.1%}"
+
+
 def test_m5_exit_l3_no_regression_unique():
     """M4 exit 94.0% unique -> **96.8% achieved** (1430/1478), measured
     2026-08-13. Floor 0.96."""
     rows = _rows()
     assert rows
-    l3 = sum(1 for r in rows if r["level"] == "L3")
-    frac = l3 / len(rows)
-    assert frac >= 0.96, f"unique L3 {l3}/{len(rows)} = {frac:.1%}, floor 96.0%"
+    _check(rows, "unique L3")
 
 
 def test_m5_exit_l3_no_regression_occurrences():
@@ -79,11 +111,8 @@ def test_m5_exit_l3_no_regression_occurrences():
     Floor 0.96, and the denominator is pinned at `== 1944` because a filtered
     denominator has already hidden two real defects in this project."""
     rows = _rows()
-    total = sum(len(r["occurrences"]) for r in rows)
-    assert total == 1944
-    l3 = sum(len(r["occurrences"]) for r in rows if r["level"] == "L3")
-    frac = l3 / total
-    assert frac >= 0.96, f"occurrence L3 {l3}/{total} = {frac:.1%}, floor 96.0%"
+    assert sum(len(r["occurrences"]) for r in rows) == 1944
+    _check(rows, "occurrence L3")
 
 
 def test_m5_exit_structured_reach():
@@ -98,11 +127,7 @@ def test_m5_exit_structured_reach():
     live in one of the 7 whole-file-fallback files). A milestone whose headline
     was readability has to assert the artifact, not only the proof.
     """
-    occ = [o for r in _rows() for o in r["occurrences"]]
-    structured = sum(1 for o in occ if o["shipped"] == "structured")
-    frac = structured / len(occ)
-    assert frac >= 0.85, \
-        f"structured occurrences {structured}/{len(occ)} = {frac:.1%}, floor 85.0%"
+    _check(_rows(), "structured reach")
 
 
 def test_m5_exit_quality_no_regression(corpus_dir, decompiled):
@@ -139,42 +164,110 @@ def test_m5_exit_quality_no_regression(corpus_dir, decompiled):
         total += score_protos(original, candidate,
                               file_size=f.stat().st_size, small_kb=10).score
     avg = total / len(files)
-    assert avg >= 0.96, f"corpus average {avg:.6f}, floor 0.960000"
+    assert avg >= QUALITY_FLOOR, f"corpus average {avg:.6f}, floor {QUALITY_FLOOR:.6f}"
+    # The margin half of `test_the_floors_are_below_what_is_achieved...`, made
+    # here rather than there because re-deriving this number costs 229
+    # `luac_sz4` runs and doing it twice would double the most expensive test
+    # in the file (M5 task 12 round 1, minor 5). It is the THINNEST margin of
+    # the four floors and the ONLY one that can move without the ledger
+    # moving -- `semantic_score` is a coarsening of the certification
+    # comparison, so a reconstruction change can shift it while every `level`
+    # stays put -- which is exactly why it needs the check rather than why it
+    # can skip it. A strict `>` is the whole assertion: a floor set AT the
+    # measurement is a tripwire, and the standard repair for a tripwire is to
+    # edit the threshold.
+    assert avg > QUALITY_FLOOR, (
+        f"corpus average {avg:.6f} is AT or below its floor {QUALITY_FLOOR:.6f}; "
+        f"a floor with no margin is a tripwire, not a commitment")
 
 
 def test_the_floors_are_below_what_is_achieved_and_can_still_fail():
     """The floors are only commitments if they are reachable from below, and
-    only meaningful if they are not already tripped. Both halves, on the same
-    arithmetic the four tests above use, so a future edit that sets a floor AT
-    the measurement (the standard way a gate is quietly retired) is visible
-    here as a zero margin.
+    only meaningful if they are not already tripped. A future edit that sets a
+    floor AT the measurement -- the standard way a gate is quietly retired --
+    shows up here as a zero margin.
+
+    Covers the **three ledger-derived** floors. The fourth, the quality floor,
+    asserts its own margin inside
+    `test_m5_exit_quality_no_regression` rather than here, because re-deriving
+    it costs 229 `luac_sz4` runs and doing it in two places would double the
+    file's cost (M5 task 12 round 1, minor 5).
 
     Deliberately NOT asserting the achieved values themselves -- those are
     measurements and they move. What is asserted is the RELATION.
     """
     rows = _rows()
-    occ = [o for r in rows for o in r["occurrences"]]
-    achieved = {
-        "unique L3": (sum(1 for r in rows if r["level"] == "L3") / len(rows), 0.96),
-        "occurrence L3": (sum(len(r["occurrences"]) for r in rows
-                              if r["level"] == "L3") / len(occ), 0.96),
-        "structured reach": (sum(1 for o in occ if o["shipped"] == "structured")
-                             / len(occ), 0.85),
-    }
-    for name, (value, floor) in achieved.items():
-        assert value > floor, f"{name}: achieved {value:.4f} is AT or below its floor {floor}"
-        assert floor > 0.0
+    for name, (num, den) in ledger_metrics(rows).items():
+        floor = LEDGER_FLOORS[name]
+        assert num / den > floor, \
+            f"{name}: achieved {num/den:.4f} is AT or below its floor {floor}"
+        assert 0.0 < floor < 1.0
 
 
-@pytest.mark.parametrize("frac,floor,ok", [
-    (0.9675, 0.96, True),
-    (0.9599, 0.96, False),
-    (0.8986, 0.85, True),
-    (0.8499, 0.85, False),
-])
-def test_the_floor_comparison_rejects_what_it_should(frac, floor, ok):
-    """Prove the comparison the four gates use can fail. Each of them passes on
-    today's ledger and would go on passing if `>=` were quietly changed to
-    something vacuous; four M4 reviews in a row found guards that were
-    deletable with a green tree."""
-    assert (frac >= floor) is ok
+@pytest.mark.parametrize("name", sorted(LEDGER_FLOORS))
+def test_the_ledger_metrics_actually_reject_a_worse_ledger(name):
+    """Drive `ledger_metrics` + `_check` -- the exact code the three
+    ledger-derived gates run -- over rows mutated to look like a regression,
+    and require each to go red.
+
+    This replaces a version that asserted `(frac >= floor) is ok` over literal
+    constants, i.e. that tested Python's `>=` rather than anything in this
+    file, and could be deleted with a green tree and nothing lost (M5 task 12
+    round 1, minor 6). The committed ledger satisfies all three gates, so
+    without this the only evidence they can fail is that they look like they
+    could.
+
+    The mutation is per metric and minimal: demote enough `L3` rows, or flip
+    enough `shipped` values, to cross that metric's floor -- then assert the
+    OTHER metrics are untouched, which is what makes each gate's failure
+    attributable to its own quantity rather than to a ledger that is broken
+    everywhere.
+    """
+    import copy
+    rows = copy.deepcopy(_rows())
+    _check(rows, name)                                   # clean: green
+
+    num, den = ledger_metrics(rows)[name]
+    # Demotions needed to push `num/den` strictly below the floor. Computed,
+    # not guessed: a first draft used `den - int(floor*den) + 1`, which is the
+    # count of rows ALREADY below and needs 61 demotions where 12 suffice --
+    # and 61 was enough to trip the sibling gate too, which is exactly the
+    # confusion this test's second half exists to detect.
+    need = num - int(LEDGER_FLOORS[name] * den)
+
+    if name == "structured reach":
+        for r in rows:
+            for o in r["occurrences"]:
+                if need <= 0:
+                    break
+                if o["shipped"] == "structured":
+                    o["shipped"], need = "fallback", need - 1
+    elif name == "unique L3":
+        # Demote rows carrying ONE occurrence each, so the sibling occurrence
+        # rate falls by as little as possible. Measured: 12 demotions cross
+        # this floor, and 1896 - 12 = 1884 of 1944 = 96.9% keeps the sibling up.
+        for r in rows:
+            if need <= 0:
+                break
+            if r["level"] == "L3" and len(r["occurrences"]) == 1:
+                r["level"], need = "L1", need - 1
+    else:
+        # Demote the FATTEST rows, so the occurrence rate crosses its floor
+        # while the unique rate barely moves. Measured: the largest row alone
+        # carries 292 occurrences against a 30-occurrence budget, so exactly
+        # one row moves and unique goes 1430 -> 1429 of 1478 = 96.7%.
+        for r in sorted(rows, key=lambda r: -len(r["occurrences"])):
+            if need <= 0:
+                break
+            if r["level"] == "L3":
+                r["level"], need = "L1", need - len(r["occurrences"])
+    assert need <= 0, f"could not construct a {name} regression"
+
+    with pytest.raises(AssertionError, match=name):
+        _check(rows, name)
+
+    # ... and ONLY that one. A mutation broad enough to trip every gate would
+    # show the gates are not independent rather than that this one works.
+    for other in LEDGER_FLOORS:
+        if other != name:
+            _check(rows, other)
