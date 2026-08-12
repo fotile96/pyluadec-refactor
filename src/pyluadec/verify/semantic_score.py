@@ -38,15 +38,46 @@ here, with what it can do to the number. Corpus counts below were measured
 this session over all 229 files / 1944 protos.
 
 D1. `_const_name` on a string constant. Theirs returned the decoded `str`
-    itself (`"print"`); ours returns `_normalize_const(value)`
-    (`"str:5:<sha1>"`), because bytes are never decoded outside the
-    presentation layer. **No effect on any score**: this is an injective
-    relabelling applied identically to both sides, and `_counter_similarity`
-    only ever tests keys for equality. It is strictly *finer* in one corner:
-    theirs let a string constant literally spelling a tag (`"G:x"`,
-    `"num:5"`) collide with a register tag or a number's normalization.
-    Measured: **0** of 49063 corpus string constants start with any of the
-    14 tag prefixes this module produces, so that corner is empty here.
+    itself (`"print"`); a first version of this port routed it through
+    `_normalize_const(value)` (`"str:5:<sha1>"`) instead, on the theory that
+    it is an injective relabelling applied identically to both sides and
+    `_counter_similarity` only ever tests keys for equality. **That theory
+    was wrong** (found in round-1 review, 2026-08-12): `_table_access_tag`
+    tests a *prefix*, `key.startswith("K:str:")`, not equality. Theirs could
+    never satisfy that test through `_const_name`'s output (a raw string
+    constant is never `str:`-prefixed by construction), so the LOADK-into-
+    register path -- taken whenever a GETTABLE's key constant index is >=
+    256 and so cannot be RK-embedded -- always fell through to
+    `"TABLE:access"` for them. The first port version, by contrast, tagged
+    that same register `K:str:5:<sha1>`, which *does* start with `K:str:`,
+    so it took the `.field` branch instead. `_rk_tag`'s *direct* embed path
+    (constant index < 256) was never affected either way -- it calls
+    `_normalize_const` directly in both implementations, not `_const_name`,
+    so it already agreed.
+
+    Measured this session: **60** such GETTABLE sites across **9** corpus
+    files flip classification (one-off instrumented replay of this module's
+    forward pass over every proto in every original corpus file, not
+    committed -- the number is reproducible from the mechanism above).
+    Corpus `avg_score`: **0.935579** (first-version behaviour) ->
+    **0.935633** (fixed) -- one file's score moves,
+    `snr_common.lua` **0.161667 -> 0.174230**. Direction: the first version
+    was strictly *stricter* than the predecessor in this corner (finer, not
+    coarser), so the fix raises the score; it never lowers one.
+
+    **Fix applied**: `_const_name` now special-cases `bytes` with its own
+    injective, non-`str:`-prefixed tag (`cn:{len}:{sha1}`) instead of
+    delegating to `_normalize_const`. This reproduces the predecessor's
+    *behavioural class* for the register-indirect path (injective, but the
+    `.field` branch stays unreachable through LOADK, exactly as it was for
+    them) without decoding any bytes -- `_normalize_const` itself, and every
+    other caller of it (`_rk_tag`'s embed path, `constant_fingerprint`),
+    is untouched. This was chosen over documenting the stricter behaviour
+    as accepted, because "port fidelity is the deliverable" (task brief) and
+    this file's stated rule is to reproduce their *comparison*; a prefix
+    scheme that accidentally changes a downstream `startswith` verdict is a
+    comparison difference, not a bridge-loss difference, so it belongs in
+    the "match" column rather than the "diverge, but harmlessly" column.
 
 D2. String fingerprint. Theirs `str:{len(str)}:{sha1(str.encode("utf-8"))}`;
     ours `str:{len(bytes)}:{sha1(bytes)}`. Measured: **0** of 49063 corpus
@@ -196,10 +227,12 @@ _ARITH_TAGGED = frozenset({"ADD", "SUB", "MUL", "DIV", "MOD", "POW",
 class _Ins:
     """A decoded instruction shaped exactly like the predecessor's dict.
 
-    `A`/`B`/`C`/`Bx`/`sBx` are `None` in precisely the positions where
-    `decode_instruction` left the key out of the dict (`iABC` -> B, C;
-    `iABx` -> Bx; `iAsBx` -> sBx and Bx), because `_extract_semantic_counters`
-    branches on `is not None` and would classify differently otherwise.
+    `A`/`B`/`C`/`Bx`/`sBx` are `None` in precisely the positions
+    `decode_instruction` left out of the dict for that format -- `iABC` ->
+    `Bx`, `sBx` are `None` (`B`, `C` present); `iABx` -> `B`, `C`, `sBx` are
+    `None` (`Bx` present); `iAsBx` -> `B`, `C` are `None` (`Bx` and `sBx`
+    both present) -- because `_extract_semantic_counters` branches on
+    `is not None` and would classify differently otherwise.
     `pc` is 0-based, matching their `enumerate(raw_proto["code"])`.
     """
     pc: int
@@ -216,6 +249,12 @@ class _Ins:
 def _decode_all(proto: Proto) -> list[_Ins]:
     out: list[_Ins] = []
     for pc, word in enumerate(proto.code):
+        # decode()'s `pc` parameter is 1-based repo-wide (see lift.py, which
+        # loops `pc = 1; while pc <= n`); it reaches only DecodeError's
+        # message text here, never a returned field. `_Ins.pc` below is
+        # deliberately 0-based instead, to match the predecessor's
+        # `enumerate(raw_proto["code"])` -- the two conventions coexist on
+        # purpose, not by oversight.
         ri = decode(word, pc + 1)
         spec = OP_SPECS[ri.op]
         name = ri.op.name
@@ -358,9 +397,23 @@ def _cfg_shape(instrs: list[_Ins], reachable_only: bool) -> tuple[int, int, int]
 def _const_name(constants: tuple[Const, ...], idx: int | None) -> str:
     if idx is None or idx < 0 or idx >= len(constants):
         return "<bad_const>"
-    # D1: no `isinstance(value, str)` shortcut -- every constant, string
-    # included, goes through the normalizer.
-    return _normalize_const(constants[idx])
+    value = constants[idx]
+    # D1 (round 1, Important 1): predecessor's `_const_name` short-circuited
+    # string constants to the decoded value itself (`"print"`), so the tag
+    # a LOADK-into-register assigns is `K:print`, which can never satisfy
+    # `_table_access_tag`'s `key.startswith("K:str:")` test. That test is
+    # satisfied only via `_rk_tag`'s *direct* constant-embed path, which
+    # calls `_normalize_const` directly (not `_const_name`) in both
+    # implementations and so already agrees. We cannot decode (bytes stay
+    # bytes), so this reproduces the predecessor's *behavioural class* for
+    # the register-indirect path instead: injective, but never `str:`-
+    # prefixed, so `.field` stays unreachable through LOADK exactly as it
+    # was for them. Measured this session: 60 GETTABLE sites across 9 corpus
+    # files flip from `.field` to `TABLE:access` under this fix; corpus
+    # avg_score 0.935579 -> 0.935633 (see module docstring D1).
+    if isinstance(value, bytes):
+        return f"cn:{len(value)}:{hashlib.sha1(value).hexdigest()[:12]}"
+    return _normalize_const(value)
 
 
 def _rk_tag(proto: Proto, reg_tags: dict[int, str], value: int | None,

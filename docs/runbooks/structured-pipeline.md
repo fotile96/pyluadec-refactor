@@ -1981,6 +1981,26 @@ structured        : 212  (avg 1.000000)
 status            : pass=212  warn=0  fail=17
 ```
 
+**Round-1 correction (2026-08-12):** the first version above had a real port
+bug (D1 in the module docstring — a prefix-scheme choice, not a bridge-loss
+choice, changed `_table_access_tag`'s prefix test's verdict on 60 GETTABLE
+sites across 9 files). Fixed; re-measured:
+
+```
+files scored      : 229
+avg_score         : 0.935633
+below 0.997       : 17
+on M2 fallback    : 17  (avg 0.132945)
+structured        : 212  (avg 1.000000)
+status            : pass=212  warn=0  fail=17
+```
+
+**0.935633 is the corrected headline** and supersedes 0.935579 everywhere
+below; the two numbers above are kept side by side rather than silently
+overwritten so the fix's effect is visible. It does not change any
+conclusion in this section: still does not clear 0.997, still 17 files below
+threshold, still the same 17 files.
+
 **It does not clear 0.997.** This is the honest state of the milestone at M5
 start, and it is the baseline every later re-measurement is compared against.
 
@@ -1999,26 +2019,35 @@ still earns its place is the grading it does *inside* the failing 17:
 | `snr_mainmenu.lua` | 0.075326 | `snr_s2_10_s.lua` | 0.151972 |
 | `snr_memory.lua` | 0.104022 | `snr_s6_10_s.lua` | 0.153946 |
 | `snr_story_main.lua` | 0.106464 | `snr_music.lua` | 0.154160 |
-| `snr_graphic.lua` | 0.126425 | `snr_common.lua` | 0.161667 |
+| `snr_graphic.lua` | 0.126425 | `snr_common.lua` | 0.174230 |
 | `snr_s3_10_s.lua` | 0.139208 | `config.lua` | 0.180702 |
 | `snr_s1_10_s.lua` | 0.142074 | `snr_e1_10_s.lua` | 0.230723 |
 | `snr_s5_10_s.lua` | 0.142553 | | |
 
-All 17 are `status=fail` with `drift_type=semantic_candidate` and hard issues
-(`function_shape_mismatch`, `proto_path_set_mismatch`) — the fallback lifts
-every nested function to a top-level `__pld_F` factory, so the recompiled
-proto *tree* has a different shape, not merely different code.
+All 17 are `status=fail` with `drift_type=semantic_candidate`. Re-measured
+2026-08-12 (round 1): every one of the 17 carries exactly three *kinds* of
+hard issue — `function_shape_mismatch` and `proto_path_set_mismatch` (one
+each, on all 17: the fallback lifts every nested function to a top-level
+`__pld_F` factory, so the recompiled proto *tree* has a different shape, not
+merely different code) plus a variable count of `signature_mismatch@<path>`
+entries, one per proto whose `numparams`/`is_vararg`/`subproto_count` drifted.
+That count ranges from 1 (`config.lua`) through 3 (`snr_lib.lua`) to 89
+(`snr_common.lua`), giving hard-issue totals of 3, 5, and 91 respectively for
+those three files. No file has a fourth kind.
 
 ### What the number implies for the exit gate — arithmetic, not opinion
 
 229 × 0.997 = 228.313. The 212 structured files already contribute 212.000, so
 the remaining 17 must contribute **≥ 16.313, i.e. average ≥ 0.9596**. They
-average 0.1322 today. There is no partial-credit path: a fallback file scores
+average **0.1329** today (round-1 re-measurement; was 0.1322 before the D1
+fix — this ratio is independent of the 212's contribution, so the fix moves
+it slightly). There is no partial-credit path: a fallback file scores
 around 0.13 whatever else is true of it, so **reaching 0.997 requires
 essentially all 17 to start certifying** (or a comparable structural fix that
 makes their artifact stop being a pc-dispatch state machine). Closing 16 of 17
-leaves the average at 0.9962 — still short. This is the sharpest statement of
-what Tasks 4–7 have to deliver.
+leaves the average at (212 + 16 + 0.1329)/229 = **0.9962** — still short,
+same as before the fix to four decimal places. This is the sharpest statement
+of what Tasks 4–7 have to deliver.
 
 ### Calibration — why the number is believable
 
