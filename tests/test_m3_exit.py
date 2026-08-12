@@ -47,24 +47,64 @@ def test_every_entry_still_compiles_and_no_l0():
 
 
 def test_l3_entries_carry_a_rung_and_no_confessions():
+    """An `L3` row carries the rung it certified at and claims no refusal.
+
+    **What this test lost in M5 task 6, and where it went.** It used to also
+    assert `fallback is False` and `confessions == []` for every `L3` row,
+    which was sound only while `fallback` was *defined* as `level != "L3"`.
+    Since hybrid emission, `fallback` means "at least one occurrence of this
+    proto shape shipped as the state machine", and that is genuinely possible
+    for an `L3` shape: 8 corpus files still ship a whole-file fallback (their
+    ROOT's own reconstruction does not certify), and every certified proto
+    inside one of them ships as state-machine text. Asserting `confessions ==
+    []` there would mean an artifact silently shipping unstructured text for a
+    proto whose row says nothing about it -- the confession hole in the
+    direction that actually matters. The coupling that replaces it, in both
+    directions and per occurrence, is in `test_non_l3_entries_confess`.
+    """
     entries = _entries()
     assert any(e["level"] == "L3" for e in entries)
     for e in entries:
         if e["level"] == "L3":
             assert e["l3_level"] is not None
-            assert e["confessions"] == []
-            assert e["fallback"] is False
+            assert e["refusal_reason"] is None
 
 
 def test_non_l3_entries_confess():
     """The other half of the ratchet: a proto that did not certify must still
-    say so. A level that rose without its confession being dropped, or a
-    confession dropped without the level rising, is a bookkeeping bug."""
+    say so.
+
+    **Rewritten for the M5 task 6 schema.** `fallback` used to be *defined* as
+    `level != "L3"`, so "not certified" and "shipped as the state machine" were
+    the same row and this test could assert one from the other. Hybrid emission
+    separates them: a proto that misses `L3` on its own can still ship
+    structured, because the chunk's hybrid certification compared its own
+    fields against the original exactly (only the substituted subtrees are
+    unclaimed). What survives, and is asserted here, is the coupling that
+    actually encodes the confession discipline:
+
+      * a non-`L3` row carries no rung and says why it is not `L3`;
+      * `fallback` (an occurrence really did ship the state machine) holds
+        exactly when the whole-range `fallback-state-machine` confession is
+        present -- in both directions, so a confession dropped without the
+        shipping changing, or shipping changed without the confession being
+        dropped, still fails;
+      * and `fallback` is exactly the OR over the per-occurrence `shipped`
+        field, so the row-level aggregate cannot drift from the per-occurrence
+        record it summarises.
+
+    Note the last two run over EVERY row, not only the non-`L3` ones: an `L3`
+    proto shipping as state-machine text inside a whole-file-fallback chunk is
+    the case this has to catch, and it is 8 files' worth of rows today.
+    """
     for e in _entries():
         if e["level"] != "L3":
-            assert e["fallback"] is True
             assert e["l3_level"] is None
-            assert [c["reason"] for c in e["confessions"]] == ["fallback-state-machine"]
+            assert e["refusal_reason"]
+        want = ["fallback-state-machine"] if e["fallback"] else []
+        assert [c["reason"] for c in e["confessions"]] == want, e["shash"]
+        assert e["fallback"] == any(o["shipped"] == "fallback"
+                                    for o in e["occurrences"]), e["shash"]
 
 
 def test_ledger_still_covers_full_corpus(corpus_dir):

@@ -74,7 +74,7 @@ from pyluadec.sir import (Break, CondValue, EndIter, GenericFor, If,
                           NumericFor, Region, Repeat, Return, Seq, Straight,
                           While, WhileTrue)
 from pyluadec.sir.build import StructureError, build_sir
-from pyluadec.structure.fallback import const_lit
+from pyluadec.structure.fallback import const_lit, inline_function_parts
 
 # Lua 5.1 operator precedence (higher binds tighter; Lua reference manual
 # §2.5.6). Used to add the minimal necessary parentheses when printing
@@ -231,12 +231,19 @@ class Printer:
     """
 
     def __init__(self, fn: LirFunction, rc: RegClass, depth: int,
-                upval_names: tuple[str, ...] = ()):
+                upval_names: tuple[str, ...] = (), path: str = "main",
+                fallback_paths: frozenset[str] = frozenset()):
         self.fn = fn
         self.proto = fn.proto
         self.rc = rc
         self.depth = depth
         self.upval_names = upval_names
+        # This function's `proto_path` (the `walk_proto_paths` convention) and
+        # the set of paths whose subtree ships as the fallback state machine
+        # instead of as structured code (M5 task 6). Empty for an ordinary
+        # whole-tree print, in which case nothing below behaves differently.
+        self.path = path
+        self.fallback_paths = fallback_paths
         self.recon = Reconstructor(fn, rc, depth, upval_names)
         # proto_idx -> the pc of the (single) CLOSURE instruction that
         # produced it. A subproto index is only ever the Bx operand of
@@ -291,10 +298,28 @@ class Printer:
             else:
                 raise ReconstructError(
                     f"pc {pc}: unexpected CLOSURE pseudo-instruction {ps.op.name}")
+        # Fourth (and, unlike the three in `walk_proto_paths`' docstring,
+        # load-bearing at *certification* time) spelling of the proto_path
+        # convention: this is the key looked up in `fallback_paths`, so a
+        # disagreement here would substitute the wrong function.
+        child_path = f"{self.path}_{e.proto_idx}"
+        if child_path in self.fallback_paths:
+            # The hybrid boundary. The structured printer must not guess at a
+            # subtree it could not certify, so the hole is filled by the
+            # semantically-exact state machine, bound to THESE names.
+            return inline_function_parts(child, child_path, tuple(names))
         params = ", ".join(name_for(i, self.depth + 1) for i in range(child.numparams))
         if child.is_vararg & 2:
             params = params + (", ..." if params else "...")
-        body = _print_proto_body(child, self.depth + 1, tuple(names))
+        if not self.fallback_paths:
+            # Call through the module global with the historical 3-argument
+            # shape: `tests/test_effects_reconstructor_consistency.py`
+            # monkeypatches `_print_proto_body` to instrument the whole-tree
+            # print, and that seam only ever runs with no substitutions.
+            body = _print_proto_body(child, self.depth + 1, tuple(names))
+        else:
+            body = _print_proto_body(child, self.depth + 1, tuple(names),
+                                     child_path, self.fallback_paths)
         return params, body
 
     def _closure_self_ref(self, e: ClosureExpr, target_reg: int) -> bool:
@@ -693,22 +718,25 @@ def print_region(region: Region, printer: Printer, indent: int = 0) -> list[str]
 
 
 def print_function(fn: LirFunction, region: Region, rc: RegClass, depth: int,
-                   upval_names: tuple[str, ...] = ()) -> str:
+                   upval_names: tuple[str, ...] = (), path: str = "main",
+                   fallback_paths: frozenset[str] = frozenset()) -> str:
     """Print one function's body (its SIR region tree + register
     classification) as Lua source -- no enclosing `function(...) ... end`;
     the caller (chunk assembly for the top level, `Printer.closure_parts` for
     a nested CLOSURE) adds that.
     """
-    printer = Printer(fn, rc, depth, upval_names)
+    printer = Printer(fn, rc, depth, upval_names, path, fallback_paths)
     lines = printer.region(region, 0)
     return "\n".join(lines) + ("\n" if lines else "")
 
 
-def _print_proto_body(proto: Proto, depth: int, upval_names: tuple[str, ...]) -> str:
+def _print_proto_body(proto: Proto, depth: int, upval_names: tuple[str, ...],
+                      path: str = "main",
+                      fallback_paths: frozenset[str] = frozenset()) -> str:
     fn = lift_proto(proto)
     region = build_sir(fn)
     rc = classify_registers(fn)
-    return print_function(fn, region, rc, depth, upval_names)
+    return print_function(fn, region, rc, depth, upval_names, path, fallback_paths)
 
 
 def print_chunk_or_raise(proto: Proto) -> str:

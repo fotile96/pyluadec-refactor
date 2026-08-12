@@ -59,6 +59,24 @@ def main() -> int:
     oracle_v = {e["oracle"] for e in entries}
     ladder_v = {e["ladder"] for e in entries}
 
+    # Shipping, as opposed to certification (M5 task 6). `level` says which
+    # protos were PROVED equal to the original; these say which emitter
+    # actually produced the text in `build/decompiled/`. The two are
+    # independent since hybrid emission, and a dashboard that only reported
+    # the first would not show a file quietly dropping back to a whole-file
+    # state machine.
+    occs = [o for e in entries for o in e["occurrences"]]
+    shipped = Counter(o.get("shipped", "structured") for o in occs)
+    by_file: dict[str, dict] = {}
+    for o in occs:
+        f = by_file.setdefault(o["file"], {"hybrid": False, "fb": 0, "n": 0})
+        f["hybrid"] = f["hybrid"] or o.get("hybrid", False)
+        f["fb"] += o.get("shipped") == "fallback"
+        f["n"] += 1
+    n_hybrid = sum(1 for f in by_file.values() if f["hybrid"])
+    n_whole_fb = sum(1 for f in by_file.values()
+                     if not f["hybrid"] and f["fb"] == f["n"])
+
     l3 = levels.get("L3", 0)
     # Occurrence basis as well as unique-shape basis: the ledger dedups by
     # structural_hash, so "% of unique protos" and "% of the 1944 protos that
@@ -75,6 +93,11 @@ def main() -> int:
         *[(f"level {k}", v) for k, v in sorted(levels.items())],
         ("L3 share (unique)", f"{l3}/{len(entries)} ({l3 / len(entries):.1%})"),
         ("L3 share (occurrences)", f"{occ_l3}/{n_occ} ({occ_l3 / n_occ:.1%})"),
+        ("shipped structured", f"{shipped['structured']}/{n_occ} "
+                               f"({shipped['structured'] / n_occ:.1%})"),
+        ("files fully structured", n_files - n_hybrid - n_whole_fb),
+        ("files hybrid", n_hybrid),
+        ("files whole-file fallback", n_whole_fb),
         # `(kv[0] is None, kv[0])`, not `kv[0]`: an `L3` row is supposed to
         # carry a rung, but if one ever did not, plain `sorted` would raise
         # `TypeError: '<' not supported between 'NoneType' and 'int'` -- and

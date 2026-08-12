@@ -67,6 +67,12 @@ def _fence_certification_cache():
     """
     from pyluadec.structure import structured
     snapshot = dict(structured._CERT_CACHE)
+    # M5 task 6 added a second process-level memo, `_HYBRID_CACHE`, holding
+    # whole assembled hybrid chunk SOURCES. It is poisonable in exactly the
+    # same way and by the same tests (a patched printer changes the assembled
+    # bytes, not just a verdict), so it is fenced here rather than left to be
+    # rediscovered.
+    hybrid_snapshot = dict(structured._HYBRID_CACHE)
     yield
     # Re-read the attribute: a test may have swapped it for a private dict and
     # `monkeypatch`'s own teardown (which runs before this one, since it was
@@ -74,6 +80,9 @@ def _fence_certification_cache():
     live = structured._CERT_CACHE
     live.clear()
     live.update(snapshot)
+    live_hybrid = structured._HYBRID_CACHE
+    live_hybrid.clear()
+    live_hybrid.update(hybrid_snapshot)
 
 
 @pytest.fixture(scope="session")

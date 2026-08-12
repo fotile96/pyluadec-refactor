@@ -58,9 +58,20 @@ def main() -> int:
     outdir.mkdir(parents=True, exist_ok=True)
     orc = oracle_version()
     by_hash: dict[str, LedgerEntry] = {}
+    # shash -> did ANY occurrence of this proto shape ship as the fallback
+    # state machine? A row aggregates occurrences across files, and since M5
+    # task 6 two occurrences of the SAME shape can ship differently (one inside
+    # a hybrid's structured part, one inside a substituted subtree elsewhere).
+    # OR, not AND: `fallback` is the field the confession hangs off, and a row
+    # that confesses when at least one occurrence really did fall back is the
+    # conservative reading. The per-occurrence `shipped` field is exact.
+    shipped_fallback_any: dict[str, bool] = {}
     n_ok = 0
     n_protos = 0
     n_structured = 0
+    n_shipped_structured = 0
+    n_hybrid_files = 0
+    n_fallback_files = 0
     files = sorted(corpus.glob("*.lua"))
     for f in files:
         root = load_file(f)
@@ -73,19 +84,38 @@ def main() -> int:
         except oracle.LuaCompileError as e:
             compile_ok = False
             print(f"COMPILE FAIL {f.name}: {str(e)[:200]}", file=sys.stderr)
+        if res.hybrid:
+            n_hybrid_files += 1
+        elif res.shipped_fallback.get("main"):
+            n_fallback_files += 1
         protos = {}
         walk_proto_paths("main", root, protos)
         for path, p in protos.items():
             h = structural_hash(p)
-            occ = {"file": f.name, "proto_path": path}
+            # `shipped` is the M5 task 6 schema change: which EMITTER produced
+            # this proto's text in `build/decompiled/<file>.lua`. It is a
+            # different question from `level` (which emitter's output was
+            # *proved* equal to the original, per proto and in isolation), and
+            # since hybrid emission the two genuinely disagree -- a proto that
+            # is not `L3` on its own can still ship structured inside a chunk
+            # whose hybrid certification compared its fields exactly. `hybrid`
+            # is a property of the whole chunk, recorded per occurrence because
+            # that is where the chunk identity (`file`) lives.
+            shipped_fb = res.shipped_fallback[path]
+            occ = {"file": f.name, "proto_path": path,
+                   "shipped": "fallback" if shipped_fb else "structured",
+                   "hybrid": res.hybrid}
             level = res.levels[path] if compile_ok else "L0"
             if level == "L3":
                 n_structured += 1
+            if not shipped_fb:
+                n_shipped_structured += 1
             n_protos += 1
             if h in by_hash:
                 e = by_hash[h]
                 e.occurrences.append(occ)
                 e.compile_ok = e.compile_ok and compile_ok
+                shipped_fallback_any[h] = shipped_fallback_any[h] or shipped_fb
                 # Levels only ever go up: take the higher level and keep its
                 # evidence rather than silently keeping whichever file happened
                 # to be walked first.
@@ -108,19 +138,29 @@ def main() -> int:
                 if _RANK[level] > _RANK[e.level]:
                     e.level = level
                     e.l3_level = res.rungs[path]
-                    e.confessions = res.confessions_by_proto[path]
                     e.refusal_reason = res.reasons[path]
-                e.fallback = e.level != "L3"
             else:
+                shipped_fallback_any[h] = shipped_fb
                 by_hash[h] = LedgerEntry(
                     shash=h, level=level,
                     l3_level=res.rungs[path] if level == "L3" else None,
-                    compile_ok=compile_ok, fallback=level != "L3",
+                    compile_ok=compile_ok, fallback=shipped_fb,
                     n_insns=len(p.code),
-                    confessions=res.confessions_by_proto[path],
+                    confessions=[],
                     occurrences=[occ], oracle=orc, ladder=LADDER_VERSION,
                     refusal_reason=res.reasons[path] if level != "L3" else None)
-    for e in by_hash.values():
+    for h, e in by_hash.items():
+        # `fallback` and its confession are decided ONCE, at the end, from the
+        # occurrence aggregate -- not carried along from whichever occurrence
+        # happened to hold the highest level. Before M5 task 6 the two were the
+        # same thing (`fallback = level != "L3"`), so the confession could ride
+        # along with the level; now that a proto's shipping is independent of
+        # its level, tying them together would produce rows that confess a
+        # state machine they did not ship, or ship one silently.
+        e.fallback = shipped_fallback_any[h]
+        e.confessions = ([{"pc_lo": 1, "pc_hi": e.n_insns,
+                           "reason": "fallback-state-machine",
+                           "pass": "structure.fallback"}] if e.fallback else [])
         if not e.compile_ok:
             _force_l0(e)
     write_ledger(list(by_hash.values()), ROOT / "corpus" / "ledger.jsonl")
@@ -130,6 +170,11 @@ def main() -> int:
     print(f"structured {n_structured}/{n_protos} protos "
           f"({n_structured / n_protos:.1%}); "
           f"L3 {n_l3}/{len(by_hash)} unique ({n_l3 / len(by_hash):.1%})")
+    print(f"shipped: {n_shipped_structured}/{n_protos} protos structured "
+          f"({n_shipped_structured / n_protos:.1%}); "
+          f"{len(files) - n_hybrid_files - n_fallback_files} files fully "
+          f"structured, {n_hybrid_files} hybrid, {n_fallback_files} whole-file "
+          f"fallback")
     return 0 if n_ok == len(files) else 1
 
 

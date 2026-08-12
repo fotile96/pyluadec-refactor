@@ -145,7 +145,9 @@ ingest -> lift -> cfg -> sir.build -> express.reconstruct -> emit.lua
 
 ### 认证门纪律（最重要的一条）
 
-**产物为结构化 ⟺ root proto 认证 `L3`**（`structure/structured.py::emit_certified_chunk`）；否则发 fallback。永不返回未认证的结构化代码。推论：区域识别、寄存器分类、内联的 bug **只会拉低 L3 比例，不会产出错误代码**。认证是逐 proto 子树独立进行的，所以一个不可结构化的函数不会污染兄弟节点的等级——等级（proof record，逐 proto）与产物（逐 chunk 的保守选择）**刻意解耦**。
+**产物中的每个 proto，要么正是某次认证实际编译并逐字段比对过的那串字节，要么由语义精确的 fallback 发射并在台账里 confess**（`structure/structured.py::emit_certified_chunk`）。永不返回未认证的结构化代码。推论不变：区域识别、寄存器分类、内联的 bug **只会拉低 L3 比例 / 让更多 proto 落到 fallback，不会产出错误代码**。认证是逐 proto 子树独立进行的，所以一个不可结构化的函数不会污染兄弟节点的等级——等级（proof record，逐 proto）与产物（逐 chunk，自 M5 task 6 起 chunk 内还逐 proto）**刻意解耦**。
+
+M3–M4 的旧说法「产物为结构化 ⟺ root proto 认证 `L3`」是**替换集为空**的特例（229 个文件里 216 个仍是这样）。M5 task 6 加了中间档 **hybrid**：root 未认证时，`certify_hybrid` 把无法认证的 CLOSURE 站点换成 fallback 内联函数（`structure/fallback.py::inline_function_parts`），重新编译后跑**未改动的** `compare_protos`，只丢弃落在被替换子树内部的 mismatch——父 proto 自己的 `code`（含 `CLOSURE` 及其后的 `MOVE`/`GETUPVAL` 伪指令）仍逐字段比。被替换子树本身认证管不了，语义门是两条常驻探针。收口值：216 全结构化 / **6 hybrid** / **7 整文件 fallback**（此前 216/0/13）。细节见 `docs/runbooks/structured-pipeline.md`「Hybrid chunks」。
 
 归一化阶梯：`L3.0` 严格 + `L3.1 = strip-lineinfo`，`LADDER_VERSION = "l3-ladder-v1"`。**每级的健全性论证必须与该级本体同处一地**（rung 1 的论证在 `verify/normalize.py::_strip_lineinfo` 的 docstring 里，从"剥完之后 `compare_protos` 还比什么"论起）。加 rung 2 时照此办理并 bump `LADDER_VERSION`。
 
@@ -160,8 +162,11 @@ ingest -> lift -> cfg -> sir.build -> express.reconstruct -> emit.lua
 
 - `level`：`L3`（重编译后按阶梯逐字段匹配）/ `L1`（能编译，未验证）；`L0` 禁止出现。
 - `l3_level`：通过的归一化级号（`L3` 行非空，当前恒为 `1`）；非 `L3` 行为 `null`。
-- `fallback`：布尔，`level != "L3"`。
-- `confessions`：`L3` 行必须为空；非 `L3` 行必须恰有一条覆盖全 pc 区间的 `fallback-state-machine` confession。
+- `fallback`：布尔。**M5 task 6 改了定义**——现在是"该 proto 形状至少有一处 occurrence 实际发的是 fallback 状态机"，不再是 `level != "L3"`（chunk 非全结构化即全 fallback 时两者等价，hybrid 之后不再等价）。
+- `confessions`：`fallback` 为真 ⟺ 恰有一条覆盖全 pc 区间的 `fallback-state-machine` confession，为假 ⟺ 空。
+- `occurrences[].shipped`（M5 task 6 新增）：`"structured"` / `"fallback"`，这一处 occurrence 的文本由哪个发射器产出——`fallback` 字段的逐 occurrence 精确形式。
+- `occurrences[].hybrid`（M5 task 6 新增）：这处 occurrence 所在的 chunk 是否发的是 hybrid 产物。
+- **`level` 与 `shipped` 是两个问题，且已不再一致**：`level` 是该 proto 单独（连同其整棵子树）的证明记录，与邻居怎么发无关；`shipped` 是产物事实。语料上两向都出现：6 行 `L1` 却发结构化（自己的字段被 `certify_hybrid` 精确比对过，只有被替换的后代没有），150 行 `L3` 却发 fallback（它们住在仍整文件回退的 7 个文件里）。
 - `refusal_reason`（M4 task 6 新增）：非 `L3` 行**为什么**没认证；`L3` 行为 `null`。
   confession 只说"回退了"，这个字段说"回退的原因"——`build_sir` 拒绝与"打印成功但
   认证失败"以前在台账里长得一模一样。四种 kind：`structure:` / `reconstruct:` /
@@ -170,7 +175,7 @@ ingest -> lift -> cfg -> sir.build -> express.reconstruct -> emit.lua
   （非 `L3` 必须有、`L3` 必须没有、kind 必须在词表内）。面板
   `scripts/ledger_dashboard.py` 直接打这个字段的直方图，残差普查因此是常驻数据而
   非一次性脚本。
-- `tests/test_m3_exit.py` 断言的是**行内耦合**（等级与 confession 必须一致）：`L3` 行 ⇒ `l3_level` 非空、`confessions == []`、`fallback is False`；非 `L3` 行 ⇒ `fallback is True`、`l3_level is None`、恰有一条 `fallback-state-machine` confession。也就是说"等级升了 confession 没摘"或"confession 摘了等级没升"这种**记账不一致**会被抓到。
+- `tests/test_m3_exit.py` 断言的是**行内耦合**（M5 task 6 按新 schema 重述）：`L3` 行 ⇒ `l3_level` 非空、`refusal_reason is None`；非 `L3` 行 ⇒ `l3_level is None`、`refusal_reason` 非空；并且**对每一行**，`fallback` ⟺ 有那条 `fallback-state-machine` confession ⟺ 有 occurrence 的 `shipped == "fallback"`。也就是说"confession 摘了但产物没变"、"产物变了 confession 没摘"、"行级聚合与逐 occurrence 记录对不上"三种**记账不一致**都会被抓到。旧的 `L3 ⇒ fallback is False` 已随 `fallback` 改定义而作废（那 150 行 `L3` 确实发的是状态机文本，硬要求它们 `confessions == []` 才是真正的 confession 漏洞）。
 - **"等级只升不降"本身没有被任何测试断言**——没有历史 baseline 比对，见上文「台账约定」。跨版本单调性是纪律 + 人眼看 diff，机器强制留给 **M5** 的 ratchet CI（M4 未做）。
 
 ### 能力边界（实测，别当成"差不多都做完了"）

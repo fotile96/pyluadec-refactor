@@ -359,17 +359,27 @@ things:
 
 1. Certifies **every** proto in the tree independently, recording a level per
    proto.
-2. Chooses the shipped artifact: **iff the root certified `L3`**, the exact
-   bytes certification compiled and compared (`ProtoCert.source`, produced by
-   `print_chunk` inside `certify_proto`); otherwise
-   `structure.fallback.emit_chunk(root)`.
+2. Chooses the shipped artifact, in three tiers (the third was added by M5
+   task 6; see "Hybrid chunks" below):
+   - **iff the root certified `L3`**, the exact bytes certification compiled
+     and compared (`ProtoCert.source`, produced by `print_chunk` inside
+     `certify_proto`);
+   - else, iff `certify_hybrid` succeeds, the exact bytes *it* compiled and
+     compared — structured code with the fallback state machine substituted at
+     the CLOSURE sites that could not be certified;
+   - else `structure.fallback.emit_chunk(root)`.
 
 So the invariant is:
 
-> the shipped source is structured **⟺** the root proto certified `L3`,
-> i.e. the structured print of the whole tree recompiled through the real
-> `luac_sz4` into a proto that matches the original under the normalization
-> ladder. No unverified structured code is ever returned.
+> Every proto in a shipped artifact is EITHER covered by the certification
+> that compiled those exact bytes — its own fields compared to the original,
+> field by field, through the real `luac_sz4` and the untouched normalization
+> ladder — OR emitted by the semantically-exact fallback and confessed as
+> such in the ledger. No unverified structured code is ever returned.
+
+The M3/M4 form of that sentence ("the shipped source is structured **⟺** the
+root proto certified `L3`") is the special case where the substitution set is
+empty, and it is still what 216 of the 229 corpus files do.
 
 `emit_certified_chunk` raises if `certs["main"].source is None` after the root
 certifies, because a root that certified `L3` must by construction have printed
@@ -393,12 +403,74 @@ review.
 Pinned by `tests/test_structured_certify.py::test_printable_but_uncertified_chunk_falls_back_to_semantic_state_machine`
 and `tests/test_pipeline_structured.py::test_uncertified_source_is_never_shipped`.
 
+### Hybrid chunks (M5 task 6)
+
+`certify_hybrid(root, certs)` runs when the root misses `L3`. It is the same
+gate, with the *scope of the claim* narrowed and nothing else touched.
+
+**How the substitution set is chosen.** Two phases.
+
+1. `_plan_substitutions` — printability, bottom-up. A proto that certified
+   `L3` printed its whole subtree as part of that certification, so only the
+   non-`L3` protos are probed, deepest-first, each with its already-substituted
+   descendants in place. What refuses (`StructureError` / `ReconstructError` /
+   `EmitError`) goes into the set, and a set member covers its whole subtree.
+2. `_hybrid_round` — print, compile with the real `luac_sz4`, and run the
+   untouched `compare_protos` up the untouched ladder, discarding only the
+   mismatches whose path falls **inside** a substituted subtree. A mismatch
+   anywhere else grows the set and the round repeats (bounded by
+   `_HYBRID_ROUNDS = 6`; the corpus needs at most 2). Three ways to give up,
+   all of which ship the whole-file fallback instead: the root's own body does
+   not print, the root's own fields are what differ, or a round would have to
+   substitute a proto that certified `L3` on its own.
+
+**What a successful `HybridCert` claims.** Every proto outside
+`fallback_paths` compares equal to the original, field for field, at rung
+`rung`. That includes the root's own `code` — and therefore the `CLOSURE`
+instruction at each substituted site *and the `MOVE`/`GETUPVAL`
+pseudo-instructions that follow it*. That is what makes the two obligations of
+`structure.fallback.inline_function_parts` checkable rather than assumed:
+
+- **one subproto slot** — the whole substituted subtree is emitted inside a
+  single `function ... end` literal (its own nested functions become
+  immediately-invoked `function(__pld_U) ... end` factories), so the parent's
+  `Bx` operand and `subprotos` length are unchanged;
+- **the same captures, in the same order** — the substituted function
+  references the enclosing scope's *own* identifiers (no box protocol crosses
+  the boundary, so Lua's upvalue mechanism supplies the aliasing), and a
+  `local __pld_ord = {…}` prologue mentions them in upvalue-index order.
+  `lparser.c` assigns upvalue indices at first mention and `pushclosure` emits
+  the parent's pseudo-instruction sequence in that order, so without the
+  prologue a pc-ordered state machine that touches upvalue 1 before upvalue 0
+  would change the *parent's* `code`. `a = b` between two enclosing locals is
+  the smallest case that does it (target parsed first, `GETUPVAL` emitted
+  first); pinned by
+  `tests/test_hybrid_chunk.py::test_dropping_the_upvalue_order_prologue_breaks_certification`.
+
+**What it does not claim, and what covers that instead.** The substituted
+subtrees. Certification structurally cannot bless them — they are not
+byte-exact by construction — so the semantic gate for the boundary is the two
+standing probes (`scripts/probe_global_state.py` L1.5,
+`scripts/probe_behaviour.py` L1.75), run over all 229 files, plus the
+differential-execution arm in `tests/test_hybrid_chunk.py`. Both probes are
+unchanged by hybrid emission: 225/229 and 227/229 identical with the same 4
+and 2 pinned divergences (measured 2026-08-12, after the change).
+
+**Measured rollout, 2026-08-12.** 216 files fully structured, **6 hybrid**,
+**7 whole-file fallback** (was 216 / 0 / 13). Proto occurrences shipping
+structured text: **1747/1944 (89.9%)**, was 1379/1944 (70.9%). Corpus
+instruction volume shipping as a state machine: **14.2%** (30584/215218), was
+34.4%. The 7 that remain are the files whose *root's own* reconstruction does
+not certify, so there is no structured code to keep; see "Current capability
+boundary".
+
 ### Per-proto, not per-chunk
 
 Certification is per proto subtree, so one unstructurable function cannot
 poison its siblings' *levels*. The level (a proof record, per proto) and the
-artifact (a conservative file-level choice, per chunk) are deliberately
-decoupled — `pipeline.decompile_chunk` returns both.
+artifact (per chunk, and since M5 task 6 per proto within a chunk) are
+deliberately decoupled — `pipeline.decompile_chunk` returns both, as `levels`
+and `shipped_fallback`.
 
 A nested proto is certified in wrapper isolation (`certify_proto`,
 `is_chunk_root=False`): its body is printed at `depth=1` with synthetic upvalue
@@ -1347,8 +1419,20 @@ PYLUADEC_GENERATED_CASE_LIMIT=24 uv run pytest tests/test_generated_semantic_cas
 | --- | --- |
 | `level` | `"L3"` (recompiled and matched under the ladder) or `"L1"` (compiles, unverified). `"L0"` means it did not even compile and must never appear. |
 | `l3_level` | the ladder rung that passed, for `L3` rows; `null` otherwise. Currently always `1`. |
-| `fallback` | `level != "L3"`. True means this proto's source came from the fallback state machine. |
-| `confessions` | empty for `L3` rows; exactly one whole-range `fallback-state-machine` confession otherwise. |
+| `fallback` | **Redefined in M5 task 6**: true iff at least one *occurrence* of this proto shape shipped as the fallback state machine. It used to be `level != "L3"`, which was the same predicate only while a chunk was all-structured or all-fallback. |
+| `confessions` | exactly one whole-range `fallback-state-machine` confession iff `fallback`, empty otherwise — in both directions. |
+| `occurrences[].shipped` | **New in M5 task 6.** `"structured"` or `"fallback"`: which emitter produced *this* occurrence's text in `build/decompiled/<file>.lua`. The exact, per-occurrence form of `fallback`. |
+| `occurrences[].hybrid` | **New in M5 task 6.** Did the chunk this occurrence lives in ship as a hybrid? A per-chunk fact, recorded on the occurrence because that is where the chunk identity (`file`) lives. |
+
+**`level` and `shipped` answer different questions and no longer agree.**
+`level` is the proof record for the proto *in isolation* (its whole subtree,
+via `certify_proto`), unchanged by how its neighbours ship. `shipped` is a fact
+about the artifact. Since hybrid emission both disagreements occur on this
+corpus: 6 rows are `L1` and ship structured (their own fields were compared
+exactly by `certify_hybrid`; only their substituted descendants were not), and
+150 rows are `L3` and ship fallback (they live in one of the 7 files that still
+falls back whole). Read a row as: *this shape certifies at `level`; these
+occurrences of it actually shipped as `shipped`.*
 | `ladder` | `LADDER_VERSION` at generation time (`l3-ladder-v1`). |
 | `oracle` | `git log -1 -- vendor native` — the oracle build's provenance, **not** repo HEAD. See `decompile-pipeline.md` for why. |
 
@@ -1356,13 +1440,19 @@ PYLUADEC_GENERATED_CASE_LIMIT=24 uv run pytest tests/test_generated_semantic_cas
 That is the *discipline*. Be precise about how much of it a machine checks —
 re-read of the assertions, 2026-08-11:
 
-**Asserted.** Within-row coupling between level and confession, both
-directions: `tests/test_m3_exit.py::test_l3_entries_carry_a_rung_and_no_confessions`
-(`L3` ⇒ non-null `l3_level`, empty `confessions`, `fallback is False`) and
-`::test_non_l3_entries_confess` (non-`L3` ⇒ `fallback is True`, null
-`l3_level`, exactly one whole-range `fallback-state-machine` confession). So a
-level that rose without its confession coming off, or a confession dropped
-without the level rising, does fail the suite. Also asserted: no `L0` and
+**Asserted** (restated for the M5 task 6 schema).
+`tests/test_m3_exit.py::test_l3_entries_carry_a_rung_and_no_confessions`:
+`L3` ⇒ non-null `l3_level` and null `refusal_reason`.
+`::test_non_l3_entries_confess`: non-`L3` ⇒ null `l3_level` and a non-empty
+`refusal_reason`; and, over **every** row, `fallback` ⇔ the whole-range
+`fallback-state-machine` confession is present ⇔ some occurrence's `shipped` is
+`"fallback"`. So a confession dropped without the shipping changing, shipping
+changed without the confession being dropped, or a row-level aggregate drifting
+from its per-occurrence record all fail the suite. What this pair *stopped*
+asserting is `L3 ⇒ fallback is False`, which the redefinition of `fallback`
+makes false in fact: 150 `L3` rows ship as state-machine text inside the 7
+whole-file-fallback files, and demanding `confessions == []` for them would
+have been the confession hole in the direction that matters. Also asserted: no `L0` and
 `compile_ok` everywhere (`test_ledger_ratchet.py`, `test_m3_exit.py`), `shash`
 sortedness and uniqueness, full-corpus coverage at exactly 1944 occurrences,
 byte-identical regeneration from `run_corpus.py`
@@ -2234,12 +2324,28 @@ the figure; it is recorded so the next reader quotes a measured one. The other
 two figures in that description — 17 fallback files and 212 structured — both
 reproduce exactly.
 
+**Re-measured after hybrid emission (M5 task 6, 2026-08-12)**, on the two
+bases that are cheap to reproduce from the committed ledger and
+`build/decompiled/`:
+
+| basis | M4 close (17 files) | M5 task 5 (13 files) | M5 task 6 (7 files) |
+| --- | --- | --- | --- |
+| bytecode instructions shipping as a state machine | 46.1% | 34.4% | **14.2%** (30584/215218) |
+| proto occurrences shipping as a state machine | 40.2% (781/1944) | 29.1% (565/1944) | **10.1%** (197/1944) |
+| decompiled output lines in whole-file-fallback files | 80.1% | — | **37.0%** (31884/86228) |
+
+The line-volume row is not comparable across columns the way the other two are
+(the artifact's own text changes when a file stops shipping a state machine),
+which is why the middle column is blank rather than guessed.
+
 ## Relationship to the fallback runbook
 
 `docs/runbooks/decompile-pipeline.md` documents the M2 fallback path and stays
 authoritative for it. The fallback is **not** deprecated and is not going away:
-it is the floor. Every file whose root does not certify still ships fallback
-source, and today that is 17 of 229 files (137 at M3 close).
+it is the floor, and since M5 task 6 it is also what fills the holes in a
+hybrid. Today **7** of 229 files ship it whole (137 at M3 close, 17 at M4
+close, 13 before this task) and another 6 ship it for 197 individual protos
+inside otherwise-structured files.
 
 Practical division of labour:
 

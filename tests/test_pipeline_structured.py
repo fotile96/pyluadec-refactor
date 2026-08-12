@@ -63,10 +63,22 @@ def test_mixed_chunk_levels_are_per_proto():
     res = decompile_chunk(load_bytes(bc))
     assert res.levels["main"] == "L1"
     assert res.levels["main_0"] == "L3"
-    assert res.confessions_by_proto["main_0"] == []
-    # ...but the ARTIFACT is still the fallback chunk, because the root did
-    # not certify. Level and shipped source are decoupled by design.
+    # ...but the ARTIFACT is still the fallback chunk: the root's OWN body does
+    # not print (`(p or q) == 1`), so there is no structured code to keep and
+    # hybrid emission has nothing to assemble. Level and shipped source are
+    # decoupled by design.
     assert b"__pld_pc" in res.source
+    assert res.hybrid is False
+    # M5 task 6 corrected the confession here. `main_0` certified `L3` on its
+    # own, and until this task that alone cleared its confession -- while its
+    # text in `res.source` was, and still is, the state machine. The confession
+    # says which PASS emitted a proto's text ("pass": "structure.fallback"), so
+    # it now tracks shipping rather than level, and this chunk's `L3` child
+    # confesses because it really did ship as a state machine. The level is
+    # untouched: that is the proof record, and it stays `L3`.
+    assert res.shipped_fallback["main_0"] is True
+    assert (res.confessions_by_proto["main_0"][0]["reason"]
+            == "fallback-state-machine")
 
 
 def test_uncertified_source_is_never_shipped():

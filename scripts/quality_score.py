@@ -75,10 +75,17 @@ def main() -> int:
             continue
         fs = score_protos(original, candidate,
                           file_size=f.stat().st_size, small_kb=args.small_kb)
-        # "fallback" is the pipeline's own verdict on the SHIPPED artifact
-        # (root not L3 => the M2 state machine was emitted), read straight
-        # from the decompile result rather than inferred from the score.
-        rows.append((f.name, fs.score, fs.status, res.levels["main"] != "L3",
+        # The SHIPPED artifact's kind, read straight from the decompile result
+        # rather than inferred from the score. Three kinds since M5 task 6:
+        # `structured` (nothing fell back), `hybrid` (structured with
+        # state-machine holes at the CLOSURE sites that could not be
+        # certified), `fallback` (the whole file is one state machine). The
+        # old two-way test was `res.levels["main"] != "L3"`, which now reports
+        # a hybrid as a whole-file fallback -- the level and the artifact are
+        # different questions since hybrid emission.
+        kind = ("hybrid" if res.hybrid
+                else "fallback" if res.shipped_fallback["main"] else "structured")
+        rows.append((f.name, fs.score, fs.status, kind,
                      fs.drift_type, len(fs.hard_issues)))
 
     if not rows:
@@ -86,7 +93,7 @@ def main() -> int:
         return 2
 
     below = [r for r in rows if r[1] < args.threshold]
-    fallback = [r for r in rows if r[3]]
+    fallback = [r for r in rows if r[3] != "structured"]
     avg = sum(r[1] for r in rows) / len(rows)
 
     width = max(len(r[0]) for r in rows)
@@ -94,13 +101,13 @@ def main() -> int:
                                          key=lambda r: r[1])
     if shown:
         title = ("all files" if args.all
-                 else f"files below {args.threshold} or on fallback")
+                 else f"files below {args.threshold} or not fully structured")
         print(f"{'file':<{width}}  {'score':>8}  {'status':<6}  "
               f"{'artifact':<10}  drift")
         print("-" * (width + 40))
-        for name, score, status, fb, drift, _ in shown:
+        for name, score, status, kind, drift, _ in shown:
             print(f"{name:<{width}}  {score:>8.6f}  {status:<6}  "
-                  f"{'fallback' if fb else 'structured':<10}  {drift}")
+                  f"{kind:<10}  {drift}")
         print(f"({len(shown)} rows: {title})")
         print()
 
@@ -111,13 +118,14 @@ def main() -> int:
     print(f"files scored      : {n}" + (f"  (+{len(errors)} errored)" if errors else ""))
     print(f"avg_score         : {avg:.6f}")
     print(f"below {args.threshold:<12}: {len(below)}")
-    print(f"on M2 fallback    : {len(fallback)}"
-          + (f"  (avg {sum(r[1] for r in fallback) / len(fallback):.6f})"
-             if fallback else ""))
-    structured = [r for r in rows if not r[3]]
-    if structured:
-        print(f"structured        : {len(structured)}"
-              f"  (avg {sum(r[1] for r in structured) / len(structured):.6f})")
+    for kind in ("structured", "hybrid", "fallback"):
+        group = [r for r in rows if r[3] == kind]
+        if group:
+            print(f"{kind:<18}: {len(group)}"
+                  f"  (avg {sum(r[1] for r in group) / len(group):.6f})")
+    if fallback:
+        print(f"{'not fully structured':<18}: {len(fallback)}"
+              f"  (avg {sum(r[1] for r in fallback) / len(fallback):.6f})")
     counts = {s: sum(1 for r in rows if r[2] == s) for s in ("pass", "warn", "fail")}
     print(f"status            : " + "  ".join(f"{k}={v}" for k, v in counts.items()))
 

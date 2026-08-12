@@ -444,3 +444,55 @@ Every item on the "worse" list except the last is a local change in
 `emit/lua.py` that cannot affect what recompiles. The last one is M5 agenda
 item 3, and its leverage is concentrated: 89 uncertified proto occurrences are
 holding 692 certified ones hostage.
+
+---
+
+## Appendix: rollout after hybrid emission (M5 task 6, 2026-08-12)
+
+The last item on the "worse" list above — "17 files still ship a
+register-machine fallback ... 47.6% of the corpus's text by volume" — is the
+one this appendix updates. The 47.6% figure itself did not reproduce on any
+basis when it was re-measured (see `docs/runbooks/structured-pipeline.md`,
+"A brief number that did not reproduce"); the closest comparable basis is
+bytecode instruction volume, and all three columns below are measured on the
+committed `corpus/ledger.jsonl` and `build/decompiled/`.
+
+Hybrid emission (`structure.structured.certify_hybrid`) replaced the
+chunk-level all-or-nothing landing rule: a chunk whose root does not certify
+now ships structured code with the fallback state machine substituted only at
+the CLOSURE sites that could not be certified, provided the assembled chunk
+still compares equal to the original field for field everywhere outside those
+subtrees.
+
+| measure | M4 close | M5 task 5 | **M5 task 6** |
+| --- | --- | --- | --- |
+| files shipping some structured source | 212 / 229 | 216 / 229 | **222 / 229** (216 fully + 6 hybrid) |
+| files shipping a whole-file state machine | 17 | 13 | **7** |
+| proto occurrences whose text is structured | 1163 / 1944 (59.8%) | 1379 / 1944 (70.9%) | **1747 / 1944 (89.9%)** |
+| bytecode instruction volume shipping as a state machine | 46.1% | 34.4% | **14.2%** |
+| decompiled output lines inside whole-file-fallback files | 80.1% | — | **37.0%** (31884/86228) |
+
+Two cells are derived rather than re-measured, and are marked here rather than
+presented as fresh measurements: the M4-close occurrence count is
+`1944 − 781`, using the 781 this report measures above, and the M4-close
+instruction volume is the 46.1% from the runbook's re-measurement of the same
+17 files. The M5 task 5 column was measured this session from the ledger as it
+stood at `31e1174`; the M5 task 6 column from the ledger and
+`build/decompiled/` as they stand after this task.
+
+Per hybrid file, the fraction of its own instructions that ship structured:
+`snr_s5_10_s.lua` 95.1%, `snr_s1_10_s.lua` 93.3%, `snr_s3_10_s.lua` 89.2%,
+`snr_s4_10_s.lua` 88.6%, `snr_fragment_main.lua` 45.2%,
+`snr_story_main.lua` 13.2%.
+
+**The 7 that remain are a different problem from the 17 were.** The M4
+analysis was right that "89 uncertified proto occurrences are holding 692
+certified ones hostage" — hybrid emission is exactly the release, and it moved
+6 files. It did not move the other 7 because in each of them the failing proto
+is the chunk's own **root**: `snr_graphic.lua`'s main body does not print at
+all, and `config.lua`, `snr_mainmenu.lua`, `snr_memory.lua`, `snr_music.lua`,
+`snr_novel.lua` and `snr_common.lua` print a main chunk that recompiles to a
+different proto. A hybrid can substitute a child; there is nothing to
+substitute a root with, and shipping an uncertified root is exactly what the
+landing gate exists to prevent. Their leverage is now in the reconstructor,
+not in the landing rule.

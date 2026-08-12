@@ -64,7 +64,7 @@ from pyluadec.express.reconstruct import ReconstructError
 from pyluadec.ingest import Proto, load_bytes
 from pyluadec import oracle
 from pyluadec.sir.build import StructureError
-from pyluadec.structure.fallback import emit_chunk
+from pyluadec.structure.fallback import EmitError, emit_chunk
 from pyluadec.verify.certify import carries_debug, certify_l3, debug_view
 from pyluadec.verify.ledger import structural_hash
 from pyluadec.verify.normalize import Mismatch, NORMALIZATIONS, compare_protos
@@ -135,6 +135,28 @@ class ProtoCert:
 class ChunkOutcome:
     source: bytes
     certs: dict[str, ProtoCert]
+    # Did this chunk ship as a HYBRID -- structured code everywhere except at
+    # the CLOSURE sites in `fallback_paths` (M5 task 6)? False both for a
+    # fully-structured chunk (root certified `L3`) and for a whole-file
+    # fallback (nothing structured survived).
+    hybrid: bool = False
+    # The `proto_path`s whose text in `source` came from the fallback state
+    # machine rather than from the structured printer. A path in this set
+    # covers its whole subtree. Empty for a fully-structured chunk; every path
+    # in the tree for a whole-file fallback. This is what the ledger's
+    # confessions are scoped to, and it is a statement about the SHIPPED
+    # ARTIFACT -- not about any proto's certification level, which
+    # `certs` still reports per proto and independently.
+    fallback_paths: frozenset[str] = frozenset()
+
+
+@dataclass(frozen=True)
+class HybridCert:
+    """A certified hybrid chunk: `source` compiles to a proto tree that matches
+    the original field for field EXCEPT under `fallback_paths`."""
+    source: bytes
+    rung: int
+    fallback_paths: frozenset[str]
 
 
 def _refused(exc: Exception) -> ProtoCert:
@@ -331,8 +353,14 @@ def clear_certification_cache() -> None:
     Pinned by `test_clear_certification_cache_drops_every_entry`: as the only
     escape hatch from this dict it is exactly the kind of untested helper that
     rots into a no-op.
+
+    Drops `_HYBRID_CACHE` too (M5 task 6): it holds whole assembled chunk
+    sources for the files that ship hybrid, keyed the same way, and an escape
+    hatch that released one memo and not the other would be a leak with a
+    plausible-looking name.
     """
     _CERT_CACHE.clear()
+    _HYBRID_CACHE.clear()
 
 
 def _certify_proto_uncached(proto: Proto, *, is_chunk_root: bool) -> ProtoCert:
@@ -408,6 +436,172 @@ def _certify_proto_uncached(proto: Proto, *, is_chunk_root: bool) -> ProtoCert:
     return _rejected(last)
 
 
+# A hybrid attempt costs one whole-chunk `luac_sz4` run per round, so the
+# rounds are bounded rather than run to a fixed point. Each round substitutes
+# at least one more proto (or gives up), and the corpus needs at most 2
+# (measured 2026-08-12, see task-6-report.md), so 6 is slack, not a tuning
+# knob: exceeding it means the substitution set is oscillating, and shipping
+# the whole-file fallback is the honest answer.
+_HYBRID_ROUNDS = 6
+
+# Process-level memo for `certify_hybrid`, keyed exactly like `_CERT_CACHE`
+# (oracle identity + `_memo_key(root)`), and fenced by the same autouse
+# `tests/conftest.py::_fence_certification_cache` fixture -- a test that
+# monkeypatches the printer and then decompiles would otherwise leave a wrong
+# hybrid artifact behind for the corpus fixtures to consume. Only chunks whose
+# root is NOT `L3` ever reach it (13 of 229 files), so it holds a handful of
+# entries; `clear_certification_cache()` drops it with the other one.
+_HYBRID_CACHE: dict[tuple[str, int, int, str, str], "HybridCert | None"] = {}
+
+
+def _proto_path_of(mismatch_path: str) -> str:
+    """`Mismatch.path` (`"root"`, `"root/59/2"` -- `verify.normalize._cmp`'s
+    own spelling) as a `walk_proto_paths` `proto_path` (`"main"`,
+    `"main_59_2"`). The two walks agree by construction: `_cmp` recurses over
+    `zip(a.subprotos, b.subprotos)` with the index appended, which is the same
+    `enumerate(p.subprotos)` `walk_proto_paths` uses."""
+    parts = mismatch_path.split("/")
+    return "main" + "".join(f"_{i}" for i in parts[1:])
+
+
+def _excused(proto_path: str, fallback_paths: frozenset[str]) -> bool:
+    """Is `proto_path` inside a substituted subtree?
+
+    Prefix test on `f"{fp}_"` rather than on `fp`: `"main_71"` is not a
+    descendant of `"main_7"`, and only the separator keeps those apart."""
+    return any(proto_path == fp or proto_path.startswith(fp + "_")
+               for fp in fallback_paths)
+
+
+def _plan_substitutions(root: Proto, certs: dict[str, ProtoCert]) -> set[str]:
+    """The protos whose own body cannot be printed at all, bottom-up.
+
+    A proto certified `L3` printed its entire subtree as part of that
+    certification, so it is skipped: only the non-`L3` protos are probed, and
+    they are probed deepest-first so that by the time a proto's turn comes,
+    every descendant that had to be substituted already is. What is left after
+    this pass is a set closed downward (substituting a proto substitutes its
+    whole subtree) and minimal with respect to *printability* -- it says
+    nothing yet about whether the result COMPARES equal, which is
+    `certify_hybrid`'s round loop.
+    """
+    from pyluadec.pipeline import walk_proto_paths
+    protos: dict[str, Proto] = {}
+    walk_proto_paths("main", root, protos)
+    fb: set[str] = set()
+    # `path.count("_")` is the proto's depth in the tree (`main`, `main_3`,
+    # `main_3_0`), so descending depth is deepest-first.
+    for path in sorted((p for p in protos if certs[p].level != "L3"),
+                       key=lambda s: -s.count("_")):
+        p = protos[path]
+        if _excused(path, frozenset(fb)):
+            continue                      # already inside a substituted subtree
+        try:
+            _print_proto_body(p, 1, tuple(f"u{i}" for i in range(p.nups)),
+                              path, frozenset(fb))
+        except (StructureError, ReconstructError, EmitError):
+            fb.add(path)
+    return fb
+
+
+def _hybrid_round(root: Proto, fb: frozenset[str]
+                  ) -> tuple[bytes, int | None, tuple[Mismatch, ...]] | None:
+    """Print, compile and compare one candidate substitution set.
+
+    Returns `None` if the candidate could not even be produced (the root's own
+    body refuses, the fallback cannot express one of the substituted protos, or
+    the assembled chunk does not compile), else `(source, rung, mismatches)`
+    with `rung is None` exactly when mismatches remain OUTSIDE the substituted
+    subtrees.
+    """
+    try:
+        src = _print_proto_body(root, 0, (), "main", fb)
+    except (StructureError, ReconstructError, EmitError):
+        return None
+    payload = src.encode()
+    try:
+        cand = load_bytes(oracle.compile_source(
+            payload, strip=not carries_debug(root)))
+    except oracle.LuaCompileError:
+        return None
+    last: tuple[Mismatch, ...] = ()
+    for k in range(len(NORMALIZATIONS) + 1):
+        # `compare_protos` itself is untouched -- the ladder, the field list
+        # and `_cmp` are exactly what a whole-chunk certification runs. What is
+        # scoped is only WHICH protos the verdict is claimed over: a mismatch
+        # under a substituted path is not excused as harmless, it is a proto
+        # this chunk never claimed to have reconstructed and which ships the
+        # fallback's own semantics, confessed as such in the ledger.
+        last = tuple(m for m in compare_protos(root, cand, level=k)
+                     if not _excused(_proto_path_of(m.path), fb))
+        if not last:
+            return payload, k, ()
+    return payload, None, last
+
+
+def certify_hybrid(root: Proto, certs: dict[str, ProtoCert]) -> HybridCert | None:
+    """Assemble and certify a hybrid chunk for a root that did not certify
+    `L3`, or return `None` if no hybrid survives (the caller then ships the
+    whole-file fallback).
+
+    The claim a successful return makes, in full: **every proto of `root`'s
+    tree that is not inside `fallback_paths` compares equal to the original,
+    field for field, at rung `rung` of the untouched normalization ladder,
+    after `source` was compiled by the real `luac_sz4`.** That is the same
+    `compare_protos` a whole-chunk `L3` runs, over the same recompiled tree;
+    the only difference is that the subtrees this chunk openly ships as
+    fallback are not claimed. In particular the root's own `code` -- including
+    the `CLOSURE` instruction and the `MOVE`/`GETUPVAL` pseudo-instructions
+    that follow it at each substituted site -- and its `constants`,
+    `maxstacksize` and frame contract are all still compared exactly, which is
+    what makes `structure.fallback.inline_function_parts`' "one subproto slot,
+    same captures, same order" obligations checkable rather than assumed.
+
+    Cached per process; see `_HYBRID_CACHE`.
+    """
+    key = _oracle_identity() + _memo_key(root)
+    if key in _HYBRID_CACHE:
+        return _HYBRID_CACHE[key]
+    result = _certify_hybrid_uncached(root, certs)
+    _HYBRID_CACHE[key] = result
+    return result
+
+
+def _certify_hybrid_uncached(root: Proto,
+                             certs: dict[str, ProtoCert]) -> HybridCert | None:
+    fb = _plan_substitutions(root, certs)
+    if "main" in fb:
+        # The root's own body does not print. There is no structured code to
+        # keep, so there is no hybrid -- only the whole-file fallback.
+        return None
+    for _round in range(_HYBRID_ROUNDS):
+        got = _hybrid_round(root, frozenset(fb))
+        if got is None:
+            return None
+        payload, rung, mismatches = got
+        if rung is not None:
+            return HybridCert(source=payload, rung=rung,
+                              fallback_paths=frozenset(fb))
+        grow = {_proto_path_of(m.path) for m in mismatches}
+        if any(certs[g].level == "L3" for g in grow):
+            # A proto that certified `L3` on its own (whole subtree, compared
+            # field by field in wrapper isolation) mismatched here. That is not
+            # a proto to substitute -- it is the hybrid assembly disagreeing
+            # with the per-proto verdict, i.e. a defect in this composition.
+            # Ship the whole-file fallback rather than paper over it, and keep
+            # the ledger's "an `L3` row never confesses" coupling structural
+            # instead of empirical. Never observed on this corpus (measured
+            # 2026-08-12, all 229 files).
+            return None
+        if "main" in grow or grow <= fb:
+            # Either the chunk's own main proto is what differs (nothing left
+            # to substitute), or a round made no progress. Both are "no
+            # hybrid", not "substitute more".
+            return None
+        fb |= grow
+    return None
+
+
 def emit_certified_chunk(root: Proto) -> ChunkOutcome:
     """Certify every proto in `root`'s tree independently, then choose the
     shipped artifact: structured chunk source iff the ROOT certified L3
@@ -462,7 +656,21 @@ def emit_certified_chunk(root: Proto) -> ChunkOutcome:
                 "root certified L3 with no source -- certification and "
                 "printing disagree")
         return ChunkOutcome(source=certified, certs=certs)
-    return ChunkOutcome(source=emit_chunk(root), certs=certs)
+    hybrid = certify_hybrid(root, certs)
+    if hybrid is not None:
+        # `HybridCert.fallback_paths` is the substitution FRONTIER (the CLOSURE
+        # sites the printer left holes at); `ChunkOutcome.fallback_paths` is
+        # the closure of that downward, i.e. every proto whose text in the
+        # shipped source came from the state machine. The ledger confesses per
+        # proto, so it needs the closure -- a descendant of a substituted
+        # function is just as much fallback-emitted as its root is.
+        shipped_fb = frozenset(
+            path for path in protos
+            if _excused(path, hybrid.fallback_paths))
+        return ChunkOutcome(source=hybrid.source, certs=certs, hybrid=True,
+                            fallback_paths=shipped_fb)
+    return ChunkOutcome(source=emit_chunk(root), certs=certs,
+                        fallback_paths=frozenset(protos))
 
 
 def _memo_key(p: Proto) -> tuple[str, str]:

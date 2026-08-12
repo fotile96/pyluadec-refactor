@@ -26,6 +26,17 @@ class DecompileResult:
     # indistinguishable in the ledger. Vocabulary and payload rules:
     # `structure.structured.ProtoCert.reason`.
     reasons: dict[str, str | None] = field(default_factory=dict)
+    # proto_path -> did THIS proto's text in `source` come from the fallback
+    # state machine? (M5 task 6.) This is a fact about the shipped artifact,
+    # and it is deliberately NOT `levels[path] != "L3"`: in a hybrid chunk a
+    # proto can miss `L3` on its own (its subtree contains something the
+    # recognizer refuses) and still ship structured, because the hybrid
+    # certification compared its own fields against the original exactly. It
+    # is what `confessions_by_proto` is keyed on.
+    shipped_fallback: dict[str, bool] = field(default_factory=dict)
+    # Did the chunk ship as a hybrid at all? False for a fully-structured
+    # chunk and for a whole-file fallback.
+    hybrid: bool = False
 
 
 def walk_proto_paths(path: str, p: Proto, out: dict[str, Proto]) -> None:
@@ -72,26 +83,31 @@ def decompile_chunk(root: Proto) -> DecompileResult:
     rungs = {path: out.certs[path].rung for path in protos}
     reasons = {path: out.certs[path].reason for path in protos}
     # The confession names `structure.fallback` as the pass that emitted this
-    # proto's text, and that is only literally true when the CHUNK shipped
-    # fallback -- i.e. when the root is not `L3`. A non-`L3` proto inside a
-    # chunk whose root DID certify would be stamped with it anyway, and its
-    # text actually came from the structured printer. Measured 2026-08-12 over
-    # all 229 files: **0** such protos, because a root that certifies has had
-    # its whole subtree compared field by field, and the per-proto wrapper
-    # verdict has not yet disagreed with that on this corpus. Left unguarded
-    # rather than made conditional on `levels["main"]`, because adding the
-    # guard would change nothing today and `tests/test_m4_exit.py` asserts the
-    # row-local coupling (non-`L3` => exactly one such confession) that a
-    # conditional would break. If the measurement ever comes back non-zero,
-    # the fix is a second confession `reason`, not dropping this one.
+    # proto's text, so it is keyed on what actually happened to this proto in
+    # THIS chunk -- `out.fallback_paths` -- and not on its certification level.
+    #
+    # Until M5 task 6 the two were the same predicate (`levels[path] != "L3"`),
+    # because a chunk was all-structured or all-fallback and the root's `L3`
+    # covered its whole subtree. The comment that stood here noted the one way
+    # they could come apart (a non-`L3` proto inside a certified root) and
+    # recorded 0 such protos on this corpus. Hybrid emission makes the OTHER
+    # direction routine: 12 of the 13 formerly-fallback files now ship
+    # structured code for protos that are not individually `L3`, and stamping
+    # those with `fallback-state-machine` would be a false confession -- the
+    # text came from the structured printer and was compared field for field
+    # by `certify_hybrid`. The level stays exactly what `certify_proto` said;
+    # only the confession moved to the shipped-artifact fact it was always
+    # describing.
+    shipped_fallback = {path: path in out.fallback_paths for path in protos}
     confessions = {
-        path: ([] if levels[path] == "L3" else
-               [{"pc_lo": 1, "pc_hi": len(p.code),
-                 "reason": "fallback-state-machine", "pass": "structure.fallback"}])
+        path: ([{"pc_lo": 1, "pc_hi": len(p.code),
+                 "reason": "fallback-state-machine", "pass": "structure.fallback"}]
+               if shipped_fallback[path] else [])
         for path, p in protos.items()
     }
     return DecompileResult(source=out.source, confessions_by_proto=confessions,
-                           levels=levels, rungs=rungs, reasons=reasons)
+                           levels=levels, rungs=rungs, reasons=reasons,
+                           shipped_fallback=shipped_fallback, hybrid=out.hybrid)
 
 
 def decompile_file(path) -> DecompileResult:
