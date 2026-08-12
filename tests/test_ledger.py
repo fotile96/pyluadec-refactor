@@ -160,3 +160,39 @@ def test_forced_l0_keeps_an_existing_confession():
     mod._force_l0(e)
     assert e.confessions is existing
     assert e.refusal_reason == "compile: shipped chunk did not compile"
+
+
+def test_dashboard_refusal_key_collapses_every_varying_part():
+    """`scripts/ledger_dashboard.py::_refusal_key` splits a cluster whenever
+    the vocabulary grows a varying part it does not know about, and it is a
+    silent failure -- the histogram just gets an extra row.
+
+    It has happened once: M5 task 6 added `mismatch: <field> at root/<N>` (a
+    mismatch located in a DESCENDANT during hybrid certification) and
+    `root/48` / `root/59` are not decimal tokens, so the committed ledger's 11
+    `code` mismatches printed as three rows. Two now, by design -- the index
+    is gone, the own-field/descendant distinction is kept; see the docstring.
+    """
+    import importlib.util
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    spec = importlib.util.spec_from_file_location(
+        "_dash", root / "scripts" / "ledger_dashboard.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    k = mod._refusal_key
+    assert k("mismatch: code at root/59") == "mismatch: code at root/N"
+    assert k("mismatch: code at root/48") == k("mismatch: code at root/59")
+    assert k("mismatch: code") == "mismatch: code"
+    assert k("structure: pc 41: if targets out of range") \
+        == "structure: pc N: if targets out of range"
+    assert k("mismatch: const[7]") == "mismatch: const[i]"
+    # Every distinct reason in the committed ledger must reduce to a key with
+    # no bare decimal left in it, which is the property the histogram needs.
+    import json
+    reasons = {json.loads(l)["refusal_reason"]
+               for l in (root / "corpus" / "ledger.jsonl").read_text().splitlines()
+               if l.strip() and json.loads(l)["refusal_reason"]}
+    assert reasons
+    for r in reasons:
+        assert not any(t.rstrip(":,;").isdigit() for t in k(r).split(" ")), r

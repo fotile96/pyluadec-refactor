@@ -14,15 +14,36 @@ def _refusal_key(reason: str) -> str:
     targets out of range`, `structure: pc 4: branch body block at pc 702 is
     unreachable`, `mismatch: const[7]`); a histogram over the raw strings has
     nearly as many buckets as rows, which defeats the point of putting it on
-    the dashboard. Every varying part of the current vocabulary
-    (`structure.structured.ProtoCert.reason`) is a NUMBER -- a pc, a register,
-    a statement count, a constant index -- so the normalisation is simply
-    "replace every decimal token with `N`", plus `const[7]` -> `const[i]`
-    (an index inside a bracket, not a standalone token).
+    the dashboard. The varying parts are numbers -- a pc, a register, a
+    statement count, a constant index -- but **not always as a standalone
+    decimal token**, which is where this function has already been wrong once:
+    it was written when "every varying part is a NUMBER [token]" was true, and
+    M5 task 6 added the `mismatch: <field> at root/<N>` form (a mismatch found
+    in a DESCENDANT during hybrid certification) without that premise being
+    re-checked. `root/48` and `root/59` are not decimal tokens, so the
+    committed ledger's 11 `code` mismatches showed up as three buckets
+    (`mismatch: code` 9, `... at root/48` 1, `... at root/59` 1) where they
+    are one cluster.
+
+    Three shapes are normalised, and the third is the M5 addition:
 
       "structure: pc 41: if targets out of range"
         -> "structure: pc N: if targets out of range"
-      "mismatch: const[7]"      -> "mismatch: const[i]"
+      "mismatch: const[7]"          -> "mismatch: const[i]"
+      "mismatch: code at root/59"   -> "mismatch: code at root/N"
+
+    That leaves the committed ledger's 11 `code` mismatches as **two** rows,
+    not one: `mismatch: code` 9 and `mismatch: code at root/N` 2. Deliberate.
+    Only the INDEX varies and it is gone; what remains is a kind distinction
+    the same normalisation preserves everywhere else -- `pc 41` collapses to
+    `pc N` rather than disappearing -- and it is the difference between "this
+    proto's own field differed" and "a descendant's did, during hybrid
+    certification", which is the more useful of the two facts to see on a
+    dashboard.
+
+    If the vocabulary grows another shape, this needs the same treatment --
+    the histogram silently splitting a cluster is the failure mode, and it is
+    quiet.
 
     Cosmetic only: this function exists for the dashboard's histogram. The
     ledger keeps the exact reason, and `tests/test_m4_exit.py` asserts on
@@ -32,10 +53,13 @@ def _refusal_key(reason: str) -> str:
     for tok in reason.split(" "):
         core = tok.rstrip(":,;")
         tail = tok[len(core):]
+        head, sep, idx = core.rpartition("/")
         if core.isdigit():
             out.append("N" + tail)
         elif core.startswith("const[") and core.endswith("]"):
             out.append("const[i]" + tail)
+        elif sep and idx.isdigit():
+            out.append(f"{head}/N" + tail)
         else:
             out.append(tok)
     return " ".join(out)

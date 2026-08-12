@@ -322,6 +322,50 @@ def test_a_refusing_ancestor_replaces_its_refusing_descendant_in_the_frontier():
     assert shipping_violations(root, outcome, hc) == []
 
 
+def test_the_frontier_prefix_test_needs_its_separator():
+    """I2. `_excused` tests `f"{fp}_"`, not `fp`, and nothing stood behind that
+    until now: replacing `fp + "_"` with `fp` left the WHOLE suite green
+    (measured 2026-08-13, `860 passed`), because the predicate's docstring
+    named the hazard and no test did.
+
+    It survives on this corpus by shape luck, not by construction. The six
+    hybrid frontiers are `main_1`; `main_48`; `main_59`; `main_58`;
+    `main_42`,`main_43`; `main_1`,`main_3` (re-measured 2026-08-13), and none
+    of those indices is a decimal prefix of a live sibling -- `snr_s1_10_s`
+    stops at `main_48`, so `main_4` never appears as a frontier there even
+    though `main_4` and `main_40`..`main_48` all exist as protos.
+
+    The counterfactual below is that file's real sibling set with the frontier
+    moved one index up. With the separator: one path excused. Without it: ten.
+    The nine extras would then be confessed as `fallback-state-machine` while
+    shipping structured text (`emit_certified_chunk`'s ledger closure is
+    `_excused` over the frontier), AND `_hybrid_round` would discard genuine
+    `compare_protos` mismatches inside them -- structured code no
+    certification compared, which is the governing invariant itself.
+    """
+    fb = frozenset({"main_7"})
+    assert S._excused("main_7", fb)              # the frontier member itself
+    assert S._excused("main_7_1", fb)            # a real descendant
+    assert S._excused("main_7_10_2", fb)         # a deeper one
+    assert not S._excused("main_71", fb)         # the hazard the docstring names
+    assert not S._excused("main_70_1", fb)       # ... and its subtree
+    assert not S._excused("main_", fb)
+    assert not S._excused("main", fb)
+
+    siblings = [f"main_{i}" for i in range(49)]  # snr_s1_10_s's root children
+    assert [p for p in siblings if S._excused(p, frozenset({"main_4"}))] \
+        == ["main_4"]
+
+    # `_add_to_frontier`'s prune uses the same separator on the other side, so
+    # a sibling with a longer index must not be pruned as a descendant.
+    grown = {"main_40", "main_41"}
+    S._add_to_frontier(grown, "main_4")
+    assert grown == {"main_4", "main_40", "main_41"}
+    covered = {"main_4_0"}
+    S._add_to_frontier(covered, "main_4")
+    assert covered == {"main_4"}
+
+
 def test_shipping_check_rejects_a_gratuitous_substitution():
     """Check 4 on its own: substituting a proto whose structured print was
     perfectly good leaves every mismatch outside the substituted subtree, so

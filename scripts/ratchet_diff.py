@@ -118,6 +118,13 @@ says nothing), per-occurrence `shipped` -> 0 (the comparison needs both sides).
 The first two are fail-safe, the last two fail-open but are covered by the
 schema note. Do not read the "schema" line as an amnesty in either direction.
 
+The summary carries the same caveat where a reader will actually see it: when
+one side has no `shipped`, the `shipping:` line says how many occurrences were
+**NOT COMPARED** rather than printing `0 -> 0`, which is indistinguishable
+from "nothing moved". Against `eb08890` that is all 1944 of them, and it is
+why M5 task 6's headline change (13 whole-file fallbacks becoming 6 hybrids
+plus 7) does not appear in the run that guards the wrap.
+
 Non-vacuity is the deliverable: every kind above has its own committed test
 that feeds a hand-mutated copy of the real ledger and asserts a non-zero exit
 naming the row. See `tests/test_ratchet_diff.py`.
@@ -182,6 +189,10 @@ class DiffReport:
     rung_downgrades: int = 0
     shipping_gained: int = 0
     shipping_lost: int = 0
+    #: Occurrences where one side carries no `shipped` field, so the pair was
+    #: not compared at all. Kept apart from the two counters above so a zero
+    #: there cannot be read as "nothing moved".
+    shipping_incomparable: int = 0
     l2_gained: int = 0
     l2_lost: int = 0
     l2_cov_downgrades: int = 0
@@ -482,6 +493,15 @@ def diff_ledgers(old: list[dict], new: list[dict]) -> DiffReport:
                 detail=f"{key[0]}:{key[1]} shipped structured, now fallback"))
         elif os_ == "fallback" and ns == "structured":
             rep.shipping_gained += 1
+        elif os_ is None or ns is None:
+            # Counted, not compared. Against a baseline predating M5 task 6
+            # the shipping line otherwise reads `0 fallback -> structured, 0
+            # structured -> fallback` -- which is what a tree with NO shipping
+            # change also prints, so task 6's headline (13 whole-file
+            # fallbacks -> 6 hybrids + 7) was invisible in the summary that
+            # runs at every wrap. The schema note two lines below said so, but
+            # a reader takes a number over a footnote.
+            rep.shipping_incomparable += 1
         # L2 (M5 task 9). Same shape as the shipping check and the same
         # asymmetry: losing a grant is a regression, gaining one is not, and a
         # baseline that predates the field has `None` on the old side so
@@ -560,9 +580,13 @@ def format_report(rep: DiffReport, old_path: str, new_path: str) -> str:
     out.append(f"  levels:   {rep.level_upgrades} upgraded, "
                f"{rep.level_downgrades} downgraded")
     out.append(f"  rungs:    {rep.rung_downgrades} downgraded")
-    out.append(f"  shipping: {rep.shipping_gained} occurrence(s) "
-               f"fallback -> structured, {rep.shipping_lost} structured -> "
-               f"fallback")
+    shipping = (f"  shipping: {rep.shipping_gained} occurrence(s) "
+                f"fallback -> structured, {rep.shipping_lost} structured -> "
+                f"fallback")
+    if rep.shipping_incomparable:
+        shipping += (f" ({rep.shipping_incomparable} NOT COMPARED -- one side "
+                     f"has no `shipped` field; see the schema note below)")
+    out.append(shipping)
     out.append(f"  L3 rate:  {_pct(rep.old_l3, rep.old_rows)} -> "
                f"{_pct(rep.new_l3, rep.new_rows)}")
     out.append(f"  L2:       {rep.l2_gained} occurrence(s) gained or improved, "

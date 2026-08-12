@@ -69,7 +69,21 @@ def _rows():
 # it cannot be shown to fail. `test_the_ledger_metrics_actually_reject_a_worse_ledger`
 # feeds this same function rows that have been mutated to look like a
 # regression, which is the only way the floors below are more than decoration.
-LEDGER_FLOORS = {"unique L3": 0.96, "occurrence L3": 0.96, "structured reach": 0.85}
+LEDGER_FLOORS = {"unique L3": 0.94, "occurrence L3": 0.96, "structured reach": 0.85}
+
+#: Metrics a regression in the KEY is arithmetically unable to leave alone, and
+#: why. Not an excuse slot -- `test_the_ledger_metrics_actually_reject_a_worse_
+#: ledger` proves the coupling is forced before it accepts it, so a pair that
+#: merely happens to co-trip on today's ledger still fails.
+#:
+#: `unique L3` at 0.94 against `occurrence L3` at 0.96 is the only one. Every
+#: demoted ROW costs at least one OCCURRENCE, so crossing 0.94 on 1478 rows
+#: (41 demotions) costs at least 41 of 1896 `L3` occurrences and lands at
+#: 1855/1944 = 95.4%, under 0.96. The consequence, stated rather than hidden:
+#: at these two numbers `occurrence L3` is the binding gate and `unique L3` is
+#: a coarse backstop that cannot fire alone. That is what widening it to M4's
+#: exit buys and costs -- see `test_m5_exit_l3_no_regression_unique`.
+FORCED_COUPLING = {"unique L3": {"occurrence L3"}}
 
 #: The fourth floor. Not in `LEDGER_FLOORS` because it is not derived from the
 #: ledger at all -- `test_m5_exit_quality_no_regression` re-decompiles and
@@ -97,7 +111,29 @@ def _check(rows, name):
 
 def test_m5_exit_l3_no_regression_unique():
     """M4 exit 94.0% unique -> **96.8% achieved** (1430/1478), measured
-    2026-08-13. Floor 0.96."""
+    2026-08-13. Floor **0.94**.
+
+    ## Why this floor is M4's exit and not 0.96
+
+    0.96 was 12 rows of headroom -- 0.75pp -- which is inside the churn this
+    file's own module docstring describes (a refactor that trades three protos
+    in one cluster for four in another). A floor that close to the measurement
+    is a tripwire, and the standard repair for a tripwire is to edit the
+    threshold, which is the process by which a gate stops meaning anything.
+    The doctrine is stated three times in this file; the number contradicted
+    it.
+
+    The floor is not the fine-grained instrument and was never meant to be.
+    `scripts/ratchet_diff.py` catches single-row regressions per row against a
+    committed baseline, which is strictly stronger than any aggregate. What
+    this floor says is the coarse thing: **M5 must not end below where M4
+    ended.** 0.94 is exactly that value, so the number and the doctrine now
+    agree, and there is 2.8pp of real margin (41 rows) behind it.
+
+    Cost, stated: `occurrence L3` stays at 0.96, and 41 row demotions cost at
+    least 41 occurrences, so this gate can no longer fire without its sibling
+    firing first. See `FORCED_COUPLING`.
+    """
     rows = _rows()
     assert rows
     _check(rows, "unique L3")
@@ -234,6 +270,7 @@ def test_the_ledger_metrics_actually_reject_a_worse_ledger(name):
     # and 61 was enough to trip the sibling gate too, which is exactly the
     # confusion this test's second half exists to detect.
     need = num - int(LEDGER_FLOORS[name] * den)
+    need_total = need                      # `need` is spent by the loops below
 
     if name == "structured reach":
         for r in rows:
@@ -244,8 +281,11 @@ def test_the_ledger_metrics_actually_reject_a_worse_ledger(name):
                     o["shipped"], need = "fallback", need - 1
     elif name == "unique L3":
         # Demote rows carrying ONE occurrence each, so the sibling occurrence
-        # rate falls by as little as possible. Measured: 12 demotions cross
-        # this floor, and 1896 - 12 = 1884 of 1944 = 96.9% keeps the sibling up.
+        # rate falls by as little as possible. Measured at the 0.94 floor: 41
+        # demotions cross it (1414 of the 1430 `L3` rows are singletons, so
+        # they are available), and that is also the MINIMUM occurrence cost --
+        # 1896 - 41 = 1855 of 1944 = 95.4%, which is under the sibling's 0.96.
+        # Hence `FORCED_COUPLING`; the assertion below proves it is forced.
         for r in rows:
             if need <= 0:
                 break
@@ -266,8 +306,27 @@ def test_the_ledger_metrics_actually_reject_a_worse_ledger(name):
     with pytest.raises(AssertionError, match=name):
         _check(rows, name)
 
-    # ... and ONLY that one. A mutation broad enough to trip every gate would
-    # show the gates are not independent rather than that this one works.
+    # ... and ONLY that one, except where the arithmetic makes independence
+    # impossible. A mutation broad enough to trip every gate would show the
+    # gates are not independent rather than that this one works.
+    forced = FORCED_COUPLING.get(name, frozenset())
     for other in LEDGER_FLOORS:
-        if other != name:
+        if other == name:
+            continue
+        if other not in forced:
+            _check(rows, other)
+            continue
+        # An exemption has to be earned, or it is just a way of not looking.
+        # Re-derive the MINIMUM collateral damage from the clean ledger and
+        # require that it alone crosses `other`'s floor: `unique L3` counts
+        # rows and `occurrence L3` counts occurrences, and no row carries
+        # fewer than one occurrence, so `need` row demotions cost at least
+        # `need` occurrences no matter which rows are chosen.
+        clean = _rows()
+        best_num, best_den = ledger_metrics(clean)[other]
+        assert (best_num - need_total) / best_den < LEDGER_FLOORS[other], (
+            f"{other} is listed as forced-coupled to {name}, but the minimum "
+            f"collateral of {need_total} still clears its floor -- the "
+            f"coupling is incidental and the exemption is not earned")
+        with pytest.raises(AssertionError, match=other):
             _check(rows, other)

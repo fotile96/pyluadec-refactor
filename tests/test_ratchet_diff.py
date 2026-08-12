@@ -555,8 +555,19 @@ def test_a_baseline_without_shipped_needs_no_guard(committed, tmp_path, capsys):
     rep = diff_ledgers(old, new)
     assert [r.kind for r in rep.regressions] == []
     assert rep.shipping_lost == 0 and rep.shipping_gained == 0
-    rc, _ = _run(tmp_path, old, new, capsys)
+    # ... but "not compared" must not print as "nothing moved". `0 -> 0` is
+    # exactly what a tree with no shipping change also shows, which is how M5
+    # task 6's headline became invisible in the summary that runs at the wrap.
+    n_occ = sum(len(r["occurrences"]) for r in new)
+    assert rep.shipping_incomparable == n_occ
+    rc, out = _run(tmp_path, old, new, capsys)
     assert rc == 0
+    assert "NOT COMPARED" in out, out
+
+    # And the counter stays at 0 when both sides really do carry the field, or
+    # it would be a permanent disclaimer rather than a measurement.
+    both = diff_ledgers(copy.deepcopy(committed), copy.deepcopy(committed))
+    assert both.shipping_incomparable == 0
 
 
 def test_duplicate_rows_are_rejected_rather_than_last_wins(committed, tmp_path,
