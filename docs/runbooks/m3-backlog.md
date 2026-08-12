@@ -1455,7 +1455,7 @@ together 54% of the wall clock. A process-level memo was estimated at ~24% of
 the subprocess cost. A review has already agreed neither test should be
 *sampled*, so caching is the only lever left. The ceiling is 45s.
 
-### Closed — M5 task 2 (commit `PENDING`)
+### Closed — M5 task 2 (commit `5b7d893`)
 
 Done, and **two of the numbers above are wrong**; the mechanism that actually
 paid is not the one this item describes.
