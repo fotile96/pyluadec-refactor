@@ -5,23 +5,38 @@ from .blocks import Cfg
 
 
 def _reverse_postorder(cfg: Cfg) -> list[int]:
-    seen: set[int] = set()
+    """Blocks reachable from the entry, in reverse DFS postorder.
+
+    An explicit stack, not recursion. The recursive form this replaced (M2
+    through M5 task 11) raised the **process-global** recursion limit to
+    `max(old, len(cfg.blocks) * 2 + 100)` and restored it in a `finally` --
+    correct single-threaded, and a mutation of interpreter-wide state visible
+    to every other thread and to any callback that ran underneath it. Carried
+    as a deferred M2 minor (`m3-backlog.md` §14, "revisit if M3 ever
+    parallelises corpus runs"); the parallel run never arrived, but the fix is
+    cheaper than the caveat. Fixed at M5 task 12.
+
+    The traversal order is unchanged, deliberately and by construction: a
+    block is pushed the first time it is reached (marked `seen` at push, as
+    `dfs` marked it at entry), its successors are consumed in `succs` order
+    through a stored iterator, and it is appended to `order` only when that
+    iterator is exhausted -- which is where `dfs` appended it. Verified over
+    all 1944 corpus protos: the two implementations return identical lists,
+    and `corpus/ledger.jsonl` is byte-identical across the change.
+    """
+    seen: set[int] = {cfg.entry}
     order: list[int] = []
-
-    def dfs(b: int) -> None:
-        seen.add(b)
-        for s in cfg.blocks[b].succs:
+    stack: list[tuple[int, "object"]] = [(cfg.entry, iter(cfg.blocks[cfg.entry].succs))]
+    while stack:
+        b, it = stack[-1]
+        for s in it:                      # type: ignore[union-attr]
             if s not in seen:
-                dfs(s)
-        order.append(b)
-
-    import sys
-    old = sys.getrecursionlimit()
-    sys.setrecursionlimit(max(old, len(cfg.blocks) * 2 + 100))
-    try:
-        dfs(cfg.entry)
-    finally:
-        sys.setrecursionlimit(old)
+                seen.add(s)
+                stack.append((s, iter(cfg.blocks[s].succs)))
+                break
+        else:
+            stack.pop()
+            order.append(b)
     order.reverse()
     return order
 

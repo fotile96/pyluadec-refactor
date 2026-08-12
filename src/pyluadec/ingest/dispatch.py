@@ -21,7 +21,20 @@ def _bridge_for(sizeof_sizet: int):
 
 def load_bytes(blob: bytes, chunkname: str = "=chunk") -> Proto:
     h = parse_header(blob)
-    bridge = _bridge_for(h.sizeof_sizet)
+    try:
+        bridge = _bridge_for(h.sizeof_sizet)
+    except RuntimeError as e:
+        # The stale-`.so` width mismatch above. It used to be raised OUTSIDE
+        # any handler, so a caller that had wrapped ingest in
+        # `except IngestError` -- the documented way to catch a load failure --
+        # saw a bare `RuntimeError` escape instead. Carried as a deferred M2
+        # minor through M3 and M4 (`m3-backlog.md` §14); fixed at M5 task 12.
+        # The message is `_bridge_for`'s own, which already names the likely
+        # cause and the repair command, so it is re-raised rather than
+        # re-worded. `ValueError` is deliberately NOT caught here: an
+        # unsupported width is a `BadHeader`-class fact about the input and
+        # `parse_header` is what owns rejecting it.
+        raise IngestError(str(e)) from e
     try:
         d = bridge.load_bytecode(blob, chunkname)
     except RuntimeError as e:

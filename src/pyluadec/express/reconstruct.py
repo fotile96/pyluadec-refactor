@@ -1024,7 +1024,17 @@ class Reconstructor:
           which pops every pending entry above the table's own register, so
           all but the topmost are popped with zero reads and disqualified),
           and three targets that survive the statement are locals by
-          definition. Measured this session: 0 of 4 shape-passing sites on
+          definition. **"Either statement-ending or bulk-popping" is not an
+          exhaustive list of `adjust_assign` store kinds** (M5 task 5 deferred
+          minor, corrected at task 12): the third kind is a `VLOCAL` target,
+          stored with a `MOVE` into an already-existing local, and it is
+          literally one of the 35 shapes tested below (`a,b,c = f()` over
+          pre-existing locals). It is covered by the closing clause rather
+          than by the dichotomy -- such a target IS a local, so it is not
+          graded temp, which is the property the argument needs. The M5 task 5
+          re-reviewer traced exactly this case on hand-compiled bytecode and
+          got `(True, False, False)` for the three slots, never all-temp.
+          Measured this session: 0 of 4 shape-passing sites on
           the 229-file corpus lack a `TFORLOOP` at the base, and 0 of 35
           hand-written non-`TFORLOOP` `luac` shapes (`a,b,c = f()`,
           `t[1],t[2],t[3] = f()`, `local a,b,c = ...`, the same inside `for`/

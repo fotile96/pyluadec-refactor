@@ -595,8 +595,10 @@ class Printer:
         is true exactly when control **falls through** past the JMP that
         follows it.
 
-        Two callers, both wanting exactly that expression:
+        Three callers, all wanting exactly that expression:
           - `If`: the fallthrough is the `then_body`, so this IS the `if`
+            condition.
+          - `While`: the fallthrough is the loop body, so this IS the `while`
             condition.
           - `Repeat`: `lparser.c`'s `repeatstat` patches the condition's
             *false* list back to the loop header (`cond()` is
@@ -616,6 +618,21 @@ class Printer:
         defects" #1) is exactly the drift worth designing out. This method is
         now a `self.expr(...)` around that single source of truth; the
         rendered text is unchanged.
+
+        `indent` is the enclosing block's depth and reaches exactly one thing:
+        the body of a closure literal appearing INSIDE the condition, which
+        `_expr` prints at `indent + 1` with its `end` at `indent`. Every other
+        expression form ignores it. All three callers pass it as of M5 task
+        12; before that `While`/`Repeat` passed nothing, so a closure in a
+        `while`/`until` condition would have had its body printed at column 0.
+        Cosmetic only, and unobservable on this corpus: over all 1944 protos
+        `build_sir` produces 208 `While` regions and 0 `Repeat` regions, and
+        **0** of the pcs those regions claim outside their bodies decode to
+        `CLOSURE` (measured 2026-08-13; `build/decompiled/` and
+        `corpus/ledger.jsonl` are byte-identical across the change). It is fixed
+        anyway because "the printer indents uniformly" is a property, and a
+        property with a hole in it that only a future corpus can show is the
+        kind this project has been repeatedly wrong about.
 
         `If.negated`/`Repeat.negated` are deliberately NOT consulted: the
         polarity is derived from the instruction's own A/C field, which is the
@@ -672,18 +689,31 @@ class Printer:
             # in scope in the other, nor after the `end`. See
             # Reconstructor.open_scope for what went wrong without this.
             #
-            # ONE snapshot PER RUNG, kept on a stack, not one shared by the
-            # whole chain. That distinction is load-bearing and was measured
-            # the hard way: sharing a single snapshot made
-            # tests/test_semantic_regressions.py::
-            # test_while_true_break_guard_recovers_loop drop from `L3` to `L1`
-            # (the printer refused outright with "register 0 is being given a
-            # new value while the expression staged in register 2 still refers
-            # to it by name"). The recursive form's inner `If` called
-            # `open_scope()` AFTER its own condition -- and after any staging
-            # its `Straight` prefix did -- so its snapshot legitimately
-            # contains staged temps that the outer snapshot predates. Rolling
-            # a later rung back to the outer snapshot discards them.
+            # ONE snapshot PER RUNG, kept on a stack. What is load-bearing is
+            # WHEN each snapshot is taken, not any property of the object:
+            # `open_scope` returns a fresh value (frozensets plus a dict copy)
+            # and holds no reference to the Reconstructor, so two rungs cannot
+            # "share" one in the aliasing sense at all. Rung k's snapshot has
+            # to be taken after rung k's own condition -- and after any staging
+            # its `Straight` prefix did -- because the recursive form this
+            # loop replaced called `open_scope()` at exactly that point, and a
+            # later rung's snapshot legitimately contains staged temps that an
+            # earlier one predates. Rolling a later rung back to an earlier
+            # snapshot discards them.
+            #
+            # Measured 2026-08-13 (M5 task 12), two neuters, each named:
+            #   (a) take ONE snapshot above the chain and roll every rung back
+            #       to it (per-rung `close_scope` kept), and
+            #   (b) take ONE snapshot above the chain and close it once after
+            #       the chain,
+            # both turn tests/test_semantic_regressions.py::
+            # test_while_true_break_guard_recovers_loop from `L3` to `L1`
+            # (`assert 'L1' == 'L3'`; the printer refuses with "register 0 is
+            # being given a new value while the expression staged in register 2
+            # still refers to it by name"). An M5 task 7 review reported that
+            # "sharing the snapshot OBJECT changes nothing" and that only the
+            # hoist reproduces; re-measured here, (a) is the hoist -- there is
+            # no third variant, because a value cannot be shared any other way.
             #
             # The stack is unwound after the loop, innermost first, which is
             # exactly the sequence of `close_scope(snap)` calls the recursive
@@ -898,7 +928,7 @@ class Printer:
                     f"pc {r.cond.ri.pc}: while-header code reconstructs to "
                     f"{len(stmts)} statement(s), which a Lua while header "
                     "cannot carry")
-            cond = self.condition(r.cond)
+            cond = self.condition(r.cond, indent)
             out = [f"{pad}while {cond} do"]
             out += self.region(r.body, indent + 1)
             self.recon.close_scope(snap)
@@ -915,7 +945,7 @@ class Printer:
             # `leaveblock` only after), which is why `repeat local a = f()
             # until a` is legal Lua. Closing first would drop `a` from
             # `declared`/`env` and make the condition reference a global.
-            cond = self.condition(r.cond)
+            cond = self.condition(r.cond, indent)
             self.recon.close_scope(snap)
             out.append(f"{pad}until {cond}")
             return out

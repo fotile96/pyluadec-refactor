@@ -183,10 +183,30 @@ def _refused(exc: Exception) -> ProtoCert:
 
 def _rejected(mismatches: tuple[Mismatch, ...]) -> ProtoCert:
     """An `L1` verdict from the comparison: the candidate recompiled but did
-    not match at any rung. The reason names the FIRST differing field only --
-    never the values, which are corpus payload (see `ProtoCert.reason`)."""
+    not match at any rung. The reason names the FIRST differing field, and the
+    subproto path when that field is not this proto's own -- never the values,
+    which are corpus payload (see `ProtoCert.reason`).
+
+    `Mismatch.path` used to be dropped alongside `.a`/`.b` (M5 agenda item 8).
+    Dropping the values is required; dropping the path was collateral, and it
+    is safe to keep because a path is built by `verify.normalize._cmp` out of
+    `"root"` and subproto INDICES -- `f"{path}/{i}"` -- so it carries no
+    bytecode-derived text by construction. Without it a row saying
+    `mismatch: code` on a 5-instruction root was indistinguishable from one
+    whose own `code` really differed.
+
+    Measured on this corpus 2026-08-13, over all 22 occurrences whose reason is
+    a `mismatch`: **20 are at `root` and 2 are not** (`snr_s1_10_s.lua:main` at
+    `root/48` and `snr_s3_10_s.lua:main` at `root/59`, the two hybrid roots
+    whose real defect is a descendant's `code`). So this buys two rows today.
+    It is worth the schema move anyway because the two it buys are exactly the
+    misattributions the item describes, and because M6's residual work reads
+    this field.
+    """
+    m = mismatches[0]
+    where = "" if m.path == "root" else f" at {m.path}"
     return ProtoCert(level="L1", rung=None, mismatches=mismatches,
-                     reason=f"mismatch: {mismatches[0].field}")
+                     reason=f"mismatch: {m.field}{where}")
 
 
 def _debug_fingerprint(p: Proto) -> str:
@@ -247,6 +267,19 @@ def _oracle_identity() -> tuple[str, int, int]:
       `docs/runbooks/decompile-pipeline.md`) is read by `oracle.build_dir()`
       on every `compile_source` call, so it can swap the binary between two
       certifications within one process.
+
+    **`(mtime_ns, size)` is a heuristic, not a content hash** (M5 task 2
+    deferred minor, recorded at task 12). Two different `luac_sz4` binaries of
+    identical size, rebuilt within the same filesystem timestamp granularity,
+    would share a key -- the "catches both channels" claim above is about the
+    two channels, not about being collision-free. It is not practically
+    exploitable: a real compiler invocation takes milliseconds and APFS/ext4
+    carry nanosecond mtimes, so the window needs a rebuild faster than the
+    clock's resolution AND a byte-length-preserving change. Hashing the binary
+    per lookup would close it at ~1 MB of I/O per `certify_proto` call, which
+    is the wrong trade for a memo whose miss costs one `luac` subprocess. If
+    this ever needs to be exact, hash once per `(path, mtime_ns, size)` and
+    cache that.
 
     The M5 task 2 original keyed on `verify.ledger.oracle_version()` (`git
     log -1 --format=%H -- vendor native`) memoized into a module global. That

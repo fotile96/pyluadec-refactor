@@ -1,7 +1,19 @@
 """Per-opcode effect table — the project's axiom layer (spec §3 layer 2).
 
-一切上层（内联门、pass 验证、fallback 发射）共享此处结论。改动本文件 = 改动公理，
-必须同步 no-frills PDF / lvm.c 依据并跑全部差分测试。
+改动本文件 = 改动公理，必须同步 no-frills PDF / lvm.c 依据并跑全部差分测试。
+
+**谁在读这张表，以及谁不读（2026-08-13 实测，M5 task 1 发现 / task 12 收口）。**
+`reads` / `writes` / `reads_open` / `writes_open` 被 `structure/fallback.py`、
+`express/`、两道 effects 一致性门实际消费。`InstrEffects.effect`（三档效应格
+本身）**在 `src/pyluadec/` 里没有任何消费者**——由
+`tests/test_effects_len.py::test_nothing_in_src_reads_the_effect_field` 以 AST
+扫描钉住（该测试失败不等于缺陷，见其 docstring）。
+
+本 docstring 原文写的是「一切上层（内联门、pass 验证、fallback 发射）共享此处
+结论」。三个例子里有两个已经不成立：内联门自 M3 task 8 起改为模拟 `lparser.c`
+的 freereg 分配纪律（`express/freereg.py`），不再读效应格；spec §4 的 pass
+registry 已于 M5 永久退役（决策记录在 spec §2 决策表）。`fallback` 发射那一项
+仍然成立，且读的是 `reads`/`writes` 而不是 `effect`。
 """
 from __future__ import annotations
 

@@ -75,6 +75,21 @@ def payload_of(result: str) -> str:
         return result[3:].strip()
     if result.startswith("ERR|"):
         # "ERR|<stripped error message>|<globals written before the error>"
+        #
+        # KNOWN AMBIGUITY, deliberately not fixed (M5 agenda item 11, decided
+        # at task 12). The message is `probe_global_state.lua`'s
+        # `strip_location(err)` output, which is NOT escaped, so a message
+        # containing a `|` splits here in the wrong place. The two candidate
+        # repairs both cost more than the defect: escaping `|` on the Lua side
+        # changes the probe's wire format, and the four pinned divergences in
+        # `_PINNED_DIVERGENCES` below are exact strings in that format;
+        # splitting from the right is no better, because the globals block can
+        # contain `|` inside a serialised string value.
+        #
+        # It is latent, and measurably so: this branch has **no live caller**
+        # -- both call sites (`tests/test_global_state_probe.py`, two of them)
+        # only reach `payload_of` for results starting `OK|`. Re-check that
+        # before relying on the split.
         rest = result[4:]
         bar = rest.find("|")
         return rest[bar + 1:].strip() if bar >= 0 else ""
