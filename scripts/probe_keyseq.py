@@ -641,6 +641,53 @@ _CLEAN_CALLEES = frozenset({
 })
 
 
+# Reading any of these means the chunk can substitute or rewrite the very
+# environment the exemption sets describe, so name-by-name reasoning stops
+# being possible. `_shadowed_names` only sees `SETGLOBAL`; measured, four more
+# mechanisms reach the same end and each granted:
+#
+#     _G.tostring = sys.conv            -- SETTABLE on the real _G
+#     rawset(_G, "tostring", sys.conv)  -- same, through a function
+#     getfenv().tostring = sys.conv     -- through env.__newindex
+#     setfenv(1, sys.env)               -- replaces the environment WHOLESALE,
+#                                          so every exempt base read is a proxy
+#
+# The last one is why this is a blanket answer rather than four more cases:
+# after `setfenv` the exemption SET is wrong, not one name in it. Measured
+# across all 229 files / 1944 protos, the corpus reads none of these
+# (`GETGLOBAL` counts: `_G` 0, `getfenv` 0, `setfenv` 0, `rawset` 0, `rawget`
+# 0, `require` 0, `package` 0, `arg` 0, `newproxy` 0, `load`/`loadstring`/
+# `loadfile`/`dofile`/`module` 0) and writes 0 base or driver names with
+# `SETGLOBAL`, so dropping every exemption on sight costs nothing.
+_ENV_SUBSTITUTING = frozenset({
+    "_G", "getfenv", "setfenv", "rawset", "rawget", "load", "loadstring",
+    "loadfile", "dofile", "require", "module", "package", "newproxy", "arg",
+})
+
+
+def _reads_globals(root) -> set[str]:
+    from pyluadec.lift.opcodes import Op, decode
+
+    out: set[str] = set()
+
+    def walk(p):
+        for i, w in enumerate(p.code):
+            ins = decode(w, i + 1)
+            if ins.op is Op.GETGLOBAL:
+                out.add(p.constants[ins.bx].decode("latin-1"))
+        for sp in p.subprotos:
+            walk(sp)
+
+    walk(root)
+    return out
+
+
+def _substitutes_environment(root) -> bool:
+    """Does this chunk so much as MENTION a name that can rewrite or replace
+    the environment? If so no exemption survives -- see `_ENV_SUBSTITUTING`."""
+    return bool(_reads_globals(root) & _ENV_SUBSTITUTING)
+
+
 def _shadowed_names(root) -> set[str]:
     """Base/driver names this chunk ever writes as a global.
 
@@ -702,6 +749,8 @@ def _stub_globals(root) -> set[bytes]:
             walk(sp)
 
     walk(root)
+    if _substitutes_environment(root):
+        return set(read)
     shadowed = _shadowed_names(root)
     exempt = (_BASE_GLOBALS | _DRIVER_GLOBALS) - _REFLECTIVE_BASE - shadowed
     return {n for n in read if n.decode("latin-1") not in exempt}
@@ -724,7 +773,9 @@ _LAUNDERERS = frozenset({b"type", b"rawequal", b"getmetatable", b"next",
 # and did not before this split.
 _TRUTHINESS = "blind-truthiness"
 _LOOP = "blind-loop"
-_KINDS = ("blind-compare", "blind-length", "blind-launder", _LOOP, _TRUTHINESS)
+_HARNESS = "blind-harness"
+_KINDS = ("blind-compare", "blind-length", "blind-launder", _HARNESS, _LOOP,
+          _TRUTHINESS)
 _DECIDING = _KINDS
 
 
@@ -784,7 +835,8 @@ def static_taint(root) -> dict[str, int]:
 
     stubs = _stub_globals(root)
     shadowed = _shadowed_names(root)
-    clean_callees = _CLEAN_CALLEES - shadowed
+    clean_callees = (frozenset() if _substitutes_environment(root)
+                     else _CLEAN_CALLEES - shadowed)
     counts = {k: 0 for k in _KINDS}
 
     def rk_stub(p, v: int, live: set[int]) -> bool:
@@ -962,23 +1014,46 @@ def static_taint(root) -> dict[str, int]:
             hi = (a + b - 1) if b > 0 else top
             args = [r for r in range(a + 1, hi + 1) if r in live]
             fname = _called_global(p, ins)
+            cname = fname.decode("latin-1") if fname is not None else None
             if fname in _LAUNDERERS and args:
                 sites[ins.pc] = "blind-launder"
+            elif cname in clean_callees and args:
+                # A stub-derived value reached a callee the HARNESS depends
+                # on. This is a channel a register may-analysis is otherwise
+                # blind to, and it is not hypothetical: `waitf(n)` does
+                # `tonumber(n)`, which is `nil` for a proxy, so `wait(sys.d)`
+                # advances ONE frame instead of N -- and the frame counter
+                # decides every later `pressButton`. Measured: the two sides
+                # traced identically, zero runtime marks (the probe's `waitf`
+                # calls its own local `tonumber`, so no override sees it), and
+                # `wait(sys.delay)` vs `wait(3)` took opposite branches under
+                # the same key spec. The return value is honestly clean; the
+                # harness state it left behind is not.
+                #
+                # Recording a site rather than only refusing the result is
+                # measured free: 0 `blind-harness` sites across the corpus.
+                sites[ins.pc] = _HARNESS
             # A call's RESULT is clean only when the callee is provably one of
             # the few functions that cannot hand back a value derived from its
             # arguments or from the environment (`_CLEAN_CALLEES`, minus
             # anything this chunk shadows) AND no argument is stub-derived.
-            # The allowlist half is load-bearing (neutering it back to "any
-            # base global" turns the `pcall-forwards` case red). The `not
-            # args` half is **DEFENSIVE**: tried, and neutering it to `True`
-            # leaves all 132 tests green, because every name currently in
-            # `_CLEAN_CALLEES` is either in `_LAUNDERERS` -- so a stub in the
-            # window already records `blind-launder` -- or genuinely ignores
-            # its arguments' values when computing its result (`pressButton`
-            # answers from the key script, `wait` returns nil, `print` returns
-            # nothing). It stays as the invariant a future addition to the
-            # allowlist has to satisfy, since the allowlist is the thing three
-            # rounds of review keep finding holes in.
+            # BOTH halves are load-bearing, and the round-3 comment here was
+            # wrong about the second. It claimed every allowlisted name "either
+            # is in `_LAUNDERERS` or genuinely ignores its arguments' values".
+            # `pressButton` is in neither category: `press(name)` is
+            # `if set and type(name) == "string" then down = set[name] == true`,
+            # so the ARGUMENT'S VALUE selects the result. Measured with `not
+            # args` neutered to `True`, `if pressButton(sys.k) == true then`
+            # flips from `refuse{blind-compare: 1}` to a GRANT while the module
+            # stayed 132/132 green -- the guard did real work and the suite had
+            # the hole. Pinned on site counts by
+            # `test_a_stub_reaching_an_allowlisted_callee_is_both_a_site_and_a_
+            # taint`, since the `blind-harness` arm above now refuses the same
+            # file either way.
+            #
+            # Emptying `_CLEAN_CALLEES` changes the taint of 9 corpus files
+            # including `snr_lib.lua`, so the allowlist is load-bearing for the
+            # one shipped grant, not decoration.
             fexempt = (fname is not None
                        and fname.decode("latin-1") in clean_callees
                        and not args)

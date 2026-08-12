@@ -1530,14 +1530,17 @@ text, a 27% smaller population). A static stub-taint analysis over the
 original lifted bytecode now refuses them. It is path-insensitive, so a single
 site anywhere in a file refuses the whole file — conservative on purpose.
 
-Rounds 2 and 3 each closed further holes **inside the code written to close
-the previous one** — twelve laundering routes in round 0, four in round 2
-(the `read - written` seed exemption, a stub table key, an accessor's return
+Rounds 2, 3 and 4 each closed further holes **inside the code written to
+close the previous one** — twelve laundering routes in round 0, four in round
+2 (the `read - written` seed exemption, a stub table key, an accessor's return
 value), eight more in round 3 (the trusted-callee list trusting `pcall` /
 `assert` / `rawget`, a shadowed base name, `_G` and `getfenv()`, a closure
-writing the parent's local, a stub-decided loop trip count, and a
-hard-coded loop-variable window that lost taint past four variables). Every
-one was a byte-equal trace with zero runtime marks and a grant. Read the
+writing the parent's local, a stub-decided loop trip count, and a hard-coded
+loop-variable window that lost taint past four variables), and six in round 4
+(a stub in an allowlisted callee's arguments, harness state carried between
+calls, and four more environment-substitution mechanisms). Every one was a
+byte-equal trace with zero runtime marks and a grant. **Reach stayed at 1/5
+through all four rounds** — every fix refused fixtures, never a corpus file. Read the
 "what the pair still cannot see" list in `structured-pipeline.md` as *what
 could be constructed*, not as a proof.
 

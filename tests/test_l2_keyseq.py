@@ -709,6 +709,9 @@ def test_the_route_that_granted_before_round_three_now_refuses(name, src):
     # A loop with a constant trip count.
     _wrap(b'  local n = 0\n  for i = 1, 3 do n = n + 1 end\n'
           b'  if n == 3 then hit() else miss() end'),
+    # A harness call with a constant argument (the New-9 control).
+    b'function main()\n  wait(3)\n'
+    b'  if pressButton("CIRCLE") then hit() else miss() end\nend\n',
 ])
 def test_round_three_did_not_turn_the_backstop_into_a_blanket_refusal(src):
     """The non-vacuity counterpart. Four rounds of tightening is four chances
@@ -717,6 +720,101 @@ def test_round_three_did_not_turn_the_backstop_into_a_blanket_refusal(src):
     from scripts.probe_keyseq import static_refusal
     from pyluadec.ingest import load_bytes
     assert static_refusal(load_bytes(_bytecode(src))) == {}
+
+
+def test_a_stub_reaching_an_allowlisted_callee_is_both_a_site_and_a_taint():
+    """Round 4, New-10 -- and the correction of a `DEFENSIVE` label that was
+    wrong.
+
+    Round 3 labelled the `and not args` half of the clean-callee rule
+    defensive, on the claim that every allowlisted name is either a launderer
+    or "genuinely ignores its arguments' values". `pressButton` is neither:
+    `press(name)` is `if set and type(name) == "string" then down =
+    set[name] == true`, so the argument's VALUE selects the result. Measured
+    with `not args` neutered to `True`, `if pressButton(sys.k) == true` flipped
+    from `refuse{blind-compare: 1}` to a GRANT while the module stayed 132/132
+    green.
+
+    Asserted on the SITE COUNTS, not the verdict: the `blind-harness` arm
+    refuses this file either way, so a verdict-level assertion would pass with
+    the guard neutered -- the same trap the `TFORLOOP` window fell into.
+    """
+    from scripts.probe_keyseq import static_taint
+    from pyluadec.ingest import load_bytes
+    src = (b'function main() if pressButton(sys.k) == true then hit() '
+           b'else miss() end end\n')
+    counts = static_taint(load_bytes(_bytecode(src)))
+    assert counts["blind-harness"] == 1, counts   # the argument reached it
+    assert counts["blind-compare"] == 1, counts   # ...and its result is stub
+
+
+def test_harness_state_is_a_channel_the_register_analysis_cannot_see():
+    """Round 4, New-9, and the first hole found in this analysis that is not a
+    propagation gap but a structural limit of the mechanism.
+
+    `waitf(n)` does `local m = tonumber(n)`, which is `nil` for a proxy, so
+    `wait(sys.delay)` advances **one** frame instead of N -- and the frame
+    counter decides every later `pressButton`. The return value is honestly
+    clean; the harness state left behind is not. Measured before the fix: both
+    sides traced identically, zero runtime marks (the probe's `waitf` calls its
+    own local `tonumber`, so no override sees it), `static_taint == {}`, GRANT.
+
+    A register may-analysis cannot follow taint into the harness, so the answer
+    is at the boundary: a stub-derived value reaching a callee the harness
+    depends on records a site. The control below shows the branch really was
+    stub-selected -- the same spec takes the other arm with a constant delay.
+    """
+    from scripts.probe_keyseq import evaluate, probe_raw, static_taint
+    from pyluadec.ingest import load_bytes
+    tainted = (b'function main()\n  wait(sys.delay)\n'
+               b'  if pressButton("CIRCLE") then hit() else miss() end\nend\n')
+    control = (b'function main()\n  wait(3)\n'
+               b'  if pressButton("CIRCLE") then hit() else miss() end\nend\n')
+    spec = "k=4,CIRCLE;tail="
+
+    def branch(src):
+        t = probe_raw(src, is_source=True, spec=spec)
+        return [l for l in _lines(t)
+                if l.startswith(b"C|hit") or l.startswith(b"C|miss")]
+
+    assert branch(tainted) == [b"C|miss|0|"]
+    assert branch(control) == [b"C|hit|0|"]
+
+    assert static_taint(load_bytes(_bytecode(tainted)))["blind-harness"] == 1
+    r = evaluate(_bytecode(tainted), tainted, [spec])
+    assert (r.granted, r.reason) == (False, "taint-static")
+    assert evaluate(_bytecode(control), control, [spec]).granted
+
+
+@pytest.mark.parametrize("name,body", [
+    ("_G-settable", b'  _G.tostring = sys.conv\n'),
+    ("rawset", b'  rawset(_G, "tostring", sys.conv)\n'),
+    ("getfenv-newindex", b'  getfenv().tostring = sys.conv\n'),
+    ("setfenv-wholesale", b'  setfenv(1, sys.env)\n'),
+])
+def test_every_environment_substituting_mechanism_drops_the_exemptions(name, body):
+    """Round 4, New-8: `_shadowed_names` only sees `SETGLOBAL`, and four more
+    mechanisms reach the same end. Each granted with zero runtime marks.
+
+    The last is why the answer is blanket rather than four more cases: after
+    `setfenv(1, sys.env)` the exemption SET is wrong, not one name in it --
+    every statically-exempt base read is a proxy. So a chunk that so much as
+    mentions an environment-substituting name loses every exemption.
+
+    Measured unreachable on this corpus: 0 `GETGLOBAL`s of `_G`, `getfenv`,
+    `setfenv`, `rawset`, `rawget`, `require`, `package`, `arg`, `newproxy`,
+    `load`, `loadstring`, `loadfile`, `dofile`, `module`, and 0 base or driver
+    names written with `SETGLOBAL`. Asserted on `static_refusal` rather than on
+    the grant, because the `setfenv` case additionally breaks the runtime probe
+    (the chunk replaces the environment, so the key script is never polled and
+    the run refuses as `no-key-poll` before the backstop is consulted).
+    """
+    from scripts.probe_keyseq import static_refusal
+    from pyluadec.ingest import load_bytes
+    src = (b'function main()\n' + body + b'  pressButton("CIRCLE")\n'
+           b'  local s = tostring(1)\n'
+           b'  if s == "1" then hit(s) else miss(s) end\nend\n')
+    assert static_refusal(load_bytes(_bytecode(src))) != {}, name
 
 
 def test_a_value_written_into_an_upvalue_is_stub_derived():

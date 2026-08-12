@@ -2666,6 +2666,7 @@ refuse**:
 | `blind-launder` | a call of `type`/`next`/`tostring`/`tonumber`/`select`/`pcall`/… with a stub-derived argument |
 | `blind-truthiness` | `TEST`/`TESTSET` on a stub-derived register |
 | `blind-loop` | `FORPREP`/`FORLOOP`/`TFORLOOP` whose control triple `R(A)..R(A+2)` is stub-derived — a loop's **trip count** is a branch, and the body can write a perfectly clean register |
+| `blind-harness` | a stub-derived value in the argument window of a `_CLEAN_CALLEES` callee — the harness's own state is a channel a register analysis cannot follow (see below) |
 
 `blind-truthiness` was very nearly left out, on the prediction that
 `if someGlobal then` is common enough that refusing on it would take reach to
@@ -2703,10 +2704,58 @@ other base global, returns a stub. `_G`, `getfenv`, `setfenv`, `load*`,
 demoted to **seeds** (`_REFLECTIVE_BASE`): `env.__index` does resolve them for
 real, but what they hand back is the stub environment's own shape.
 
-Measured cost: none. `snr_lib.lua` calls no base global at all, the corpus
-reads `_G` and `getfenv` zero times, and the only recognised callees it uses
-are `wait` (4556), `pressButton` (157), `string` (95), `select` (26), `math`
-(10) and `pairs` (7).
+Measured cost: none for the shipped grant — `snr_lib.lua` calls no base
+global at all and the corpus reads `_G` and `getfenv` zero times. But the
+allowlist is **not** decoration: emptying `_CLEAN_CALLEES` changes the taint
+of 9 corpus files, `snr_lib.lua` among them.
+
+Counted with the module's own `index_globals` rule, the corpus' **recognised
+callees** are `wait` **4554**, `pressButton` **157**, `select` **26** and
+`pairs` **7**. `string` and `math` are *never* recognised callees — the
+intervening `GETTABLE` invalidates the holder, so `string.format(…)` already
+returns a stub. An earlier version of this paragraph gave "`wait` (4556),
+`pressButton` (157), `string` (95), `select` (26), `math` (10), `pairs` (7)":
+those are `GETGLOBAL` **read** counts, which is a different question, and the
+same mistake in kind as the `doScriptScene` figure two rounds earlier.
+
+### Harness state is a channel, not a propagation gap
+
+`waitf(n)` does `local m = tonumber(n)`, which is `nil` for a proxy, so
+`wait(sys.delay)` advances **one** frame instead of N — and the frame counter
+decides every later `pressButton`. Measured: both sides traced identically,
+zero runtime marks (the probe's `waitf` calls its own local `tonumber`, so no
+override sees it), `static_taint == {}`, GRANT; the control `wait(3)` takes
+the other branch under the same key spec.
+
+That is not a missing propagation rule — a register may-analysis is
+*structurally* unable to follow taint into the harness's own state. The answer
+is at the boundary instead: a stub-derived value reaching a callee the harness
+depends on records a `blind-harness` site. Measured free (0 sites across the
+corpus). The same rule covers `pressButton(sys.k)`, whose result is selected
+by its argument's value.
+
+**Anything else the harness carries between calls is the same class**, and
+this is the first limit found here that is not a propagation gap.
+
+### Four rounds of tightening, and what the reach did
+
+The substantive result of this task, stated where the badge is:
+
+* Round 0 shipped **5/5** authored files granted. Twelve laundering routes,
+  four more, then eight more were found to grant with byte-equal traces and
+  zero runtime marks — each time inside the code written to close the previous
+  set.
+* Rounds 1–4 took the analysis from nothing to a static backstop with six site
+  kinds. **Reach never moved off 1/5.** Every round refused only fixtures, not
+  corpus files.
+* Four clean controls (a branch on a local, `pressButton(...) == true`,
+  `tostring(7) == "7"`, a constant-trip `for`, and `wait(3)`) still grant
+  after all of it, so the backstop did not become a blanket refusal.
+
+So the badge is narrow *and* it survived four adversarial rounds without
+narrowing further. The one shipped grant is `snr_lib.lua`, and it is
+incidentally clean: 0 `SETUPVAL`, 0 captured registers, 0 `TFORLOOP`, 0
+`VARARG`, 0 `_G` reads, no base-global call.
 
 ### What the pair still cannot see
 
@@ -2730,6 +2779,11 @@ there are others.
 * **A value stored into a script-built table and read back.** `t.x = stub`
   then `if t.x == "a"`; `SETTABLE` is not tracked. Indexing off a stub-derived
   table, or at a stub-derived **key** (`t[sys.k]`), both are.
+* **Any other harness state carried between calls.** `blind-harness` closes
+  the argument boundary for the callees currently in `_CLEAN_CALLEES`; a
+  register may-analysis still cannot *follow* taint through the harness, so a
+  future driver that keeps state a stub can perturb some other way would need
+  the same treatment at its own boundary.
 * **`VARARG`.** `local a = ...` compared against a literal is not flagged.
   **Flagged for M5 task 10:** `snr_common.lua` has 26 `VARARG`s and calls
   `select` 26 times, so this gap and the `select` idiom meet in exactly the
@@ -2828,8 +2882,12 @@ divergence rather than excusing it. `snr_common` refuses anyway, on
 ### Why this has to be sound rather than best-effort
 
 `l2` is a **committed ledger field**. `corpus/ledger.jsonl` currently carries
-2 rows / 3 occurrences at `{"cov": 1.0}` and 164 occurrences at
-`{"refused": "taint-static"}`, and `scripts/ratchet_diff.py` reads them for
+**2 row-level** grants and **3 occurrence-level** `{"cov": 1.0}` records, plus
+164 occurrences at `{"refused": "taint-static"}`. The row/occurrence mismatch
+is the aggregate design working, not a bug: the third granted occurrence lives
+on shash `fbad0f8acb`, a shape with **292** occurrences in all — 291 of them
+in files no key sequence drives — so `verify.ledger.row_l2` correctly
+withholds the row-level badge. and `scripts/ratchet_diff.py` reads them for
 `l2-lost` and `l2-coverage-downgrade`. So an unsound grant does not stay in a
 console diagnostic: it is written into a checked-in artifact and becomes the
 baseline a later run is measured against. That is the reason the analysis is
