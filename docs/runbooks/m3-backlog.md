@@ -1238,7 +1238,13 @@ They are here so they are not rediscovered and re-litigated:
   trigger is left standing here deliberately, pointed at whoever next touches
   `express/reconstruct.py`'s handling of `CONCAT`.
 
-## 2. Full ratchet CI — baseline diff, downgrade = fail (spec §5's complete form)
+## 2. Full ratchet CI — baseline diff, downgrade = fail (spec §5's complete form) — DONE (M5 task 8)
+
+*Everything from "Carried from §7" to the "Closed" heading below is the record
+as it stood before the change; present tense in it means "before M5 task 8".
+All three of its figures were re-measured and reproduced exactly. The one
+number it did not carry — what splitting the key would cost — is in the Closed
+section.*
 
 Carried from §7 above, where it was scoped to M4 and did **not** get done. M4
 delivered the field that makes it *useful* (`refusal_reason`, so a regression
@@ -1285,6 +1291,62 @@ suite-budget choice (the full sweep costs ~1.7s, but the budget was tight at
 the time), and it means the ported fuzz harness is mostly *available* rather
 than *standing*. A ratchet CI is the natural place to run the full 24 —
 nightly or on the baseline-diff job — rather than in the per-commit suite.
+
+### Closed — M5 task 8 (commits `1127e25`, docs to follow)
+
+All three parts landed. Authority for the details is
+`docs/runbooks/structured-pipeline.md` → "Ratchet the ledger against a
+baseline", "The `git bisect run` predicate", "CI: there is none", and "The
+ledger's grouping key — pinned, not split".
+
+**1. `scripts/ratchet_diff.py OLD NEW`.** Exits 1 on six regressions — level
+downgrade, rung downgrade (a *higher* `l3_level` is a *weaker* proof), removed
+row, an `L3` row carrying a `refusal_reason`, a per-occurrence `shipped` going
+`structured` → `fallback`, and a row arriving at `L0` — printing the offending
+rows grouped by `refusal_reason` cluster. 0 on upgrades, added rows and
+schema-only differences; 2, never 1, on an unreadable input (bisect reads 1 as
+"bad"). Two real diffs at the M5 task-8 commit: `eb08890` → HEAD is **41
+upgraded, 0 downgraded** (L3 1389 → 1430); `bbe74f6` → HEAD is **318 upgraded,
+0 downgraded** (1112 → 1430).
+
+Non-vacuity is the deliverable and was treated as one. `tests/test_ratchet_diff.py`
+is 16 tests, one per failure mode, each feeding a hand-mutated copy of the real
+committed ledger and asserting a non-zero exit **naming the row**; and each of
+the seven checks was individually neutered, with exactly its own test(s) going
+red (level-downgrade takes 3 tests with it, the other six take 1 each).
+
+The `git bisect run` predicate was **verified by running a bisect**, not
+described: a scratch branch with four commits, one of which injects an early
+`StructureError` into `sir/build.py`, was bisected against this commit's ledger
+as baseline; it found the injecting commit in 20.1s / 2 probes and reported 681
+clustered regressions. Scratch branch deleted.
+
+**2. The ledger key: PINNED, not split. The ledger did not move** —
+`corpus/ledger.jsonl` is byte-identical. Re-measured 2026-08-12 and reproducing
+the figures above exactly: **16 of 1478** groups carry >1 debug fingerprint,
+**462** fingerprints between them (446 more than one each), **0** groups
+disagree on `(level, rung, refusal_reason)` — the last re-measured on the
+*triple*, one field stronger than the `(level, rung)` this entry claimed, and
+still 0. The number this entry did not have: splitting would take the ledger
+from **1478 rows to 1924**, all 446 additions duplicate verdicts, landing in
+the same commit as the instrument that diffs the ledger by row identity. So
+`run_corpus.py::key_disagreements` asserts the invariant over every occurrence
+instead, and `main()` refuses to write a violating ledger; the exposure figures
+now print on every run. If it ever fires, the fix is to split the key.
+
+**3. The full generated sweep** is gate 3 of `scripts/ratchet_job.sh`.
+Re-measured: **24 cases in 2.48s** against **0.31s** for the standing 3 — so
+this entry's "~1.7s" did not reproduce and the fold-in costs the ratchet ~2.2s
+and the per-commit suite nothing.
+
+**CI: there is none.** Checked — no `.github/workflows/`, no `.gitlab-ci.yml`,
+no runner config anywhere in the repo. No workflow was invented for a repo that
+has never had one; the ratchet is `scripts/ratchet_job.sh` (suite + baseline
+diff + full sweep, 40.6s end to end), run at a wrap and before any merge that
+touches the ledger. If a runner is ever added, that script is the job body.
+
+Suite after: **655 passed in 36.6s** (636 in 36.0s before), against the 45s
+ceiling; +19 tests, +0.6s, and the 16 new `ratchet_diff` tests need no corpus.
 
 ## 3. The 89 non-`L3` unique protos, and the 17 files still on fallback
 

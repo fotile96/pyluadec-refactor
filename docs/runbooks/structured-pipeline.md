@@ -1396,6 +1396,17 @@ rewrites `corpus/ledger.jsonl` (committed) and `build/decompiled/*.lua` (not
 committed). Never hand-edit the ledger; `tests/test_ledger_ratchet.py` requires
 a fresh run to reproduce it byte for byte.
 
+Since M5 task 8 it also prints a `ledger key:` line **before** the rest, and
+**refuses to write the ledger** if that check fails — see "The ledger's
+grouping key" below. Current output on this corpus:
+
+```
+ledger key: 16/1478 shash group(s) carry >1 debug fingerprint (462 fingerprints between them); 0 disagree on (level, rung, reason)
+compiled 229/229; ledger: 1478 unique protos (1944 occurrences)
+structured 1896/1944 protos (97.5%); L3 1430/1478 unique (96.8%)
+shipped: 1747/1944 protos structured (89.9%); 216 files fully structured, 6 hybrid, 7 whole-file fallback
+```
+
 ### Read the dashboard
 
 ```bash
@@ -1514,7 +1525,7 @@ the original instruction stream actually did.
 ### Run the suite
 
 ```bash
-PYLUADEC_CORPUS_DIR=<corpus> uv run pytest              # 512 tests, ~40s (measured 2026-08-12)
+PYLUADEC_CORPUS_DIR=<corpus> uv run pytest              # 655 tests, 36.6s (measured 2026-08-12, M5 task 8)
 PYLUADEC_CORPUS_DIR=<corpus> uv run pytest tests/test_effects_emitter_consistency.py -v
 ```
 
@@ -1525,11 +1536,118 @@ it (see CLAUDE.md).
 `tests/test_generated_semantic_cases.py` (M4 task 5) only runs
 `DEFAULT_LIMIT` (3) of its `CASE_COUNT` (24) deterministic differential-
 execution cases by default, to keep the standing suite inside its speed
-budget. The full sweep is a manual command, not part of the default run:
+budget. **The full sweep is a ratchet-job gate, not a manual command any
+more** (M5 task 8) — `scripts/ratchet_job.sh` runs it, and the standalone form
+stays available:
 
 ```bash
-PYLUADEC_GENERATED_CASE_LIMIT=24 uv run pytest tests/test_generated_semantic_cases.py -v   # 24 tests, ~1.7s
+PYLUADEC_GENERATED_CASE_LIMIT=24 uv run pytest tests/test_generated_semantic_cases.py -v
 ```
+
+Measured 2026-08-12 on macOS arm64: **24 cases in 2.48s**, against **0.31s**
+for the standing 3 — so the fold-in costs the ratchet ~2.2s and the per-commit
+suite nothing. (An earlier revision of this section said "~1.7s" for the full
+sweep, measured 2026-08-11; that figure did not reproduce and 2.48s is the one
+to use. Why it grew was not investigated — five M5 tasks landed in between and
+attributing it without measuring would be a guess.)
+
+### Ratchet the ledger against a baseline (M5 task 8)
+
+```bash
+PYLUADEC_CORPUS_DIR=<corpus> ./scripts/ratchet_job.sh [BASELINE_REF]
+```
+
+Three gates: the full suite (which contains `tests/test_ledger_ratchet.py`,
+i.e. the proof that `corpus/ledger.jsonl` is a byte-exact fixed point of
+`scripts/run_corpus.py`), the baseline diff, and the full 24-case generated
+sweep. `BASELINE_REF` defaults to `eb08890`, the last merged milestone tip.
+Measured end-to-end 2026-08-12: **40.6s**.
+
+The diff on its own:
+
+```bash
+git show eb08890:corpus/ledger.jsonl > /tmp/baseline.jsonl
+uv run python scripts/ratchet_diff.py /tmp/baseline.jsonl corpus/ledger.jsonl
+```
+
+It exits **1** on any per-row `level` downgrade, `l3_level` rung downgrade
+(remember a HIGHER rung is a WEAKER proof — rung k means `NORMALIZATIONS[:k]`
+were applied before comparing), removed row, `L3` row carrying a
+`refusal_reason`, per-occurrence `shipped` going `structured` → `fallback`, or
+row arriving at `L0`; **0** on upgrades, added rows and fields present on one
+side only; and **2**, never 1, on an unreadable input. Offending rows print
+grouped by `refusal_reason` cluster, which is what M4 added that field for: a
+regression that reads "12 rows, all `structure: … back edge`" names the
+recognizer that broke.
+
+Two real diffs, run 2026-08-12 at this commit:
+
+| baseline | result |
+| --- | --- |
+| `eb08890` (M4 merged tip) | 1478 common, 0 removed/added, **41 upgraded, 0 downgraded**, L3 1389 → 1430; two schema notes (`shipped`, `hybrid` are newer than the baseline) |
+| `bbe74f6` (M4 branch point / M3 tip) | 1478 common, 0 removed/added, **318 upgraded, 0 downgraded**, L3 1112 → 1430; three schema notes (plus `refusal_reason`) |
+
+**Why this exists, and what it makes safe.** Before it, nothing compared the
+committed ledger against a committed *historical* baseline: a regenerated
+ledger with fewer `L3` rows passed the whole suite as long as the rate stayed
+above the exit floor and no `L0` appeared. It also makes the deliberately
+slack floors safe rather than merely defensible — `tests/test_sir_while.py`'s
+census floor is measured-minus-10 and `tests/test_m4_exit.py`'s is points below
+what is achieved, on the argument that a floor set at the measurement is a
+tripwire. Both gaps are the same gap, and this closes it: floors catch
+catastrophes without churning, the baseline diff catches the one-row
+regression that stays inside them.
+
+**Non-vacuity.** `tests/test_ratchet_diff.py` feeds hand-mutated copies of the
+real committed ledger, one test per failure mode, and asserts a non-zero exit
+that names the offending row. Verified by mutation at M5 task 8: each of the
+seven checks was neutered in turn and exactly its own test(s) went red.
+
+### The `git bisect run` predicate
+
+The predicate must survive checkouts of commits that predate `ratchet_diff.py`
+itself, so **copy the script and the baseline out of the tree first**:
+
+```bash
+cp scripts/ratchet_diff.py /tmp/rd.py
+cp corpus/ledger.jsonl     /tmp/baseline.jsonl      # or: git show <ref>:corpus/ledger.jsonl
+export PYLUADEC_CORPUS_DIR=<corpus>
+
+git bisect start <bad> <good>
+git bisect run sh -c '
+  uv run python scripts/run_corpus.py >/dev/null 2>&1 || exit 125
+  uv run python /tmp/rd.py /tmp/baseline.jsonl corpus/ledger.jsonl
+  rc=$?
+  git checkout -- corpus/ledger.jsonl
+  exit $rc'
+```
+
+Each probe **regenerates** the ledger rather than reading the committed one:
+at an arbitrary bisected commit the committed file is not known to be current,
+and it is the code under test that must produce the verdict. `exit 125` is
+git's "skip" — a commit where the corpus run itself fails cannot judge the
+ratchet — and the `git checkout --` restores the ledger so the next checkout
+finds a clean tree. Nothing else run_corpus writes is tracked
+(`build/decompiled/` is gitignored).
+
+**Verified 2026-08-12**, not just written down: on a scratch branch off this
+commit, four commits were laid down (two empty, one injecting an early
+`StructureError` for functions over 200 instructions into `sir/build.py`, one
+empty), the baseline was this commit's ledger, and the invocation above found
+`d54ea11` — the injection — as the first bad commit in **20.1s / 2 probes**,
+reporting 681 regressions grouped by cluster. The scratch branch was deleted;
+`scripts/run_corpus.py` is ~11s per probe on this host, so a 100-commit range
+is ~7 probes / ~80s.
+
+### CI: there is none, and this task did not invent one
+
+There is **no CI runner configuration in this repository** — no
+`.github/workflows/`, no `.gitlab-ci.yml`, no CI YAML anywhere (checked
+2026-08-12, M5 task 8). Every gate this project has is a command someone runs.
+The ratchet is therefore `scripts/ratchet_job.sh`, documented above, and the
+right time to run it is at a milestone wrap and before any merge that touches
+`corpus/ledger.jsonl`. If a runner is ever added, that script is the job body;
+adding one was deliberately out of scope rather than forgotten.
 
 ## Ledger fields added in M3
 
@@ -1579,17 +1697,70 @@ byte-identical regeneration from `run_corpus.py`
 (`::test_ledger_is_a_reproducible_fixed_point`), and the `> 0.50` exit
 fractions on both bases.
 
-**Not asserted: cross-revision monotonicity.** Nothing in the suite compares
-the ledger against any historical baseline. A ledger regenerated with *fewer*
-`L3` rows and committed passes every test above, as long as the rate stays
-over 50% and no `L0` appears — each row would still be internally consistent,
-which is all the coupling tests look at. Full ratchet CI (baseline diff,
-downgrade = fail, `git bisect` integration) is spec §5's complete form and is
-an explicit **M4** item; M3 only guarantees the ledger fields can support it
-(`docs/runbooks/m3-backlog.md` §7). Until then a shrinking L3 count is caught
-by reading the ledger diff in review, not by the suite. `scripts/run_corpus.py`'s
-`main()` takes the higher level (its `_RANK` comparison) when one structural
-hash occurs more than once.
+**Cross-revision monotonicity — asserted since M5 task 8, by an instrument
+rather than by the suite.** It used to be the standing exception: nothing
+compared the ledger against any historical baseline, so a ledger regenerated
+with *fewer* `L3` rows and committed passed every test above as long as the
+rate stayed over the floor and no `L0` appeared — each row would still be
+internally consistent, which is all the coupling tests look at. That is now
+`scripts/ratchet_diff.py` (spec §5's complete form: baseline diff, downgrade =
+fail, `git bisect run` predicate), documented under "Ratchet the ledger against
+a baseline" above.
+
+Be precise about what changed and what did not. The **suite** still does not
+diff against a baseline, and deliberately so: a baseline is a *ref*, not a
+fixture, and pinning one inside `pytest` would either freeze it at one
+milestone or re-derive it from `git` on every run. The check lives in
+`scripts/ratchet_job.sh`, which is run at a wrap and before any merge that
+touches the ledger. What the suite gained is the guarantee that the instrument
+works: `tests/test_ratchet_diff.py` (16 tests, no corpus needed) is the
+non-vacuity proof.
+
+### The ledger's grouping key — pinned, not split (M5 task 8)
+
+`corpus/ledger.jsonl` is keyed on `structural_hash` **alone**, and
+`scripts/run_corpus.py::main()` takes the higher level (its `_RANK`
+comparison) when one hash occurs more than once. That key is *not* sufficient
+to imply an equal verdict, and the codebase says so elsewhere:
+`structure.structured._memo_key` keys the certification memo on
+`(structural_hash, _debug_fingerprint)` precisely because `structural_hash`
+drops `source`, `linedefined`/`lastlinedefined`, `lineinfo`, `locvars` and
+upvalue names — every one of which `verify.normalize.compare_protos` checks.
+So "one hash, one verdict" was an assumption the ledger generator **made and
+did not check**.
+
+Measured 2026-08-12 (M5 task 8; the M4 figures reproduced exactly):
+
+- **16 of the 1478 shash groups carry more than one debug fingerprint**,
+  holding **462** fingerprints between them — 446 more than one each.
+- **0 groups disagree on `(level, rung, refusal_reason)`.** The max-by-rank is
+  vacuous on this corpus.
+- Splitting the key to `(shash, dfp)` would take the ledger from **1478 rows
+  to 1924**, all 446 additions being duplicate verdicts.
+
+**The decision was to pin, not split, and the ledger did not move.**
+`run_corpus.py::key_disagreements` evaluates the invariant over every
+occurrence and `main()` **refuses to write a ledger that violates it**, so the
+assumption is now checked once per regeneration instead of being trusted. The
+figures above print on every run (`ledger key:` line). Splitting would have
+landed 446 duplicate rows in the same commit as the instrument that diffs the
+ledger *by row identity* — the first baseline diff would have read as 1478
+removed + 1924 added, which is exactly the unreadable one-off movement the
+agenda item wanted avoided.
+
+What is pinned is the **certification** verdict from `decompile_chunk`, which
+is what `_memo_key` claims is a function of `(shash, dfp)`. What is *not*
+pinned is the compile-adjusted level the ledger stores (`level if compile_ok
+else "L0"`): two occurrences of one shape can legitimately differ there,
+because whether the whole *chunk* compiled is a property of the file, and that
+case is already handled by `_force_l0` AND-ing `compile_ok` across the group.
+
+**If `key_disagreements` ever returns non-empty, the fix is to split the
+key** — a disagreement means two protos with equal code shape and unequal
+debug fields certified differently, which is the case `_debug_fingerprint`
+exists for. Non-vacuity:
+`tests/test_ledger_ratchet.py::test_key_disagreement_check_actually_rejects_a_split_group`
+covers a level, a rung and a reason disagreement separately.
 
 ## Current capability boundary — measured, not estimated
 

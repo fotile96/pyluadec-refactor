@@ -143,9 +143,11 @@ ingest -> lift -> cfg -> structure.fallback -> oracle 编译验证 -> ledger
 - `corpus/ledger.jsonl` **入库**（1478 条唯一 proto 结构哈希、覆盖 1944 处出现、229 文件，M2 收口时全部 `L1`）；`corpus/discrepancies.json` **不入库**（gitignored，纯门产物，"最近一次验证干净"的可追溯性应落在 CI 或本文件而非该 JSON——Phase 1 遗留的正式决定）。
 - 台账只能由 `scripts/run_corpus.py` 整体重新生成后提交，**禁止手编**任何一行。
 - 台账是自身生成脚本的不动点（同语料、同 oracle 构建再跑一次必须字节级复现），由 `tests/test_ledger_ratchet.py` 守护。
-- **"等级只升不降"是纪律，不是机器强制的。** 说清楚各自的边界（2026-08-11 逐条核对了断言本体）：
-  - **被断言的**：不许出现 `L0`、`compile_ok` 全真、`shash` 有序且唯一、覆盖 229 文件 / 1944 处出现、以及上面那条不动点（`tests/test_ledger_ratchet.py`）；外加**行内**等级与 confession 的耦合（`tests/test_m3_exit.py`，见下文 M3 一节）、M3 出口比例 `> 0.50` 与 M4 出口比例 `> 0.85`（`tests/test_m4_exit.py`，同时钉住分母 `== 1944` 与 `refusal_reason` 的双向耦合）。
-  - **没有被断言的**：**跨版本单调性**。没有任何测试拿当前台账去比历史 baseline，所以一份重新生成并提交的、L3 行数变少的台账，只要比例仍 > 50% 且不出现 `L0`，整套测试照样全绿。真正的 ratchet CI（baseline diff、降级即失败、`git bisect` 接线）是 spec §5 的完整形态，M4 结束时**仍未落地，已顺延到 M5**（M4 只是让台账多了 `refusal_reason` 这个能按原因聚类的字段）——见 `docs/runbooks/m3-backlog.md` 的 M5 议程。因此审 PR 时台账的 diff 要人眼看。
+- **"等级只升不降"自 M5 task 8 起由机器强制，但强制它的不是 pytest 套件。** 边界（2026-08-12 逐条核对）：
+  - **套件断言的**：不许出现 `L0`、`compile_ok` 全真、`shash` 有序且唯一、覆盖 229 文件 / 1944 处出现、以及上面那条不动点（`tests/test_ledger_ratchet.py`）；外加**行内**等级与 confession 的耦合（`tests/test_m3_exit.py`，见下文 M3 一节）、M3 出口比例 `> 0.50` 与 M4 出口比例 `> 0.85`（`tests/test_m4_exit.py`，同时钉住分母 `== 1944` 与 `refusal_reason` 的双向耦合）。
+  - **跨版本单调性**由 `scripts/ratchet_diff.py OLD NEW` 判定（spec §5 的完整形态）：逐行等级降级、rung 降级（`l3_level` 变**大**＝证明变弱）、行消失、`L3` 行带上 `refusal_reason`、逐 occurrence `shipped` 从 `structured` 退回 `fallback`、新行落在 `L0`——任一即 exit 1，并按 `refusal_reason` 聚类打印涉事行；升级、新增行、只在一侧存在的字段 exit 0。它**不在**套件里（baseline 是 git ref 不是 fixture），而是 `scripts/ratchet_job.sh` 的第 2 道门（第 1 道全套件、第 3 道 `PYLUADEC_GENERATED_CASE_LIMIT=24` 全量差分执行扫描），在里程碑收口和任何动台账的合并前跑。套件里的 `tests/test_ratchet_diff.py`（16 个用例，不需要语料）只负责一件事：证明这个工具**能失败**——每种失败模式一个用例，喂手工改坏的真实台账副本并要求非零退出且**点名那一行**。
+  - **本仓库没有任何 CI runner 配置**（无 `.github/workflows/`，2026-08-12 核实），所以上面这些是"有人去跑"的命令，不是自动触发的。`git bisect run` 的确切写法（含把脚本与 baseline 拷到树外，因为老 commit 上这两样都不存在）见 `docs/runbooks/structured-pipeline.md`「The `git bisect run` predicate」，已用注入故障的临时分支实跑验证过。
+- **台账主键 = `structural_hash` 单独一项，这个假设自 M5 task 8 起被每次生成时断言**（`scripts/run_corpus.py::key_disagreements`；违反即拒绝写台账）。实测 2026-08-12：1478 组里 16 组含多于一个 debug fingerprint（共 462 个），**0 组**在 `(level, rung, refusal_reason)` 上分歧。选择"断言"而非"拆键"的理由、拆键会把台账从 1478 行变成 1924 行这个实测值，见 runbook「The ledger's grouping key」。
 - `oracle` 字段记录的是 `git log -1 -- vendor native`（oracle 构建产物的溯源），**不是** `git rev-parse HEAD`——用 HEAD 会导致每次纯文档/纯测试提交都让全部台账行看起来"变了"，淹没真实回归；原因与修复过程见 runbook 对应小节。
 
 详见 `docs/runbooks/decompile-pipeline.md`：管线每层的函数签名、fallback 产物的 `__pld_R`/`__pld_U`/盒模型/`__pld_pc` 状态机阅读指南（含与 `luac_sz4 -l -l` 原始 listing 对照调试的实操示例）、效应表三档的语义与限度、台账字段的完整语义。
@@ -180,6 +182,7 @@ M3–M4 的旧说法「产物为结构化 ⟺ root proto 认证 `L3`」是**替�
 - 全局状态探针（L1.5 门）：`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_global_state.py`。M4 task 10 起 CLI 认识那 4 条已钉住的发散（钉子已从测试挪到 `scripts/probe_global_state.py`，两个 CLI 与两个门共用 `scripts/probe_common.py::adjudicate_pins`），干净跑法打印 `225/229 identical, 4 pinned divergence(s)` 并返回 0；权威判定仍在 `tests/test_global_state_probe.py`。
 - 行为探针（L1.75 门，M4 task 10 新增）：`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_behaviour.py`。在打桩环境下**实际调用**每个 chunk 定义的全局函数并比对事件轨迹，干净跑法打印 `227/229 identical, 2 pinned divergence(s), 398196 recorded events`。设计、能力边界、两条钉子的指令级证据见 `docs/runbooks/m3-backlog.md`「Behaviour probe (L1.75)」节。
 - 效应表-发射器一致性门：`uv run pytest tests/test_effects_emitter_consistency.py`（语料臂 + 合成操作数网格，无需语料也能跑合成臂）。
+- **Ratchet 门（M5 task 8）**：`PYLUADEC_CORPUS_DIR=... ./scripts/ratchet_job.sh [BASELINE_REF]`——全套件 + 台账 baseline diff + 24 例全量差分执行扫描，实测 40.6s，`BASELINE_REF` 默认 `eb08890`（上一个里程碑合并点）。只要 diff：`git show <ref>:corpus/ledger.jsonl > /tmp/base.jsonl && uv run python scripts/ratchet_diff.py /tmp/base.jsonl corpus/ledger.jsonl`。
 - 单文件结构化反编译 / 看认证结果 / 调试某个未认证函数：命令见 `structured-pipeline.md`「Common operations」节。
 
 ### 台账新字段
@@ -200,7 +203,7 @@ M3–M4 的旧说法「产物为结构化 ⟺ root proto 认证 `L3`」是**替�
   `scripts/ledger_dashboard.py` 直接打这个字段的直方图，残差普查因此是常驻数据而
   非一次性脚本。
 - `tests/test_m3_exit.py` 断言的是**行内耦合**（M5 task 6 按新 schema 重述）：`L3` 行 ⇒ `l3_level` 非空、`refusal_reason is None`；非 `L3` 行 ⇒ `l3_level is None`、`refusal_reason` 非空；并且**对每一行**，`fallback` ⟺ 有那条 `fallback-state-machine` confession ⟺ 有 occurrence 的 `shipped == "fallback"`。也就是说"confession 摘了但产物没变"、"产物变了 confession 没摘"、"行级聚合与逐 occurrence 记录对不上"三种**记账不一致**都会被抓到。旧的 `L3 ⇒ fallback is False` 已随 `fallback` 改定义而作废（那 150 行 `L3` 确实发的是状态机文本，硬要求它们 `confessions == []` 才是真正的 confession 漏洞）。
-- **"等级只升不降"本身没有被任何测试断言**——没有历史 baseline 比对，见上文「台账约定」。跨版本单调性是纪律 + 人眼看 diff，机器强制留给 **M5** 的 ratchet CI（M4 未做）。
+- **"等级只升不降"由 `scripts/ratchet_diff.py` 判定，不由 pytest 套件判定**（M5 task 8 落地）——套件里没有历史 baseline 比对，见上文「台账约定」。
 
 ### 能力边界（实测，别当成"差不多都做完了"）
 
@@ -247,4 +250,4 @@ Phase 4 已完成。**能力边界与残差普查的权威仍是 `docs/runbooks/
 
 ### 仍未做（都在 M5 agenda）
 
-完整 ratchet CI（baseline diff、降级即失败）**M4 没做**——M4 只交付了让它能按原因聚类的 `refusal_reason` 字段；`LEN` 重新分级；那 89 处残差；L2 差分执行认证与按键序列 harness；`_stack_discipline`（462 行、33 个 if、11 个内嵌闭包）的拆分。
+完整 ratchet CI（baseline diff、降级即失败）**M4 没做**，已由 **M5 task 8 落地**（`scripts/ratchet_diff.py` + `scripts/ratchet_job.sh`，见上文「台账约定」；本仓库无 CI runner 配置，是命令不是自动触发）；`LEN` 重新分级（M5 task 1）；那 89 处残差；L2 差分执行认证与按键序列 harness；`_stack_discipline`（462 行、33 个 if、11 个内嵌闭包）的拆分。

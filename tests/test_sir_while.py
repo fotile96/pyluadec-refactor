@@ -620,8 +620,14 @@ def test_corpus_build_sir_acceptance_floor(corpus_dir):
     # module docstring). But 10/1478 is a 0.7% band, an order of magnitude
     # tighter than the exit gate's ~9 points, so it is a narrow one. The
     # instrument that would actually catch a 9-proto regression is a
-    # cross-revision baseline diff on `corpus/ledger.jsonl`, which nothing
-    # asserts today; it is M5's ratchet CI (M5 agenda in
-    # `docs/runbooks/m3-backlog.md`). Until then the ledger diff gets read by
-    # a human in review.
+    # cross-revision baseline diff on `corpus/ledger.jsonl`. **That instrument
+    # now exists**: `scripts/ratchet_diff.py` (M5 task 8), run as gate 2 of
+    # `scripts/ratchet_job.sh`, fails on any per-row level or rung downgrade,
+    # so a 9-proto structuring regression that slips under this floor is
+    # caught there as 9 `level-downgrade` rows clustered by `refusal_reason`.
+    # It is not in the pytest suite -- a baseline is a git ref, not a fixture
+    # -- so the sequencing is: this floor per commit, the baseline diff at a
+    # wrap and before any merge that touches the ledger. See
+    # `docs/runbooks/structured-pipeline.md`, "Ratchet the ledger against a
+    # baseline".
     assert ok >= 1437   # measured after task 4: 1447
