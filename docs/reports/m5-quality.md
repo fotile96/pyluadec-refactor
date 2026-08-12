@@ -310,7 +310,7 @@ asserting a number nobody re-derived.
    (`pytest --trace-config` registers exactly one third-party plugin,
    `pytest-timeout 2.4.0`; `find_spec("pytest_randomly")` is `None`), and
    `-p no:randomly` deselects a plugin that does not exist, which pytest
-   accepts silently (`uv run pytest -p no:randomly --co -q` → 865 collected,
+   accepts silently (`uv run pytest -p no:randomly --co -q` → 867 collected,
    exit 0). Every A/B in this milestone — task 11's 5 pairs, task 12's 5
    pairs, a reviewer's 10 on a second host — therefore ran both arms in the
    **same collection order**. This is the milestone's signature defect

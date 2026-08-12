@@ -221,11 +221,14 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config) -> None:
     prints a green "N passed" -- correctly, per the `corpus_dir` fixture's
     deliberate skip-not-error design (corpus availability is an environment
     fact, not a code defect; see CLAUDE.md). But that green result silently
-    excludes **75** corpus-gated tests (measured 2026-08-13: a bare
-    `uv run pytest` reports `789 passed, 75 skipped`, against `864 passed`
-    with the corpus present). The 13 this said before was true of an early-M2
-    tree and has not been re-derived since; re-derive it rather than copying
-    it, because it only ever grows. Among them are the M2 exit gate
+    excludes **75** corpus-gated tests. That skip count is the claim; the
+    surrounding totals move with the suite and are dated evidence, not
+    constants -- measured 2026-08-13 at the M5 final fix round, a bare
+    `uv run pytest` reports `792 passed, 75 skipped` against `867 passed` with
+    the corpus present. The 13 this said before was true of an early-M2 tree
+    and had not been re-derived since; and the `789 / 864` that briefly stood
+    here was measured mid-round, before the last two tests landed. Re-derive,
+    do not copy. Among the 75 are the M2 exit gate
     (test_corpus_compile.py), both migration gates (test_golden.py,
     test_parity.py), and the ledger fixed-point test
     (test_ledger_ratchet.py). This hook does not change the exit code or

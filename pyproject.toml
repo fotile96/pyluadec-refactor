@@ -28,7 +28,7 @@ testpaths = ["tests"]
 # never returns -- no failure name, no diff, easy to mistake for flakiness
 # and re-run.
 #
-# Sizing (test count 865 at the M5 final fix round, 860 at task 12 round 1: corpus
+# Sizing (test count 867 at the M5 residual round, 860 at task 12 round 1: corpus
 # present -- it read 523 from M5 task 2 through task 8, then 676 from task 8
 # through task 11, stale both times. The wall-clock analysis below is
 # unaffected either way, since what sizes this backstop is the slowest SINGLE

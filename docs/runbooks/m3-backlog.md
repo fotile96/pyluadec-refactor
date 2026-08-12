@@ -39,14 +39,15 @@ ship the M2 fallback. Every non-`L3` row now records `refusal_reason` saying
 why. Readability against the predecessor's shipped output is evaluated in
 `docs/reports/m4-readability.md`.
 
-Status at the end of M5 (all figures measured 2026-08-13 at the task-12 tree):
-229/229 still compile; **865 tests pass in 41.0–42.0s** on macOS 15.2 /
-Apple M4 (arm64) against a 45s ceiling — **test ordering makes no measurable
-difference**, see the M6 agenda item 6 for the interleaved numbers and for the
-inherited claim that it does, which did not reproduce; the ledger
+Status at the end of M5 (all figures measured 2026-08-13, at the task-12 tree
+or, where the final fix and residual rounds moved them, after those):
+229/229 still compile; **867 tests pass in 42.1–44.1s** on macOS 15.2 /
+Apple M4 (arm64) against a 45s ceiling — **test ordering is UNMEASURED**: no
+randomiser is installed, so neither M5 claim about it varied the order at all;
+see M6 agenda item 6; the ledger
 holds the same 1478 unique hashes over 1944 occurrences, of which **1430 unique
-(96.8%) / 1896 occurrences (97.5%)** are `L3`, against M5 exit floors of 0.96
-on both bases plus 0.85 structured reach and 0.96 quality
+(96.8%) / 1896 occurrences (97.5%)** are `L3`, against M5 exit floors of
+**0.94 unique** and 0.96 occurrences, plus 0.85 structured reach and 0.96 quality
 (`tests/test_m5_exit.py`). **216 files ship fully structured source, 6 ship
 hybrid (structured with fallback holes), 7 still ship the whole-file M2
 fallback**; per occurrence, **1747/1944 (89.9%) ship structured text**. The
@@ -2284,9 +2285,10 @@ smoothed over.
 M5's own closed items keep their record in place above (§§1–14), including the
 retracted claims inside them; do not re-derive from those.
 
-**Starting state, measured 2026-08-13.** 229/229 compile; **865 tests pass in
-41.0–42.0s** on macOS 15.2 / Apple M4 (arm64), against a 45s ceiling (860 at
-42.2–43.4s before the final fix round, which added 5 tests); the
+**Starting state, measured 2026-08-13.** 229/229 compile; **867 tests pass in
+42.1–44.1s** on macOS 15.2 / Apple M4 (arm64), against a 45s ceiling (860 at
+42.2–43.4s before the final fix round and the residual round, which added 5
+and 2 tests); the
 ledger holds 1478 unique shapes over 1944 occurrences, of which **1430 (96.8%)
 / 1896 (97.5%)** are `L3`; **216 files ship fully structured, 6 hybrid, 7 whole-
 file fallback**; **1747/1944 (89.9%) occurrences ship structured text**; ported
@@ -2381,6 +2383,57 @@ round's fix.
 changes: 0 `SETUPVAL`, 0 captured registers, 0 `TFORLOOP`, 0 `VARARG`, 0 `_G`
 reads, and it calls no base global.
 
+**(c) Truncation, which the M5 final fix round narrowed but did not close.**
+That round found a grant that could rest *entirely* on a run cut off at
+`MAX_EVENTS = 3000` — nothing read the trace status, so "byte-equal" silently
+meant "equal over the first 3000 events". A grant now requires at least one
+sequence to reach `OK`, and `cov` is measured over those alone. What remains,
+constructed by review and committed as a known-open route
+(`tests/test_l2_keyseq.py::test_a_branch_only_a_capped_sequence_enters_is_
+granted_on_a_truncated_prefix`):
+
+```lua
+if pressButton("CIRCLE")==true then
+  for i=1,5000 do engine.Go(i) end engine.OriginalTail()
+else engine.Short() end
+```
+
+with the artifact differing only in the tail call. `tail=` finishes at `OK|5`
+through the `else` arm; `k=1,CIRCLE;tail=` caps at `CAP|3001` before reaching
+the divergent tail. Traces agree, taint is empty, both protos are `L3` —
+**granted at `cov` 1.0**. So a capped run can no longer be the only evidence
+for a *file*, but it can still be the only evidence for a *branch* no
+completing sequence enters.
+
+**Not cheaply closable, which is why it is here and not in M5.** `cov` cannot
+see it: **both** specs enter 2 of 2 protos, so proto granularity is blind to a
+branch. Two candidate instruments, neither small — **branch-level coverage**
+(the badge was deliberately moved off basic blocks in M5 task 9 because block
+attribution is by source line and therefore moves when the printer moves a
+newline, which would make `cov` a presentation-layer value and break the
+ledger's byte-stability rule — so this needs a line-free seam), or a
+**post-cap divergence check** (continue both runs past the cap comparing a
+digest rather than a full trace).
+
+**Do not "fix" it by requiring every sequence to complete.** Measured twice:
+`snr_lib.lua` under `tail=CIRCLE` reports `CAP|3000001` with the cap raised
+1000×, i.e. the degenerate sequences do not halt at any budget, and every one
+of the five authored files carries at least one (completions are 2/3, 2/3,
+2/3, 1/2, 1/2). That rule fixes L2 reach at 0 permanently.
+
+**The live grant is not resting on this**, measured rather than argued:
+`snr_lib.lua`'s capped `tail=CIRCLE` re-run at 10× budget with every decimal
+token normalised out yields **15 distinct event shapes at 3000 events and the
+same 15 at 30000, none new** — the post-cap tail is pure repetition of the
+menu's redraw/poll cycle. That is a property of that one sequence, measured
+once; **the gate does not check it**, and any new sequence needs its own
+measurement.
+
+A related loose end: **truncation never reaches `corpus/ledger.jsonl`**. The
+completed/total count lives only in `L2Result.detail`, which is CLI-facing;
+the granted row is `{"cov": 1.0}`. Adding a key rewrites every driven row, so
+it was left alone on a branch whose ledger is byte-frozen.
+
 ## 3. The `next`/`pairs` iteration-order gap (carried from M2 backlog item 5)
 
 Unchanged and still the only place with **corpus-level runtime evidence** of a
@@ -2442,10 +2495,13 @@ share one property — none changes behaviour, and several add test code to a
 suite whose headroom is **host-dependent and, on the tightest host measured,
 1.6 seconds**.
 
-- **Suite headroom is the first of them.** 865 tests. Measured 2026-08-13 on
-  macOS 15.2 / Apple M4 (arm64) over four runs: **41.0–42.0s**, i.e. **3.0s**
-  under the 45s ceiling at worst (860 tests at 42.2–43.4s before the final fix
-  round). A reviewer's host measures the same tree at **39.4–41.1s
+- **Suite headroom is the first of them.** 867 tests. Measured 2026-08-13 on
+  macOS 15.2 / Apple M4 (arm64), five runs: **42.1–44.1s**, i.e. **0.9s** under
+  the 45s ceiling at worst. The spread is this laptop's documented
+  within-session upward drift, not the 7 tests M5's last two rounds added --
+  those cost **0.16s** together, measured with `--durations`. A second host
+  measures the same tree at 39.4-41.1s. **Quote the host and the position in
+  the session with the number.** A reviewer's host measures the same tree at **39.4–41.1s
   over 10 runs**, i.e. ~4s. Quote the host with the number.
 
   **Test ordering is UNMEASURED — neither M5 claim about it was a measurement
@@ -2458,7 +2514,7 @@ suite whose headroom is **host-dependent and, on the tightest host measured,
   registers exactly one third-party plugin (`pytest-timeout 2.4.0`) and
   `find_spec("pytest_randomly")` is `None` — so `-p no:randomly` deselects a
   plugin that does not exist and pytest accepts it as a **silent no-op**
-  (`uv run pytest -p no:randomly --co -q` → 865 collected, exit 0). Both arms
+  (`uv run pytest -p no:randomly --co -q` → 867 collected, exit 0). Both arms
   of every one of those A/Bs, including the reviewer's 10 on a second host,
   ran the same collection order.
 

@@ -36,13 +36,15 @@ verified against the tree; convert any you touch.
 
 **How to re-derive — read this before trusting a number here.** Three tiers:
 
-1. **Inlined and verified.** The capability-boundary table, its refusal
-   breakdown, and the print-but-do-not-certify histogram have complete
-   runnable scripts under "Current capability boundary", each printed together
-   with the output it produced when run on **2026-08-13**. All three of those
-   pasted outputs were stale at the M5 wrap while the prose around them was
-   right, which is the standing argument for re-running a block rather than
-   trusting its paste.
+1. **Inlined and verified.** **Four** blocks under "Current capability
+   boundary" — the capability-boundary table, its refusal breakdown, the
+   opcode-histogram breakdown, and the print-but-do-not-certify histogram —
+   each carry a complete runnable script printed together with the output it
+   produced when run on **2026-08-13**. **All four of those pasted outputs
+   were stale at the M5 wrap while the prose around them was right**, and the
+   fourth was still stale after the first three were re-run, because "I
+   re-ran the blocks" was itself written without counting them. Re-run the
+   block; never trust the paste, including this sentence's claim about it.
 2. **Read off a committed artifact or a standing test.** The L3 rates come
    from `corpus/ledger.jsonl` (`uv run python scripts/ledger_dashboard.py`).
    The 225/229 global-state figure comes from
@@ -1592,8 +1594,8 @@ the original instruction stream actually did.
 ### Run the suite
 
 ```bash
-PYLUADEC_CORPUS_DIR=<corpus> uv run pytest              # 860 tests; 42.2-43.4s on macOS 15.2 / Apple M4, 39.4-41.1s on a second host (2026-08-13, M5 task 12).
-                                                        # Ordering is NOT a factor: 5 interleaved pairs differ by 0.19s against a 1.14s within-arm spread. See m3-backlog.md, M6 agenda 6.
+PYLUADEC_CORPUS_DIR=<corpus> uv run pytest              # 867 tests; 42.1-44.1s over 5 runs on macOS 15.2 / Apple M4 (drifts upward within a session), 39.4-41.1s on a second host (2026-08-13, M5 residual round).
+                                                        # Ordering is UNMEASURED, not "not a factor": no randomiser is installed, so `-p no:randomly` is a no-op and no M5 A/B ever varied the order. See m3-backlog.md, M6 agenda 6.
 PYLUADEC_CORPUS_DIR=<corpus> uv run pytest tests/test_effects_emitter_consistency.py -v
 ```
 
@@ -2440,9 +2442,15 @@ protos containing TESTSET           16
   of which are refused              4
 ```
 
-Point 3's opcode-histogram breakdown (re-run 2026-08-11 after M4 task 13; it
-produced the 253/56/15/15 split quoted above as this task's baseline on
-`dec379e`, and the 54/16/14/4/1 split below afterwards):
+Point 3's opcode-histogram breakdown, **re-run 2026-08-13**. The paste it
+replaces (`31 A / 20 B / 19 D / 4 C / 1 E`, dated 2026-08-11) was the fourth
+tier-1 block in this section and the most wrong of the four: it summed to
+**75** where the non-`L3` unique population is **48** (1478 − 1430), which the
+output below sums to exactly, and its introducing sentence quoted a *third*
+split again (`54/16/14/4/1`). Category **D is now empty** — M5 tasks 4 and 5
+removed it. Historical: the `253/56/15/15` split this block produced on
+`dec379e` is M4 task 13's baseline and is quoted in point 3 above as history,
+not as current state.
 
 ```python
 # PYLUADEC_CORPUS_DIR=... uv run python -
@@ -2549,19 +2557,24 @@ for k, v in firstop.most_common(6):
 ```
 
 ```
-   31  A. subtree refuses structuring
-   20  B. same opcode histogram, operands differ
-   19  D. extra MOVEs + other additions
-    4  C. extra MOVEs only
+   26  A. subtree refuses structuring
+   11  C. extra MOVEs only
+   10  B. same opcode histogram, operands differ
     1  E. other delta
 
-   11  first differing instruction: B GETGLOBAL
-   11  first differing instruction: D LOADK
-    4  first differing instruction: B NEWTABLE->LOADK
-    3  first differing instruction: D JMP
+    5  first differing instruction: B NEWTABLE->LOADK
+    4  first differing instruction: C CALL->MOVE
+    3  first differing instruction: C JMP
+    2  first differing instruction: C NEWTABLE
     2  first differing instruction: B NEWTABLE
-    2  first differing instruction: C JMP
+    1  first differing instruction: C MOVE
 ```
+
+The five category counts sum to **48 = 1478 − 1430**, and the split lines up
+with the `refusal_reason` histogram three screens above by a different route:
+**A = 26** is the `structure:`/`reconstruct:` population (subtree does not
+print), and **B + C + E = 22** is the `mismatch:` population (prints, does not
+certify). Two decompositions of the same 48.
 
 The print-but-do-not-certify mismatch histogram in point 3. Self-contained —
 run it verbatim like the two above (re-run 2026-08-13). This is the only one
@@ -2710,6 +2723,21 @@ that had shipped**:
   with the cap raised 1000x, `snr_lib.lua` under `tail=CIRCLE` reports
   `CAP|3000001`), and every one of the five authored files has one, so
   requiring all would put L2 reach at 0 permanently.
+
+  **Condition 6 narrows the hole; it does not close it.** A capped run can no
+  longer be the only evidence for a FILE, but it can still be the only
+  evidence for a BRANCH no completing sequence enters — put `tail=` on the
+  `else` arm and the divergent tail behind `k=1,CIRCLE`, and the gate grants
+  at `cov` 1.0 because **both** specs enter 2 of 2 protos and proto
+  granularity cannot see a branch. Committed as a known-open route
+  (`tests/test_l2_keyseq.py::test_a_branch_only_a_capped_sequence_enters_is_
+  granted_on_a_truncated_prefix`, which asserts the granting behaviour) and
+  routed to M6 agenda 2 with the two candidate instruments. Reassurance for
+  the one live grant, measured and not assumed: `snr_lib.lua`'s capped
+  `tail=CIRCLE` re-run at 10× budget with decimal tokens normalised out gives
+  **15 distinct event shapes at 3000 events and the same 15 at 30000, none
+  new**. The gate does not check that; a new sequence would need its own
+  measurement.
 * The static backstop reads the **original** only, so it speaks for the
   artifact just while the two are field-identical. They otherwise diverge in
   shape: on `snr_music.lua` the original taints

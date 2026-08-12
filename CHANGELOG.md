@@ -79,7 +79,13 @@
   to run to completion, and `cov` is measured over those only; it is *not*
   "every sequence", because the degenerate ones provably never halt (`snr_lib`
   under `tail=CIRCLE` reports `CAP|3000001` with the cap raised 1000×) and
-  requiring it would put reach at 0 forever. (2) The static backstop reads the
+  requiring it would put reach at 0 forever. **This narrows the hole rather
+  than closing it, and the residual is committed as a known-open route**: a
+  capped run can still be the only evidence for a BRANCH no completing
+  sequence enters, which `cov` cannot see because both specs enter the same
+  protos. M6 agenda 2 carries it, with the measurement that the one live grant
+  is not standing on it (`snr_lib`'s capped sequence produces 15 distinct
+  event shapes at 3000 events and the same 15 at 30000). (2) The static backstop reads the
   **original** only, so it spoke for the artifact only while the two were
   field-identical; on `snr_music.lua` the two shapes really do diverge
   (`__pld_R` hides 33 compare sites and invents 13). A grant now requires
@@ -112,14 +118,16 @@
   protocol could express and the printer could not. `src/pyluadec/passes/` was
   never created, so no code was deleted. The plugin surface itself is not
   rejected; its client is M6+'s proposer.
-- **Suite: 865 tests, 41.0–42.0s on macOS 15.2 / Apple M4 (arm64)** (four runs
-  in the final fix round, which added 5 tests; 860 at 42.2–43.4s before it), against
-  a 45s ceiling. **Test ordering was never varied, by either arm of the
+- **Suite: 867 tests, 42.1–44.1s over five runs on macOS 15.2 / Apple M4
+  (arm64)** — 0.9s under the ceiling at worst, and the spread is the documented
+  within-session upward drift on this laptop, not the 7 tests M5's last two
+  rounds added (those cost **0.16s** together, measured with `--durations`).
+  **Test ordering was never varied, by either arm of the
   argument.** No randomiser is installed — measured 2026-08-13, the only
   third-party pytest plugin registered is `pytest-timeout 2.4.0`,
   `importlib.util.find_spec("pytest_randomly")` is `None`, and `-p
   no:randomly` names a plugin that does not exist, which pytest accepts as a
-  **silent no-op** (`uv run pytest -p no:randomly --co -q` → 865 collected,
+  **silent no-op** (`uv run pytest -p no:randomly --co -q` → 867 collected,
   exit 0). So M5 task 11's 5 pairs, task 12's 5 pairs and a reviewer's 10 on a
   second host all ran both arms in *identical collection order*: task 11
   asserted an ordering difference and task 12 "refuted" it, and neither
