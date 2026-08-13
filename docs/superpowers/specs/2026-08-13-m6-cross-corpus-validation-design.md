@@ -1,0 +1,153 @@
+# M6：旧语料的正确利用 —— 交叉验证、结构参照、缺陷收口
+
+**日期**：2026-08-13（brainstorming 收口于 master `0957364` 之后）
+**决策人**：human partner（本文档记录的所有 scope 决定均为其当日答复原文的转述）
+
+## 0. 背景与动机（本节事实由 human partner 2026-08-13 口述补充）
+
+前作（`/Users/fotile96/pyluadec`）的反编译产物（`/Users/fotile96/Zndnovel/lua_scripts`，
+229 个文件）**经过回编译、重新打包 PSP ISO、人工通关全流程验证**，没有发现明显问题。
+该验证过程历经十几轮 human-in-loop 修复，其间方向键控制逻辑、全局表 flag 控制的
+选择肢逻辑都出现过严重问题。但**人工通关 ≠ 反编译 100% 正确**。
+
+由此确立 M6 的两个价值方向：
+
+1. **查漏补缺**（them ← us）：用本项目的仪器（L1.5 / L1.75 / L2 / semantic_score）
+   自动发现前作已发布产物中的未知缺陷。历史严重 bug 的两个类别（方向键、flag 选择肢）
+   恰好落在 L2 按键序列与 L1.5/L1.75 探针的观测面上。
+2. **借力**（us ← them）：前作在我们仍未认证的 13 个文件上进度快于本项目
+   （有可读、人工验证过的结构化文本）。正确利用它们加速我们自己的缺陷收口。
+
+**出口条款变更（本决定修改 spec §2 决策日志中 M5 task 12 记录的条目，须在
+计划落地时同步追加决策日志行）**：0.997 质量分数**不再是 M6 出口**。
+Human partner 原话大意："旧项目的打分指标在现在看不是特别关键的东西，如果它
+成为掣肘，可以考虑抛弃。" 0.997 作为观测指标保留在面板上，不设门槛。
+
+## 1. 实测基线（2026-08-13，master `0957364`，全部本会话测得）
+
+### 1.1 我方缺口清点
+
+13 个未达前作基线的文件（216 个文件 quality=1.0）：
+
+| 文件 | quality | 形态 |
+|---|---|---|
+| snr_mainmenu / memory / graphic / novel / music / common / config | 0.075–0.181 | 7 个整文件 fallback（root 不认证） |
+| snr_story_main / snr_fragment_main | 0.457 / 0.659 | hybrid |
+| snr_s4/s3/s1/s5_10_s | 0.926–0.971 | hybrid |
+
+48 个非 L3 唯一形状按家族：
+
+| 家族 | 形状数 | 已有定性 |
+|---|---|---|
+| 复合条件（`structure: if targets out of range` / `else-join out of range`） | 21 | **单一缺陷**：`regions.If` 缺条件树；26 指令 repro 已提交（`tests/test_sir_longtail2.py::COMPOUND_CONDITION_EXEMPLAR`） |
+| maxstacksize 不匹配 | 11 | 未逐个定性（注意：reason 记录的是**首个**分歧字段，maxstacksize 行可能伴随 code 分歧） |
+| code 不匹配 | 11 | 4 个 root 重构缺陷系 hybrid 发射揭露；`snr_music` main 已定性（四个嵌套表构造器塌成一个别名表，temp-as-local 家族） |
+| 寄存器再读（`reconstruct: register N read again…`） | 5 | 与上同源（`classify_registers` temp-as-local） |
+
+叶子拒绝点（去除被后代拖累的祖先）约 **20 个**，指令数 8–3305。
+
+### 1.2 前作产物的可用性实测
+
+- 13 个缺口文件的前作文本**全部**能被我方 `oracle.compile_source`（`luac_sz4`）编译。
+- **proto 树形状 13/13 完全一致**（如 snr_common 147 对 147）——树位置 1:1 对应成立。
+- **远非字节精确**：rung-1（strip-lineinfo）比对下的实质不匹配（排除 debug 字段）：
+  snr_common 390 处 / 106 个 proto 路径；snr_s4_10_s 308 处 / 81 路径；最少的
+  snr_story_main 也有 17 处 / 5 路径。`maxstacksize`、`code`、常量池顺序、`upvalues`
+  计数全面漂移。**结论：拿前作文本过我们的 L3 门直接发货不可行（0/13），已列为非目标。**
+
+### 1.3 工程约束基线
+
+- 套件 867 tests，合并后实测 44.07–44.85s（四次），对 45s 预算**已耗尽**。
+  45s 是项目自定纪律（`pytest-timeout` 为逐测试 60s），超过不会红，但纪律有效。
+- `ratchet_job.sh` 三道门 exit 0；台账 blob `8a7163a6a082ae07aec689af176229e5e5e2e576`。
+- L2 reach = 1 文件（`snr_lib.lua`）；已知开放路径与 taint 四缺口见 backlog M6 agenda 2。
+
+## 2. 三条轨道
+
+### Track 1 — 交叉语料差分 harness（查漏补缺）
+
+**输入**：前作 229 文本（`/Users/fotile96/Zndnovel/lua_scripts`，路径经环境变量引入，
+不硬编码——命名建议 `PYLUADEC_PRED_CORPUS_DIR`，同 `PYLUADEC_CORPUS_DIR` 纪律，
+缺失时相关用例 skip）。
+
+**管线**：前作文本 → `oracle.compile_source` → 对原始字节码逐层比对：
+
+1. `semantic_score` 指纹（廉价，全语料）
+2. L1.5 全局状态探针（load + pcall，比对全局状态）
+3. L1.75 行为探针（实际调用全局函数，比对事件轨迹）
+4. L2 按键序列差分（仅 5 个可驱动文件）
+5. 字节级 `compare_protos`（仅作记录——已知前作产物不会字节精确）
+
+**产出**：分歧队列。**他们侧对原始字节码的每条分歧 = 已发布本地化的候选未知
+bug**。裁决沿用探针既有的 pin 纪律：每条分歧裁决为 真 bug / 存疑 / 探针伪影，
+逐条提交入库（committed pins；原始报告 gitignored，与 L1.5/L1.75 的
+`adjudicate_pins` 先例一致）。
+
+**注意**：现有探针的 stub 环境与钉子（4 条 L1.5 + 2 条 L1.75）是为"我方产物 vs
+原始"设计的；前作产物侧可能触发同类引擎伪影，需独立裁决，不得复用我方钉子。
+
+### Track 2 — 结构参照 + LLM 元重建（为修缺陷供弹药）
+
+对每个叶子拒绝 proto（约 20 个）：
+
+(a) **结构参照**：用我方 `build_sir` 结构化**前作对应 proto**（同树位置）。前作
+字节码由真实结构化源码编译而来，正是识别器期望的形态。提取其区域树 / 条件树
+形状，与我方在原始 proto 上的拒绝点并排产出逐 proto 诊断。
+注意：前作 proto 的 code 与原始不同，结构不可自动搬移——参照仅是"这段控制流
+预期长什么样"的人工验证提示。
+
+(b) **LLM 元重建**：每个叶子 proto 派发一个 opus 级 subagent，输入四件套
+（原始 proto 的 luac listing、我方拒绝原因与 fallback 文本、前作对应源码片段、
+(a) 的结构参照），产出：逻辑重建（散文）+ 拒绝原因定性 + 改进机制建议。
+逐 proto 裁决记录提交入库。
+**成本实测估算**：单 proto 30–80k tokens，全程约 1–2M subagent tokens
+（相当于 M5 的 2–4 个复审轮），human partner 已确认接受。
+
+### Track 3 — 后半程：修两个已定性缺陷
+
+以 Track 2 产出为参照：
+
+1. **复合条件树**（21 形状）：`sir/regions.py::If` 增加条件树表示；从已提交的
+   26 指令 repro 起步，不从 124KB 语料文件起步。收口信号：
+   `tests/test_semantic_regressions.py::test_if_and_elseif_conjunctions_preserved`
+   从 L1 转绿。
+2. **寄存器分类家族**（16 形状：11 code-mismatch + 5 reconstruct）：
+   `express` 层 temp-as-local 判定；`snr_music` 别名表为已裁决样例。
+
+**纪律不变**：参照与 LLM 重建只是提示，**认证门是唯一裁判**——错误提示只会
+认证失败落回 fallback，不可能发出错误代码。字节红线、"不放宽比较"、台账 ratchet
+全部照旧。
+
+## 3. 出口条款
+
+- Track 1 harness 落地，**全语料扫描完成**，分歧队列逐条裁决入库（裁决词表沿
+  pin 纪律）。
+- Track 2 覆盖全部叶子拒绝 proto（约 20 个），逐 proto 记录入库。
+- Track 3 两个缺陷**关闭，或带实测重新定性**（明确哪些形状修复、哪些为何不修）。
+- 套件 ≤45s 纪律保持。
+- **无 0.997 门槛**；quality 分数作为观测指标继续在面板报告。
+
+## 4. 任务次序约束
+
+**Task 1 必须是套件预算修复**：`oracle.compile_source` 记忆化（现无任何缓存；
+`tests/test_corpus_compile.py` 对同一批 229 份源码重复走 `luac_sz4` 子进程）+
+语料臂按 marker 拆分。预算已耗尽（44.85s/45s），不先修无法新增任何语料臂测试。
+修复本身在 M6 agenda 6 已有两条已核成本的路径，明确排除"抬高上限"。
+
+## 5. 非目标（明确排除，避免复议）
+
+- **拿前作文本直接过 L3 门发货**——实测 0/13 可行（§1.2）。
+- **放宽任何比较 / 认证等级**以吸收前作产物。
+- 0.997 作为出口门槛（本次决定移除；指标保留为观测值）。
+- 语料级按键序列全覆盖（220/229 文件无输入循环，L2 天花板是结构性的）。
+- backlog M6 agenda 中与本设计无冲突的其余项（taint 四缺口、truncation 残留、
+  M1 Linux 验证等）保持原记录，不在本里程碑强制。
+
+## 6. 风险
+
+- **前作产物侧的探针伪影率未知**：前作文本从未跑过我们的 stub 环境，首轮扫描
+  的分歧可能以伪影为主。对策：裁决词表区分伪影并 pin，伪影率本身是 Track 1 的
+  首个测量产出。
+- **结构参照的可搬移性未验证**：`build_sir` 对前作 proto 的结构化成功率是假设
+  （其字节码来自结构化源码，理应高），Track 2 第一步先测这个成功率再铺开。
+- **LLM 重建的可信度**：产出是提示与裁决辅助，不进入任何门；风险限于 token 成本。
