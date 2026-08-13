@@ -287,7 +287,16 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config) -> None:
     Among the corpus-gated tests are the M2 exit gate
     (test_corpus_compile.py), both migration gates (test_golden.py,
     test_parity.py), and the ledger fixed-point test
-    (test_ledger_ratchet.py). This hook does not change the exit code or
+    (test_ledger_ratchet.py).
+
+    **One skip in the suite is NOT corpus-gated and this hook says nothing
+    about it** (M6 task 4): `test_observation_classes.py::
+    test_classes_json_is_a_reproducible_fixed_point` is gated on
+    `PYLUADEC_OBSERVATION_FIXED_POINT` because it is a whole-corpus
+    regeneration that measured +4.0s against the 45s ceiling, and it runs as
+    gate 4 of `scripts/ratchet_job.sh` instead. It therefore appears in the
+    skip count of every run, corpus present or not, and it is the one skip
+    a missing-corpus banner does not explain. This hook does not change the exit code or
     turn a missing corpus into an error -- it only makes the consequence
     impossible to miss by skimming the summary line.
     """
