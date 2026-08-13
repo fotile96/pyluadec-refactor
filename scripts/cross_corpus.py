@@ -75,9 +75,17 @@ test_fingerprint_arm_catches_a_synthetic_control_flow_defect`).
 **What the fingerprint arm still cannot see, measured, same battery.** Deleting
 one call statement outright (score 0.999077) and dropping one call argument
 (0.999574) both leave every component's control-flow term at 1.0 and are NOT
-queued by this arm. The behaviour arm catches the deletion; nothing in this
-harness catches either statically. Those are statement-level edits, not
-control-flow edits, and no threshold on `_cfg_shape` reaches them.
+queued by this arm. Those are statement-level edits, not control-flow edits,
+and no threshold on `_cfg_shape` reaches them.
+
+**The BEHAVIOUR arm catches both** (round-2 correction; the round-1 text said
+"nothing in this harness catches the dropped argument", which was false and was
+believed only because the test asserted the behaviour arm for one of the two
+parameters). Measured 2026-08-14: deletion diverges at the header, `OK|292` vs
+`OK|291`; the dropped argument keeps both sides at 292 events and diverges at
+`L16`, `C|comPoseLoad|1args` vs `C|comPoseLoad|0args`. So on this battery the
+blind instrument is the fingerprint arm alone, and the harness as a whole is
+blind to neither mutation.
 
 ## Reach: an arm that never fired is not evidence of agreement
 
@@ -488,6 +496,14 @@ def _state_one(corpus_dir: Path, pred_dir: Path, name: str) -> ArmResult:
         return ArmResult(name, "state", "probe-error", "unknown",
                          ("probe-error", f"error:{type(e).__name__}"),
                          {"error": type(e).__name__})
+    # `.strip()` is DEFENSIVE, not proven load-bearing. Neuter run
+    # 2026-08-14 (round 2): reverting it leaves the file green, including
+    # `pred_marker == "LOADFAIL"`. Measured reason: 0 of 458 marker prefixes
+    # (229 files x 2 sides) carry surrounding whitespace, because
+    # `probe_global_state.lua` emits `LOADFAIL|...` with the newline after
+    # the payload, not after the marker. Kept because the value is compared
+    # against a literal vocabulary and a trailing byte would silently route
+    # every file to the `load-fail` branch.
     om, pm = orig.split("|", 1)[0].strip(), pred.split("|", 1)[0].strip()
     detail = {"orig_marker": om, "pred_marker": pm,
               "orig_payload_len": len(probe_global_state.payload_of(orig)),
@@ -546,6 +562,18 @@ def _behaviour_one(corpus_dir: Path, pred_dir: Path, name: str) -> ArmResult:
     if invoked == 0:
         base = "silent"
     elif ost != "OK" or invoked < defined:
+        # `or invoked < defined` is DEFENSIVE, not proven load-bearing.
+        # Neuter run 2026-08-14 (round 2): deleting it leaves the census
+        # byte-identical (`complete=96 truncated=132 silent=1`), leaves
+        # `snr_common.lua` at `truncated:1/79`, and leaves the whole file
+        # green. Measured reason: exactly ONE file corpus-wide has
+        # `invoked < defined` (`snr_common.lua`, 1 of 79) and its status is
+        # already `CAP`, so `ost != "OK"` reaches it first -- 0 files have
+        # `invoked < defined` with status `OK`. Kept because a chunk whose
+        # invocation loop finishes normally while skipping a function it
+        # defined is precisely the "silent arm" case this token exists to
+        # report, and the corpus not containing one is a fact about the
+        # corpus (MEMORY.md: "the corpus is a weaker oracle than it looks").
         base = "truncated"
     else:
         base = "complete"
@@ -636,6 +664,16 @@ def first_cut(r: ArmResult) -> str:
       chunks taking different paths. Fingerprint arm: a hard issue, a
       *reachable*-CFG shape difference (`cfg_reachable < 1.0`), or a
       **call-target** difference (`call_targets < 1.0`).
+
+      Read that last clause precisely: `any_call_target_diff` is computed over
+      the FLAGGED paths only, so a proto whose `call_targets` sits in
+      `[0.97, 1.0)` -- below 1.0 but above the sensitivity threshold -- with an
+      identical CFG shape would neither flag its file nor set the bit, and the
+      file would not be queued at all. **Latent, not live**: measured
+      2026-08-14, the corpus has 7 paths with `call_targets < 1.0` (5 of them
+      in `[0.97, 1.0)`) and every one is flagged by another term. If a future
+      corpus breaks that coincidence, the fix is to add `call_targets` to
+      `flagged` in `_fingerprint_one`, not to reword this.
 
       Round-1 correction, and it changed the labels. The first version said
       "`cfg_reachable`/`cfg_all`", treating the two as one signal. They are

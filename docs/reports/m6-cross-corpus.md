@@ -394,8 +394,8 @@ omitted so a future re-run's diff against this table is a plain text diff.
 > statement of what it cannot see (§2.6). Everything below is re-measured
 > after those changes.
 
-Harness: `scripts/cross_corpus.py` (job) + `tests/test_cross_corpus.py` (23
-smoke tests, 0.37–0.46 s, corpus-gated). Command and wall-clock:
+Harness: `scripts/cross_corpus.py` (job) + `tests/test_cross_corpus.py` (24
+smoke tests, 0.40–0.45 s, corpus-gated). Command and wall-clock:
 
 ```
 PYLUADEC_CORPUS_DIR=... PYLUADEC_PRED_CORPUS_DIR=... \
@@ -506,9 +506,12 @@ Rows with mechanical detail worth carrying into Task 6:
   round-0 text was wrong to group it with `snr_s2_10_s.lua`. Measured
   components `{cfg_all 0.0, opcode_family 0.9667, global_reads 0.9861}` —
   `call_targets` and `cfg_reachable` are both exactly **1.0**, CALL is
-  **271 → 271**, and the opcode delta (GETGLOBAL −8 on one name, GETTABLE −16,
-  GETUPVAL −8, MOVE +92, TESTSET 20→0 / TEST 0→20) is textbook hoisting plus
-  `or`-chain re-expression.
+  **271 → 271**, and the **complete** opcode delta (round-2 correction — the
+  first version listed five of the ten entries and read as if it were the whole
+  delta) is: ADD 80→90, EQ 170→154, GETGLOBAL 291→283, GETTABLE 380→364,
+  GETUPVAL 273→265, JMP 291→311, MOVE 28→120, SUB 24→34, TEST 0→20,
+  TESTSET 20→0. Textbook hoisting (fewer GETGLOBAL/GETTABLE/GETUPVAL, far more
+  MOVE) plus `or`-chain re-expression (TESTSET → TEST + JMP).
 * **`snr_common.lua:main_76_2`**, measured components
   `{cfg_all 0.0, opcode_family 0.7682, global_reads 0.7826, call_targets 0.7442,
   call_shapes 0.7442}`; **CALL 16 → 27**.
@@ -644,13 +647,28 @@ the control-flow disjunct fixes
 delete the two `below(...)` terms from `_fingerprint_one`'s `flagged` and that
 test alone goes red).
 
-The last two rows are **pinned as blind spots**
+The last two rows are **pinned as blind spots of the fingerprint arm**
 (`test_fingerprint_arm_is_blind_to_statement_level_edits`, parametrised): a
 deleted statement and a dropped argument leave every control-flow component at
 1.0 and every sensitivity threshold unbreached. No threshold on
-`semantic_score._cfg_shape` reaches a statement-level edit. The behaviour arm
-catches the deletion (asserted in the same test); **nothing in this harness
-catches the dropped argument.** Read §2.2's queue with that bound in mind.
+`semantic_score._cfg_shape` reaches a statement-level edit.
+
+> **Round-2 correction — the third false behavioural sentence this section has
+> carried.** It previously read "the behaviour arm catches the deletion;
+> **nothing in this harness catches the dropped argument**". Measured
+> 2026-08-14: **the behaviour arm catches both.** Deletion diverges at the
+> header (`OK|292` vs `OK|291`); the dropped argument keeps both sides at 292
+> events and diverges at `L16`, `C|comPoseLoad|1args` vs
+> `C|comPoseLoad|0args`, `multiset_equal_after_objname = False`. The claim was
+> believed only because the test asserted the behaviour arm inside
+> `if mutation == "delete":`, so the other parameter was never measured. The
+> assertion is now unconditional for both parameters, and each has its own
+> route pinned (event-count change vs. argument shape at a fixed position).
+>
+> **What is true:** the **fingerprint arm** is blind to both mutations; the
+> **harness** is blind to neither. The error was in the conservative direction
+> — it understated reach — but Task 6 would have read it as a limit that does
+> not exist.
 
 Two further instrument checks:
 `test_a_candidate_that_does_not_load_is_never_reported_as_agreement` (the L1.5
@@ -664,8 +682,12 @@ widening: a whole-directory size/mtime snapshot, not just the 3 smoke files).
 
 Over the **213 non-queued files** (**1230** proto occurrences): **212 protos in
 121 files carry at least one sub-1.0 component, and every one of them is
-`opcode_family` — nothing else.** Lowest non-queued proto score **0.9882**
-(`snr_e2_10_s.lua:main_2_0` and four `snr_s1_10_s.lua` siblings).
+`opcode_family` — nothing else.** Lowest non-queued proto score
+**0.988235**, and **28 protos tie at it**, across 4 files —
+`snr_s1_10_s.lua` ×14, `snr_s6_10_s.lua` ×9, `snr_s8_10_s.lua` ×4,
+`snr_e2_10_s.lua` ×1. (Round-2 correction: the first version named
+`snr_e2_10_s.lua:main_2_0` "and four `snr_s1_10_s.lua` siblings", which was a
+transcription of the first five rows of a sorted list, not the tie.)
 
 Stated the other way, and this is the useful form: **outside the queue there
 is not one control-flow difference, not one call-target or call-shape
@@ -688,10 +710,28 @@ anything, because that file is queued on its control-flow term.
 The census does **not** say the corpus is otherwise clean; it says this
 instrument sees nothing else. §2.6's blind spots are the bound.
 
+**And one clause of it cannot fail, by construction — read the rest.** The
+queue criterion *is* "any path with `cfg_reachable`/`cfg_all` below 1.0", so
+"no control-flow difference outside the queue" is a tautology, not a
+measurement. The same holds for `return_arity` and for the below-threshold
+parts of `global_reads`/`call_targets`, which `drift_type` already queues. The
+**genuinely informative** content of §2.7 is the three bands the criterion does
+*not* cover:
+
+| band | outside the queue |
+|---|---|
+| `0.97 ≤ call_targets < 1.0` (below 1.0, above the sensitivity threshold) | **0** |
+| `0.995 ≤ global_reads < 1.0` | **0** |
+| numeric-only constant differences (`_has_sensitive_constant_diff` skips `num:` keys) | **0** |
+
+Those three being empty is a real finding. Corpus-wide there are **7** paths
+with `call_targets < 1.0` at all, **5** of them in the `[0.97, 1.0)` band, and
+every one of the 7 is inside the queue on another term.
+
 ### 2.8 Suite-cost attribution
 
-`tests/test_cross_corpus.py`: **23 tests**, 0.37–0.46 s measured standalone
-(round 0 had 16 at 0.28–0.33 s).
+`tests/test_cross_corpus.py`: **24 tests**, 0.40–0.45 s measured standalone
+(round 0: 16 at 0.28–0.33 s; round 1: 23 at 0.37–0.46 s).
 
 **Within-batch A/B** (the only comparable form on this host), alternating
 `--ignore=tests/test_cross_corpus.py` with the full suite, twice each in one
@@ -703,15 +743,18 @@ batch. pytest-reported totals:
 | round 0, with (917) | 45.15 s | 45.44 s | 45.30 s |
 | round 1, without (917) | 44.67 s | 44.58 s | 44.63 s |
 | round 1, with (940) | 44.56 s | 44.91 s | 44.74 s |
+| round 2, without (917) | 44.69 s | 44.03 s | 44.36 s |
+| round 2, with (941) | 44.56 s | 44.84 s | 44.70 s |
 
-Round-0 delta **+0.53 s**; round-1 delta **+0.11 s**. **Do not read the second
-number as the first one getting cheaper.** The two arms overlap: round 1's
-`with` runs span 44.56–44.91 s and its `without` runs span 44.58–44.67 s, so
-the delta is at the edge of this host's run-to-run noise and the honest bound
-is the standalone figure — **this module costs at most ~0.46 s**, and most of
-that is absorbed by session fixtures (`pred_corpus_dir`, the oracle compile
-memo) the suite already builds for `test_predcorpus.py`. Round 0's +0.53 s
-should be read the same way.
+Deltas: round 0 **+0.53 s**, round 1 **+0.11 s**, round 2 **+0.34 s**. **None
+of the three is resolvable against this host's run-to-run noise, and the
+variation between them is the proof** — the `with` and `without` arms overlap
+in every round (round 2: `without` spans 44.03–44.69, `with` spans
+44.56–44.84). The honest bound is therefore the standalone figure — **this
+module costs at most ~0.45 s** — and most of that is absorbed by session
+fixtures (`pred_corpus_dir`, the oracle compile memo) the suite already builds
+for `test_predcorpus.py`. Round 0's +0.53 s was reported as if it were a
+measurement of this module; it was a two-run mean of a noisy quantity.
 
 **All of it is M6 formal-verification instrument cost** — the cross-corpus
 scan harness and its non-vacuity proofs — and therefore inside the ~120 s
@@ -732,10 +775,44 @@ localization doing its job. Calling it `real-bug` is false and calling it
 
 **Proposed:** `intentional-edit` — *the predecessor's text differs from the
 original bytecode because a human changed it deliberately, and the change is
-consistent with the localization's purpose.* Distinguishing evidence: the
-difference is confined to constants or to an asset reference, the surrounding
-control flow and call-target multiset are identical, and there is a
-corresponding change in the shipped ISO's assets.
+consistent with the localization's purpose.*
+
+**Distinguishing evidence — four clauses, all runnable from this repo**
+(round-2 tightening; the first version's third clause named "a corresponding
+change in the shipped ISO's assets", which Task 6 cannot execute — no `.pgf`
+and no ISO is reachable under either corpus root, verified 2026-08-14 — and
+its "control flow identical" phrasing was loose enough to admit
+`snr_mainmenu.lua`, which is compiler drift):
+
+1. **Every structural component is exactly 1.0**: `cfg_reachable`, `cfg_all`,
+   `call_targets`, `call_shapes`, `global_reads`, `global_writes`,
+   `return_arity`.
+2. **The numeric-constant multiset is identical**, and the only constant
+   difference is in *string* constants, each of which is an asset path or
+   identifier — never dialogue.
+3. **The opcode delta is confined to register-shuffling opcodes** (`MOVE`,
+   `LOADNIL`). No change to `CALL`, `GETGLOBAL`/`SETGLOBAL`, or any test or
+   jump opcode.
+4. **Corroboration is a documented decision in the localization project's own
+   repository**, `/Users/fotile96/Zndnovel` — not an artifact nobody can open.
+
+Measured against the instance, `snr_common.lua:main_83`: components below 1.0
+are only `opcode_family` 0.991846 and `const_fingerprint` 0.992188 (clause 1
+✓); numeric multiset identical, string difference exactly 1-for-1 and it is a
+`pgf/` asset path (clause 2 ✓); opcode delta is exactly `LOADNIL` 0→1 and
+`MOVE` 1→11 (clause 3 ✓); and `Zndnovel/CLAUDE.md:47` records the swap
+explicitly — it states that these Lua files are decompiler output *that has
+been hand-modified*, and that `snr_common.lua` has had font 0 replaced with
+`pgf/LXGWWenKai-Regular.pgf` with the original Japanese-font line kept as a
+comment (clause 4 ✓).
+
+**And `snr_mainmenu.lua` falls out, as it must.** It has
+`call_targets == cfg_reachable == 1.0` *and* a numeric-constant delta, so a
+loose reading of the first version would have admitted it. Under the tightened
+clauses it fails **1** (`global_reads` 0.9861) and fails **3** decisively (EQ
+170→154, JMP 291→311, GETGLOBAL 291→283, GETTABLE 380→364, TESTSET 20→0,
+TEST 0→20 — control-flow and global-access opcodes, not register shuffling).
+Its verdict is compiler drift, not a deliberate edit.
 
 #### 2.9.2 The census behind that claim is string-only, and other classes exist
 
@@ -771,3 +848,31 @@ statement order**, and nothing in the rule distinguishes them. This is recorded
 in `_same_multiset`'s docstring. It is tolerable only because the label is
 triage and Task 6 adjudicates every row by hand — it would not be tolerable as
 a filter that drops rows.
+
+### 2.10 Two notes Task 6 should read before triaging
+
+**(a) Prioritise the call-target rows above the reachability-only rows.**
+`snr_fragment_main.lua:main_1` and `snr_story_main.lua:main_1` are labelled
+`candidate-defect` on `cfg_reachable` **alone**. Measured 2026-08-14: their
+`cfg_all` is identical `(136, 137, 2)` on both sides, `call_targets`,
+`call_shapes`, `global_reads`, `global_writes`, `return_arity` and
+`const_fingerprint` are all exactly **1.0**, and the entire opcode delta is
+`LOADNIL` 0→1 with `MOVE` +27 (fragment) / +35 (story). Their whole label rests
+on `cfg_reachable` going `(24,25,2) → (45,46,2)` — a *crude reachability walk*
+that this same report tells you to "read as a hash that changed, not as a
+dominance claim" (§2.2). Both files' profiles are, opcode for opcode, the same
+`LOADNIL`+`MOVE` shape as `snr_common.lua:main_83`, whose verdict is
+`intentional-edit`/drift.
+
+Suggested triage order: the `wait`-bearing call-target rows
+(`snr_s2_10_s.lua:main_60` first, since `snr_music` and `snr_common` are
+already adjudicated), then the remaining call-target rows
+(`snr_graphic`, `snr_memory`, `snr_s4_10_s`, `snr_story_main:main_3`), then the
+reachability-only rows, then the `cfg_all`-only `suspect` rows.
+
+**(b) Half of §2.7's headline is a tautology; the informative half is the
+band table.** See §2.7 — "no control-flow difference outside the queue" cannot
+fail, because the queue criterion is that difference. What is measured, and
+what is worth knowing, is that the three bands the criterion does *not* cover
+(`0.97 ≤ call_targets < 1.0`, `0.995 ≤ global_reads < 1.0`, numeric-only
+constant differences) are all empty outside the queue.

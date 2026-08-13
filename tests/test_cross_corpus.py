@@ -257,24 +257,49 @@ def test_fingerprint_control_arm_agrees_on_the_unmutated_file(smoke_scan):
 @pytest.mark.parametrize("mutation", ["delete", "drop-arg"])
 def test_fingerprint_arm_is_blind_to_statement_level_edits(
         smoke_scan, fp_mutant, mutation):
-    """The other half of a non-vacuity proof: what the instrument CANNOT see,
-    pinned so nobody reads the arm as a completeness claim.
+    """The other half of a non-vacuity proof: what the FINGERPRINT arm cannot
+    see, pinned so nobody reads it as a completeness claim.
 
     Deleting the call statement outright (measured score 0.999077) and dropping
     its argument (0.999574) both leave every control-flow component at 1.0 and
     every sensitivity threshold unbreached. No threshold on
-    `semantic_score._cfg_shape` reaches a statement-level edit. The behaviour
-    arm catches the deletion (asserted below); nothing in this harness catches
-    the dropped argument, and the queue in
-    `docs/reports/m6-cross-corpus.md` §2 must be read with that in mind."""
+    `semantic_score._cfg_shape` reaches a statement-level edit.
+
+    **Round-2 correction, and it is the third false behavioural sentence this
+    task has shipped.** The previous version asserted the behaviour arm only
+    when `mutation == "delete"`, and its docstring -- and
+    `docs/reports/m6-cross-corpus.md` §2.6 -- concluded from that silence that
+    "nothing in this harness catches the dropped argument". Measured
+    2026-08-14: **false**. The behaviour arm catches BOTH. Deletion shows up at
+    the header (`OK|292` vs `OK|291`); the dropped argument keeps both sides at
+    292 events and diverges at `L16`, `C|comPoseLoad|1args` vs
+    `C|comPoseLoad|0args`. The blind arm is the fingerprint arm; the HARNESS is
+    blind to neither of these two mutations. The assertion below is now made
+    for both parameters, which is what would have caught the claim.
+
+    The `if mutation ==` shape is exactly how the error hid, so nothing here is
+    conditional on the parameter any more."""
     d = fp_mutant(mutation)
     fp = smoke_scan("fingerprint", files=["snr_crd_0.lua"], pred=d)["snr_crd_0.lua"]
     assert fp.kind == "agree", "if this ever fails the arm got STRONGER -- re-measure and retire the pin"
     assert fp.detail["score"] < 1.0        # the difference is seen ...
     assert fp.detail["drift_type"] == "structural_only"   # ... and not queued
+    assert fp.detail["any_cfg_reachable_diff"] is False
+    assert fp.detail["any_cfg_all_diff"] is False
+    # ... and the dynamic arm covers BOTH, which is the sentence round 2 fixed.
+    bh = smoke_scan("behaviour", files=["snr_crd_0.lua"], pred=d)["snr_crd_0.lua"]
+    assert bh.kind == "divergent", "the dynamic arm is what covers this class"
+    assert bh.detail["multiset_equal_after_objname"] is False
+    # The two mutations reach the behaviour arm by different routes, and the
+    # distinction is the point: one changes the event COUNT, the other only an
+    # argument shape at a fixed position.
     if mutation == "delete":
-        bh = smoke_scan("behaviour", files=["snr_crd_0.lua"], pred=d)["snr_crd_0.lua"]
-        assert bh.kind == "divergent", "the dynamic arm is what covers this class"
+        assert bh.detail["pred_events"] == bh.detail["orig_events"] - 1
+        assert bh.detail["first_diff_line"] == 1
+    else:
+        assert bh.detail["pred_events"] == bh.detail["orig_events"]
+        assert bh.detail["first_diff_line"] > 1
+        assert bh.detail["orig_shape"] != bh.detail["pred_shape"]
 
 
 # --------------------------------------------------------------------------
@@ -357,6 +382,38 @@ def test_behaviour_arm_labels_the_reordering_class_as_probable_artifact(
     assert r.kind == "divergent"
     assert r.detail["multiset_equal_after_objname"] is True
     assert r.detail["orig_status"] == r.detail["pred_status"] == "OK"
+    assert cross_corpus.first_cut(r) == "probable-artifact"
+
+
+def test_same_multiset_absorbs_a_statement_reordering(pred_corpus_dir,
+                                                     corpus_dir, tmp_path):
+    """Round-2 pin for a known over-breadth, recorded in `_same_multiset`'s
+    docstring since round 1 but until now asserted nowhere.
+
+    Swapping two adjacent side-effecting calls -- `comEffectFadeOut(100)` and
+    the `vms(...)` line after it -- is a real semantic change (the fade now
+    runs *after* the line displays), and the rule calls it
+    `probable-artifact`, because the two traces are the same multiset of
+    events. The rule's justifications are table ITERATION order and
+    `getobjname` nouns; neither covers intra-function STATEMENT order.
+
+    This test PINS the current behaviour rather than demanding better: the
+    label is triage and Task 6 adjudicates every row by hand, so absorbing this
+    case costs nothing today. What it buys is that promoting the rule from a
+    triage label to a filter that DROPS rows -- the change that would make the
+    over-breadth harmful -- cannot happen without this test being read and
+    consciously rewritten."""
+    src = (pred_corpus_dir / "snr_crd_0.lua").read_bytes()
+    lines = src.split(b"\n")
+    i = next(k for k, l in enumerate(lines) if b"comEffectFadeOut" in l)
+    lines[i], lines[i + 1] = lines[i + 1], lines[i]
+    d = tmp_path / "pred"
+    d.mkdir()
+    (d / "snr_crd_0.lua").write_bytes(b"\n".join(lines))
+    r = cross_corpus.scan("behaviour", ["snr_crd_0.lua"], corpus_dir=corpus_dir,
+                          pred_dir=d)["snr_crd_0.lua"]
+    assert r.kind == "divergent"
+    assert r.detail["multiset_equal_after_objname"] is True
     assert cross_corpus.first_cut(r) == "probable-artifact"
 
 
