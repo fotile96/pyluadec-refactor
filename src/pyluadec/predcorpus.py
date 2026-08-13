@@ -27,7 +27,7 @@ from pyluadec.ingest.proto import Proto
 from pyluadec.pipeline import walk_proto_paths
 
 
-def load_pred_proto(pred_dir: Path, name: str) -> Proto:
+def load_pred_proto(pred_dir: Path, name: str, *, strip: bool = False) -> Proto:
     """Compile predecessor source `pred_dir / name` with the oracle and
     ingest the result into a `Proto` tree.
 
@@ -39,6 +39,21 @@ def load_pred_proto(pred_dir: Path, name: str) -> Proto:
     229-file corpus once for the tree comparison and once for anything else)
     pay the `luac_sz4` subprocess cost only the first time.
 
+    **`strip` defaults to False (unstripped) but a caller that is going to
+    `compare_protos` the result against a specific original proto must pick
+    it deliberately, matching `verify.certify.certify_l3`'s precedent**:
+    `strip=not carries_debug(original)`. That function's own docstring
+    argues the point in full; the short version is that `luac -s` zeroes
+    `lineinfo`/`locvars`/`upvalues` unconditionally, so comparing an
+    unstripped compile's debug tables against a stripped original's empty
+    ones manufactures a LENGTH mismatch on every upvalue-bearing proto that
+    has nothing to do with what the two chunks actually compute --
+    `nups` (a separate scalar, unaffected by strip) is what carries the real
+    upvalue count and is what a genuine disagreement would show up on. Fixed
+    at M6 task 2 round 1 after a corpus-wide census caught exactly this
+    artifact: 260 protos inflated by it, see
+    `docs/reports/m6-cross-corpus.md` §1.
+
     Raises `oracle.LuaCompileError` (a subclass of `oracle.OracleError`) if
     the predecessor source does not compile -- this is intentionally NOT
     caught here; the file is source text produced by an entirely different
@@ -47,7 +62,7 @@ def load_pred_proto(pred_dir: Path, name: str) -> Proto:
     """
     p = Path(pred_dir) / name
     source = p.read_bytes()
-    compiled = oracle.compile_source(source)
+    compiled = oracle.compile_source(source, strip=strip)
     return ingest.load_bytes(compiled, chunkname="@" + name)
 
 
