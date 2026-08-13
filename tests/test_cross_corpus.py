@@ -33,6 +33,8 @@ opcode/pc/event-shape summaries, ASCII identifiers and SHA-256 prefixes, and
 """
 from __future__ import annotations
 
+import collections
+
 import pytest
 
 from scripts import cross_corpus
@@ -343,16 +345,18 @@ def test_pred_pins_are_a_separate_table_from_our_side_pins():
     """The spec forbids reusing our-side pins: the 4 L1.5 and 2 L1.75 pins were
     recorded for "our artifact vs original" and say nothing about a different
     candidate population. This asserts the tables are distinct objects AND that
-    no pin key was copied across."""
+    no pin EVIDENCE was copied across -- `snr_novel.lua` is keyed in both
+    `EXPECTED_DIVERGENCE` and this table, so a key-level check would have to be
+    a false one; what must not be shared is the evidence pair."""
     from scripts.probe_behaviour import EXPECTED_DIVERGENCE
     from scripts.probe_global_state import EXPECTED_ERROR_NAME_DIVERGENCE
     assert set(cross_corpus.PRED_PINS) == set(cross_corpus.ARMS)
     for arm in cross_corpus.ARMS:
         assert cross_corpus.PRED_PINS[arm] is not EXPECTED_DIVERGENCE
         assert cross_corpus.PRED_PINS[arm] is not EXPECTED_ERROR_NAME_DIVERGENCE
-        for name, pair in cross_corpus.PRED_PINS[arm].items():
-            assert pair != EXPECTED_DIVERGENCE.get(name)
-            assert pair != EXPECTED_ERROR_NAME_DIVERGENCE.get(name)
+        for name, pin in cross_corpus.PRED_PINS[arm].items():
+            assert pin.evidence != EXPECTED_DIVERGENCE.get(name)
+            assert pin.evidence != EXPECTED_ERROR_NAME_DIVERGENCE.get(name)
 
 
 def test_first_cut_labels_come_from_the_vocabulary(smoke_scan):
@@ -508,3 +512,122 @@ def test_predecessor_corpus_is_never_written_to(pred_corpus_dir, tmp_path,
         cross_corpus.scan(arm, SMOKE, corpus_dir=corpus_dir,
                           pred_dir=pred_corpus_dir)
     assert snapshot() == before
+
+
+# --------------------------------------------------------------------------
+# Task 6: the pin gate
+#
+# `PRED_PINS` is no longer empty -- 18 adjudicated rows over 16 files. The
+# **whole** gate ("no divergence anywhere in the corpus is unpinned") needs the
+# 229-file scan and stays a JOB: `uv run python scripts/cross_corpus.py --arm
+# all`, which exits 0 exactly when `adjudicate_pins` returns three empty lists
+# on every arm. What lives in the suite is the half that is both cheap and the
+# one that rots: `moved` and `gone`. A pin whose evidence pair has drifted, or
+# whose file no longer diverges, is a recorded explanation that no longer
+# describes anything -- and unlike a *new* divergence, nothing else in the
+# project would ever surface it.
+#
+# Measured cost of the 16-file, three-arm scan below: 0.94 s + 0.04 s + 0.13 s
+# standalone, and less inside the suite because `oracle.compile_source` is
+# process-memoized and `test_predcorpus.py` has already compiled these files.
+# --------------------------------------------------------------------------
+
+PINNED_FILES = sorted({n for arm in cross_corpus.ARMS
+                       for n in cross_corpus.PRED_PINS[arm]})
+
+
+def test_pin_table_is_well_formed():
+    """Shape, vocabulary and the red line -- no corpus needed.
+
+    Every field of every pin ends up in a committed artifact and in the CLI's
+    stdout, so `json_safe` (the predicate form of the harness's own
+    `_assert_ascii`) is applied to all of them: a Japanese identifier reaching a
+    `note` would be exactly the leak the red line forbids.
+    """
+    assert set(cross_corpus.PRED_PINS) == set(cross_corpus.ARMS)
+    seen = 0
+    for arm in cross_corpus.ARMS:
+        for name, pin in cross_corpus.PRED_PINS[arm].items():
+            seen += 1
+            assert isinstance(pin, cross_corpus.Pin)
+            assert pin.verdict in cross_corpus.VERDICTS, (name, pin.verdict)
+            assert name.endswith(".lua")
+            assert isinstance(pin.evidence, tuple) and len(pin.evidence) == 2
+            assert all(isinstance(e, str) and e for e in pin.evidence)
+            # A pin with an empty or token note is a verdict with no reason.
+            assert len(pin.note) >= 40, name
+            assert cross_corpus.json_safe(list(pin.evidence)), name
+            assert cross_corpus.json_safe(pin.note), name
+    assert seen == 18, f"task 6 adjudicated 18 rows, table has {seen}"
+
+
+def test_the_state_arm_has_no_pins_because_it_has_no_divergences(smoke_scan):
+    """`PRED_PINS["state"]` is empty, and that must mean "nothing to pin", not
+    "nobody looked". Asserted over the pinned files, which are where every
+    known divergence lives: if the L1.5 arm ever starts disagreeing on one of
+    them, this fails and the empty table has to be justified again."""
+    assert cross_corpus.PRED_PINS["state"] == {}
+    res = smoke_scan("state", PINNED_FILES)
+    assert [n for n, r in res.items() if r.diverges] == []
+
+
+def test_every_pin_still_diverges_with_the_recorded_evidence(smoke_scan):
+    """`moved` and `gone` empty on all three arms, over the pinned files.
+
+    Not `unexpected`: proving *that* means scanning all 229 files, which is the
+    job. Scanning only the pinned files here would make `unexpected` vacuous,
+    so it is deliberately not asserted -- see this block's header comment.
+    """
+    for arm in cross_corpus.ARMS:
+        pinned = cross_corpus.pin_evidence(arm)
+        if not pinned:
+            continue
+        res = smoke_scan(arm, PINNED_FILES)
+        divergent = {n: r.evidence for n, r in res.items() if r.diverges}
+        unexpected, moved, gone = cross_corpus.adjudicate_pins(divergent, pinned)
+        assert moved == [], f"{arm}: pinned evidence changed: {moved}"
+        assert gone == [], f"{arm}: pin no longer divergent: {gone}"
+        # Same population, so `unexpected` here can only report a file that
+        # diverges on this arm and is pinned on another -- which is a real
+        # bookkeeping error and worth catching.
+        assert set(unexpected) <= set(PINNED_FILES) - set(pinned)
+
+
+def test_the_pin_gate_can_fail(smoke_scan):
+    """Neuter proof for the test above (MEMORY.md: "guards must be proven
+    load-bearing"). Rather than asking a human to break the table and watch,
+    this perturbs a copy two ways and requires `adjudicate_pins` to name the
+    row each time.
+    """
+    arm = "behaviour"
+    res = smoke_scan(arm, PINNED_FILES)
+    divergent = {n: r.evidence for n, r in res.items() if r.diverges}
+    assert "snr_music.lua" in divergent
+
+    pinned = cross_corpus.pin_evidence(arm)
+    tampered = dict(pinned)
+    tampered["snr_music.lua"] = ("L1 hdr|OK|1 sha=000000000000",
+                                 tampered["snr_music.lua"][1])
+    _, moved, _ = cross_corpus.adjudicate_pins(divergent, tampered)
+    assert moved == ["snr_music.lua"]
+
+    stale = dict(pinned) | {"config.lua": ("a", "b")}
+    _, _, gone = cross_corpus.adjudicate_pins(divergent, stale)
+    assert gone == ["config.lua"]
+
+
+def test_the_six_real_bug_verdicts_are_the_committed_headline():
+    """The milestone's payload, asserted so it cannot be quietly downgraded.
+
+    Six rows over five files. `snr_common.lua` carries two distinct defects
+    (`main_76_2` and `main_75`) but is one row, because a row is a file.
+    """
+    real = sorted(name for arm in cross_corpus.ARMS
+                  for name, pin in cross_corpus.PRED_PINS[arm].items()
+                  if pin.verdict == "real-bug")
+    assert real == ["snr_common.lua", "snr_graphic.lua", "snr_mainmenu.lua",
+                    "snr_memory.lua", "snr_music.lua", "snr_music.lua"]
+    counts = collections.Counter(
+        pin.verdict for arm in cross_corpus.ARMS
+        for pin in cross_corpus.PRED_PINS[arm].values())
+    assert counts == {"real-bug": 6, "equivalent-transform": 12}

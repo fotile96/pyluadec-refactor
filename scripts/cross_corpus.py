@@ -128,12 +128,22 @@ only an argument value differs.
 
 ## Pins
 
-`PRED_PINS` is a **separate table per arm**, empty as of task 5. The spec
-forbids reusing the 4 L1.5 / 2 L1.75 our-side pins: those were recorded for a
-different candidate population and say nothing about this one. Task 6 fills
-these in with adjudicated verdicts; until then the CLI exits 1 on any
-divergence, which is the honest state -- divergences exist and none is
-adjudicated.
+`PRED_PINS` is a **separate table per arm**. The spec forbids reusing the 4
+L1.5 / 2 L1.75 our-side pins: those were recorded for a different candidate
+population and say nothing about this one. Task 5 left the tables empty on
+purpose, so the CLI exited 1 on every divergence -- the honest state while
+nothing was adjudicated.
+
+**Task 6 filled them.** Every entry is a `Pin`: the `adjudicate_pins` evidence
+pair *plus* the verdict that pair earned *plus* an ASCII, pc/opcode-level note
+saying why. The three live in one frozen object rather than in parallel dicts
+because they are one claim: a verdict is a statement *about that evidence*, so
+an evidence pair that moves must invalidate the verdict rather than silently
+carry it over. `adjudicate_pins` is fed `pin_evidence(arm)`, so `moved` still
+fires on exactly the old condition.
+
+`VERDICTS` has five members and two of them were added by task 6 --
+see that tuple's comment for what each one asserts and what evidence it needs.
 """
 from __future__ import annotations
 
@@ -190,17 +200,282 @@ def reach_kind(reach: str) -> str:
     """The prefix of a `reach` token, i.e. its `REACH` member."""
     return reach.split(":", 1)[0]
 
-#: First-cut triage vocabulary. NOT verdicts -- Task 6 adjudicates with the
-#: pin vocabulary (`real-bug` / `suspect` / `probe-artifact`).
+#: First-cut triage vocabulary. NOT verdicts -- the mechanical labels
+#: `first_cut` assigns before anyone looks at an instruction. Task 6's
+#: adjudication vocabulary is `VERDICTS`, below, and the two disagree on 9 of
+#: the 18 rows (see `docs/reports/m6-cross-corpus.md` section 3).
 FIRST_CUT = ("candidate-defect", "probable-artifact", "suspect")
 
-#: Adjudicated pins, per arm, in `adjudicate_pins`' `(original, predecessor)`
-#: evidence-pair form. EMPTY at task 5 by design; task 6 fills them.
-PRED_PINS: dict[str, dict[str, tuple[str, str]]] = {
-    "fingerprint": {},
+#: Adjudicated verdict vocabulary (M6 task 6). Task 5's plan named three;
+#: adjudicating all 18 rows needed five, and the two additions are recorded
+#: here rather than in a report because the pin table is what enforces them.
+#:
+#: * `real-bug` -- the predecessor's text provably departs from the original
+#:   bytecode's semantics along a reachable path. Requires an instruction-level
+#:   walk naming the pcs. This is a claim about SHIPPED software; nothing
+#:   weaker than a pc-level argument earns it.
+#: * `equivalent-transform` -- the two protos really do differ in bytecode, and
+#:   the difference is proven semantics-preserving: the same side effects in
+#:   the same order with the same values along every reachable path. Five
+#:   mechanisms were found on this corpus, all of them the mark of a slightly
+#:   different SOURCE phrasing compiled by the same `luac`, not of a different
+#:   computation:
+#:     1. **tail duplication** -- a block several jump sites shared in the
+#:        original is emitted once per site, because Lua 5.1 has no `goto` to
+#:        re-join them (`snr_s2_10_s`, `snr_s4_10_s`, `snr_story_main`);
+#:     2. **dead escape jumps** -- `if c then ... break else T end` parks an
+#:        extra jump on `FuncState.jpc` that `luaK_patchlist` then aims at the
+#:        loop header; it is unreachable because the `then` arm ends in an
+#:        unconditional `break` (`snr_s3_10_s`);
+#:     3. **constructor lowering** -- `t = {k = v, ...}` written as `t = {}`
+#:        plus field assignments, or a `SETLIST` array written as indexed
+#:        stores (`config`, `snr_music:main`, `snr_memory:main`);
+#:     4. **statically-decided `TEST`/`TESTSET` collapse** -- the `and`/`or`
+#:        idiom re-emitted as `if`/`else` when the tested value is a literal
+#:        (`snr_lib`, `snr_story_main:main_3`);
+#:     5. **register allocation and dead stores** -- `MOVE` churn, call-result
+#:        relocation, `LOADNIL` of a frame `luaD_precall` already nils.
+#:   Proving one means showing (a) every original jump site is covered by some
+#:   copy, (b) the copies are instruction-for-instruction equal modulo register
+#:   numbering, and (c) any pc that lost its predecessors is genuinely
+#:   unreachable.
+#:   **Two things it does NOT cover, and the notes say so where they apply:**
+#:   table pre-sizing (`NEWTABLE`'s size hint is observable through
+#:   `next`/`pairs` ordering, so mechanism 3 preserves table CONTENT but can
+#:   change iteration order), and metamethods on `_G` or on engine-owned
+#:   tables (mechanisms 3 and 5 reorder a global read against pure table
+#:   reads; that commutes for plain tables and the bytecode cannot settle
+#:   whether these are plain).
+#: * `intentional-edit` -- a human changed it deliberately and consistently
+#:   with the localization's purpose. Four clauses, all required, spelled out
+#:   in section 3 of the report; the corpus instance is a font-asset path.
+#: * `probe-artifact` -- an effect of the stubbing probe environment rather
+#:   than of the two chunks. Only reachable on the dynamic arms.
+#: * `suspect` -- divergent, root cause NOT established. The honest answer when
+#:   two stories fit the evidence. It is never a resting place: a `suspect` pin
+#:   is a debt, and the report names what would discharge it.
+VERDICTS = ("real-bug", "equivalent-transform", "intentional-edit",
+            "probe-artifact", "suspect")
+
+
+@dataclass(frozen=True)
+class Pin:
+    """One adjudicated divergence: the verdict, the evidence it was reached
+    on, and an ASCII pc/opcode-level note.
+
+    `evidence` is exactly the `ArmResult.evidence` pair the scan produces, so
+    `adjudicate_pins` can compare it; `note` is prose but constrained -- it is
+    a committed artifact, so the red line applies (`_assert_ascii` is run over
+    every field by `test_pins_are_ascii`). Identifiers and numbers only, never
+    corpus text.
+    """
+    verdict: str
+    evidence: tuple[str, str]
+    note: str
+
+
+#: Adjudicated pins, per arm, keyed by corpus filename. Filled by M6 task 6 --
+#: 18 rows over 16 files, every one walked at instruction level; a clean gate is
+#: `adjudicate_pins` returning three empty lists on every arm. The evidence
+#: pairs are `ArmResult.evidence` verbatim; the notes are the one-line form of
+#: `docs/reports/m6-cross-corpus.md` section 3, which carries the full walks.
+#:
+#: `state` is empty because that arm has **0** divergences on this corpus -- not
+#: because it was skipped. 229/229 agree, on a payload whose median length is 22
+#: characters (section 2.5): an empty table here is a fact about the arm's
+#: sensitivity, not about the predecessor.
+PRED_PINS: dict[str, dict[str, Pin]] = {
+    "fingerprint": {
+        "config.lua": Pin(
+            "equivalent-transform",
+            ("main code=57 reach=(1, 0, 0) all=(1, 0, 0) reads=24 calls=0",
+             "main code=71 reach=(1, 0, 0) all=(1, 0, 0) reads=38 calls=0"),
+            "constructor lowering: sole opcode delta GETGLOBAL 24->38, the 14 "
+            "extra reads are 2 names (+12, +2) that this chunk itself "
+            "SETGLOBALs from a NEWTABLE, in one straight-line block with 0 CALL "
+            "on either side, so nothing can rebind them between write and read"),
+        "snr_common.lua": Pin(
+            "real-bug",
+            ("main_76_2 code=174 reach=(4, 3, 0) all=(73, 71, 1) reads=27 calls=16",
+             "main_76_2 code=279 reach=(4, 3, 0) all=(103, 101, 10) reads=42 calls=27"),
+            "two defects. main_76_2: O85 EQ A=0 (equal falls to O87 JMP->93, "
+            "continue) vs P92 EQ A=1 (equal takes P93 JMP->277 RETURN) = "
+            "unconditional break; and P67 JMP->4 re-enters the loop header, "
+            "skipping the wait(1) at P273-275 that O168-170 always reaches. "
+            "main_75: O158 JMP sBx=-73 -> 86 is the proto's only back edge and "
+            "the predecessor has none, so a retry while became an if"),
+        "snr_crd_102.lua": Pin(
+            "equivalent-transform",
+            ("main_3 code=150 reach=(4, 3, 0) all=(14, 13, 1) reads=22 calls=27",
+             "main_3 code=149 reach=(4, 3, 0) all=(15, 14, 2) reads=22 calls=27"),
+            "three changes: O92 LOADK dead store and O127 MOVE copy elided "
+            "(the CALL now returns into the tested register directly), plus "
+            "P130 JMP sBx=-41 with preds=[] -- the escape jump of an if/else "
+            "whose then arm ends in break, the proto's only unreachable pc"),
+        "snr_fragment_main.lua": Pin(
+            "equivalent-transform",
+            ("main_1 code=891 reach=(24, 25, 2) all=(136, 137, 2) reads=155 calls=62",
+             "main_1 code=919 reach=(45, 46, 2) all=(136, 137, 2) reads=155 calls=62"),
+            "cfg_all identical (136,137,2); opcode delta is only LOADNIL 0->1 "
+            "and MOVE +27. The cfg_reachable move is two test-polarity flips "
+            "(O423 EQ A=1 / O882 LE A=1 vs P434 EQ A=0 / P911 LE A=0 with an "
+            "added jump-to-fallthrough), which changes which way the crude walk "
+            "falls, not the branch; O887/O888 are dead on the original side"),
+        "snr_graphic.lua": Pin(
+            "real-bug",
+            ("main_4 code=769 reach=(4, 4, 1) all=(185, 188, 7) reads=67 calls=63",
+             "main_4 code=848 reach=(4, 4, 1) all=(182, 185, 7) reads=67 calls=65"),
+            "an or-chain lost a disjunct and its else arm was un-nested. O116 "
+            "EQ K[3] / O119 EQ K[6] / O122 EQ K[9] all reach the A block at "
+            "O124 (preds {117,120,122}) and A ends O159 JMP->212 skipping B; "
+            "the predecessor tests only 3 and 9 (P135, P138) and preds(P205) = "
+            "{139,172,204}, so B is reached by the not-equal jump AND by both "
+            "copies of A. c==6 runs B only; c==3 and c==9 run A then B. Same "
+            "loss again in the LEFT handler (== 4 dropped)"),
+        "snr_lib.lua": Pin(
+            "equivalent-transform",
+            ("main_1 code=226 reach=(11, 11, 1) all=(55, 55, 2) reads=36 calls=26",
+             "main_1 code=230 reach=(11, 11, 1) all=(53, 53, 2) reads=36 calls=26"),
+            "TESTSET 2->0, MOVE 0->6: both TESTSETs test a register loaded by "
+            "the preceding LOADK of a number, so the skip edge is dead and the "
+            "op always means R := constant. Longer but with fewer blocks "
+            "because MOVE does not split a block and TESTSET does"),
+        "snr_mainmenu.lua": Pin(
+            "real-bug",
+            ("main_7 code=2182 reach=(7, 6, 0) all=(624, 635, 16) reads=291 calls=271",
+             "main_7 code=2266 reach=(7, 6, 0) all=(628, 639, 16) reads=283 calls=271"),
+            "four progress gates deleted. O206-O221 (GETTABLE 'novel' + EQ, "
+            "GETGLOBAL 'systemSave'/GETTABLE 'novelFlag' + EQ K[bool:true], and "
+            "the same pair for 'music'/'musicFlag') selects between O222-228 "
+            "and O230-251, separated by O229 JMP->252. The predecessor has no "
+            "test: P215 LT sends the case straight to P230, which FALLS "
+            "THROUGH into P237/P244/P251, so both arms run. Counts over the "
+            "proto: 'systemSave' 24->16, 'novelFlag' 12->8, 'musicFlag' 8->4 = "
+            "4 gate sites (O206, O744, O1279, O1810). first_cut said suspect"),
+        "snr_memory.lua": Pin(
+            "real-bug",
+            ("main_4 code=482 reach=(4, 4, 1) all=(142, 141, 2) reads=41 calls=42",
+             "main_4 code=533 reach=(4, 4, 1) all=(140, 139, 3) reads=41 calls=44"),
+            "same defect as snr_graphic.lua:main_4. O117 EQ K[3] / O120 EQ K[6] "
+            "/ O123 EQ K[9] -> A at O125 (preds {118,121,123}); predecessor "
+            "tests only 3 and 9 (P136, P139) and preds(P206) = {140,173,205}. "
+            "c==6 takes the else arm; c==3 and c==9 take both. LEFT handler "
+            "drops == 4 the same way. The predecessor-only numeric constant "
+            "num:8 is unrelated -- it is a SETLIST array in main rewritten as "
+            "nine indexed stores"),
+        "snr_music.lua": Pin(
+            "real-bug",
+            ("main_3 code=377 reach=(16, 16, 1) all=(112, 111, 2) reads=20 calls=23",
+             "main_3 code=407 reach=(16, 15, 0) all=(112, 111, 1) reads=22 calls=26"),
+            "the gallery poll loop is gone. O367 JMP sBx=-357 -> 11 has no "
+            "counterpart: the predecessor's 407 instructions contain no jump to "
+            "P11, its tail is duplicated (P371-384, P385-397) and neither copy "
+            "loops -- P384 JMP->398 is forward and P397 falls through to P398, "
+            "the epilogue that calls run(cGetFileName(...)) at P400-405"),
+        "snr_novel.lua": Pin(
+            "equivalent-transform",
+            ("main_7 code=96 reach=(14, 14, 1) all=(40, 38, 1) reads=11 calls=11",
+             "main_7 code=107 reach=(15, 15, 1) all=(44, 42, 3) reads=11 calls=11"),
+            "dead escape jumps (P70, P86 in main_7 and P98, P282 in main_12 all "
+            "have preds=[]; the live back edges match O91 and O263/O296), tail "
+            "duplication of single instructions with all reaching paths "
+            "covered, and drops of TEST/TESTSET on provably truthy values "
+            "(a LOADK of a number, or OP_LEN on a table, which always yields a "
+            "number and so is always truthy)"),
+        "snr_s2_10_s.lua": Pin(
+            "equivalent-transform",
+            ("main_60 code=1182 reach=(4, 3, 0) all=(259, 258, 3) reads=157 calls=93",
+             "main_60 code=1200 reach=(4, 3, 0) all=(263, 262, 7) reads=161 calls=97"),
+            "tail duplication at two sites. O541-549 (preds {506,508,538}) is "
+            "emitted as P540-548 (preds {536}) and P549-557 (preds {504,506}), "
+            "the copies equal instruction-for-instruction modulo registers and "
+            "equal to the original, with P539 unreachable; same at O661-669 -> "
+            "P669-677 / P678-686 with P668 unreachable. The wait +2 and the two "
+            "extra upvalue calls are the duplicated block, not new call sites"),
+        "snr_s3_10_s.lua": Pin(
+            "equivalent-transform",
+            ("main_59 code=1292 reach=(4, 3, 0) all=(335, 334, 4) reads=160 calls=109",
+             "main_59 code=1297 reach=(4, 3, 0) all=(337, 336, 6) reads=160 calls=109"),
+            "the two gained back edges P573 and P638 both have preds=[]: each "
+            "follows an unconditional forward jump (P572, P637), so it is the "
+            "escape jump of an if/then/break/else. Loop tails are identical "
+            "modulo registers and the live headers keep the same predecessor "
+            "sets; the MOVE churn is call-result relocation and dead stores"),
+        "snr_s4_10_s.lua": Pin(
+            "equivalent-transform",
+            ("main_58 code=1372 reach=(4, 3, 0) all=(402, 401, 3) reads=147 calls=114",
+             "main_58 code=1379 reach=(4, 3, 0) all=(404, 403, 3) reads=147 calls=116"),
+            "tail duplication. O435-436 (preds {414,417,420,423,426,429,432}) "
+            "splits into P435-436 (preds minus 414) and P438-439 (pred {414}); "
+            "same for O999-1000. The pred sets partition the original's, so no "
+            "path gains or loses a call. Back edges 3 vs 3, same three heads, "
+            "0 unreachable pcs on either side"),
+        "snr_s5_10_s.lua": Pin(
+            "equivalent-transform",
+            ("main_46 code=830 reach=(4, 3, 0) all=(151, 150, 5) reads=153 calls=90",
+             "main_46 code=808 reach=(4, 3, 0) all=(146, 145, 3) reads=153 calls=90"),
+            "the only row where a LIVE back edge count falls without a defect. "
+            "The original's if/elseif chain gives each arm its own jump back "
+            "(O87, O98, O100, O106); the predecessor writes sequential ifs, so "
+            "an arm falls through the remaining equality tests to a shared back "
+            "edge (P97, P103). preds(O47)={46,87,98,100,106} vs "
+            "preds(P47)={46,97,103}: same head, no path lost. The selector "
+            "register is written once before the chain and never inside an arm, "
+            "and the tests are against distinct numeric constants"),
+        "snr_s7_10_f.lua": Pin(
+            "equivalent-transform",
+            ("main_52 code=95 reach=(6, 5, 0) all=(22, 20, 1) reads=19 calls=19",
+             "main_52 code=98 reach=(6, 5, 0) all=(24, 22, 3) reads=19 calls=19"),
+            "the two gained back edges P42 and P58 both have preds=[], each "
+            "following an unconditional forward jump to the loop exit (P41, "
+            "P57). The live back edge P85 sBx=-75 matches O82 sBx=-72, same "
+            "head; the one extra reachable instruction is a MOVE landing a call "
+            "result in a local before the EQ"),
+        "snr_story_main.lua": Pin(
+            "equivalent-transform",
+            ("main_1 code=1009 reach=(24, 25, 2) all=(136, 137, 2) reads=189 calls=78",
+             "main_1 code=1045 reach=(45, 46, 2) all=(136, 137, 2) reads=189 calls=78"),
+            "cfg_all identical (136,137,2), opcode delta only LOADNIL 0->1 and "
+            "MOVE +35. O480 EQ A=1 + JMP->1008 vs P491 EQ A=0 + JMP->494 + "
+            "JMP->1044 is the same two-way branch written the other way round; "
+            "the added jumps are paid for by O1005/O1006, which are dead. "
+            "main_3's CALL 78->79 is a duplicated or-fallback arm with "
+            "identical per-path dynamic call counts"),
+    },
     "state": {},
-    "behaviour": {},
+    "behaviour": {
+        "snr_music.lua": Pin(
+            "real-bug",
+            ("L1 hdr|CAP|3001 sha=a4e1d9425fdf",
+             "L1 hdr|OK|94 sha=22694cadd5c2"),
+            "the dynamic face of the main_3 defect: the original's stubbed run "
+            "polls to the 3000-event budget (2502 pressButton, 417 wait), the "
+            "predecessor's returns after 94 events (6 pressButton, 1 wait, then "
+            "cInitGame / switchScreen / cGetFileName / run)"),
+        "snr_novel.lua": Pin(
+            "equivalent-transform",
+            ("L15 C|comLayerLoadFalse|2args sha=73a98ce48474",
+             "L15 C|comLayerLoadFalse|2args sha=48e2cf828d42"),
+            "a pairs() order permutation, not a reordering of statements. Six "
+            "trace lines differ and they carry the same 29 (id, path) pairs in "
+            "a different order; the loop is a pairs() over a table the original "
+            "builds with NEWTABLE A=1 B=0 C=23 and the predecessor builds with "
+            "NEWTABLE A=21 B=0 C=0 plus field assignments, with an IDENTICAL "
+            "54-entry constant/constant SETTABLE multiset. Rebuilding those 29 "
+            "pairs both ways under build/lua_sz4 reproduces the permutation at "
+            "positions 5, 9, 18, 20, 22, 27. The 7th differing line is the "
+            "already-pinned getobjname noun class. Caveat: pairs() order is "
+            "unspecified by Lua, so this is equivalence up to the language's "
+            "own nondeterminism"),
+    },
 }
+
+
+def pin_evidence(arm: str) -> dict[str, tuple[str, str]]:
+    """`PRED_PINS[arm]` projected to the `(original, predecessor)` pair form
+    `adjudicate_pins` compares. The projection exists so the verdict and its
+    evidence can live in one object without changing the pin protocol."""
+    return {name: pin.evidence for name, pin in PRED_PINS[arm].items()}
 
 
 @dataclass(frozen=True)
@@ -801,16 +1076,21 @@ def main(argv: list[str] | None = None) -> int:
                    jobs=args.jobs)
         results[arm] = res
         divergent = {n: r.evidence for n, r in res.items() if r.diverges}
-        unexpected, moved, gone = adjudicate_pins(divergent, PRED_PINS[arm])
+        unexpected, moved, gone = adjudicate_pins(divergent, pin_evidence(arm))
         reach = _reach_census(res)
         print(f"{arm}: {len(res) - len(divergent)}/{len(res)} agree, "
               f"{len(divergent)} divergent "
               f"({len(divergent) - len(unexpected)} pinned); reach {reach}")
         for n in sorted(divergent):
             r = res[n]
-            print(f"    {n:24s} {first_cut(r):18s} reach={r.reach}")
+            pin = PRED_PINS[arm].get(n)
+            verdict = pin.verdict if pin else "UNADJUDICATED"
+            print(f"    {n:24s} {first_cut(r):18s} -> {verdict:21s} "
+                  f"reach={r.reach}")
             print(f"      orig: {r.evidence[0]}")
             print(f"      pred: {r.evidence[1]}")
+            if pin:
+                print(f"      why:  {pin.note}")
         if moved:
             print(f"  pinned evidence moved: {moved}")
         if gone:

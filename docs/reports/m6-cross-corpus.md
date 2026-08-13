@@ -876,3 +876,514 @@ fail, because the queue criterion is that difference. What is measured, and
 what is worth knowing, is that the three bands the criterion does *not* cover
 (`0.97 ≤ call_targets < 1.0`, `0.995 ≤ global_reads < 1.0`, numeric-only
 constant differences) are all empty outside the queue.
+
+## 3. Adjudication of the divergence queue (task 6)
+
+Task 5 produced 18 divergence rows over 16 files and adjudicated none of them.
+This section adjudicates **all 18**, with a verdict per row and instruction-level
+evidence for each. The verdicts are committed as `cross_corpus.PRED_PINS`, so
+`scripts/cross_corpus.py --arm all` now exits **0**: `adjudicate_pins` returns
+three empty lists (`unexpected`, `moved`, `gone`) on every arm.
+
+Command and wall-clock, re-measured this session (2026-08-14, host macOS arm64 /
+Darwin 24.2.0): `uv run python scripts/cross_corpus.py --arm all`, **3.25 s**,
+229 files, three arms. Every row below was re-derived from the two proto trees in
+this session; nothing is carried over from task 5's text.
+
+### 3.1 Headline: six shipped defects, four of them previously unknown
+
+| | |
+|---|---|
+| rows adjudicated | **18 / 18** |
+| `real-bug` | **6 rows / 5 files / 6 distinct defects** |
+| `equivalent-transform` | 12 rows |
+| `probe-artifact` | 0 rows |
+| `intentional-edit` | 0 rows *as a row verdict* (1 path-level instance) |
+| `suspect` | 0 rows |
+
+M6 task 4 found two defects by hand before the scanner existed. The scan plus
+this adjudication **confirms both and adds four more**, all in the shipped
+localization:
+
+| file / proto | defect | previously known |
+|---|---|---|
+| `snr_music.lua:main_3` | the gallery poll loop's back edge is gone | yes (task 4) |
+| `snr_common.lua:main_76_2` | unconditional break, and a continue that skips the frame wait | yes (task 4) |
+| `snr_mainmenu.lua:main_7` | **four progress gates deleted**; the two arms of the branch now both run | **no** |
+| `snr_graphic.lua:main_4` | **an `or`-chain lost a disjunct and its `else` arm was un-nested** | **no** |
+| `snr_memory.lua:main_4` | same shape as `snr_graphic:main_4` | **no** |
+| `snr_common.lua:main_75` | **a retry `while` became an `if`** -- the proto has no back edge left | **no** |
+
+`snr_common.lua` carries two of the six, so 6 defects live in 5 files and produce
+6 rows (5 fingerprint, 1 behaviour).
+
+### 3.2 The verdict vocabulary, and why it has five members
+
+Task 5's plan named three verdicts (`real-bug`, `suspect`, `probe-artifact`) and
+task 5's report proposed a fourth (`intentional-edit`). Adjudicating the rows
+needed **five**. The vocabulary and its evidentiary requirements live in
+`scripts/cross_corpus.py::VERDICTS`, next to the table that uses them; the two
+additions:
+
+* **`intentional-edit` — adopted, exactly as task 5 proposed, with all four
+  clauses.** It applies to `snr_common.lua:main_83` and to nothing else in the
+  corpus. It is **not** any row's verdict, because a row is a *file* and
+  `snr_common.lua`'s file verdict is `real-bug`; §3.5 records it at path level.
+* **`equivalent-transform` — added.** Neither `probe-artifact` (which asserts a
+  *stub-environment* cause, and the fingerprint arm has no stub environment) nor
+  `suspect` (which asserts the root cause is *not* established) is true of a
+  divergence whose mechanism has been walked instruction by instruction and shown
+  to preserve semantics. Using either would have been a false sentence about 12 of
+  the 18 rows. Five mechanisms were found; they are enumerated in `VERDICTS`.
+
+`suspect` ends at **0** rows. That is a claim about this queue, not a policy: the
+verdict remains in the vocabulary and remains the honest answer when two stories
+fit.
+
+### 3.3 The full verdict table
+
+`first cut` is `cross_corpus.first_cut`'s mechanical label; `verdict` is this
+section's. The two vocabularies are not the same, so the useful comparison is by
+bucket: of the 10 `candidate-defect` rows **5** are defects and **5** are
+`equivalent-transform`; of the 7 `suspect` rows **1** is a defect and 6 are
+`equivalent-transform`; the single `probable-artifact` row is
+`equivalent-transform`.
+
+| file | arm | first cut | verdict | mechanism |
+|---|---|---|---|---|
+| `snr_common.lua` | fingerprint | candidate-defect | **real-bug** | `EQ` polarity flip -> unconditional return; continue-to-loop-header skips `wait`; and, separately, a lost retry loop in `main_75` |
+| `snr_graphic.lua` | fingerprint | candidate-defect | **real-bug** | `or`-chain disjunct dropped; `else` arm un-nested into fallthrough |
+| `snr_mainmenu.lua` | fingerprint | **suspect** | **real-bug** | four `systemSave` gate blocks deleted; both arms run |
+| `snr_memory.lua` | fingerprint | candidate-defect | **real-bug** | as `snr_graphic` |
+| `snr_music.lua` | fingerprint | candidate-defect | **real-bug** | outer back edge absent; tail duplicated, neither copy loops |
+| `snr_music.lua` | behaviour | candidate-defect | **real-bug** | same defect, dynamically: `CAP\|3001` vs `OK\|94` |
+| `config.lua` | fingerprint | suspect | equivalent-transform | constructor lowering (3) |
+| `snr_crd_102.lua` | fingerprint | suspect | equivalent-transform | dead store + dead escape jump (2, 5) |
+| `snr_fragment_main.lua` | fingerprint | candidate-defect | equivalent-transform | test-polarity flip; sunk callee `GETGLOBAL` (5) |
+| `snr_lib.lua` | fingerprint | suspect | equivalent-transform | `TESTSET` collapse (4) |
+| `snr_s2_10_s.lua` | fingerprint | candidate-defect | equivalent-transform | tail duplication (1) |
+| `snr_s3_10_s.lua` | fingerprint | suspect | equivalent-transform | dead escape jumps (2) |
+| `snr_s4_10_s.lua` | fingerprint | candidate-defect | equivalent-transform | tail duplication (1) |
+| `snr_s5_10_s.lua` | fingerprint | suspect | equivalent-transform | `elseif` arms fall through instead of jumping back |
+| `snr_s7_10_f.lua` | fingerprint | suspect | equivalent-transform | dead escape jumps (2) |
+| `snr_story_main.lua` | fingerprint | candidate-defect | equivalent-transform | test-polarity flip; tail duplication (1) |
+| `snr_novel.lua` | fingerprint | candidate-defect | equivalent-transform | dead escape jumps; tail duplication; statically-true `TEST` drops |
+| `snr_novel.lua` | behaviour | probable-artifact | equivalent-transform | constructor lowering (3) -> `pairs()` order permutation |
+
+**What the disagreement means for the triage rules.** `first_cut`'s
+`candidate-defect` bucket has 10 rows and 5 of them are real; its `suspect`
+bucket has 7 rows and **1 of them is real** — `snr_mainmenu.lua`, which §2.10
+explicitly told task 6 to rank *last*. The mechanical rules are a work-ordering
+device and nothing more; on this corpus their precision is 5/10, and a reader who
+had trusted the buckets and left `suspect` unopened would have shipped with one
+of the six defects unfound.
+
+§2.10's prioritisation advice was **partly wrong and worth recording as wrong**.
+It was right that `snr_fragment_main:main_1` and `snr_story_main:main_1` are
+low-value (both adjudicate to `equivalent-transform`, both on a `cfg_reachable`
+change that is a test-polarity flip). It was wrong to rank `snr_mainmenu.lua`
+below them.
+
+### 3.4 The five defects, at instruction level
+
+Evidence is pc/opcode/register and ASCII identifiers only. `O<n>` is an original
+pc, `P<n>` a predecessor pc. Every fact below was re-derived this session with
+`scripts/cross_corpus.py`, `verify.semantic_score.collect_proto_signatures` and a
+reachability walk over the decoded instruction stream. `EQ` semantics are
+`lvm.c`'s: `if (equalobj(RK(B), RK(C)) == GETARG_A(i)) dojump`, i.e. the
+*following* `JMP` is taken when equality equals `A`.
+
+#### (1) `snr_music.lua:main_3` — the poll loop is gone (task 4's defect #1)
+
+Original `main_3` has **two** negative-`sBx` jumps: `O328 JMP sBx=-6 -> 323` and
+**`O367 JMP sBx=-357 -> 11`**. The second is the gallery's outer poll loop: the
+whole body from `O11` re-executes. The predecessor's `main_3` has **one**
+(`P346 JMP sBx=-6 -> 341`); no instruction in its 407 targets `P11`. Its tail is
+duplicated instead — `P371-384` and `P385-397` are the same block twice — and
+**neither copy loops**: `P384 JMP -> 398` is forward and `P397` falls through to
+`P398`, which is `GETUPVAL`/`CALL` followed by
+`run(cGetFileName("script", "snr_mainmenu"))` at `P400-405` and `RETURN`.
+
+Dynamically the behaviour arm shows the same thing and is the reason this file
+has **two** rows: the original's stubbed run polls until the 3000-event budget
+(`CAP|3001`, 2502 `pressButton` and 417 `wait` events), the predecessor's returns
+after **94** (6 `pressButton`, 1 `wait`, then `cInitGame`, `switchScreen`,
+`cGetFileName`, `run`). The gallery falls straight back to the main menu.
+
+#### (2) `snr_common.lua:main_76_2` — unconditional break, and a frame hang
+
+Both of `DEBUG_KEY_SEQUENCE_HARNESS.md`'s recorded checkpoints for
+`SystemConfig.ConfigMain`, confirmed:
+
+* **"`break` must not be promoted to an unconditional `break`."** Original
+  `O84 GETGLOBAL 'memoryFlag'`, `O85 EQ A=0` — the `JMP` at `O86` is taken when
+  the value is **not** `true`, so the equal case falls to `O87 JMP -> 93` and
+  **continues the poll loop**. Predecessor `P91 GETGLOBAL 'memoryFlag'`,
+  `P92 EQ A=1` — the `JMP` at `P93` is taken when the value **is** `true`, and its
+  target is `P277 RETURN A=1 B=2`. Both outcomes of the test now return: `P93 ->
+  P277` on equal, `P94-97` (`keyPlaySE`) then `P98 -> P277` otherwise. The gate is
+  gone.
+* **"a no-state-change path must reach `wait(1)`."** The sibling site: original
+  `O65 EQ A=0` falls through on equal to `O67 JMP -> 93`, and every original
+  iteration reaches `O168 GETGLOBAL 'wait'` / `O169 LOADK 1` / `O170 CALL` before
+  `O171 JMP sBx=-169 -> 3`. The predecessor's `P66 EQ A=1` sends the equal case to
+  `P67 JMP -> 4` — the loop **header** — bypassing `P273-275`, its own `wait(1)`.
+  Register 0, the loop's induction variable, is written exactly once in each proto
+  (`O0` / `P0`), so `while R0 < 1` never terminates on its own: the path spins
+  without yielding a frame.
+
+#### (3) `snr_mainmenu.lua:main_7` — four progress gates deleted (new)
+
+The original's menu loop body branches two ways. `O206-O221` is the gate:
+`GETUPVAL`/`GETTABLE 'novel'`, `EQ`; `GETGLOBAL 'systemSave'`/`GETTABLE
+'novelFlag'`, `EQ K[bool:true]`; the same pair for `'music'`/`'musicFlag'`. It
+selects between `O222-O228` (`layerVisible(layerNumber.menu + i, false)`, followed
+by **`O229 JMP -> 252`**, the `FORLOOP`) and `O230-O251`
+(`layerAlpha(...,0)`, `layerVisible(...,true)`, `layerMoveAlpha(...,100,30)`).
+
+The predecessor has **no gate at all**. `P215 LT A=0` sends `i >= menu.novel`
+straight to `P230`, which is `layerVisible(..., false)` — and `P230-236` **falls
+through** into `P237` (`layerAlpha`), `P244` (`layerVisible(..., true)`) and
+`P251` (`layerMoveAlpha(...,100,30)`). The two mutually exclusive arms are now
+concatenated, and the later `layerVisible(..., true)` overrides the earlier
+`false` with no intervening `wait`.
+
+The count, measured over the whole proto: `GETGLOBAL 'systemSave'` **24 -> 16**,
+`GETTABLE 'novelFlag'` **12 -> 8**, `GETTABLE 'musicFlag'` **8 -> 4** — exactly
+**four** gate sites deleted (`O206`, `O744`, `O1279`, `O1810`), each reading one
+of each flag. Menu entries the save data has not unlocked are faded in instead of
+staying hidden.
+
+This row's first cut was **`suspect`**, and §2.10 recommended ranking it last.
+
+#### (4) `snr_graphic.lua:main_4` and (5) `snr_memory.lua:main_4` — a lost disjunct (new)
+
+Identical shape in both files. The original's cursor handler is
+`if c == 3 or c == 6 or c == 9 then A else B end`, compiled as three
+`GETUPVAL`/`EQ` pairs. In `snr_graphic`: `O116 EQ A=1 K[3]` and `O119 EQ A=1
+K[6]` jump to the `A` block at `O124`; `O122 EQ A=0 K[9]` jumps to `B` at `O160`
+when **not** equal. `preds(O124) = {117, 120, 122}` — three ways in. `A` ends
+`O158 CALL` / **`O159 JMP -> 212`**, which skips `B` entirely.
+
+The predecessor tests **two** values: `P135 EQ A=1 K[3]` -> `P173`, `P138 EQ A=0
+K[9]` -> `P205`. `preds(P205) = {139, 172, 204}`: the `B` block is reached by the
+not-equal jump **and by the fall-out of both copies of `A`** (`P172 JMP -> 205`,
+`P204` falling through). So:
+
+* `c == 6` runs **`B` only**, where the original runs `A` only — the page never
+  turns;
+* `c == 3` and `c == 9` run **`A` then `B`**, where the original runs `A` only.
+
+`snr_memory.lua` is the same, at `O117/O120/O123` -> `P136/P139`. Each file loses
+the disjunct **twice**: the RIGHT handler drops `== 6` and the LEFT handler drops
+`== 4` (`snr_graphic` `O230`, `snr_memory` `O231`). The full `EQ`-against-numeric
+census per proto, original vs predecessor, is
+`snr_graphic` `[(116,3),(119,6),(122,9),(183,3),(186,6),(189,9),(227,1),(230,4),(233,7),(259,1),(262,4),(265,7)]`
+vs `[(135,3),(138,9),(228,3),(231,6),(234,9),(273,1),(276,7),(311,1),(314,4),(317,7)]`.
+
+**Reachability of the dropped values is settled inside the predecessor itself**:
+its own second chain (`P228/P231/P234`) still tests `== 6` on the *same* upvalue
+index, and its fourth chain still tests `== 4`. The two chains are separated by
+an `LE` on `cursor + 1` against another upvalue, which places no constraint on the
+cursor modulo 3. The gained `CALL`s (`snr_graphic` 63 -> 65, `snr_memory` 42 -> 44,
+both `U:8|args:4|rets:0`) are the duplicated `A` block, not new call sites.
+
+#### (6) `snr_common.lua:main_75` — a retry `while` became an `if` (new)
+
+The only proto in the corpus whose predecessor side has **no negative-`sBx`
+instruction at all** where the original has one.
+
+Original: `O83-85 wait(1)`; `O86 GETGLOBAL 'succeedLoadSystemdata'` / `O87 CALL`;
+`O88 EQ A=0 C=K[bool:false]`, so `O89 JMP -> 159` (`applySystemdata()`) is taken
+when the result is **not** `false`. On `false` the body `O90-O157` runs and ends
+`O155-157 wait(1)`, **`O158 JMP sBx=-73 -> 86`** — back to the call. `preds(O86)
+= {85, 158}`: a live loop header.
+
+Predecessor: the same head (`P89-91 wait(1)`, `P92-93` the call, `P94 MOVE`,
+`P95 EQ A=0 C=K[bool:false]`, `P96 JMP -> 162`), the same body, and then
+`P159-161 wait(1)` **falling through to `P162 GETGLOBAL 'applySystemdata'`**.
+`preds(P92) = {91}` — nothing loops back; `preds(P162) = {96, 161}`.
+
+So a `while <call>() == false do ... end` retry became a single `if`. On repeated
+failure the original re-prompts indefinitely; the shipped build proceeds after one
+pass. This sits on a system-data load-failure path, which may never fire in normal
+play — the verdict is about semantics, and the departure is provable.
+
+**This is the row the instrument ranked worst.** `main_75`'s measured components
+are `{cfg_all 0.0, opcode_family 0.9358}`: its **`cfg_reachable` scores exactly
+1.0** even though the proto's only loop disappeared, because
+`semantic_score._cfg_shape`'s reachability walk follows a block's terminator only
+and never the conditional-skip edge of `EQ`/`LT`/`TEST`. It was queued as one of
+`snr_common.lua`'s 18 flagged paths, ranked 9th of 18 by score.
+
+### 3.5 `intentional-edit`: adopted, and it fits exactly one path
+
+Task 5 proposed the verdict with four runnable clauses. **Adopted unchanged.**
+Verified independently this session against `snr_common.lua:main_83`, the only
+path in the corpus it fits:
+
+1. `cfg_reachable (5,5,1) -> (5,5,1)`, `cfg_all (12,11,1) -> (12,11,1)`, and no
+   `global_reads` / `global_writes` / `call_targets` / `call_shapes` /
+   `return_arity` delta at all — all seven components exactly 1.0. ✓
+2. Constant delta is exactly `str:24:0a5c2a0bd820 1->0`, `str:26:7d47f033614e
+   0->1`. No numeric constant differs anywhere in the proto, and the one string
+   that does is an asset path under `pgf/` — the Japanese font filename swapped
+   for a Chinese one. Both appear as the second argument of `fontLoad` with first
+   argument `num:0` (`O46` / `P48`); the sibling `fontLoad(1, ...)` at `O50` /
+   `P52` is byte-identical. ✓
+3. Opcode delta is `LOADNIL 0->1` and `MOVE 1->11`. No `CALL`, `GETGLOBAL`,
+   `SETGLOBAL`, test or jump change. ✓
+4. `/Users/fotile96/Zndnovel/CLAUDE.md:47` records the swap, and states these Lua
+   files are hand-modified decompiler output. ✓
+
+Corpus-wide corroboration re-measured this session: the string-constant multiset
+differs in **exactly 1 of 229 files** (`snr_common.lua`, one original-only and one
+predecessor-only entry) — so this is not one instance of a class, it is the whole
+class.
+
+It is **not a row verdict**, because a row is a file and `snr_common.lua`'s file
+verdict is `real-bug`. A vocabulary member with no row is still load-bearing here:
+without it, this path would have had to be called `equivalent-transform`, which is
+false (the chunk loads a different font), or `real-bug`, which is worse.
+
+### 3.6 The other twelve rows
+
+All twelve are `equivalent-transform`. The mechanisms are listed in
+`cross_corpus.VERDICTS`; what follows is what each row's proof turned on.
+
+* **`config.lua`** — the sole opcode delta is `GETGLOBAL 24 -> 38`, and the
+  `global_reads` delta is exactly two names, `+12` and `+2`, summing to the 14.
+  The chunk is one straight-line block with **0 `CALL` instructions on both
+  sides**, and each extra read is dominated by a `SETGLOBAL` of a value that came
+  straight from a `NEWTABLE`; with no call in between, nothing can rebind the
+  global. Constructor lowering.
+* **`snr_lib.lua`** — `TESTSET 2 -> 0`, `MOVE 0 -> 6`. Both `TESTSET`s test a
+  register loaded by the immediately preceding `LOADK` of a number, so the skip
+  edge is dead and the instruction always means `R := <constant>`. Fewer blocks
+  from *more* instructions, because `MOVE` does not split a block and `TESTSET`
+  does.
+* **`snr_s2_10_s.lua`** and **`snr_s4_10_s.lua`** — tail duplication, proven by
+  the three-part test. `snr_s2_10_s:main_60`: original block `O541-549` has
+  `preds {506, 508, 538}`; the predecessor emits it at `P540-548` (`preds {536}`)
+  and `P549-557` (`preds {504, 506}`), the two copies are equal
+  instruction-for-instruction modulo registers and equal to the original's, and
+  the third apparent copy `P539` has `preds = []`. Same at the proto's second
+  site. This is where the `wait` +2 signature comes from: the duplicated block
+  contains one `wait` call each, so the *static* count rises while the dynamic
+  count per path does not.
+* **`snr_s3_10_s.lua`**, **`snr_s7_10_f.lua`**, **`snr_s5_10_s.lua:main_42/43`**,
+  **`snr_novel.lua:main_7/main_12`**, **`snr_crd_102.lua`** — dead escape jumps.
+  `luac` emits a jump after an `if ... then ... break end` whose `then` arm
+  already ended in an unconditional jump; `luaK_patchlist` aims it at the loop
+  header, and it is unreachable. Every one was confirmed with `preds = []`. These
+  are the reason `cfg_all` back-edge counts rise while `cfg_reachable` stays 1.0.
+* **`snr_s5_10_s.lua:main_46`** — the one row where a *live* back edge count
+  falls (5 -> 3) without a defect. The original's `if/elseif/elseif` on a selector
+  gives each arm its own jump back to the loop head (`O87`, `O98`, `O100`,
+  `O106`); the predecessor writes three sequential `if`s, so a taken arm falls
+  through the remaining equality tests and takes a shared back edge (`P97`,
+  `P103`). The selector register is written once before the chain and never inside
+  an arm, and the tests are against distinct numeric constants, so the residual
+  tests are false and effect-free. `preds(O47) = {46, 87, 98, 100, 106}` vs
+  `preds(P47) = {46, 97, 103}` — same head, no path lost.
+* **`snr_fragment_main.lua`** and **`snr_story_main.lua`** — test-polarity flips
+  plus sunk callee `GETGLOBAL`s. `cfg_all` is identical `(136,137,2)` on both
+  sides for both `main_1`s; the whole `cfg_reachable` `(24,25,2) -> (45,46,2)`
+  move is one site where `EQ A=1` became `EQ A=0` plus an added unconditional
+  jump, which changes which way the crude walk falls. `snr_story_main:main_3`'s
+  `CALL 78 -> 79` is a duplicated `or`-fallback arm; enumerating the three paths
+  gives identical dynamic call counts.
+* **`snr_novel.lua` (behaviour arm)** — `probable-artifact` was the right
+  *impact* and the wrong *cause*, so the verdict is not `probe-artifact`. The
+  trace difference is six `C|comLayerLoadFalse|2args` lines that are a
+  **permutation** of the same 29 (id, path) pairs, produced by a `pairs()` loop
+  over a table the original builds with a constructor (`NEWTABLE A=1 B=0 C=23`)
+  and the predecessor builds empty and fills field by field (`NEWTABLE A=21 B=0
+  C=0`). Reproduced from first principles this session: the 29 constant key/value
+  pairs were extracted from the original's own `main`, written out both ways, and
+  run under `build/lua_sz4` — the two `pairs()` orders differ at positions
+  **5, 9, 18, 20, 22, 27**, exactly the six differing trace lines. The
+  constant/constant `SETTABLE` multiset in `main` is *identical* on the two sides
+  (54 pairs, same SHA-256). The seventh differing line is the terminal
+  `R|main|attempt to concatenate ...` and is the already-pinned `getobjname`
+  noun class. **Caveat, recorded rather than assumed:** `pairs()` order is
+  unspecified by Lua, so the two chunks are equivalent as *programs*; if the
+  engine's `comLayerLoadFalse` were order-sensitive the divergence would be real,
+  and nothing reachable from this repository can settle that. This is mechanism 3
+  hitting the exclusion its own definition names.
+
+### 3.7 Four corpus-wide sweeps, independent of the queue criterion
+
+A verdict per queued row answers "is this row a defect". It does not answer "did
+the queue miss a defect". Four sweeps over **all 1944 proto pairs** were run this
+session; each looks for the predecessor *losing* something, which no
+`equivalent-transform` mechanism can do.
+
+| sweep | protos hit | where |
+|---|---:|---|
+| loses a **global read** (any name, any count) | **1** | `snr_mainmenu.lua:main_7` — defect (3) |
+| loses a **reachable back edge** | **3** | `snr_music:main_3` (1), `snr_common:main_75` (6), `snr_s5_10_s:main_46` (adjudicated `equivalent-transform`, §3.6) |
+| loses a **test op** (`EQ`/`LT`/`LE`/`TEST`/`TESTSET`) | **23** | all 23 inside queued files; includes defects (3), (4), (5) |
+| loses a **`global_write`, `call_target`, `call_shape` or `return_arity`** | **0** | — |
+
+Read together: **no call site, no global write and no return was deleted anywhere
+in the corpus**; exactly one proto loses a global read and it is a defect; exactly
+three lose a reachable back edge and two are defects. The 23 test-op losses are
+dominated by the statically-decided `TEST`/`TESTSET` family — the largest,
+`snr_common:main_74_13` at 15, is 7 `TESTSET` plus 8 `TEST`, and four `TEST` sites
+were opened at instruction level (`O386`, `O405`, `O497`, `O561`): each is
+`LOADK R, <number>` immediately followed by `TEST A=R C=1`, i.e. a test on a
+numeric literal, always truthy in Lua (**including `0`**), so the following jump is
+unconditional. `EQ` counts are unchanged in that proto.
+
+**The back-edge sweep is the one that mattered**, and it is not the queue
+criterion. `snr_common:main_75` scores `cfg_reachable = 1.0`; had the sweep not
+been run, defect (6) would have been missed by every rule in this harness. The
+sweep is cheap (one reachability walk per proto) and is the obvious candidate for
+promotion to a standing check.
+
+### 3.8 Which verdicts rest on a fired arm, and which on a silent one
+
+Every `real-bug` except one rests on the **static** arm alone.
+
+Measured this session over the 16 queued files: the `state` arm agrees on all 16,
+and its compared payload is `ERR len=0` on 5, `len=22` on 9, `len=50` on
+`snr_lib.lua` and `len=59512` on `snr_common.lua` — it contradicts nothing and
+confirms nothing. The `behaviour` arm's reach on the same 16: `truncated` on
+**11**, `silent:0/0` on **1** (`config.lua`), `complete` on **4** — and three of
+those four complete runs are **12, 18 and 11 events** (`snr_fragment_main`,
+`snr_mainmenu`, `snr_story_main`); the fourth is `snr_novel.lua`, one of the two
+files that produced a behaviour row at all.
+
+| defect | static arm | behaviour arm |
+|---|---|---|
+| (1) `snr_music:main_3` | fired, divergent | **fired, divergent** (`CAP\|3001` vs `OK\|94`) |
+| (2) `snr_common:main_76_2` | fired, divergent | silent — `truncated:1/79`, and `main_76_2` sits under a global that is never invoked |
+| (3) `snr_mainmenu:main_7` | fired, divergent | fired and **agreed**, on an 18-event run |
+| (4) `snr_graphic:main_4` | fired, divergent | agreed at `truncated:1/1` (`CAP`) |
+| (5) `snr_memory:main_4` | fired, divergent | agreed at `truncated:1/1` (`CAP`) |
+| (6) `snr_common:main_75` | fired, divergent | silent, as (2) |
+
+So **five of the six defects are invisible to both dynamic arms**, and for (3) the
+behaviour arm returned `agree` — a positive statement of agreement over a run that
+never reached the defective loop. That is the §2.5 warning arriving: `agree` at
+shallow reach is not evidence of equivalence, and this section is the first place
+in the project where the two can be separated defect by defect.
+
+### 3.9 Numbers from the brief and from §2 that did not reproduce
+
+Every figure in §3 was measured this session. Three inherited statements did not
+survive re-measurement:
+
+1. **"`snr_memory.lua` … not queued by any arm."** False. `snr_memory.lua` is
+   queued on the fingerprint arm and has been since task 5 round 1 (§2.9.2 says so
+   correctly; the brief's summary contradicted it). All **4** files with a
+   numeric-constant multiset difference — `snr_common`, `snr_mainmenu`,
+   `snr_memory`, `snr_music` — are inside the queue.
+2. **"`snr_music.lua`'s 13 predecessor-only numeric constants are unrolled-loop
+   residue that corroborates the known defect"** (§2.9.2). They are not. Measured:
+   `snr_music:main_3`, the defective proto, has an **identical constant
+   fingerprint multiset** — its `proto` delta prints no `const` line at all. All
+   21 gained numeric constants are in the chunk root `main`, where an array
+   constructor (`NEWTABLE B=19` + 22 `LOADK` + `SETLIST`) was rewritten as 22
+   indexed `SETTABLE`s with explicit keys `1..22`, plus `GETTABLE 0 -> 70` for the
+   re-read receiver. That is mechanism 3, not loop residue. The same rewrite
+   accounts for `snr_memory.lua`'s `{8.0}` (a 9-element `SETLIST` array becoming
+   nine indexed stores, contributing `num:3..num:8`) and for `snr_mainmenu`'s and
+   `snr_common`'s numeric deltas.
+3. **§2.10's prioritisation.** `snr_mainmenu.lua` was named "the weakest row in
+   the queue" and placed last; it is defect (3). See §3.3.
+
+Reproduced exactly, on the other hand: the queue shape (16 files / 18 rows / 10
+`candidate-defect`, 1 `probable-artifact`, 7 `suspect`), the three §2.7 bands
+(`0.97 <= call_targets < 1.0`, `0.995 <= global_reads < 1.0`, numeric-only
+constant differences) all **0** outside the queue over 213 files / 1230 protos
+with `opcode_family` the only sub-1.0 component there (212 protos), the
+string-constant census (**1** differing file), the numeric-constant census (**4**
+differing files, predecessor-only values in 2), the `wait` +2 signature (exactly
+3 protos), and the behaviour-arm reach census.
+
+### 3.10 One more measurement worth recording: where our own decompiler stands
+
+Of the **44** flagged proto paths in the queue, our own pipeline certifies
+**20 as `L3`** — so for 24 of them our text is *not* a faithful reference and was
+not used as one. That includes 5 of the 6 defect sites: only
+`snr_common:main_75` among them is `L3` on our side (`snr_common:main_76_2`,
+`snr_music:main_3`, `snr_graphic:main_4`, `snr_memory:main_4` and
+`snr_mainmenu:main_7` are all `L1`, and **all five carry the same refusal kind**,
+`structure: pc N: if targets out of range` — at pc 11, 144, 120, 121 and 213
+respectively). The brief's "96.8 % of unique shapes"
+is a corpus-wide figure; **inside this queue the rate is 20/44**, and the queued
+paths are enriched precisely in the shapes our own recognizer refuses. Where our
+text was used it is named in the row's evidence; everywhere else the adjudication
+rests on the two disassemblies.
+
+### 3.11 What went into the suite, what stayed a job, and what it costs
+
+**Suite (5 new tests in `tests/test_cross_corpus.py`, 24 -> 29 in that module,
+941 -> 946 overall).** The half of the pin gate that rots silently:
+
+* `test_pin_table_is_well_formed` — vocabulary, shape, 18 rows, and the red line
+  (`json_safe` over every evidence string and every note). No corpus.
+* `test_the_state_arm_has_no_pins_because_it_has_no_divergences` — turns an empty
+  table into a claim: the L1.5 arm must keep agreeing on all 16 pinned files.
+* `test_every_pin_still_diverges_with_the_recorded_evidence` — `moved` and `gone`
+  empty on all three arms over the 16 pinned files.
+* `test_the_pin_gate_can_fail` — the non-vacuity proof for the one above,
+  perturbing a *copy* of the table two ways and requiring `adjudicate_pins` to
+  name the row.
+* `test_the_six_real_bug_verdicts_are_the_committed_headline` — the payload,
+  asserted so it cannot be quietly downgraded.
+
+**Job.** `unexpected` — "no divergence anywhere in the corpus is unpinned" —
+needs all 229 files and stays in
+`uv run python scripts/cross_corpus.py --arm all`, which now **exits 0**
+(measured 3.25 s this session; §2.8's 3.5–3.9 s band). Asserting `unexpected` over
+only the pinned files would have made it vacuous, so it is deliberately not
+asserted in the suite; the test's docstring says so.
+
+**Neuter proof, run and restored (2026-08-14).** One pinned evidence string was
+edited (`snr_s7_10_f.lua`, `calls=19` -> `calls=99`);
+`test_every_pin_still_diverges_with_the_recorded_evidence` — and only that test —
+went red (`1 failed, 28 passed`), and the file was restored to green.
+
+**Cost.** Standalone: the module is **1.61–1.70 s** for 29 tests, against
+0.40–0.46 s for the 24 it had, so **~1.2 s attributable to task 6**. Whole-suite
+A/B in one batch, alternating: without `test_cross_corpus.py` 42.72 s / 44.99 s
+(917 tests), with 46.28 s / 46.84 s (946). The `without` arm's own spread is
+2.3 s, so — exactly as in §2.8 — the batch difference is not resolvable against
+this host's noise and the standalone figure is the honest bound. Full suite with
+both corpus variables set: **946 passed in 44.53 s** (host macOS arm64 / Darwin
+24.2.0), inside the ~120 s earmark, and the ~1.2 s is M6 formal-verification
+instrument cost: it is the pin gate for the cross-corpus scan.
+
+### 3.12 What this leaves open
+
+* **Four of the six defects are newly found and none is repaired here.**
+  `corpus/pred_repairs/` (M6 task 4, out of plan) covers `snr_music.lua` and
+  `snr_common.lua:main_76_2` only. Defects (3), (4), (5) and (6) are recorded, not
+  fixed, and the adjudication deliberately ran against the *unmodified*
+  predecessor corpus.
+* **Promote the reachable-back-edge sweep** (§3.7). It is one reachability walk
+  per proto, it found a defect no rule in this harness ranks, and
+  `semantic_score._cfg_shape`'s `cfg_reachable` demonstrably scores 1.0 on a proto
+  whose only loop vanished.
+* **`snr_common.lua`'s remaining flagged paths.** `main_55`, `main_28`,
+  `main_76_7` were checked at their back-edge and reachability sites but not
+  walked end to end, and `main_77_24` was not opened; all four match the
+  `+MOVE / +LOADNIL / -TESTSET / dead-escape-JMP` family fingerprint and none
+  loses a global read, a call target, a call shape, a return or a reachable back
+  edge (§3.7's sweeps cover all 1944 protos, so this residual is bounded). They do
+  not affect the row verdict, which is `real-bug` on `main_76_2` and `main_75`.
+* **Two premises that bytecode cannot settle**, both named where they are used:
+  no side-effecting `__index`/`__newindex` on `_G` or on engine-owned tables
+  (mechanisms 3 and 5 reorder a global read against pure table reads), and
+  `pairs()` order-insensitivity in the engine's own callees (§3.6,
+  `snr_novel.lua`). Supporting but **not conclusive**, measured this session on
+  both sides: `setmetatable`, `getmetatable`, `rawset`, `rawget`, `__index`,
+  `__newindex`, `__len` and `__eq` occur in **0 of 229 predecessor source files**
+  and, as a substring of any string constant, in **0 of 229 original bytecode
+  files**. Not conclusive because the metatables that matter would be installed by
+  the PSP engine's C side, which neither corpus can see — the same limit M4's
+  effect-lattice calibration recorded for the 56 engine-owned globals the corpus
+  reads but never writes.
