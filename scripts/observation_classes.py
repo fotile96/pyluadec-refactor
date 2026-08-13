@@ -1,6 +1,8 @@
 """Meta-observation pass over the corpus's hard protos (M6 task 4).
 
 用法: PYLUADEC_CORPUS_DIR=... uv run python scripts/observation_classes.py
+      (`--fresh` regenerates with an EMPTY observation store; it refuses to
+       overwrite a file that carries observations unless `--force` is added)
 产出: corpus/observation/classes.json（入库；生成数据，纪律同 corpus/ledger.jsonl）
 
 This is a JOB, not a suite cost. The committed JSON is what the suite reads;
@@ -76,27 +78,47 @@ neither is an engine key poll --
 
 `OPTION_CALLEES` -- the "stub functions that display options and read the user's
 action" -- is likewise not guessed. Every one of them resolves, through the
-corpus's own definitions, to a proto that transitively reaches `pressButton`:
+corpus's own definitions, to a proto in `snr_common.lua` (uniqueness of each
+name corpus-wide verified):
 
-    comDlgSelectItem       -> snr_common.lua:main_29
-    comDlgYesNo            -> snr_common.lua:main_26
-    comDlgYesNoSel         -> snr_common.lua:main_27
-    comDlgStorylineSkip    -> snr_common.lua:main_28
-    comSelectMap           -> snr_common.lua:main_71
-    oCard.selectCardObj    -> snr_common.lua:main_77_17
-    oCard.selectCardNotCancelObj -> snr_common.lua:main_77_18
+    comDlgSelectItem             -> main_29      6 loop headers, polls directly
+    comDlgYesNoSel               -> main_27      1 loop header,  polls directly
+    comDlgStorylineSkip          -> main_28      1 loop header,  polls directly
+    comSelectMap                 -> main_71      6 loop headers, polls directly
+    comDlgYesNo                  -> main_26      NO loop: 8 instructions,
+                                                 TAILCALL to comDlgYesNoSel
+    oCard.selectCardObj          -> main_77_17   NO loop: 48 instructions,
+                                                 self.cardModeSelect at pcs 22-28
+    oCard.selectCardNotCancelObj -> main_77_18   NO loop: same shape
 
-That is the finding the classification rests on: **the option-display "stubs"
-are not engine primitives, they are Class-2 poll loops living in
-`snr_common.lua`**, so the class boundary falls exactly on the corpus's own
-module boundary. A Class-1 proto can therefore treat an option call as an
-uninterpreted oracle over a small value domain precisely because the
-implementation behind it is somebody else's Class-2 problem.
+**The finding the classification rests on, stated to what actually holds: the
+option channel bottoms out in CORPUS-DEFINED code rather than in an engine
+primitive.** A first version of this docstring said all seven "are Class-2 poll
+loops", and the corpus refuted it -- three of the seven have **zero** natural
+loops, and two of those three are the callees for 105 of the 113 Class-1
+candidates. They reach a poll one hop further: `comDlgYesNo` tail-calls
+`comDlgYesNoSel`, and both `oCard` selectors call `cardModeSelect`
+(`main_77_24`), which does poll directly.
+
+The structural point survives, and it is the one Tasks 7 and 8 need: the class
+boundary falls on the corpus's own module boundary, so a Class-1 proto can
+treat an option call as an uninterpreted oracle over a small value domain
+precisely because what is behind it is somebody else's problem in the same
+corpus.
 
 The generator does not hard-code those resolutions: it rebuilds the call graph
 (`_call_graph`) from `CLOSURE`/`SETGLOBAL` and `CLOSURE`/`SETTABLE` pairs each
 run and records the resolved target in the summary, so a wrong entry in
 `OPTION_CALLEES` shows up as a `null` target rather than as silence.
+
+**The list is incomplete, by four protos that pass its own test** (defined in
+the corpus, reached by a caller, and themselves reaching a poll):
+`comStorySceneEnd` = `main_55`, `SystemConfig.confirm` = `main_76_7`,
+`SystemConfig.ConfigMain` = `main_76_2`, `ObjectCard.cardModeSelect` =
+`main_77_24`. Only the first is a global name a list edit could add, and
+measured 2026-08-13 **no candidate of the 162 calls it**, so adding it would
+change nothing; the other three are reached as `self.<method>()` and need the
+call graph rather than this list. Recorded rather than patched.
 
 ## Channels and input space (the brief's Step 3b)
 
@@ -171,6 +193,14 @@ VERSION = "m6-classes-v1"
 BUDGET = 4096
 
 POLL_GLOBALS = ("pressButton",)
+
+# Marker for a call base that came from an upvalue rather than a global.
+# Deliberately NOT identifier-shaped, so it can never collide with a corpus
+# name: `footprints.json` measured `non_identifier_names == 0` over all 229
+# files, i.e. every global name, table key and callee name in the corpus IS an
+# ASCII identifier. It never reaches the emitted JSON as a name -- option
+# callees are matched by exact tuple and this tuple matches none of them.
+SELF_BASE = b"<upvalue>"
 
 # (base, key) is a method call; a bare name is a global call.
 OPTION_CALLEES = (
@@ -352,6 +382,17 @@ def scan_proto(proto):
                     k = ks[indexk(ri.b)]
                     if isinstance(k, bytes):
                         mdef.setdefault(k, pre_clos[ri.c])
+            elif op is Op.GETUPVAL:
+                # `self.method()` inside a constructor's closure compiles to
+                # `GETUPVAL Rx,u; GETTABLE Rx Rx K"name"; CALL Rx`, and the
+                # base is an upvalue, not a global. Seeding a sentinel here is
+                # what makes that an edge at all. Measured cost of NOT doing
+                # it: `oCard.selectCardObj` (`main_77_17`) calls
+                # `cardModeSelect` (`main_77_24`, a direct `pressButton`
+                # caller) at pcs 22-28 and the graph saw nothing, so the
+                # option callee behind 105 of 113 Class-1 candidates reported
+                # `reaches_poll == False`.
+                prov[ri.a] = (SELF_BASE,)
             elif op is Op.GETGLOBAL:
                 n = ks[ri.bx]
                 if isinstance(n, bytes):
@@ -393,24 +434,49 @@ def _call_graph(all_protos, gdefs, all_methods, all_calls):
     for iname, (cf, cpath) in INSTANCE_GLOBALS.items():
         for k, path in all_methods.get(cf, {}).get(cpath, {}).items():
             mdef[(iname.encode(), k)] = (cf, path)
-    # KNOWN UNDER-APPROXIMATION, measured 2026-08-13: edges are only built for
-    # callees whose register carries GLOBAL-rooted provenance. A call through
-    # an upvalue-held local closure (`GETUPVAL R0; CALL R0`) or through a
-    # `self` upvalue (`GETUPVAL R2,0; GETTABLE R2 R2 K"ConfigMain"; CALL`) is
-    # invisible. An independent audit that followed those chains measured
-    # `protos_reaching_poll` **390** where this graph reports **331** (+59),
-    # and a maximally permissive method-key-only resolution gives 503. The
-    # count published in the summary is this graph's, so it is a floor.
+    # KNOWN UNDER-APPROXIMATION, and it is now smaller than it was. Round 0
+    # built edges only for callees with GLOBAL-rooted provenance, so
+    # `self.method()` was invisible and `protos_reaching_poll` read 331; with
+    # the `SELF_BASE` seeding above it reads **443** (measured 2026-08-13).
+    #
+    # What is STILL invisible: a call through an upvalue-held LOCAL CLOSURE
+    # (`GETUPVAL R0; CALL R0`), which needs the parent's `CLOSURE` binding
+    # pseudo-instructions to resolve. Measured cost, over the nine `neither`
+    # candidates an independent audit reclassified: five are now reached (at
+    # 1, 1, 2, 4 and 4 hops) and **four are not** -- `snr_crd_102.lua:main_5`,
+    # `snr_s0_10_f.lua:main_7`, `snr_s7_10_f.lua:main_53`,
+    # `snr_s8_10_s.lua:main_5`, every one of them a local-closure upvalue
+    # call. So the published count remains a FLOOR.
     edges: dict[tuple[str, str], set] = defaultdict(set)
     direct = set()
+    def self_method(f: str, path: str, key: bytes):
+        """`self.<key>()` -- resolve `key` in the nearest enclosing proto that
+        defines methods, walking `main_77_17` -> `main_77` -> `main`.
+
+        Precise rather than permissive: it resolves within THIS proto's own
+        ancestor chain, so two constructors that both define `show` do not get
+        confused for each other. `_defs_and_calls` records a method table per
+        proto path, which is what makes the walk possible."""
+        parts = path.split("_")
+        while parts:
+            anc = "_".join(parts)
+            hit = all_methods.get(f, {}).get(anc, {}).get(key)
+            if hit is not None:
+                return (f, hit)
+            parts.pop()
+        return None
+
     for (f, path), sites in all_calls.items():
         for _pc, b in sites:
             if len(b) == 1:
+                if b[0] == SELF_BASE:
+                    continue
                 if b[0] in poll:
                     direct.add((f, path))
                 t = gdefs.get(b[0])
             elif len(b) == 2:
-                t = mdef.get((b[0], b[1]))
+                t = (self_method(f, path, b[1]) if b[0] == SELF_BASE
+                     else mdef.get((b[0], b[1])))
             else:
                 t = None
             if t is not None:
@@ -427,19 +493,31 @@ def _call_graph(all_protos, gdefs, all_methods, all_calls):
             if a not in reach:
                 reach.add(a)
                 stack.append(a)
-    return edges, direct, reach, mdef
+    return edges, direct, reach, mdef, self_method
 
 
 def poll_loops(proto):
     """Natural loops of this proto whose body contains a direct poll call.
 
-    Returns `(n_natural_loops, [(header, back_edge, poll_pc), ...], pcs)`
-    where `pcs` is every pc that lies inside SOME natural loop -- used to say
-    whether an option call is polled per iteration.
-    A natural loop is a back edge `s -> h` with `h` dominating `s`; the body
-    is the usual backwards closure from `s` within the dominator region.
-    `cfg/dom.py` roots the tree at `idom[entry] == entry`, so the walk stops
-    at the fixed point rather than looping forever.
+    Returns `(n_headers, n_back_edges, [(header, back_edges, poll_pc), ...],
+    pcs)`; `pcs` is every pc inside SOME natural loop, used to say whether an
+    option call is polled per iteration.
+
+    **A loop is a HEADER, not a back edge, and getting that wrong published a
+    false structural claim.** A back edge is `s -> h` with `h` dominating `s`;
+    the natural loop of `h` is the union of the backward closures of ALL back
+    edges targeting `h`. The first version emitted one entry per back edge, so
+    the predecessor-recompiled `snr_common.lua:main_76_2` -- a single
+    `while v1 < 1 do ... end` whose tail luac wrote out twice -- reported as
+    "4 poll loops" with a 9-block innermost body, against the original's 1.
+    Grouped by header it is **one** loop, header block 5, four back edges
+    (60/68/188/274), union body 78 blocks. The same conflation made the
+    published `n_natural_loops` a back-edge count on 14 of 162 records
+    (`snr_mainmenu.lua:main_7`: 32 back edges over 16 headers), which is why
+    both numbers are now emitted under their own names.
+
+    `cfg/dom.py` roots the tree at `idom[entry] == entry`, so the dominance
+    walk stops at the fixed point rather than looping forever.
     """
     from pyluadec.lift.opcodes import Op
     from pyluadec.cfg.dom import immediate_dominators
@@ -471,26 +549,30 @@ def poll_loops(proto):
             elif ri.op in (Op.CALL, Op.TAILCALL) and pre.get(ri.a) in poll:
                 poll_pcs.setdefault(start, []).append(ri.pc)
 
-    loops = []
-    n_natural = 0
-    in_loop: set[int] = set()
+    back: dict[int, list[int]] = {}
     for s, blk in cfg.blocks.items():
         for t in blk.succs:
             if t in cfg.blocks and dom(t, s):
-                n_natural += 1
-                body = {t}
-                stack = [s]
-                while stack:
-                    n = stack.pop()
-                    if n not in body:
-                        body.add(n)
-                        stack.extend(cfg.preds.get(n, ()))
-                in_loop |= body
-                pcs = sorted(pc for n in body for pc in poll_pcs.get(n, ()))
-                if pcs:
-                    loops.append((t, s, pcs[0]))
+                back.setdefault(t, []).append(s)
+    loops = []
+    in_loop: set[int] = set()
+    n_back = 0
+    for h in sorted(back):
+        latches = sorted(back[h])
+        n_back += len(latches)
+        body = {h}
+        stack = list(latches)
+        while stack:
+            n = stack.pop()
+            if n not in body:
+                body.add(n)
+                stack.extend(cfg.preds.get(n, ()))
+        in_loop |= body
+        pcs = sorted(pc for n in body for pc in poll_pcs.get(n, ()))
+        if pcs:
+            loops.append((h, tuple(latches), pcs[0]))
     looped_pcs = {li.ri.pc for b in in_loop for li in cfg.blocks[b].instrs}
-    return n_natural, sorted(loops), looped_pcs
+    return len(back), n_back, sorted(loops), looped_pcs
 
 
 MAX_PATH_DEPTH = 8
@@ -557,7 +639,8 @@ def channels(proto):
     # they are the measured blind spot of `input_space` and are published
     # rather than left implicit. Corpus-wide 2026-08-13: 3371 EQ/LT/LE sites,
     # 1524 with a channel operand, of which 1504 (98.7%) compare against a
-    # constant and 20 (1.3%, over 16 protos) against a register.
+    # constant and 24 (over 16 protos) against a register (measured under
+    # the dataflow below; the block-local pass it replaced saw 20).
     unresolved = [0]
 
     def slot(p):
@@ -741,17 +824,20 @@ def classify(poll_loop_sites, option_call_sites, chans):
                        ITS OWN BODY.
 
     **`neither` does NOT mean "no user-interaction channel".** An independent
-    audit of all 38 `neither` candidates (2026-08-13) found 9 that reach an
-    interaction one call out, and the mechanism is named below: a callee held
-    in an UPVALUE is not an edge in `_call_graph`, because `scan_proto` seeds
-    provenance only on `GETGLOBAL`. `systemConfig.Config`
-    (`snr_common.lua:main_76_8`) is the clearest case -- its own body does
-    `GETUPVAL R2,0; GETTABLE R2 R2 K"ConfigMain"; CALL` at pc 18-20 and
-    branches on the result, and `ConfigMain` is `main_76_2`, a direct
-    `pressButton` caller. Those nine carry the audit's verdict in their
-    `observed` half; the mechanical class is left as the rule computes it,
-    because a class that quietly disagreed with its own published evidence
-    would be worse than one that is narrow and says so.
+    audit of all 38 `neither` candidates (2026-08-13) found 9 that reach one
+    through a callee. **Not "one call out"** -- measured hop distance to the
+    nearest direct poller is 1, 1, 2, 4, 4 for the five this graph reaches and
+    unbounded-by-this-graph for the other four (see `_call_graph`). Only
+    **2 of the 9** actually read a value and branch on it:
+    `snr_common.lua:main_76_8` (`systemConfig.Config`), which does
+    `GETUPVAL R2,0; GETTABLE R2 R2 K"ConfigMain"; CALL` at pcs 18-20 and
+    branches at 25/38/40/55, and `main_74_18`. The other seven merely call
+    into something that eventually polls.
+
+    Those nine carry the audit's verdict in their `observed` half; the
+    mechanical class is left as the rule computes it, because a class that
+    quietly disagreed with its own published evidence would be worse than one
+    that is narrow and says so.
 
     The number of branch channels is deliberately NOT a condition. It was one
     in a first version, and the corpus falsified it: `snr_s5_10_s.lua`'s
@@ -808,6 +894,21 @@ def probe_corpus(files):
 
 # ---------------------------------------------------------------- ledger
 
+def read_footprints():
+    """`{(file, proto_path): footprint record}` over Task 3's dump.
+
+    A REQUIRED input, not an optional enrichment: the brief's Step-1
+    deliverable is that each candidate carries "the interaction surface
+    (stub-call set + table-key read set from Task 3)". Degrading silently to
+    a record without a `footprint` key is how the first version of this
+    script shipped without the join at all, so a missing file raises.
+    """
+    path = ROOT / "corpus" / "observation" / "footprints.json"
+    doc = json.loads(path.read_text())
+    return {(fe["file"], pr["proto_path"]): pr
+            for fe in doc["files"] for pr in fe["protos"]}
+
+
 def read_ledger():
     """`{(file, proto_path): row}` over `corpus/ledger.jsonl`."""
     out = {}
@@ -856,6 +957,15 @@ def main() -> int:
 
     dest = ROOT / "corpus" / "observation" / "classes.json"
     keep_observed = "--fresh" not in sys.argv
+    if not keep_observed and dest.exists() and "--force" not in sys.argv:
+        prev = json.loads(dest.read_text())
+        n_obs = (sum(1 for r in prev["candidates"] if r.get("observed"))
+                 + len(prev.get("orphan_observations", [])))
+        if n_obs:
+            print(f"refusing --fresh: {dest} carries {n_obs} review "
+                  f"observation(s) that --fresh would erase. Pass --force if "
+                  f"that is really what you want.", file=sys.stderr)
+            return 1
     observed: dict[tuple[str, str], dict] = {}
     if keep_observed and dest.exists():
         prev = json.loads(dest.read_text())
@@ -863,6 +973,8 @@ def main() -> int:
             obs = rec.get("observed")
             if obs:
                 observed[(rec["file"], rec["proto_path"])] = obs
+        for orph in prev.get("orphan_observations", []):
+            observed[(orph["file"], orph["proto_path"])] = orph["observed"]
 
     all_protos: dict[tuple[str, str], object] = {}
     per_file: dict[str, dict] = {}
@@ -887,8 +999,16 @@ def main() -> int:
             all_protos[(f.name, path)] = p
             all_calls[(f.name, path)] = calls[path]
 
-    edges, direct_poll, poll_reach, mdef = _call_graph(
+    edges, direct_poll, poll_reach, mdef, self_method = _call_graph(
         all_protos, gdefs, all_methods, all_calls)
+
+    def callee_target(f: str, path: str, nm: tuple[bytes, ...]):
+        if len(nm) == 1:
+            return None if nm[0] == SELF_BASE else gdefs.get(nm[0])
+        if len(nm) == 2:
+            return (self_method(f, path, nm[1]) if nm[0] == SELF_BASE
+                    else mdef.get(nm))
+        return None
 
     option_targets = {}
     option_names = set()
@@ -897,6 +1017,15 @@ def main() -> int:
         t = gdefs.get(raw[0]) if len(raw) == 1 else mdef.get(raw)
         option_targets[".".join(spec)] = f"{t[0]}:{t[1]}" if t else None
         option_names.add(raw)
+
+    # Task 3's interaction surface, joined by (file, proto_path). The brief's
+    # Step-1 deliverable names it explicitly ("stub-call set + table-key read
+    # set from Task 3") and the first version of this script silently shipped
+    # the narrower branch-reaching `channels` instead. Both are now carried:
+    # `footprint` is EVERY read/call the proto makes, `channels` is the subset
+    # that reaches a branch decision. Task 7 wants the second to enumerate and
+    # the first to stub.
+    footprints = read_footprints()
 
     ledger = read_ledger()
     # Restricted to the files actually ingested. On the full 229-file corpus
@@ -946,6 +1075,7 @@ def main() -> int:
         corpus_space[n <= BUDGET] += 1
 
     records = []
+    per_iter_by_class: Counter = Counter()
     census: Counter = Counter()
     census_by_pop: dict[str, Counter] = {"leaf-refusal": Counter(),
                                          "cap-dominant": Counter()}
@@ -954,10 +1084,19 @@ def main() -> int:
         f, path = key
         p = all_protos[key]
         row, occ = ledger[key]
-        n_nat, ploops, looped = poll_loops(p)
+        n_hdr, n_back, ploops, looped = poll_loops(p)
         ch, n_unresolved = channels(p)
         opt_sites = [(_callee_text(b), pc, pc in looped)
                      for pc, b in all_calls[key] if b in option_names]
+        # Does SOME natural loop of this proto poll the key on every
+        # iteration, directly or through a callee that reaches one? This is
+        # the measurement behind the report's Class-1/Class-2 overlap: the
+        # owner's framing treats non-termination as Class 2's distinguishing
+        # difficulty, and it is not.
+        indirect = sorted({_callee_text(nm) for pc, nm in all_calls[key]
+                           if pc in looped
+                           and callee_target(f, path, nm) in poll_reach})
+        per_iter = bool(ploops) or bool(indirect)
         cls, evidence = classify(ploops, opt_sites, ch)
         space = 1
         chan_out = []
@@ -972,6 +1111,8 @@ def main() -> int:
                              "truth_tested": rec["test"] > 0})
         drivable = space <= BUDGET
         census[cls] += 1
+        if per_iter:
+            per_iter_by_class[cls] += 1
         for pop in selected[key]:
             census_by_pop[pop][cls] += 1
         drivable_by_class[cls][0] += 1 if drivable else 0
@@ -998,11 +1139,18 @@ def main() -> int:
                                         if key in caps else None),
                     "dominant_global_events": caps[key][1] if key in caps else None,
                 },
-                "n_natural_loops": n_nat,
-                "poll_loops": [{"header_block": h, "back_edge_block": s,
-                                "poll_pc": pc} for h, s, pc in ploops],
+                # Headers, not back edges -- see `poll_loops`. Both are
+                # published because the two differ on 14 of 162 records and
+                # the earlier field name meant the wrong one.
+                "n_natural_loops": n_hdr,
+                "n_back_edges": n_back,
+                "poll_loops": [{"header_block": h,
+                                "back_edge_blocks": list(bs),
+                                "poll_pc": pc} for h, bs, pc in ploops],
                 "calls_poll_directly": key in direct_poll,
                 "reaches_poll": key in poll_reach,
+                "loop_polls_per_iteration": per_iter,
+                "in_loop_callees_reaching_poll": indirect,
                 "option_calls": [{"callee": nm, "pc": pc, "in_loop": lo}
                                  for nm, pc, lo in opt_sites],
                 "channels": chan_out,
@@ -1013,7 +1161,12 @@ def main() -> int:
                 "class_evidence": evidence,
             },
         }
-        obs = observed.get(key)
+        fp = footprints[key]
+        rec["mechanical"]["footprint"] = {
+            k: fp[k] for k in ("global_reads", "table_key_reads",
+                               "calls", "table_key_calls",
+                               "dynamic_reads", "read_sites", "call_sites")}
+        obs = observed.pop(key, None)
         if obs is not None:
             rec["observed"] = obs
         records.append(rec)
@@ -1041,12 +1194,23 @@ def main() -> int:
         # compares a channel against another REGISTER contributes no domain.
         "corpus_register_comparisons": corpus_unresolved,
         "poll_globals": list(POLL_GLOBALS),
+        "candidates_polling_per_iteration": {
+            k: per_iter_by_class[k] for k in sorted(per_iter_by_class)},
         "protos_calling_poll_directly": len(direct_poll),
         "protos_reaching_poll": len(poll_reach),
         "option_callee_targets": {k: option_targets[k] for k in sorted(option_targets)},
         "n_observed_records": sum(1 for r in records if "observed" in r),
     }
+    # Whatever is left in `observed` had no candidate to attach to. Dropping
+    # it silently is exactly the failure the milestone's own goal makes likely:
+    # a proto certifies `L3`, leaves the leaf-refusal population, and a
+    # human-reviewed note evaporates. Quarantine, and shout.
+    orphans = [{"file": f, "proto_path": path, "observed": obs}
+               for (f, path), obs in sorted(observed.items())]
     doc = {"version": VERSION, "summary": summary, "candidates": records}
+    if orphans:
+        doc["orphan_observations"] = orphans
+    summary["n_orphan_observations"] = len(orphans)
     _assert_ascii(doc)
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(doc, indent=1, ensure_ascii=True) + "\n")
@@ -1065,6 +1229,17 @@ def main() -> int:
     print(f"  corpus-wide : {corpus_space[True]}/{len(all_protos)} protos have "
           f"input space <= {BUDGET}")
     print(f"  observed    : {summary['n_observed_records']} record(s) carried over")
+    if orphans:
+        print("!" * 72, file=sys.stderr)
+        print(f"!! {len(orphans)} OBSERVATION(S) NO LONGER MATCH A CANDIDATE and "
+              f"were moved to `orphan_observations`:", file=sys.stderr)
+        for o in orphans:
+            print(f"!!   {o['file']}:{o['proto_path']} "
+                  f"(reviewed_by {o['observed'].get('reviewed_by')})",
+                  file=sys.stderr)
+        print("!! They are NOT lost -- they are quarantined in the JSON and "
+              "will re-attach if the candidate returns.", file=sys.stderr)
+        print("!" * 72, file=sys.stderr)
     return 0
 
 

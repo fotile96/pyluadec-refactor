@@ -38,7 +38,7 @@ BASELINE_REF="${1:-eb08890}"
 BASELINE_FILE="$(mktemp "${TMPDIR:-/tmp}/pyluadec-ledger-baseline.XXXXXX")"
 trap 'rm -f "$BASELINE_FILE"' EXIT
 
-echo "== gate 1: full test suite (includes the ledger fixed point) =="
+echo "== gate 1: full test suite (includes the ledger and observation fixed points) =="
 uv run pytest -q
 
 echo "== gate 2: ledger ratchet vs $BASELINE_REF =="
@@ -53,15 +53,5 @@ uv run python scripts/ratchet_diff.py "$BASELINE_FILE" corpus/ledger.jsonl
 
 echo "== gate 3: full generated differential-execution sweep (24 cases) =="
 PYLUADEC_GENERATED_CASE_LIMIT=24 uv run pytest tests/test_generated_semantic_cases.py -q
-
-echo "== gate 4: observation classes fixed point (whole-corpus regeneration) =="
-# Same reasoning as gate 3, and the same shape: the per-commit suite keeps the
-# cheap half of tests/test_observation_classes.py (schema, class-vs-evidence
-# coupling, the ASCII guard, the carry-over over a one-file corpus, the
-# leaf-refusal cross-check -- 0.4s) and the whole-corpus regeneration runs
-# here. Measured 2026-08-13: in the suite it costs +4.0s (913 passed in
-# 44.85-44.88s with, 896 in 40.81-40.90s without), against a 45s ceiling.
-PYLUADEC_OBSERVATION_FIXED_POINT=1 uv run pytest \
-    tests/test_observation_classes.py -q
 
 echo "RATCHET JOB PASSED (baseline $BASELINE_REF) on $(uname -m) / $(uname -s)"

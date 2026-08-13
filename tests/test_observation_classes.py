@@ -9,11 +9,8 @@ Three kinds of assertion, deliberately separated:
    `scripts/observation_classes.py`. The reason is the one recorded at
    `tests/test_ledger_ratchet.py` and `tests/test_footprint.py`: committed
    generated data that nothing regenerates rots, and a real two-line
-   regression arrives buried in noise. **Unlike those two it is NOT in the
-   per-commit suite** -- it is a whole-corpus pass that measured +4.0s against
-   a 45s ceiling, so it is gated on `PYLUADEC_OBSERVATION_FIXED_POINT` and
-   runs as gate 4 of `scripts/ratchet_job.sh`. The measurement and the
-   departure are argued at the test itself.
+   regression arrives buried in noise. It costs ~2.4s and its attribution
+   under the raised ceiling is argued at the test itself.
 3. **An independent cross-check of the leaf-refusal rule**, because that rule
    is the one piece of candidate selection that is an inference rather than a
    reading (see `observation_classes.refusal_origin`).
@@ -23,7 +20,6 @@ from __future__ import annotations
 import dataclasses
 import importlib.util
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -56,8 +52,12 @@ def doc():
 
 def test_version_and_top_level_shape(doc):
     assert doc["version"] == "m6-classes-v1"
-    assert set(doc) == {"version", "summary", "candidates"}
+    assert set(doc) <= {"version", "summary", "candidates",
+                        "orphan_observations"}
+    assert {"version", "summary", "candidates"} <= set(doc)
     assert doc["summary"]["n_candidates"] == len(doc["candidates"])
+    assert doc["summary"]["n_orphan_observations"] == \
+        len(doc.get("orphan_observations", []))
 
 
 def test_candidates_are_sorted_and_unique(doc):
@@ -161,6 +161,57 @@ def test_observed_records_have_the_reviewed_shape(doc):
         assert isinstance(obs["note"], str) and len(obs["note"]) > 20
 
 
+def test_a_loop_is_a_header_not_a_back_edge(doc):
+    """`n_natural_loops` counts loop HEADERS; `n_back_edges` counts back
+    edges, and the two differ on real records (a `while` whose tail luac wrote
+    out twice has one header and several latches). Counting back edges as
+    loops published a false structural claim about
+    `snr_common.lua:main_76_2` -- see `poll_loops`' docstring."""
+    for r in doc["candidates"]:
+        m = r["mechanical"]
+        assert m["n_back_edges"] >= m["n_natural_loops"]
+        assert len(m["poll_loops"]) <= m["n_natural_loops"]
+        headers = [p["header_block"] for p in m["poll_loops"]]
+        assert len(set(headers)) == len(headers), (r["file"], headers)
+        for p in m["poll_loops"]:
+            assert set(p) == {"header_block", "back_edge_blocks", "poll_pc"}
+            assert p["back_edge_blocks"]
+            assert p["back_edge_blocks"] == sorted(p["back_edge_blocks"])
+    assert any(m["n_back_edges"] > m["n_natural_loops"]
+               for m in (r["mechanical"] for r in doc["candidates"])), \
+        "no record distinguishes the two counts -- the field split is untested"
+
+
+def test_per_iteration_polling_follows_from_its_own_evidence(doc):
+    """The Class-1/Class-2 overlap is a published number, so it has to be
+    recoverable from the record rather than taken on trust."""
+    for r in doc["candidates"]:
+        m = r["mechanical"]
+        expected = bool(m["poll_loops"]) or bool(m["in_loop_callees_reaching_poll"])
+        assert m["loop_polls_per_iteration"] == expected, (r["file"],
+                                                           r["proto_path"])
+    census = {}
+    for r in doc["candidates"]:
+        m = r["mechanical"]
+        if m["loop_polls_per_iteration"]:
+            census[m["class"]] = census.get(m["class"], 0) + 1
+    assert doc["summary"]["candidates_polling_per_iteration"] == census
+
+
+def test_every_record_carries_task_3s_interaction_surface(doc):
+    """The brief's Step-1 deliverable: the stub-call set and table-key read
+    set from `corpus/observation/footprints.json`, joined by
+    `(file, proto_path)`. `channels` is the branch-reaching SUBSET and does
+    not replace it."""
+    for r in doc["candidates"]:
+        fp = r["mechanical"]["footprint"]
+        assert set(fp) == {"global_reads", "table_key_reads", "calls",
+                           "table_key_calls", "dynamic_reads", "read_sites",
+                           "call_sites"}
+        for pair in fp["table_key_reads"] + fp["table_key_calls"]:
+            assert len(pair) == 2
+
+
 def test_an_option_call_site_records_whether_it_is_polled_in_a_loop(doc):
     """`in_loop` exists because the plan's original reading of `input_space`
     for Class 1 ("fix one value per channel, run once") was falsified by the
@@ -219,6 +270,13 @@ def test_cfg_cache_entries_pin_their_proto():
 
 # ------------------------------------------------------------------ corpus arms
 
+def _real_footprints():
+    doc = json.loads(
+        (ROOT / "corpus" / "observation" / "footprints.json").read_text())
+    return {(fe["file"], pr["proto_path"]): pr
+            for fe in doc["files"] for pr in fe["protos"]}
+
+
 def _real_ledger():
     out = {}
     with (ROOT / "corpus" / "ledger.jsonl").open() as fh:
@@ -229,33 +287,29 @@ def _real_ledger():
     return out
 
 
-JOB_ENV = "PYLUADEC_OBSERVATION_FIXED_POINT"
-
-
 @pytest.mark.timeout(300)
-@pytest.mark.skipif(
-    not os.environ.get(JOB_ENV),
-    reason=f"whole-corpus regeneration; set {JOB_ENV}=1, or run "
-           "./scripts/ratchet_job.sh which does")
 def test_classes_json_is_a_reproducible_fixed_point(corpus_dir, tmp_path, monkeypatch):
     """The committed file is byte-reproducible from its own generator, AND its
     mechanical half does not depend on its observed half. Both from ONE
     whole-corpus run.
 
-    **Gated out of the per-commit suite, and the measurement is why.** The run
-    costs 2.3s standalone and measured **+4.0s** on the whole suite (913 passed
-    in 44.85-44.88s with, 896 in 40.81-40.90s without, two A/B pairs on this
-    host), i.e. it put a 45s ceiling at 44.9s. The plan's own rule is that a
-    corpus-wide pass is a JOB, not a silent per-run suite cost; this is one, so
-    it runs on `scripts/ratchet_job.sh` (gate 4) with the rest of them. The
-    cheap half of this file -- schema, class-vs-evidence coupling, the
-    input-space arithmetic, the ASCII guard, the observation carry-over over a
-    ONE-FILE corpus, and the leaf-refusal cross-check -- stays in the suite and
-    costs 0.4s.
+    **In the default suite, and the round-1 decision is why.** Round 0 gated
+    this out on measured grounds: it cost +4.0s against a 45s ceiling. Two
+    things changed. The ceiling was raised to ~120s (CLAUDE.md, `d97e3bc`) as
+    an EARMARK for M6's formal-verification instruments, so at ~44s there is
+    no longer any competition for the earmarked headroom; and the round-1
+    review demonstrated by neuter/restore that this test is the ONLY thing
+    that catches a whole class of mutation -- perturbing `mechanical.n_insns`
+    passes the entire default suite and fails only here. That is the same
+    argument the coordinator accepted for `tests/test_footprint.py`'s 0.9s
+    regeneration, applied to the same kind of artifact.
 
-    This is a deliberate departure from `tests/test_footprint.py`'s 0.9s
-    regeneration, which the coordinator ruled stays in the suite. The
-    difference is the number, not the principle.
+    **The attribution, stated because the earmark requires it:** ~2.4s, for
+    the fixed-point gate of the observation data Task 7 and Task 8 consume.
+    That is adjacent to the earmark rather than squarely inside it -- this is
+    not itself one of the named instruments -- and it is flagged as such in
+    `docs/reports/m6-observation.md` so it can be overruled without
+    archaeology.
 
     The run is `--fresh`, i.e. with the observation store empty, so what comes
     out is the mechanical half alone. Re-inserting the committed `observed`
@@ -277,6 +331,7 @@ def test_classes_json_is_a_reproducible_fixed_point(corpus_dir, tmp_path, monkey
     monkeypatch.setattr(mod, "ROOT", tmp_path)
     monkeypatch.setenv("PYLUADEC_CORPUS_DIR", str(corpus_dir))
     monkeypatch.setattr(mod, "read_ledger", lambda: _real_ledger())
+    monkeypatch.setattr(mod, "read_footprints", lambda: _real_footprints())
     monkeypatch.setattr(sys, "argv", ["observation_classes.py", "--fresh"])
     assert mod.main() == 0
     fresh = json.loads(
@@ -320,13 +375,18 @@ def test_a_regeneration_carries_observed_records_across(corpus_dir, tmp_path,
     monkeypatch.setattr(mod, "ROOT", tmp_path)
     monkeypatch.setenv("PYLUADEC_CORPUS_DIR", str(one))
     monkeypatch.setattr(mod, "read_ledger", lambda: _real_ledger())
+    monkeypatch.setattr(mod, "read_footprints", lambda: _real_footprints())
 
     monkeypatch.setattr(sys, "argv", ["observation_classes.py", "--fresh"])
     assert mod.main() == 0
     round1 = json.loads(dest.read_text())
     assert round1["candidates"], "one-file corpus produced no candidate"
 
-    note = {"reviewed": True, "class_agrees": True, "note": "synthetic"}
+    # The real schema (`test_observed_records_have_the_reviewed_shape`); an
+    # earlier version wrote `reviewed`, which nothing here validates, so the
+    # test would have passed over a block the committed file could not hold.
+    note = {"reviewed_by": "test", "class_agrees": True,
+            "note": "synthetic observation for the carry-over round trip"}
     round1["candidates"][0]["observed"] = note
     round1["summary"]["n_observed_records"] = 1
     dest.write_text(json.dumps(round1, indent=1, ensure_ascii=True) + "\n")
@@ -339,6 +399,68 @@ def test_a_regeneration_carries_observed_records_across(corpus_dir, tmp_path,
     assert [r["mechanical"] for r in round2["candidates"]] \
         == [r["mechanical"] for r in round1["candidates"]]
     assert sum(1 for r in round2["candidates"] if "observed" in r) == 1
+    assert round2["summary"]["n_orphan_observations"] == 0
+
+
+@pytest.mark.timeout(120)
+def test_an_observation_whose_candidate_is_gone_is_quarantined_not_dropped(
+        corpus_dir, tmp_path, monkeypatch, capsys):
+    """The realistic trigger is the milestone's own goal: a proto certifies
+    `L3`, leaves the leaf-refusal population, and its human-reviewed note has
+    nothing to attach to. The first version dropped it silently -- 162 records
+    and 64 observations regenerated to 1 and 1 with exit 0 and no warning.
+
+    A quarantined observation is also RE-ATTACHED if its candidate comes back,
+    which is the half that makes the quarantine a fix rather than a graveyard,
+    so this checks the round trip.
+    """
+    mod = _cli()
+    one = tmp_path / "corpus_one"
+    one.mkdir()
+    src = corpus_dir / "snr_music.lua"
+    (one / src.name).write_bytes(src.read_bytes())
+    (tmp_path / "corpus" / "observation").mkdir(parents=True)
+    dest = tmp_path / "corpus" / "observation" / "classes.json"
+    monkeypatch.setattr(mod, "ROOT", tmp_path)
+    monkeypatch.setenv("PYLUADEC_CORPUS_DIR", str(one))
+    monkeypatch.setattr(mod, "read_ledger", lambda: _real_ledger())
+    monkeypatch.setattr(mod, "read_footprints", lambda: _real_footprints())
+
+    monkeypatch.setattr(sys, "argv", ["observation_classes.py", "--fresh"])
+    assert mod.main() == 0
+    doc = json.loads(dest.read_text())
+    note = {"reviewed_by": "test", "class_agrees": True,
+            "note": "an observation on a candidate that is about to vanish"}
+    doc["candidates"][0]["observed"] = note
+    gone = (doc["candidates"][0]["file"], doc["candidates"][0]["proto_path"])
+    doc["summary"]["n_observed_records"] = 1
+    dest.write_text(json.dumps(doc, indent=1, ensure_ascii=True) + "\n")
+
+    # Now regenerate over a corpus that does NOT contain that file at all.
+    other = tmp_path / "corpus_other"
+    other.mkdir()
+    src2 = corpus_dir / "snr_lib.lua"
+    (other / src2.name).write_bytes(src2.read_bytes())
+    monkeypatch.setenv("PYLUADEC_CORPUS_DIR", str(other))
+    monkeypatch.setattr(sys, "argv", ["observation_classes.py"])
+    capsys.readouterr()
+    assert mod.main() == 0
+    err = capsys.readouterr().err
+    orphaned = json.loads(dest.read_text())
+    assert orphaned["summary"]["n_orphan_observations"] == 1
+    assert orphaned["orphan_observations"] == [
+        {"file": gone[0], "proto_path": gone[1], "observed": note}]
+    assert f"{gone[0]}:{gone[1]}" in err
+    assert "NO LONGER MATCH A CANDIDATE" in err
+
+    # ... and it comes back when the candidate does.
+    monkeypatch.setenv("PYLUADEC_CORPUS_DIR", str(one))
+    assert mod.main() == 0
+    back = json.loads(dest.read_text())
+    assert back["summary"]["n_orphan_observations"] == 0
+    assert "orphan_observations" not in back
+    assert [r for r in back["candidates"]
+            if (r["file"], r["proto_path"]) == gone][0]["observed"] == note
 
 
 @pytest.mark.timeout(300)
