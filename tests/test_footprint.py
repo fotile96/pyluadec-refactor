@@ -137,8 +137,14 @@ def test_a_constant_key_that_could_not_fit_an_rk_operand_is_still_constant():
 
 def test_unattributed_read_when_the_base_is_not_a_global():
     """A table that arrives from a call result has no global provenance, so
-    the read is counted but not attributed. This is the shape behind the
-    corpus's `unattributed_reads`."""
+    the read is counted but not attributed.
+
+    SYNTHETIC ONLY, and the previous version of this docstring got it exactly
+    backwards by calling it "the shape behind the corpus's
+    `unattributed_reads`". Measured 2026-08-13 over all 2450 corpus sites:
+    call-result bases are **0 of 2450**. The real distribution is `GETUPVAL`
+    1793 / non-extending `GETTABLE` chain 530 / live-in 105 / depth-2 chain 12
+    / `NEWTABLE` 10, tabulated in `lift/footprint.py`'s module docstring."""
     fp = _fp("local t = makeTable() local x = t.field return x")
     assert fp.unattributed_reads == 1
     assert fp.table_key_reads == frozenset()
@@ -290,6 +296,29 @@ def test_an_open_call_region_drops_provenance_at_and_above_a():
     assert fp.unattributed_calls == 0
 
 
+def test_a_depth_three_callee_is_unattributed_not_falsely_paired():
+    """`a.b.c()` gives the callee register a provenance path of depth 3. The
+    `else` arm of the CALL classifier must count it as unattributed; folding it
+    into `table_key_calls` as `(a, b)` would be a FALSE attribution of exactly
+    the kind the depth-1 rule exists to prevent.
+
+    Round-1 review found this arm unpinned: mutating it to
+    `n_call_key += 1; key_calls.add((base_a[0], base_a[1]))` left the whole
+    suite green, because **the corpus contains no CALL with callee provenance
+    deeper than 2** (measured this session: depth histogram 0 -> 1677,
+    1 -> 41649, 2 -> 1486, and nothing above). It is a luac-reachable shape
+    though, so it gets a compiled witness rather than a "defensive" label.
+    """
+    fp = _fp("a.b.c()")
+    assert fp.call_sites == 1
+    assert fp.unattributed_calls == 1
+    assert fp.table_key_calls == frozenset()
+    assert fp.calls == frozenset()
+    # the two READS along the way are still classified normally
+    assert fp.table_key_reads == frozenset({(b"a", b"b")})
+    assert fp.unattributed_reads == 1
+
+
 def test_the_key_register_is_read_before_the_instructions_own_writes():
     """`GETTABLE A B C` with `A == C` is real luac output -- the key temp is
     freed and immediately reallocated as the destination:
@@ -396,7 +425,11 @@ def test_corpus_headline_census(doc):
     assert s["global_call_sites"] == 41649
     assert s["table_key_call_sites"] == 1486
     assert s["unattributed_calls"] == 1677
-    assert s["distinct_globals_read"] == 164        # agrees with effects.py's census
+    # 164 agrees with the M4 task-11 census recorded at
+    # docs/runbooks/structured-pipeline.md ("of the 164 distinct global names
+    # the corpus reads (51497 GETGLOBAL sites)"). That census is NOT in
+    # lift/effects.py -- an earlier revision of this comment cited it there.
+    assert s["distinct_globals_read"] == 164
     assert s["distinct_calls"] == 125
     assert s["distinct_table_key_reads"] == 206
     # per-proto distribution of `dynamic_reads`: the hypothesis was

@@ -69,11 +69,16 @@ the Class-1 obstacle by 29% on reads and by a factor of ten on writes.
 
 A census of what defines the remaining non-constant key registers (block-local
 last writer, 2026-08-13) is the evidence that nothing else of this kind is
-hiding: reads -- `GETTABLE` 462, live-in 292, `GETUPVAL` 65, `ADD` 44,
-`CONCAT` 14, `SUB` 3; writes -- live-in 29, `GETTABLE` 25, `GETGLOBAL` 12.
-**`LOADBOOL` and `LOADNIL` never define a key register** in any of the 1787
-sites, which is why they are not tracked here (`t[nil]` is a runtime error in
-Lua 5.1 and `t[true]` is exotic); adding them would be an unreachable rule.
+hiding. It covers the **946** sites that are still register-keyed after
+`LOADK` tracking -- 880 reads: `GETTABLE` 462, live-in 292, `GETUPVAL` 65,
+`ADD` 44, `CONCAT` 14, `SUB` 3; and 66 writes: live-in 29, `GETTABLE` 25,
+`GETGLOBAL` 12. (An earlier revision said "all 1787 sites"; 1787 = 1136 + 651
+is the register-keyed population *before* `LOADK` tracking, a different set.)
+
+**`LOADBOOL` and `LOADNIL` never define a key register** -- true over both
+populations, the 946 above and the 1787 before -- which is why they are not
+tracked here (`t[nil]` is a runtime error in Lua 5.1 and `t[true]` is exotic);
+adding them would be an unreachable rule.
 
 ## Reuse: `lift/effects.py` answers "what does this write"
 
@@ -92,16 +97,49 @@ existing spelling.
 `table_key_reads` is a `frozenset[tuple[bytes, bytes]]`, so three whole classes
 of table read cannot appear in it: a non-constant key, a constant key that is
 not a string (`arr[1]`), and a constant string key on a base with no depth-1
-global provenance (`makeTable().field`, `conf.video.width`'s second hop). If
-the only published number were the set's size, those sites would vanish and
-the "keys are string constants" claim would look stronger than the corpus
-supports. Each has its own counter and the identity
+global provenance. If the only published number were the set's size, those
+sites would vanish and the "keys are string constants" claim would look
+stronger than the corpus supports. Each has its own counter and the identity
 
     read_sites == attributed_reads + unattributed_reads
                   + dynamic_reads + nonstring_key_reads
 
 is asserted per proto over the whole corpus by `tests/test_footprint.py`.
 Writes and calls carry the same shape.
+
+### What the 2450 `unattributed_reads` actually are
+
+This matters to whoever enumerates an input space from these sets, so it is
+measured rather than illustrated. Every one of the 2450 traced back to the
+root of its base register's chain (2026-08-13, all 229 files):
+
+| root of the base register                     | sites | share  |
+|-----------------------------------------------|-------|--------|
+| `GETUPVAL`                                    |  1793 | 73.2%  |
+| chain through a non-extending `GETTABLE`      |   530 | 21.6%  |
+| live-in (parameter or local)                  |   105 |  4.3%  |
+| depth-2 global chain (`a.b.c`'s second hop)   |    12 |  0.5%  |
+| `NEWTABLE`                                    |    10 |  0.4%  |
+| **call result**                               | **0** | **0%** |
+
+An earlier revision of this section led with "the table came from a call
+result" -- a cause with **zero** instances. The 530 splits 306 (the
+intervening `GETTABLE` had a dynamic key) + 224 (it had a non-string constant
+key, e.g. `cardSort[1].foo`); both stop the chain because provenance is only
+extended through a constant STRING key.
+
+**The dominant slice is not opaque, and it is not an input channel either.**
+Of those 1793, **0** bind to a parent register carrying depth-1 global
+provenance at the `CLOSURE` site (checked directly against the binding
+`MOVE`/`GETUPVAL` pseudo-instructions). A coarser proto-wide straight-line
+scan attributes 1248 of them (69.6%) and finds the binding register was last
+written by `NEWTABLE` in **100%** of those -- the `local v0 = {}` at the top of
+a chunk, captured by every closure below it, which is literally line 1 of
+`snr_mainmenu.lua` in the predecessor's source. So these are reads of a
+table the CHUNK ITSELF builds, not of an engine-supplied global: they belong
+to the program, not to its input space. (The 1248 is approximate -- that scan
+ignores control flow, the same caveat `lift/effects.py`'s docstring puts on
+its own straight-line scan -- while the 1793 and the 0 are exact.)
 
 ## Deliberate exclusions, and their measured size
 
@@ -113,7 +151,9 @@ Writes and calls carry the same shape.
 - Upvalue reads/writes (`GETUPVAL`/`SETUPVAL`) carry no name in this corpus --
   all 1944 protos are debug-stripped, so `Proto.upvalues` is empty everywhere
   (M6 task 2's census). A register loaded from an upvalue therefore gets no
-  provenance and its table accesses land in `unattributed_*`.
+  provenance and its table accesses land in `unattributed_*`. This is the
+  single largest such class -- 1793 of 2450, quantified in the table above,
+  and not a footnote.
 - Method receivers: `SELF a b c` also copies `R[b]` into `R[a+1]`, and
   propagating provenance there was considered and dropped -- `R[a+1]` is
   immediately consumed as the call's first argument, so no shape reads it as

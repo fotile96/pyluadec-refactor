@@ -3,8 +3,9 @@
 用法: PYLUADEC_CORPUS_DIR=... uv run python scripts/footprint_dump.py
 产出: corpus/observation/footprints.json（入库；生成数据，纪律同 corpus/ledger.jsonl）
 
-This is a JOB, not a suite cost: the whole-corpus pass costs ~1.3s and the
-committed JSON is what the suite reads. `tests/test_footprint.py::
+This is a JOB, not a suite cost: the whole-corpus pass costs **0.90-0.92s**
+(three serial runs, macOS arm64, 2026-08-13) and the committed JSON is what the
+suite reads. `tests/test_footprint.py::
 test_footprints_json_is_a_reproducible_fixed_point` is the ledger-ratchet-style
 guard that the committed file is byte-reproducible from this script.
 
@@ -211,7 +212,12 @@ def main() -> int:
     dest = ROOT / "corpus" / "observation" / "footprints.json"
     dest.parent.mkdir(parents=True, exist_ok=True)
     # indent=1 so every set element and counter is its own line: a footprint
-    # diff should read like a ledger diff, not like one 4 MB line.
+    # diff should read like a ledger diff, not like one 2.1 MB line. Measured
+    # 2026-08-13: this form is 2,108,264 B; the compact form
+    # (separators=(',',':')) is 1,424,558 B, a 32.4% saving not worth an
+    # unreadable diff. (An earlier note said "4 MB line" and "1.29 MB / 38%";
+    # neither reproduced -- the 1.29 MB was an omit-zero-fields experiment that
+    # was never adopted.)
     dest.write_text(json.dumps(doc, indent=1, ensure_ascii=True) + "\n")
 
     print(f"footprints: {n_protos} protos over {len(files)} files -> {dest}")
