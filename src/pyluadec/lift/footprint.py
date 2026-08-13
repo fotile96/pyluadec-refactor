@@ -262,9 +262,12 @@ def proto_footprint(fn: LirFunction) -> Footprint:
             # getting this order wrong drops attributed reads from 8002 to 0.)
             base_b = prov.get(ri.b)
             base_a = prov.get(ri.a)
-            pre_kregs = kregs if op in (Op.GETTABLE, Op.SELF, Op.SETTABLE) else {}
-            if pre_kregs:
-                pre_kregs = dict(pre_kregs)
+            # Snapshot, for the same reason: `GETTABLE A B C` with `A == C` is
+            # real luac output (the key temp is freed and immediately
+            # reallocated as the destination), so this instruction's own write
+            # must not erase the `LOADK` constant it is about to consume. Only
+            # the three key-reading opcodes pay the copy.
+            pre_kregs = dict(kregs) if op in (Op.GETTABLE, Op.SELF, Op.SETTABLE) else {}
 
             for w in li.effects.writes:
                 prov.pop(w, None)
