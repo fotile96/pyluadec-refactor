@@ -128,18 +128,53 @@ intervening `GETTABLE` had a dynamic key) + 224 (it had a non-string constant
 key, e.g. `cardSort[1].foo`); both stop the chain because provenance is only
 extended through a constant STRING key.
 
-**The dominant slice is not opaque, and it is not an input channel either.**
-Of those 1793, **0** bind to a parent register carrying depth-1 global
-provenance at the `CLOSURE` site (checked directly against the binding
-`MOVE`/`GETUPVAL` pseudo-instructions). A coarser proto-wide straight-line
-scan attributes 1248 of them (69.6%) and finds the binding register was last
-written by `NEWTABLE` in **100%** of those -- the `local v0 = {}` at the top of
-a chunk, captured by every closure below it, which is literally line 1 of
-`snr_mainmenu.lua` in the predecessor's source. So these are reads of a
-table the CHUNK ITSELF builds, not of an engine-supplied global: they belong
-to the program, not to its input space. (The 1248 is approximate -- that scan
-ignores control flow, the same caveat `lift/effects.py`'s docstring puts on
-its own straight-line scan -- while the 1793 and the 0 are exact.)
+**The dominant slice, decomposed -- and it does NOT collapse to one answer.**
+All 1793 resolve to their parent's `CLOSURE` binding: the binding
+pseudo-instruction is `MOVE` in **1793/1793** (never `GETUPVAL`), **0 of 1793**
+bind a register carrying depth-1 global provenance at the `CLOSURE` site, and
+the bound register was last written by `NEWTABLE` in **100%** of cases. So no
+`GETUPVAL`-rooted read names a global *directly*. But the 1793 come from only
+**10 distinct captured tables**, and they split three ways:
+
+| group                                              | sites | what it is |
+|----------------------------------------------------|-------|------------|
+| top-level `local v0 = {}` (5 files, `main` R0)      |   953 | chunk-private state table |
+| constructor `self` returned and then `SETGLOBAL`-ed |   601 | **globally reachable, one step out** |
+| `snr_mainmenu` `main` R1, a reused scratch register |   239 | chunk-private, but not "the table at line 1" |
+
+- **953 (53.2%) are safely excludable.** `snr_mainmenu`/`snr_novel`/
+  `snr_graphic`/`snr_memory`/`snr_music` `main` R0, the `local v0 = {}` that is
+  literally line 1 of the predecessor's `snr_mainmenu.lua`. Measured: across
+  those five chunks the register's ONLY uses are table-base reads/writes and
+  `CLOSURE` capture -- no `SETGLOBAL`, no `RETURN`, no call argument, no
+  comparison. Nothing outside the chunk can reach the table.
+- **601 (33.5%) are nameable one inter-proto step out**, and must NOT be
+  written off. They are the `self` of four constructors in `snr_common.lua`
+  (`main_25`/`main_74`/`main_76`/`main_77`, each `NEWTABLE R0` at pc 1 and
+  `RETURN R0 2` at its last pc). The main chunk then does, verbatim per
+  constructor, `GETGLOBAL <Class>; GETTABLE _, _, K"new"; CALL; SETGLOBAL
+  <instance>` -- yielding the globals `oHour`, `systemOption`, `systemConfig`
+  and `oCard`. A key read off the upvalue inside those closures IS a key of a
+  named global table; only the intra-`CLOSURE` analysis above cannot see it.
+- **239 (13.3%)** are `snr_mainmenu`'s `main` R1, a scratch register
+  successively reloaded with `{}` sub-tables; it is also an `EQ` operand and a
+  `SETTABLE` value, so it is chunk-private but not the same shape as the 953.
+
+**Caveat that must travel with the exclusion claim.** The four constructor
+globals above are read but never written as tables anywhere in the corpus: 0
+`table_key_writes` on `oCard`/`systemOption`/`systemConfig`/`oHour` against 933
+read-pair instances (`oCard` 884, `systemConfig` 28, `oHour` 19,
+`systemOption` 2). That makes exclusion safe *within the corpus* -- and the
+corpus is a weak oracle here, exactly as `lift/effects.py`'s mode calibration
+warns: these globals live in the engine's world too, and no census of the 229
+scripts can rule out an engine-side write.
+
+(The `1248` figure an earlier revision reported as "attributes 1248 (69.6%)"
+was a miscount of scope, not of value: attribution is 100%, and 1248 is the
+subset whose base register is defined by `GETUPVAL` *immediately*, against 545
+reached by chaining through a constant-string-key `GETTABLE`. 1248 + 545 =
+1793.)
+
 
 ## Deliberate exclusions, and their measured size
 

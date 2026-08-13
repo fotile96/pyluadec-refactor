@@ -3,9 +3,10 @@
 用法: PYLUADEC_CORPUS_DIR=... uv run python scripts/footprint_dump.py
 产出: corpus/observation/footprints.json（入库；生成数据，纪律同 corpus/ledger.jsonl）
 
-This is a JOB, not a suite cost: the whole-corpus pass costs **0.90-0.92s**
-(three serial runs, macOS arm64, 2026-08-13) and the committed JSON is what the
-suite reads. `tests/test_footprint.py::
+This is a JOB, not a suite cost: the whole-corpus pass costs **0.90-0.95s**
+(0.90/0.90/0.91/0.90/0.90 over five serial runs on a macOS arm64 Mac mini,
+0.92-0.95 measured independently on another host, 2026-08-13) and the committed
+JSON is what the suite reads. `tests/test_footprint.py::
 test_footprints_json_is_a_reproducible_fixed_point` is the ledger-ratchet-style
 guard that the committed file is byte-reproducible from this script.
 

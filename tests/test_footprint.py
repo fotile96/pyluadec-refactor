@@ -425,10 +425,13 @@ def test_corpus_headline_census(doc):
     assert s["global_call_sites"] == 41649
     assert s["table_key_call_sites"] == 1486
     assert s["unattributed_calls"] == 1677
-    # 164 agrees with the M4 task-11 census recorded at
-    # docs/runbooks/structured-pipeline.md ("of the 164 distinct global names
-    # the corpus reads (51497 GETGLOBAL sites)"). That census is NOT in
-    # lift/effects.py -- an earlier revision of this comment cited it there.
+    # 164 agrees with the M4 task-11 census, recorded at
+    # docs/runbooks/structured-pipeline.md and quoted verbatim in
+    # lift/effects.py's EffectMode docstring ("of the 164 distinct global names
+    # the corpus reads (51497 GETGLOBAL sites)") -- both sites carry it, so
+    # either citation is correct. (Round 1 pointed only at the runbook and
+    # added "that census is NOT in lift/effects.py"; round 2 checked
+    # effects.py:77-78 and found it there verbatim, so that sentence is gone.)
     assert s["distinct_globals_read"] == 164
     assert s["distinct_calls"] == 125
     assert s["distinct_table_key_reads"] == 206
