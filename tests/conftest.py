@@ -139,6 +139,45 @@ def decompiled(corpus_dir):
 
 
 @pytest.fixture(scope="session")
+def pred_corpus_dir() -> Path:
+    """`PYLUADEC_PRED_CORPUS_DIR`, mirroring `corpus_dir` exactly (M6 task 2):
+    skip-not-error when unset or missing, same reasoning -- predecessor-
+    corpus availability is an environment fact, not a code defect. Points at
+    the predecessor project's 229 decompiled Lua SOURCE files (not
+    bytecode), conventionally `/Users/fotile96/Zndnovel/lua_scripts`.
+    """
+    p = os.environ.get("PYLUADEC_PRED_CORPUS_DIR")
+    if not p or not Path(p).is_dir():
+        pytest.skip("PYLUADEC_PRED_CORPUS_DIR not set or missing "
+                    "(predecessor-corpus tests skipped)")
+    return Path(p)
+
+
+@pytest.fixture(scope="session")
+def pred_compiled(pred_corpus_dir):
+    """Session-scoped, lazy `name -> Proto` cache for the predecessor corpus,
+    the `pred_corpus_dir`-side twin of `decompiled` above.
+
+    `predcorpus.load_pred_proto` itself is cheap even uncached (measured
+    2026-08-13: the full 229-file compile+ingest pass is ~0.67s cold, most of
+    it `oracle.compile_source`'s own process memo from M6 task 1 already
+    doing the expensive part once per distinct source), so this fixture is
+    here for the same reason `decompiled` is -- several tests wanting the
+    same file's compiled proto should not each pay their own pass -- not
+    because any single pass is expensive on its own.
+    """
+    cache: dict[str, object] = {}
+
+    def get(name: str):
+        from pyluadec.predcorpus import load_pred_proto
+        if name not in cache:
+            cache[name] = load_pred_proto(pred_corpus_dir, name)
+        return cache[name]
+
+    return get
+
+
+@pytest.fixture(scope="session")
 def lifted_corpus(corpus_dir):
     """Session-scoped, eagerly-built list of every proto in the corpus,
     already ingested and lifted (round-1 fold-in of the M4 task-9 review's
@@ -213,39 +252,69 @@ def _corpus_dir_missing() -> bool:
     return not p or not Path(p).is_dir()
 
 
+def _pred_corpus_dir_missing() -> bool:
+    p = os.environ.get("PYLUADEC_PRED_CORPUS_DIR")
+    return not p or not Path(p).is_dir()
+
+
 @pytest.hookimpl(trylast=True)
 def pytest_terminal_summary(terminalreporter, exitstatus, config) -> None:
-    """Loud, hard-to-miss banner when PYLUADEC_CORPUS_DIR is unset/missing.
+    """Loud, hard-to-miss banner(s) when either corpus env var is unset/missing.
 
-    A bare `uv run pytest` without the corpus env var still exits 0 and
-    prints a green "N passed" -- correctly, per the `corpus_dir` fixture's
-    deliberate skip-not-error design (corpus availability is an environment
-    fact, not a code defect; see CLAUDE.md). But that green result silently
-    excludes **75** corpus-gated tests. That skip count is the claim; the
-    surrounding totals move with the suite and are dated evidence, not
-    constants -- measured 2026-08-13 at the M5 final fix round, a bare
-    `uv run pytest` reports `792 passed, 75 skipped` against `867 passed` with
-    the corpus present. The 13 this said before was true of an early-M2 tree
-    and had not been re-derived since; and the `789 / 864` that briefly stood
-    here was measured mid-round, before the last two tests landed. Re-derive,
-    do not copy. Among the 75 are the M2 exit gate
+    A bare `uv run pytest` without one or both corpus env vars still exits 0
+    and prints a green "N passed" -- correctly, per `corpus_dir`'s and (M6
+    task 2) `pred_corpus_dir`'s deliberate skip-not-error design (corpus
+    availability is an environment fact, not a code defect; see CLAUDE.md).
+    But that green result silently excludes corpus-gated tests. Skip counts
+    are the claim; the surrounding totals move with the suite and are dated
+    evidence, not constants -- measured 2026-08-13, before M6 task 2's two
+    new `test_predcorpus.py` tests existed, a bare `uv run pytest` reported
+    `794 passed, 75 skipped`. Re-derive, do not copy: earlier revisions of
+    this docstring quoted `792/75`, `789/864` and `13` in turn, each true of
+    a tree that had since moved on.
+
+    **After M6 task 2** the two env vars are independent and this hook
+    prints a separate banner for each that is missing (both may fire in one
+    run). With `PYLUADEC_CORPUS_DIR` set and `PYLUADEC_PRED_CORPUS_DIR`
+    unset, only `test_predcorpus.py`'s 2 tests skip (`869 passed, 2
+    skipped`, measured 2026-08-13); with both set, the whole suite runs
+    (`871 passed`, measured 2026-08-13, ~37-38s, comfortably inside the 45s
+    ceiling). With `PYLUADEC_CORPUS_DIR` unset the bare-run figure above
+    already includes those same 2 tests among its 77 skips, since
+    `test_predcorpus.py`'s tests request `corpus_dir` before
+    `pred_corpus_dir` and so skip for the primary reason first.
+
+    Among the corpus-gated tests are the M2 exit gate
     (test_corpus_compile.py), both migration gates (test_golden.py,
     test_parity.py), and the ledger fixed-point test
     (test_ledger_ratchet.py). This hook does not change the exit code or
-    turn the missing corpus into an error -- it only makes the consequence
+    turn a missing corpus into an error -- it only makes the consequence
     impossible to miss by skimming the summary line.
     """
-    if not _corpus_dir_missing():
+    primary_missing = _corpus_dir_missing()
+    pred_missing = _pred_corpus_dir_missing()
+    if not primary_missing and not pred_missing:
         return
-    terminalreporter.write_sep("=", "PYLUADEC_CORPUS_DIR not set", red=True, bold=True)
-    terminalreporter.write_line(
-        "Corpus-gated tests were skipped, not run -- including the M2 exit "
-        "gate (test_corpus_compile.py), the golden/parity migration gates "
-        "(test_golden.py, test_parity.py), and the ledger fixed-point test "
-        "(test_ledger_ratchet.py). A green result above does NOT mean those "
-        "passed. Set PYLUADEC_CORPUS_DIR to the 229-file corpus directory "
-        "and re-run before trusting this as a full-suite result -- see "
-        "CLAUDE.md / docs/runbooks/decompile-pipeline.md.")
+    if primary_missing:
+        terminalreporter.write_sep("=", "PYLUADEC_CORPUS_DIR not set", red=True, bold=True)
+        terminalreporter.write_line(
+            "Corpus-gated tests were skipped, not run -- including the M2 exit "
+            "gate (test_corpus_compile.py), the golden/parity migration gates "
+            "(test_golden.py, test_parity.py), and the ledger fixed-point test "
+            "(test_ledger_ratchet.py). A green result above does NOT mean those "
+            "passed. Set PYLUADEC_CORPUS_DIR to the 229-file corpus directory "
+            "and re-run before trusting this as a full-suite result -- see "
+            "CLAUDE.md / docs/runbooks/decompile-pipeline.md.")
+    if pred_missing:
+        terminalreporter.write_sep("=", "PYLUADEC_PRED_CORPUS_DIR not set", red=True, bold=True)
+        terminalreporter.write_line(
+            "Predecessor-corpus-gated tests were skipped, not run -- "
+            "including the cross-corpus parity census (test_predcorpus.py). "
+            "A green result above does NOT mean those passed. Set "
+            "PYLUADEC_PRED_CORPUS_DIR to the predecessor's 229-file decompiled-"
+            "source directory (conventionally the sibling Zndnovel/lua_scripts "
+            "checkout) and re-run before trusting this as a full-suite result "
+            "-- see CLAUDE.md.")
 
 
 @pytest.fixture
