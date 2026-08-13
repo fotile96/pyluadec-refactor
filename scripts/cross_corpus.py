@@ -95,6 +95,7 @@ adjudicated.
 from __future__ import annotations
 
 import argparse
+import collections
 import hashlib
 import json
 import os
@@ -432,9 +433,10 @@ def _state_one(corpus_dir: Path, pred_dir: Path, name: str) -> ArmResult:
     # "type:key" keys, "%.17g" numbers, "<type>" placeholders) but a table key
     # or an error message can still carry corpus bytes, so it goes through the
     # same projection as everything else.
+    da, db = _first_diff_str(orig, pred)
     return ArmResult(name, "state", "divergent", reach,
-                     (_short(_first_diff_str(orig, pred)[0].encode("utf-8", "replace"), 96),
-                      _short(_first_diff_str(orig, pred)[1].encode("utf-8", "replace"), 96)),
+                     (_short(da.encode("utf-8", "replace"), 96),
+                      _short(db.encode("utf-8", "replace"), 96)),
                      detail | {"orig_sha": _sha(orig.encode("utf-8", "replace")),
                                "pred_sha": _sha(pred.encode("utf-8", "replace"))})
 
@@ -484,10 +486,29 @@ def _behaviour_one(corpus_dir: Path, pred_dir: Path, name: str) -> ArmResult:
     ev = behaviour_evidence(orig, pred)
     detail |= {"first_diff_line": i,
                "orig_shape": event_shape(a), "pred_shape": event_shape(b),
-               "objname_normalised_equal":
-                   a.startswith(b"R|") and b.startswith(b"R|")
-                   and normalize_objname(a) == normalize_objname(b)}
+               "multiset_equal_after_objname": _same_multiset(orig, pred)}
     return ArmResult(name, "behaviour", "divergent", reach, ev, detail)
+
+
+def _same_multiset(orig: bytes, pred: bytes) -> bool:
+    """True iff the two traces record the SAME events, in any order, once
+    `getobjname` nouns are erased.
+
+    Two documented artifact classes at once, and only computed on a divergence
+    so it costs nothing on the 227 agreeing files:
+
+    * **Order.** Lua table iteration order is the node array's, and the node
+      array depends on `NEWTABLE`'s size hint -- a constructor that luac gave
+      `NEWTABLE ... 0 23` iterates differently from one it gave `0 0` and grew
+      by rehash. Already pinned on our own side (`probe_behaviour.
+      EXPECTED_DIVERGENCE["snr_novel.lua"]`) with the pcs quoted.
+    * **Naming.** `normalize_objname`'s class, above.
+
+    Strict on purpose: a file that reorders AND does something else falls
+    through to `suspect` rather than being absorbed here.
+    """
+    return (collections.Counter(normalize_objname(x) for x in orig.split(b"\n"))
+            == collections.Counter(normalize_objname(x) for x in pred.split(b"\n")))
 
 
 def _invocation_reach(trace: bytes) -> tuple[int, int]:
@@ -529,10 +550,10 @@ def first_cut(r: ArmResult) -> str:
       different paths. Fingerprint arm: a hard issue, or a sensitive path whose
       `cfg_reachable`/`cfg_all` component is below 1.0 -- the block/edge counts
       of the reconstructed control-flow graph differ.
-    * `probable-artifact` -- the `getobjname` naming class: both sides failed at
-      the same point, with the same operation and the same value type, and the
-      messages become equal once `<kind> '<name>'` is erased. Already pinned
-      twice on our own side with instruction-level evidence.
+    * `probable-artifact` -- the two traces are the SAME MULTISET of events once
+      `getobjname` nouns are erased (`_same_multiset`): a reordering plus a
+      naming difference, both classes already pinned on our own side with
+      instruction-level evidence.
     * `suspect` -- everything else. Divergent, no mechanical story yet.
 
     Raises on a non-divergent row: a triage label for a row that agrees would
@@ -541,8 +562,13 @@ def first_cut(r: ArmResult) -> str:
     """
     if not r.diverges:
         raise ValueError(f"first_cut on a non-divergent row: {r.file}/{r.arm}")
+    if r.kind == "probe-error":
+        # Not a disagreement about what two chunks compute, so none of the
+        # rules below apply; the row keeps `kind == "probe-error"`, which is
+        # what a reader should act on. Zero instances in the 229-file scan.
+        return "suspect"
     if r.arm == "behaviour":
-        if r.detail.get("objname_normalised_equal"):
+        if r.detail.get("multiset_equal_after_objname"):
             return "probable-artifact"
         if (r.detail.get("orig_status") != r.detail.get("pred_status")
                 or r.detail.get("orig_events") != r.detail.get("pred_events")):

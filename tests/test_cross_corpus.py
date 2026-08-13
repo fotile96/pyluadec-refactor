@@ -231,6 +231,21 @@ def test_first_cut_labels_come_from_the_vocabulary(smoke_scan):
     assert seen > 0, "smoke subset must contain at least one divergent row"
 
 
+def test_behaviour_arm_labels_the_reordering_class_as_probable_artifact(
+        smoke_scan):
+    """The second of the two real behaviour divergences, and the instance that
+    makes `_same_multiset` load-bearing rather than decorative: snr_novel.lua's
+    two traces hold the SAME 43 events in a different order plus one
+    `getobjname` naming difference, so they become equal multisets once the
+    nouns are erased. Both classes are already pinned on our own side with
+    instruction-level evidence."""
+    r = smoke_scan("behaviour", files=["snr_novel.lua"])["snr_novel.lua"]
+    assert r.kind == "divergent"
+    assert r.detail["multiset_equal_after_objname"] is True
+    assert r.detail["orig_status"] == r.detail["pred_status"] == "OK"
+    assert cross_corpus.first_cut(r) == "probable-artifact"
+
+
 def test_getobjname_normalisation_collapses_the_naming_artifact():
     """The one rule in `first_cut` that has to be spelled out, because it is the
     rule that can HIDE a real defect if it over-fires. Lua 5.1 names a value in
