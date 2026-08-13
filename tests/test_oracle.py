@@ -39,6 +39,15 @@ def test_compile_source_is_deterministic():
     compile_source must now run luac with cwd=tempdir and a RELATIVE
     filename, so the embedded source name is stable regardless of where the
     tempdir lands.
+
+    M6 task 1 round 1 note: since `compile_source` gained a process-level
+    memo, `plain_a == plain_b` and `stripped_a == stripped_b` below are
+    trivially true (the second call of each pair is a cache hit returning
+    the SAME bytes object, not a fresh subprocess run) and no longer
+    exercise this regression on their own. The `proto.source == b"@in.lua"`
+    /`b"/tmp" not in proto.source` assertions further down are what actually
+    carry this test now -- reintroducing the absolute-path bug still fails
+    the test, just via those lines instead of the equality checks.
     """
     from pyluadec import oracle
     from pyluadec.ingest import load_bytes
