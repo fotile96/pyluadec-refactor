@@ -129,7 +129,12 @@ def test_while_header_code_is_claimed_by_the_loop_not_by_a_sibling():
     assert w.claimed_pcs == frozenset({1, 2, 3, 4, 5, 6, 9})
     src = print_chunk(load_bytes(compile_source(b"while a.b[c] do f() end", strip=True)))
     assert src is not None
-    assert src.splitlines()[0] == 'while a["b"][c] do'   # one line, inside the header
+    # One line, and the whole header is inside it -- which is what this test is
+    # about. The spelling of the index is not: `a.b` since M5 task 7's dot
+    # sugar (`t["k"]` -> `t.k` for a constant string key that is a Lua Name),
+    # `a["b"]` before it. `[c]` stays bracketed because `c` is a register, not
+    # a constant.
+    assert src.splitlines()[0] == "while a.b[c] do"
 
 
 def test_while_cond_body_break_is_a_break():
@@ -265,7 +270,10 @@ def test_repeat_polarity_is_the_untouched_fallthrough_expression():
     (rep,) = _find(r, Repeat)
     assert rep.negated == (rep.cond.ri.a == 0)
     printed = print_chunk(load_bytes(compile_source(src, strip=True)))
-    assert printed is not None and printed.rstrip().endswith("until 2 < l0_0")
+    # `until l0_0 > 2` since M5 task 5: the source is `until i > 2` and
+    # `Reconstructor._reads_as_gt` recovers the `>`. Same instruction either
+    # way; the differential run below is what pins the polarity.
+    assert printed is not None and printed.rstrip().endswith("until l0_0 > 2")
     a = run_bytes(compile_source(src, strip=True), is_source=False)
     b = run_bytes(printed.encode(), is_source=True)
     # A sign-flipped `until` compiles and exits after ONE iteration.
@@ -293,7 +301,7 @@ def test_empty_while_body_is_a_register_classification_gap_not_a_loop_defect():
     """`while a do end` structures and refuses to print, for a reason that has
     nothing to do with loops.
 
-    `_stack_discipline` (express/names.py) is a pc-LINEAR simulation of luac's
+    `express/freereg.py::stack_discipline` is a pc-LINEAR simulation of luac's
     `freereg = nactvar` discipline with no control-flow model. With an empty
     body, nothing between the header's `GETGLOBAL a` and the function's
     trailing `RETURN` ever pops register 0, so the final `promote_all()` grades

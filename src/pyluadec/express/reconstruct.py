@@ -14,7 +14,7 @@ loop) is still in `self.env` when the loop header (built by Task 6/7) calls
 `take_expr` on it.
 
 Reading a *staged* register pops its definition out of the environment.
-Single-use is what `express.names._stack_discipline` proves before a
+Single-use is what `express.freereg.stack_discipline` proves before a
 definition is ever classified a temporary: it simulates `lparser.c`'s
 `freereg = nactvar` allocation discipline and disqualifies any definition
 read zero times or more than once (see that module's docstring -- this used
@@ -39,11 +39,12 @@ from dataclasses import dataclass
 
 from pyluadec.ingest.proto import LuaNumber
 from pyluadec.lift.lift import LirFunction, LirInstr
-from pyluadec.lift.opcodes import Op, indexk, isk
+from pyluadec.lift.opcodes import ArgMode, Fmt, OP_SPECS, Op, indexk, isk
 from pyluadec.sir.regions import CondValue, VAlt, VNode, VTail
 
 from .expr import (BinExpr, CallExpr, ClosureExpr, ConstExpr, Expr, GlobalExpr,
-                   IndexExpr, LocalExpr, TableExpr, UnExpr, UpvalExpr, VarargExpr)
+                   IndexExpr, LocalExpr, MultiSpill, TableExpr, UnExpr, UpvalExpr,
+                   VarargExpr)
 from .names import RegClass
 
 
@@ -104,6 +105,10 @@ class ReconstructError(Exception):
 
 _ARITH = {Op.ADD: "+", Op.SUB: "-", Op.MUL: "*", Op.DIV: "/", Op.MOD: "%", Op.POW: "^"}
 _CMP_SYM = {Op.EQ: "==", Op.LT: "<", Op.LE: "<="}
+# The same instruction read the other way round; see `_reads_as_gt`. `EQ` is
+# absent on purpose -- `codecomp`'s operand exchange is guarded by
+# `op != OP_EQ`, so an `EQ`'s operands are always in source order.
+_GT_SYM = {Op.LT: ">", Op.LE: ">="}
 
 
 def _local_regs_in(e: Expr) -> frozenset[int]:
@@ -187,11 +192,14 @@ class Reconstructor:
         # instead -- moved into names.py so RegClass.temps means what its
         # docstring says for every reader, not just this module).
         # loop_vars are declared by the `for` statement itself (Task 6/7's
-        # NumericFor/GenericFor printer), never by this module -- pre-seed
-        # them into `declared` so that if the loop body ever writes back to
-        # the loop variable (legal Lua: `for i=1,3 do i=i+10 ... end`
-        # reassigns i without affecting iteration), write_reg emits an
-        # Assign, never a second LocalDecl.
+        # NumericFor/GenericFor printer), never by this module. They are NOT
+        # seeded here: their scope is the loop's body, so the printer calls
+        # `declare_loop_vars` INSIDE the `open_scope`/`close_scope` pair that
+        # brackets that body (M5 task 5). Seeding them whole-function -- which
+        # is what this line did through M4 -- makes `write_reg` print a bare
+        # `l1_3 = 60` for a write to the same slot AFTER the loop, where the
+        # name is out of scope and Lua reads it as a write to a global. See
+        # `declare_loop_vars`.
         # Parameters are already in scope, and already named, when the body
         # starts -- `numparams` registers at the bottom of the frame. Without
         # seeding them, the first write to a parameter's register goes through
@@ -203,7 +211,7 @@ class Reconstructor:
         # `function(s) s = string.gsub(s, ...) ... end` -- a very common shape
         # here -- printed a spurious `local l1_0 = ...` on its first line
         # before this seeding (M3 task 8).
-        self.declared: set[int] = set(rc.loop_vars) | set(range(fn.proto.numparams))
+        self.declared: set[int] = set(range(fn.proto.numparams))
         # (base_reg, expr) for a not-yet-consumed open-result producer
         # (CALL C==0 or VARARG B==0): the instruction that will read the
         # open range [base_reg, dynamic top) consumes this via _consume_open.
@@ -238,6 +246,9 @@ class Reconstructor:
         self._consumed: set[int] = set()
         self._pc: int | None = None
         self._out: list[Stmt] = []
+        # pc -> largest constant index referenced strictly before it;
+        # built on first use by `_max_const_index_before`.
+        self._maxk_before: dict[int, int] | None = None
 
     # ---- public API (spec) --------------------------------------------
     def stmts_for(self, instrs: tuple[LirInstr, ...]) -> tuple[Stmt, ...]:
@@ -307,6 +318,34 @@ class Reconstructor:
         self._pending = set(snap[2])
         self._consumed = set(snap[3])
 
+    def declare_loop_vars(self, regs) -> None:
+        """Bring a `for` statement's own variables into scope for its body.
+
+        Called by `emit.lua`'s `NumericFor`/`GenericFor` arms immediately
+        after `open_scope`, so `close_scope` at the loop's `end` takes them
+        back out again -- which is exactly `lparser.c`'s `forbody`
+        (`new_localvar` for the control triple and the visible variables,
+        then `enterblock`/`leaveblock` around the body).
+
+        Two things depend on the registers being in `declared` while the body
+        is walked: a body that writes back to the loop variable (legal Lua --
+        `for i = 1, 3 do i = i + 10 end` reassigns `i` without affecting
+        iteration) must print an `Assign`, not a second `local`; and a body
+        that only reads it must find a name rather than a staged expression.
+
+        Two things depend on them being OUT of `declared` afterwards. luac
+        hands the slots straight back to the next statement's expression stack
+        (`leaveblock` restores `fs->freereg = fs->nactvar`), so a later write
+        to the same slot is an ordinary temp or an ordinary fresh local -- and
+        printing it as `l1_3 = ...` names a variable that is no longer in
+        scope, which Lua compiles as a write to a GLOBAL. Measured on
+        `snr_novel.lua:main_6` (`for l1_3 = 0, 20 do ... end` followed by
+        `switchScreen(0, "", 60)`, whose third argument lands in slot 3):
+        before this change the printed chunk carried a `SETGLOBAL "l1_3"` the
+        original never had.
+        """
+        self.declared.update(regs)
+
     def stage(self, reg: int, e: Expr) -> None:
         """Put `e` into `reg` as an UNCONSUMED expression-stack temporary: the
         next read of `reg` pops it and inlines it, and nothing is emitted as a
@@ -340,6 +379,170 @@ class Reconstructor:
         """
         return self.rk(x)
 
+    def _is_stack_temp(self, reg: int, pc: int) -> bool:
+        """Is `reg` an expression-stack temporary at `pc`, rather than a live
+        named local?
+
+        The one place the register model is asked a question about *evaluation
+        order* rather than about how to print a value, so it is worth being
+        explicit about what it does and does not answer. `rc.temp_defs` is
+        keyed by DEFINITION pc, so for a read operand (which is what both
+        callers pass) the `(pc, reg)` disjunct is essentially never the one
+        that fires -- the load-bearing half is the whole-register `rc.temps`
+        verdict, "every tracked definition of this register is a luac
+        temporary". That is the conservative direction: a register the
+        classifier could not fully vouch for is treated as a local, and every
+        caller's fallback for "local" is the behaviour that was already
+        shipping.
+
+        Kept as one named predicate because `_reads_as_gt` and
+        `_is_generic_for_iterator` must agree on what "temp at this pc" means
+        -- they are the two rules in this class that consult the register
+        classification to decide the SHAPE of the source luac saw, not merely
+        how to render a value.
+        """
+        return reg in self.rc.temps or (pc, reg) in self.rc.temp_defs
+
+    def _max_const_index_before(self, pc: int) -> int:
+        """The largest constant-table index any instruction BEFORE `pc`
+        references, or -1 if none does. Cached per function.
+
+        This is a proxy for "how far luac's constant table had grown by the
+        time it reached this instruction". It is a proxy rather than the exact
+        answer because `luaK_exp2RK` interns a constant *before* emitting the
+        instruction that names it -- which is exactly the phenomenon
+        `_reads_as_gt` is reading -- so a constant can carry an index lower
+        than one referenced earlier in the code. Every K-mode operand is
+        counted, taken from `OP_SPECS` (transcribed from `lopcodes.c`), so
+        `LOADK`/`GETGLOBAL`/`SETGLOBAL`'s Bx and every RK B/C slot are all in.
+        """
+        if self._maxk_before is None:
+            table: dict[int, int] = {}
+            running = -1
+            for p in sorted(self.fn.instrs):
+                table[p] = running
+                ri = self.fn.instrs[p].ri
+                spec = OP_SPECS[ri.op]
+                if spec.fmt is Fmt.iABx and spec.bmode is ArgMode.K:
+                    running = max(running, ri.bx)
+                elif spec.fmt is Fmt.iABC:
+                    if spec.bmode is ArgMode.K and isk(ri.b):
+                        running = max(running, indexk(ri.b))
+                    if spec.cmode is ArgMode.K and isk(ri.c):
+                        running = max(running, indexk(ri.c))
+            self._maxk_before = table
+        return self._maxk_before.get(pc, -1)
+
+    def _reads_as_gt(self, ri) -> bool:
+        """Was this `LT`/`LE` written `>`/`>=` in the source?
+
+        ## Why the question exists
+
+        `lcode.c`'s `codecomp` (673-686) compiles `a > b` by evaluating `a`
+        and `b` in that order and then **exchanging the operands** so it can
+        emit `OP_LT`:
+
+            OPR_LT: codecomp(OP_LT, 1, e1, e2)   ->  LT 1 RK(e1) RK(e2)
+            OPR_GT: codecomp(OP_LT, 0, e1, e2)   ->  LT 1 RK(e2) RK(e1)
+
+        (`luaK_posfix`, 775-778; both then have `cond == 1` and an enclosing
+        `if` inverts A to 0.) So `x < y` and `y > x` produce the *identical*
+        instruction, and printing every `LT` as `<` is not "the canonical
+        form" -- it is a guess about which of two sources luac saw, and when
+        the guess is wrong the recompile puts the operands' own code and
+        constants in the other order.
+
+        ## What is observable
+
+        The operands are evaluated **left to right**: `luaK_infix`'s default
+        arm (710-733) calls `luaK_exp2RK(fs, e1)` before the parser has even
+        seen `e2`. Two consequences, and they are the whole decision:
+
+        * a register operand evaluated first sits in a LOWER register (it was
+          pushed onto the expression stack first) -- **but only if it is an
+          expression-stack temporary at all**, see the gate below;
+        * a constant operand evaluated first is interned into the constant
+          table before anything the other operand creates, so it carries a
+          LOWER index.
+
+        In the `<` reading the operand in field B was evaluated first; in the
+        `>` reading it is the one in field C. So:
+
+        * both operands registers **and both expression-stack temporaries at
+          this pc** -> `>` iff `B > C`;
+        * both operands constants -> `>` iff `idx(B) > idx(C)`;
+        * B constant, C register -> `>` iff B's constant is newer than
+          everything the code before this instruction has referenced, i.e.
+          `idx(B) > _max_const_index_before(pc)`. That is the corpus shape:
+          `if select("#", ...) > 0 then`, where `select` and `"#"` are
+          interned by the call and `0` only afterwards, so the original pool
+          is `select, #, 0` and printing `0 < select("#", ...)` recompiles to
+          `0, select, #`.
+        * C constant, B register -> never flipped. The evidence would be
+          "C's constant is OLDER than what B's own code created", and
+          `_max_const_index_before` cannot distinguish that from the very
+          common `x < 5` where `5` was already in the pool. Both readings of
+          that shape compile identically anyway (a bare local contributes no
+          code and no constants), so there is nothing to win and a
+          false positive to lose. Recorded as a deliberate gap, not an
+          oversight; `tests/test_express_residual.py::
+          test_the_gt_recogniser_leaves_a_constant_in_field_c_alone` pins it.
+
+        ## The second deliberate gap: a register operand that is a LIVE LOCAL
+
+        The "evaluated first sits in a lower register" step is a statement
+        about the **expression stack**, and it only holds for values that
+        were pushed onto it. `luaK_exp2RK` on a `VLOCAL` (via `luaK_exp2anyreg`
+        -> `discharge2anyreg`, lcode.c:400-420) returns the variable's
+        **existing** register and pushes nothing: `luaK_reserveregs` is never
+        called, `freereg` does not move, and the operand's register number is
+        its declaration slot -- an artefact of where the enclosing function
+        happened to declare it, carrying no information about evaluation
+        order at all. So for `f(x) < y_local`, `f(x)`'s result is a fresh
+        temporary allocated *above* every live local while `y_local` sits
+        low, the raw `B > C` test sees the flip condition satisfied, and the
+        arm would print `y_local > f(x)` -- the opposite of the source, on no
+        evidence. `(local, local)` is pure declaration order and says even
+        less.
+
+        Hence the gate: the arm fires only when **both** register operands
+        are expression-stack temporaries at this pc, using the same
+        `rc.temps` / `rc.temp_defs` predicate `_is_generic_for_iterator`
+        uses. `(temp, local)`, `(local, temp)` and `(local, local)` are
+        recorded as **undecidable** and left in the `<` reading, exactly like
+        the C-constant gap above -- and for the same reason, the cost is
+        nothing: a bare local contributes no code and no constants, so both
+        readings of those shapes compile identically and certification cannot
+        tell them apart. Measured over the corpus this session (fix round 1,
+        Important 2): 43 static both-register sites satisfy `B > C`, of which
+        only **3** are `(temp, temp)` (17 `(temp, local)`, 13
+        `(local, local)`, 10 `(local, temp)`); 20 firings reached the arm
+        while printing, of which 4 were `(temp, temp)`; and adding this gate
+        moved the corpus `L3` count by **0** protos. The ~15 flips it
+        withdraws were arbitrary readability choices dressed as an `lcode.c`
+        derivation. `tests/test_express_residual.py::
+        test_the_gt_recogniser_leaves_a_local_operand_alone` pins it.
+
+        ## Why being wrong is cheap
+
+        Both readings are the same boolean, so a wrong answer is never a
+        semantic error -- it costs a certification, exactly as the
+        always-`<` reading did. Certification is what adjudicates; this is a
+        reconstruction heuristic, like every other rule in this layer.
+        """
+        if ri.op not in _GT_SYM:
+            return False
+        bk, ck = isk(ri.b), isk(ri.c)
+        if not bk and not ck:
+            return (ri.b > ri.c
+                    and self._is_stack_temp(ri.b, ri.pc)
+                    and self._is_stack_temp(ri.c, ri.pc))
+        if bk and ck:
+            return indexk(ri.b) > indexk(ri.c)
+        if bk:
+            return indexk(ri.b) > self._max_const_index_before(ri.pc)
+        return False
+
     def condition_expr(self, cond: LirInstr) -> Expr:
         """A comparison/`TEST` instruction as the boolean expression that is
         true exactly when control **falls through** past the JMP following it.
@@ -364,8 +567,11 @@ class Reconstructor:
         """
         ri = cond.ri
         if ri.op in _CMP_SYM:
-            base = BinExpr(_CMP_SYM[ri.op], self.cond_operand(ri.b),
-                           self.cond_operand(ri.c))
+            lhs, rhs = self.cond_operand(ri.b), self.cond_operand(ri.c)
+            sym = _CMP_SYM[ri.op]
+            if self._reads_as_gt(ri):
+                lhs, rhs, sym = rhs, lhs, _GT_SYM[ri.op]
+            base = BinExpr(sym, lhs, rhs)
             return base if ri.a == 0 else UnExpr("not", base)
         if ri.op is Op.TEST:
             operand = self.cond_operand(ri.a)
@@ -386,7 +592,7 @@ class Reconstructor:
         would key on `self._pc`, whatever instruction the shared dispatch
         loop last processed -- not necessarily anything to do with this
         chain). Using an earlier alternative's write instead of the last one
-        would consult a definition `_stack_discipline` grades by how the
+        would consult a definition `stack_discipline` grades by how the
         *next* alternative overwrote it (a `TESTSET`'s write is popped with
         zero reads by the alternative that follows it, so it always grades
         local) rather than by how the chain's result is actually used.
@@ -488,7 +694,7 @@ class Reconstructor:
         M4 task 13 `classify_registers` answers per DEFINITION rather than per
         register number, so a slot that is a local elsewhere in the function
         no longer drags this operand's definition down with it. What can still
-        reach here is a definition one of `_stack_discipline`'s own barriers
+        reach here is a definition one of `stack_discipline`'s own barriers
         refuses (`_same_block`, the RK/literal barrier, the `MOVE`-from-a
         -lower-slot rule) or that `declared` already holds from an exited
         scope. Kept as a loud refusal, not an assert; the chunk then falls
@@ -599,7 +805,7 @@ class Reconstructor:
             # `reg` was inlined into some earlier expression and popped; there
             # is no `local` carrying it, so emitting `LocalExpr(reg)` here
             # would print a name this function never declares -- which Lua
-            # resolves as a GLOBAL read, silently. `_stack_discipline` only
+            # resolves as a GLOBAL read, silently. `stack_discipline` only
             # grades a definition a temp when its value is read exactly once
             # before the statement ends, so a second read means the pc-linear
             # simulation mismodelled this shape (its own documented
@@ -744,6 +950,18 @@ class Reconstructor:
         if len(regs) == 1:
             self.write_reg(regs[0], expr)
             return
+        if self._is_generic_for_iterator(regs):
+            # `for k, v in pairs(t) do` -- one source expression adjusted to
+            # three values, which `forlist` (lparser.c:1102-1130) stages
+            # straight into the control triple. Materializing it prints
+            # `local a, b, c = pairs(t)  for k, v in a, b, c do`, which is
+            # semantically identical and compiles to three more registers and
+            # three `MOVE`s. Staged instead, `emit.lua`'s `GenericFor` arm
+            # takes all three back and prints the single expression.
+            self.stage(regs[0], expr)
+            for r in regs[1:]:
+                self.stage(r, MultiSpill(regs[0]))
+            return
         flags = [r in self.declared for r in regs]
         if all(flags):
             self._out.append(Assign(tuple(LocalTarget(r) for r in regs), (expr,)))
@@ -777,6 +995,82 @@ class Reconstructor:
             self.env[r] = LocalExpr(r)
             self._pending.discard(r)
             self._consumed.discard(r)
+
+    def _is_generic_for_iterator(self, regs: tuple[int, ...]) -> bool:
+        """Is this multi-register write the staging of a generic `for`'s
+        iterator triple, and may it be staged rather than materialized?
+
+        Three conditions. The second and third are load-bearing; the first is
+        **defensive** -- see the note below it.
+
+        * `regs` is exactly `(a, a+1, a+2)` and this function contains a
+          `TFORLOOP` based at that same `a`. That is the bytecode signature of
+          `forlist`: `explist1` adjusted to exactly 3 values landing in the
+          three slots `TFORLOOP` then reads every iteration.
+
+          **Status (fix round 1, Important 1): defensive rather than a fixed
+          defect -- no reachable leak to regress against.** The `TFORLOOP`
+          clause has never been observed to reject anything the next
+          condition does not already reject, and there is a structural reason
+          why it cannot. For all three of `(a, a+1, a+2)` to be temporaries
+          at the same pc, either they are `dedicated_controls` -- which
+          `names.classify_registers` only ever derives from a `FORPREP`/
+          `FORLOOP`/`TFORLOOP` at that base -- or the freereg simulation must
+          grade three simultaneous definitions temp, and it structurally
+          cannot: the only other way luac emits `CALL a b 4` / `VARARG a 4` is
+          `adjust_assign` to three targets, whose reverse-order stores are
+          either statement-ending (`SETGLOBAL`/`SETUPVAL`, which promotes
+          everything still pending to local) or bulk-popping (`SETTABLE`,
+          which pops every pending entry above the table's own register, so
+          all but the topmost are popped with zero reads and disqualified),
+          and three targets that survive the statement are locals by
+          definition. **"Either statement-ending or bulk-popping" is not an
+          exhaustive list of `adjust_assign` store kinds** (M5 task 5 deferred
+          minor, corrected at task 12): the third kind is a `VLOCAL` target,
+          stored with a `MOVE` into an already-existing local, and it is
+          literally one of the 35 shapes tested below (`a,b,c = f()` over
+          pre-existing locals). It is covered by the closing clause rather
+          than by the dichotomy -- such a target IS a local, so it is not
+          graded temp, which is the property the argument needs. The M5 task 5
+          re-reviewer traced exactly this case on hand-compiled bytecode and
+          got `(True, False, False)` for the three slots, never all-temp.
+          Measured this session: 0 of 4 shape-passing sites on
+          the 229-file corpus lack a `TFORLOOP` at the base, and 0 of 35
+          hand-written non-`TFORLOOP` `luac` shapes (`a,b,c = f()`,
+          `t[1],t[2],t[3] = f()`, `local a,b,c = ...`, the same inside `for`/
+          `while`/`repeat`/nested functions, ...) has all three targets temp.
+          So no fixture built from real `luac` output can isolate this clause,
+          and `tests/test_express_residual.py::
+          test_the_iterator_recogniser_needs_a_tforloop_at_the_base` pins it
+          the only way that is left: real bytecode with a hand-built
+          `RegClass` that satisfies the other two conditions. Kept because
+          "the `TFORLOOP` is what makes this a generic `for`" is the actual
+          proposition being tested and inferring it from the register grading
+          alone would be an accident.
+        * every one of the three definitions is a temporary at THIS pc
+          (`rc.temp_defs`, or the whole-register `rc.temps` for a hand-built
+          `RegClass`). A generic-for whose control slots the classifier had to
+          call locals -- because the register numbers do other work elsewhere
+          in the function that `classify_registers` could not separate -- must
+          keep the materialized form; staging it would inline the iterator
+          into a header whose slots something else is relying on.
+        * none of the three is already `declared`, i.e. already a live named
+          local in the printed output. Same rule as `write_reg`'s.
+
+        Nothing here is a soundness argument for the OUTPUT -- certification
+        is that. It is the "is this the shape luac compiled from" question,
+        and every one of the three conditions failing sends the shape back to
+        the materialized print, which is always valid Lua.
+        """
+        if len(regs) != 3 or regs != tuple(range(regs[0], regs[0] + 3)):
+            return False
+        a = regs[0]
+        if not any(li.ri.op is Op.TFORLOOP and li.ri.a == a
+                   for li in self.fn.instrs.values()):
+            return False
+        pc = self._pc
+        return all(r not in self.declared and self._is_stack_temp(r, pc)
+                   for r in regs)
 
     def _consume_open(self, start: int) -> tuple[Expr, ...]:
         """Build the expression tuple for an open range [start, dynamic top):

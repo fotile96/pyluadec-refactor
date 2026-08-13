@@ -15,8 +15,13 @@ arguable:
 
 Nothing here changes a grading. `effects.py` is the axiom layer; a grading
 change needs an `lvm.c` citation plus a differential run (M4 task 8 is the
-worked example). Two rows this task believes are *under*-graded are recorded as
-findings in `effects.py`'s comments, deliberately unfixed.
+worked example). Two under-gradings this task found are recorded as findings
+in `effects.py`'s comments rather than fixed in it. **One of the two, `LEN`'s
+`NO_METAMETHOD` column, was corrected at M5 task 1** under that protocol --
+see `tests/test_effects_len.py`, which owns the citation and the differential.
+The other (the `luaC_checkGC` blind spot shared by `NEWTABLE`/`CLOSURE`/
+`CONCAT`) is deliberately left standing; `docs/runbooks/m3-backlog.md` §M5.1
+says why.
 """
 from pathlib import Path
 
@@ -196,11 +201,18 @@ _RELAXED = {
     "EQ", "LT", "LE",
 }
 
-# The only 3 rows TRUSTING moves below NO_METAMETHOD -- i.e. the entire value
-# TRUSTING adds over NO_METAMETHOD. All three are `# UNARGUED` in effects.py,
-# and all three are the ones the corpus actively falsifies (892 SETGLOBAL,
+# The only 4 rows TRUSTING moves below NO_METAMETHOD -- i.e. the entire value
+# TRUSTING adds over NO_METAMETHOD. All four are `# UNARGUED` in effects.py,
+# and all four are ones the corpus actively falsifies (892 SETGLOBAL,
 # 1667 SETTABLE, 92 SETLIST, 44809 CALL sites; measured 2026-08-12).
-_TRUSTING_ONLY = {"GETGLOBAL", "GETTABLE", "SELF"}
+#
+# LEN joined this set at M5 task 1, and that is a direct consequence of the
+# regrade rather than a separate decision: once `#t` is READ_HEAP under
+# NO_METAMETHOD, TRUSTING's own assumption ("a table read may be reordered
+# freely") is exactly what takes it back down to PURE. Before the regrade both
+# looser columns read PURE, so TRUSTING moved nothing there. See
+# tests/test_effects_len.py.
+_TRUSTING_ONLY = {"GETGLOBAL", "GETTABLE", "SELF", "LEN"}
 
 
 def _probe(op):
@@ -232,15 +244,19 @@ def test_mode_columns_split_20_entailed_18_relaxed():
     assert len(entailed) + len(relaxed) == len(list(Op)) == 38
 
 
-def test_trusting_moves_only_three_rows_below_no_metamethod():
-    """TRUSTING's entire delta over NO_METAMETHOD is three table-read opcodes.
+def test_trusting_moves_only_four_rows_below_no_metamethod():
+    """TRUSTING's entire delta over NO_METAMETHOD is four table-read opcodes.
 
     This is the load-bearing fact behind the default-mode decision. Everything
-    TRUSTING buys over NO_METAMETHOD is "treat GETGLOBAL/GETTABLE/SELF as
+    TRUSTING buys over NO_METAMETHOD is "treat GETGLOBAL/GETTABLE/SELF/LEN as
     PURE", and PURE means "reorderable against any store" -- which the corpus
     contradicts outright (globals and table fields are both written). So
     TRUSTING has no defensible whole-pipeline use here; NO_METAMETHOD is the
     only looser mode a future pass should consider opting into.
+
+    Was three rows until M5 task 1 regraded LEN's NO_METAMETHOD column; `#t`
+    is a table read like the other three, so it lands in the same set for the
+    same reason.
     """
     from pyluadec.lift.opcodes import Op
     moved = {op.name for op in Op if _columns(op)[2] != _columns(op)[1]}
@@ -252,7 +268,8 @@ def test_trusting_moves_only_three_rows_below_no_metamethod():
 #
 # Each pins all three gradings and states, in its docstring, what would have to
 # be TRUE of the runtime for the looser gradings to be sound. `test_effects.py`
-# already pins the same values inside a 45-row exhaustive table; the point of
+# already pins the same values inside a 44-row exhaustive table (counted from
+# `_EXHAUSTIVE_CASES` at M5 task 1; it said 45); the point of
 # repeating three of them here is that the *soundness condition* lives next to
 # the value, which is the deliverable a pass author will actually read before
 # selecting a mode.
@@ -375,7 +392,7 @@ def test_strict_is_the_default_and_the_only_mode_in_use():
     it does not make it a safe global default, because the engine values that
     dominate the corpus's table reads are exactly what the census cannot see.
     `TRUSTING` is not recommended at all -- see
-    `test_trusting_moves_only_three_rows_below_no_metamethod`.
+    `test_trusting_moves_only_four_rows_below_no_metamethod`.
 
     This test is the enforcement: if a later change starts lifting the whole
     corpus under a looser mode, it has to delete this test and say why.

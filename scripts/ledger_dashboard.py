@@ -14,15 +14,36 @@ def _refusal_key(reason: str) -> str:
     targets out of range`, `structure: pc 4: branch body block at pc 702 is
     unreachable`, `mismatch: const[7]`); a histogram over the raw strings has
     nearly as many buckets as rows, which defeats the point of putting it on
-    the dashboard. Every varying part of the current vocabulary
-    (`structure.structured.ProtoCert.reason`) is a NUMBER -- a pc, a register,
-    a statement count, a constant index -- so the normalisation is simply
-    "replace every decimal token with `N`", plus `const[7]` -> `const[i]`
-    (an index inside a bracket, not a standalone token).
+    the dashboard. The varying parts are numbers -- a pc, a register, a
+    statement count, a constant index -- but **not always as a standalone
+    decimal token**, which is where this function has already been wrong once:
+    it was written when "every varying part is a NUMBER [token]" was true, and
+    M5 task 6 added the `mismatch: <field> at root/<N>` form (a mismatch found
+    in a DESCENDANT during hybrid certification) without that premise being
+    re-checked. `root/48` and `root/59` are not decimal tokens, so the
+    committed ledger's 11 `code` mismatches showed up as three buckets
+    (`mismatch: code` 9, `... at root/48` 1, `... at root/59` 1) where they
+    are one cluster.
+
+    Three shapes are normalised, and the third is the M5 addition:
 
       "structure: pc 41: if targets out of range"
         -> "structure: pc N: if targets out of range"
-      "mismatch: const[7]"      -> "mismatch: const[i]"
+      "mismatch: const[7]"          -> "mismatch: const[i]"
+      "mismatch: code at root/59"   -> "mismatch: code at root/N"
+
+    That leaves the committed ledger's 11 `code` mismatches as **two** rows,
+    not one: `mismatch: code` 9 and `mismatch: code at root/N` 2. Deliberate.
+    Only the INDEX varies and it is gone; what remains is a kind distinction
+    the same normalisation preserves everywhere else -- `pc 41` collapses to
+    `pc N` rather than disappearing -- and it is the difference between "this
+    proto's own field differed" and "a descendant's did, during hybrid
+    certification", which is the more useful of the two facts to see on a
+    dashboard.
+
+    If the vocabulary grows another shape, this needs the same treatment --
+    the histogram silently splitting a cluster is the failure mode, and it is
+    quiet.
 
     Cosmetic only: this function exists for the dashboard's histogram. The
     ledger keeps the exact reason, and `tests/test_m4_exit.py` asserts on
@@ -32,10 +53,13 @@ def _refusal_key(reason: str) -> str:
     for tok in reason.split(" "):
         core = tok.rstrip(":,;")
         tail = tok[len(core):]
+        head, sep, idx = core.rpartition("/")
         if core.isdigit():
             out.append("N" + tail)
         elif core.startswith("const[") and core.endswith("]"):
             out.append("const[i]" + tail)
+        elif sep and idx.isdigit():
+            out.append(f"{head}/N" + tail)
         else:
             out.append(tok)
     return " ".join(out)
@@ -59,6 +83,48 @@ def main() -> int:
     oracle_v = {e["oracle"] for e in entries}
     ladder_v = {e["ladder"] for e in entries}
 
+    # Shipping, as opposed to certification (M5 task 6). `level` says which
+    # protos were PROVED equal to the original; these say which emitter
+    # actually produced the text in `build/decompiled/`. The two are
+    # independent since hybrid emission, and a dashboard that only reported
+    # the first would not show a file quietly dropping back to a whole-file
+    # state machine.
+    # Indexed, not `.get(...)`-with-a-default (M5 task 6 round 1, F8): the
+    # defaults were `"structured"` and `False`, so a pre-M5-task-6 row -- one
+    # written before the schema existed, or by a half-migrated writer -- would
+    # be silently counted as fully structured. That is exactly the "a file
+    # quietly dropped back to a whole-file state machine" case the comment
+    # above says this panel exists to show, reported as its opposite. A
+    # `KeyError` naming the missing field is the better failure: this is a
+    # read-only panel over a ledger that `scripts/run_corpus.py` regenerates
+    # whole, so there is no partial-schema ledger worth tolerating.
+    occs = [o for e in entries for o in e["occurrences"]]
+    shipped = Counter(o["shipped"] for o in occs)
+    by_file: dict[str, dict] = {}
+    for o in occs:
+        f = by_file.setdefault(o["file"], {"hybrid": False, "fb": 0, "n": 0})
+        f["hybrid"] = f["hybrid"] or o["hybrid"]
+        f["fb"] += o["shipped"] == "fallback"
+        f["n"] += 1
+    n_hybrid = sum(1 for f in by_file.values() if f["hybrid"])
+    n_whole_fb = sum(1 for f in by_file.values()
+                     if not f["hybrid"] and f["fb"] == f["n"])
+
+    # L2 differential execution (M5 task 9). Reported in the `L2@cov%` form the
+    # spec asks for, and reported on BOTH bases -- rows and occurrences --
+    # because `l2` is measured per FILE and aggregated onto rows by
+    # `verify.ledger.row_l2`, so the two numbers answer different questions.
+    # The refusal histogram is next to it for the same reason
+    # `refusal_reason`'s is: a file that stops being granted must show up as
+    # data, not as an absence.
+    l2_rows = [e for e in entries if e.get("l2") and "cov" in e["l2"]]
+    l2_occs = [o for o in occs if o.get("l2") and "cov" in o["l2"]]
+    l2_refused = Counter(o["l2"]["refused"] for o in occs
+                         if o.get("l2") and "refused" in o["l2"])
+    l2_files = {o["file"] for o in occs if o.get("l2")}
+    l2_files_granted = {o["file"] for o in l2_occs}
+    l2_by_file = {o["file"]: o["l2"]["cov"] for o in l2_occs}
+
     l3 = levels.get("L3", 0)
     # Occurrence basis as well as unique-shape basis: the ledger dedups by
     # structural_hash, so "% of unique protos" and "% of the 1944 protos that
@@ -75,6 +141,28 @@ def main() -> int:
         *[(f"level {k}", v) for k, v in sorted(levels.items())],
         ("L3 share (unique)", f"{l3}/{len(entries)} ({l3 / len(entries):.1%})"),
         ("L3 share (occurrences)", f"{occ_l3}/{n_occ} ({occ_l3 / n_occ:.1%})"),
+        ("shipped structured", f"{shipped['structured']}/{n_occ} "
+                               f"({shipped['structured'] / n_occ:.1%})"),
+        ("files fully structured", n_files - n_hybrid - n_whole_fb),
+        ("files hybrid", n_hybrid),
+        ("files whole-file fallback", n_whole_fb),
+        ("L2 files driven", f"{len(l2_files_granted)}/{len(l2_files)} granted "
+                            f"(of {n_files} in the corpus)"),
+        ("L2 share (rows)", f"{len(l2_rows)}/{len(entries)} "
+                            f"({len(l2_rows) / len(entries):.1%})"),
+        ("L2 share (occurrences)", f"{len(l2_occs)}/{n_occ} "
+                                   f"({len(l2_occs) / n_occ:.1%})"),
+        # Per FILE, not per row. A row-basis median is dominated by whichever
+        # driven file happens to have the most protos -- with the M5 task 9
+        # sequence set that was snr_common, 147 of 161 badged rows, so the
+        # panel printed its badge as both the min and the median of a
+        # five-file population. Files are the population `l2` is measured over.
+        *([("L2 badge per file, min/median/max",
+            "L2@{:.0%} / L2@{:.0%} / L2@{:.0%}".format(
+                min(l2_by_file.values()),
+                sorted(l2_by_file.values())[len(l2_by_file) // 2],
+                max(l2_by_file.values())))] if l2_by_file else []),
+        *[(f"L2 refused: {k}", v) for k, v in l2_refused.most_common()],
         # `(kv[0] is None, kv[0])`, not `kv[0]`: an `L3` row is supposed to
         # carry a rung, but if one ever did not, plain `sorted` would raise
         # `TypeError: '<' not supported between 'NoneType' and 'int'` -- and

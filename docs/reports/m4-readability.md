@@ -1,5 +1,25 @@
 # M4 readability evaluation: our output vs the predecessor's shipped text
 
+> **SUPERSEDED for every current figure AND for one invariant — see
+> `docs/reports/m5-quality.md`.** The invariant: §1.1, §2.3 and §3 state that a
+> chunk ships structured source **only if its root certifies**. That was true
+> when this was written and stopped being true at M5 task 6, which added a
+> hybrid tier: 6 corpus files ship structured-with-holes while their root does
+> not certify. Read those passages as the M4 state, not as a rule.
+>
+> This file is the M4 snapshot and is kept as one. All five printer-level gaps
+> it names were closed by M5 task 7 (output surface v2) and the sixth,
+> structural one was halved by M5 task 6 (hybrid emission): re-measured
+> 2026-08-13, `["` 6085 → 0, high-byte escapes 991233 → 0, `(-` 570 → 0,
+> `elseif` 0 → 282, max nesting depth 61 → **8** against the predecessor's
+> **10**, and whole-file fallbacks 17 → 7.
+>
+> **The one figure here that is still quoted and is still right is §1.1's
+> 47.6%.** Re-measured on this report's own stated basis (27623/57998
+> predecessor lines over its own 17-file set) it reproduces exactly. M5 task 3
+> reported it as not reproducing; that is true of the five *other* bases task 3
+> measured and does not contradict this report. Quote the denominator.
+
 **This is an evaluation, not a gate.** Nothing here is asserted by a test and
 nothing here blocks the milestone. Its job is to say honestly how readable the
 M4 decompiler's output is next to the artifact that actually shipped, and to
@@ -444,3 +464,55 @@ Every item on the "worse" list except the last is a local change in
 `emit/lua.py` that cannot affect what recompiles. The last one is M5 agenda
 item 3, and its leverage is concentrated: 89 uncertified proto occurrences are
 holding 692 certified ones hostage.
+
+---
+
+## Appendix: rollout after hybrid emission (M5 task 6, 2026-08-12)
+
+The last item on the "worse" list above — "17 files still ship a
+register-machine fallback ... 47.6% of the corpus's text by volume" — is the
+one this appendix updates. The 47.6% figure itself did not reproduce on any
+basis when it was re-measured (see `docs/runbooks/structured-pipeline.md`,
+"A brief number that did not reproduce"); the closest comparable basis is
+bytecode instruction volume, and all three columns below are measured on the
+committed `corpus/ledger.jsonl` and `build/decompiled/`.
+
+Hybrid emission (`structure.structured.certify_hybrid`) replaced the
+chunk-level all-or-nothing landing rule: a chunk whose root does not certify
+now ships structured code with the fallback state machine substituted only at
+the CLOSURE sites that could not be certified, provided the assembled chunk
+still compares equal to the original field for field everywhere outside those
+subtrees.
+
+| measure | M4 close | M5 task 5 | **M5 task 6** |
+| --- | --- | --- | --- |
+| files shipping some structured source | 212 / 229 | 216 / 229 | **222 / 229** (216 fully + 6 hybrid) |
+| files shipping a whole-file state machine | 17 | 13 | **7** |
+| proto occurrences whose text is structured | 1163 / 1944 (59.8%) | 1379 / 1944 (70.9%) | **1747 / 1944 (89.9%)** |
+| bytecode instruction volume shipping as a state machine | 46.1% | 34.4% | **14.2%** |
+| decompiled output lines inside whole-file-fallback files | 80.1% | — | **37.0%** (31884/86228) |
+
+Two cells are derived rather than re-measured, and are marked here rather than
+presented as fresh measurements: the M4-close occurrence count is
+`1944 − 781`, using the 781 this report measures above, and the M4-close
+instruction volume is the 46.1% from the runbook's re-measurement of the same
+17 files. The M5 task 5 column was measured this session from the ledger as it
+stood at `31e1174`; the M5 task 6 column from the ledger and
+`build/decompiled/` as they stand after this task.
+
+Per hybrid file, the fraction of its own instructions that ship structured:
+`snr_s5_10_s.lua` 95.1%, `snr_s1_10_s.lua` 93.3%, `snr_s3_10_s.lua` 89.2%,
+`snr_s4_10_s.lua` 88.6%, `snr_fragment_main.lua` 45.2%,
+`snr_story_main.lua` 13.2%.
+
+**The 7 that remain are a different problem from the 17 were.** The M4
+analysis was right that "89 uncertified proto occurrences are holding 692
+certified ones hostage" — hybrid emission is exactly the release, and it moved
+6 files. It did not move the other 7 because in each of them the failing proto
+is the chunk's own **root**: `snr_graphic.lua`'s main body does not print at
+all, and `config.lua`, `snr_mainmenu.lua`, `snr_memory.lua`, `snr_music.lua`,
+`snr_novel.lua` and `snr_common.lua` print a main chunk that recompiles to a
+different proto. A hybrid can substitute a child; there is nothing to
+substitute a root with, and shipping an uncertified root is exactly what the
+landing gate exists to prevent. Their leverage is now in the reconstructor,
+not in the landing rule.

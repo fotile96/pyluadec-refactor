@@ -73,8 +73,14 @@ def test_while_output_runs_identically():
     src = b"local n = 0 while true do n = n + 1 if n > 3 then break end end print(n)"
     p = load_bytes(compile_source(src, strip=True))
     out = emit_certified_chunk(p)
-    # `ChunkOutcome` has no `.structured` flag: "the artifact is structured"
-    # IS "the root certified L3" (structure/structured.py's invariant).
+    # `ChunkOutcome` has no `.structured` flag, so this asserts the level and
+    # relies on the *one-directional* rule that survives M5 task 6's hybrid
+    # emission: a root that certifies `L3` ships its own certified bytes, which
+    # are structured. The converse ("not structured => the root did not
+    # certify") is what stopped being true -- a hybrid ships structured text
+    # with fallback holes while its root does NOT certify, and 6 corpus files
+    # do exactly that. The comment here used to assert the biconditional as
+    # `structure/structured.py`'s invariant; corrected at M5 task 12.
     assert out.certs["main"].level == "L3"
     a = run_bytes(compile_source(src, strip=True), is_source=False)
     b = run_bytes(out.source, is_source=True)
@@ -153,12 +159,12 @@ def test_enditer_prints_nothing():
     src = print_chunk(p)
     assert src is not None                      # the printer does not refuse
     assert src == ("while true do\n"
-                   "  while true do\n"
-                   "    if a then\n"            # <- the EndIter's arm: empty
-                   "    else\n"
-                   "      b()\n"
+                   "    while true do\n"
+                   "        if a then\n"        # <- the EndIter's arm: empty
+                   "        else\n"
+                   "            b()\n"
+                   "        end\n"
                    "    end\n"
-                   "  end\n"
                    "end\n")
 
 
@@ -213,6 +219,16 @@ def test_enditer_shape_does_not_certify_and_therefore_ships_fallback():
     The invariant still holds and is what this test really guards: the
     uncertified structured print does NOT ship -- the M2 fallback does.
 
+    **Scope correction (M5 task 6 round 1, F6).** "The uncertified structured
+    print does not ship" is no longer the same statement as "the whole-file
+    fallback ships". A root that misses `L3` now gets a hybrid attempt first,
+    and a hybrid IS a partially-structured print -- certified per proto, with
+    the uncertifiable subtrees substituted. This fixture keeps the old
+    behaviour for a structural reason, asserted below rather than assumed: its
+    root has no subprotos at all, so there is no CLOSURE site to substitute and
+    no hybrid to build. What is permanent is the first sentence, not the
+    artifact shape.
+
     EXPIRY DISCHARGED, NOT LIFTED (M4 task 3). The expiry note here said
     task 3's `while <cond>` loops "may well produce an EndIter that
     certifies". They do not, and the evidence went the other way: measured on
@@ -230,8 +246,10 @@ def test_enditer_shape_does_not_certify_and_therefore_ships_fallback():
     cert = certify_proto(p, is_chunk_root=True)
     assert cert.level == "L1"
     assert cert.mismatches and cert.mismatches[0].field == "code"
+    assert p.subprotos == ()        # nothing to substitute => no hybrid
     out = emit_certified_chunk(p)
     assert out.certs["main"].level == "L1"
+    assert out.hybrid is False
     assert out.source.startswith(b"local __pld_")   # the M2 fallback preamble
 
 
@@ -285,13 +303,19 @@ def test_repeat_prints_and_recompiles_to_the_original():
 
     A sign-flipped `until` still compiles -- it just compiles to `LT 1 ...`
     instead of `LT 0 ...`, which comparing the recompiled proto catches.
+
+    The expected text says `until l0_0 > 2`, not `until 2 < l0_0`, since M5
+    task 5: the fixture's source is `until i > 2` and `_reads_as_gt` now
+    recovers the `>`. Both forms compile to the same instruction (see that
+    method), so this line of the assertion is about faithfulness, and the
+    recompile comparison below is what pins polarity.
     """
     original, printed = _print_repeat_fixture()
     assert printed == (b"local l0_0 = 0\n"
                        b"repeat\n"
-                       b"  l0_0 = l0_0 + 1\n"
-                       b"  print(l0_0)\n"
-                       b"until 2 < l0_0\n")
+                       b"    l0_0 = l0_0 + 1\n"
+                       b"    print(l0_0)\n"
+                       b"until l0_0 > 2\n")
     candidate = load_bytes(compile_source(printed, strip=True))
     for k in range(len(NORMALIZATIONS) + 1):
         if not compare_protos(original, candidate, level=k):
@@ -347,6 +371,6 @@ def test_repeat_condition_is_printed_inside_the_body_scope():
                   Return(fn.instrs[pcs[-1]], frozenset({pcs[-1]}))), frozenset())
     assert all_claimed(region) == set(fn.instrs)
     printed = print_function(fn, region, rc, 0).encode()
-    assert printed == b"repeat\n  f()\nuntil y == 1\ng()\n"
+    assert printed == b"repeat\n    f()\nuntil y == 1\ng()\n"
     candidate = load_bytes(compile_source(printed, strip=True))
     assert not compare_protos(p, candidate, level=0), printed

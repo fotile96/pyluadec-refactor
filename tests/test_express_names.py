@@ -415,7 +415,7 @@ def test_classification_does_not_consult_the_effect_table(tmp_path):
     window -- a function that no longer exists. Its underlying claim was that
     the *risk* of an instruction (can it raise, can it touch the heap) has
     nothing to do with whether its result is inlinable, and that claim is now
-    structural: `_stack_discipline` never looks at `InstrEffects.effect` or
+    structural: `stack_discipline` never looks at `InstrEffects.effect` or
     `.may_error` at all, only at which registers are read and written.
 
     `print(t.field)` is the smallest real shape that would have been blocked

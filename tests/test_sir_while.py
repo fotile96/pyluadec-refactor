@@ -213,16 +213,34 @@ def test_refusals_still_refuse():
         build_sir(fn)
 
 
-def test_conditional_exit_from_the_top_still_refuses():
-    # `else break` threads the if's false-exit straight past the loop
-    # (JMP@4 -> 10 == the loop exit), so the loop is left through a jump that
-    # is neither the closing JMP nor a break *statement*. That is the same
-    # shape as a `while <cond>` header and belongs to Task 3 -- until then it
-    # must refuse rather than mis-claim.
-    fn = lift_proto(load_bytes(compile_source(
-        b"while true do if f() then g() else break end end", strip=True)))
-    with pytest.raises(StructureError):
-        build_sir(fn)
+def test_conditional_exit_from_the_top_is_now_claimed_as_else_break():
+    """M4-era name: `test_conditional_exit_from_the_top_still_refuses`. The
+    refusal it pinned carried its own expiry ("belongs to Task 3 -- until
+    then it must refuse rather than mis-claim"); M5 task 4 closed it, via
+    `sir/build.py::_match_else_break`.
+
+    `else break` threads the if's false-exit straight past the loop (JMP@4 ->
+    10 == the loop exit) because `breakstat`'s `luaK_jump` concatenates the
+    pending list onto the break's own JMP. The reading is `if f() then g()
+    else break end`: the threaded false-exit and the break are claimed by the
+    `If` and its `Break` else-body respectively, the dead else-skip JMP@7 is
+    the `If`'s own `then_last`, and the whole chunk certifies `L3` -- so the
+    claim is adjudicated, not asserted.
+
+    1-2 f()  3 TEST  4 JMP->10  5-6 g()  7 JMP->9 (dead else-skip)
+    8 JMP->10 (the break)  9 JMP->1 (closing)  10 RETURN
+    """
+    src = b"while true do if f() then g() else break end end"
+    fn, r = _sir(src)
+    (w,) = _find(r, WhileTrue)
+    (i,) = _find(w.body, If)
+    assert i.claimed_pcs == frozenset({3, 4, 7})
+    assert isinstance(i.else_body, Break) and i.else_body.claimed_pcs == frozenset({8})
+    assert all_claimed(i.then_body) == frozenset({5, 6})
+    from pyluadec.ingest import load_bytes as _lb
+    from pyluadec.structure.structured import certify_proto
+    cert = certify_proto(_lb(compile_source(src, strip=True)), is_chunk_root=True)
+    assert cert.level == "L3", cert.reason
 
 
 def test_pc_retreating_edge_that_is_not_a_dominance_back_edge_is_not_a_header():
@@ -441,7 +459,9 @@ def test_reachable_jump_into_the_middle_of_a_while_header_raises(monkeypatch):
     with pytest.raises(StructureError):
         build_sir(fn)
 
-    def _match_while_header_minus_uniformity_check(fn_, pc2blk_, lo, S, hi, continue_target):
+    def _match_while_header_minus_uniformity_check(fn_, pc2blk_, lo, S, hi,
+                                                   continue_target,
+                                                   thread_target=None):
         header, header_pcs = [], []
         pc = lo
         while pc < S:
@@ -460,7 +480,8 @@ def test_reachable_jump_into_the_middle_of_a_while_header_raises(monkeypatch):
         if jmp_pc >= S or jmp_pc not in fn_.instrs or fn_.instrs[jmp_pc].ri.op is not Op.JMP:
             return None
         exit_pc = fn_.instrs[jmp_pc].successors[0]
-        if continue_target is not None and exit_pc == continue_target:
+        if (continue_target is not None and exit_pc == continue_target) \
+                or (thread_target is not None and exit_pc == thread_target):
             exit_pc = hi
         if exit_pc != S + 1:
             return None
@@ -599,8 +620,14 @@ def test_corpus_build_sir_acceptance_floor(corpus_dir):
     # module docstring). But 10/1478 is a 0.7% band, an order of magnitude
     # tighter than the exit gate's ~9 points, so it is a narrow one. The
     # instrument that would actually catch a 9-proto regression is a
-    # cross-revision baseline diff on `corpus/ledger.jsonl`, which nothing
-    # asserts today; it is M5's ratchet CI (M5 agenda in
-    # `docs/runbooks/m3-backlog.md`). Until then the ledger diff gets read by
-    # a human in review.
+    # cross-revision baseline diff on `corpus/ledger.jsonl`. **That instrument
+    # now exists**: `scripts/ratchet_diff.py` (M5 task 8), run as gate 2 of
+    # `scripts/ratchet_job.sh`, fails on any per-row level or rung downgrade,
+    # so a 9-proto structuring regression that slips under this floor is
+    # caught there as 9 `level-downgrade` rows clustered by `refusal_reason`.
+    # It is not in the pytest suite -- a baseline is a git ref, not a fixture
+    # -- so the sequencing is: this floor per commit, the baseline diff at a
+    # wrap and before any merge that touches the ledger. See
+    # `docs/runbooks/structured-pipeline.md`, "Ratchet the ledger against a
+    # baseline".
     assert ok >= 1437   # measured after task 4: 1447

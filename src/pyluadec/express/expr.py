@@ -69,5 +69,21 @@ class TableExpr:
     hash: tuple[tuple["Expr", "Expr"], ...]
 
 
+@dataclass(frozen=True)
+class MultiSpill:
+    """The 2nd..nth register of a multi-value producer whose whole result was
+    staged as ONE expression in the register at `base`.
+
+    Lua has no expression for "the second value of `f()`", so this node is
+    deliberately UNPRINTABLE: `emit.lua._expr`'s fallback raises
+    `ReconstructError` on it. It exists so a consumer that takes the whole
+    group at once (today: `emit.lua`'s `GenericFor` arm, via
+    `Reconstructor.take_expr`) can recognise and drop the spill slots, while
+    any other read of one refuses cleanly instead of printing something wrong.
+    See `Reconstructor._emit_multi`.
+    """
+    base: int
+
+
 Expr = (ConstExpr | LocalExpr | GlobalExpr | UpvalExpr | IndexExpr | BinExpr
-        | UnExpr | CallExpr | VarargExpr | ClosureExpr | TableExpr)
+        | UnExpr | CallExpr | VarargExpr | ClosureExpr | TableExpr | MultiSpill)

@@ -112,7 +112,7 @@ LOCAL_CASES = [
     # post-increment definition is disqualified because it survives pending
     # all the way to the function's trailing `RETURN`, which unconditionally
     # promotes whatever is still pending. So this case is pinned by
-    # `_stack_discipline`'s baseline read-count/statement-boundary
+    # `stack_discipline`'s baseline read-count/statement-boundary
     # accounting, not by anything M4 task 13 added -- nothing in
     # `TEMP_CASES`/`LOCAL_CASES` currently isolates `_same_block` or
     # `_bar_literal_operands` as load-bearing for this specific shape.
@@ -282,7 +282,7 @@ def test_reading_a_consumed_staging_register_again_is_refused():
     A definition graded a temporary is staged, not emitted; the first read
     pops and inlines it. A SECOND read has nothing to name -- `LocalExpr(reg)`
     would print an identifier this function never declares, which Lua resolves
-    as a *global*. `_stack_discipline`'s pop-once accounting is a heuristic
+    as a *global*. `stack_discipline`'s pop-once accounting is a heuristic
     (see that module's docstring, "Soundness"), and it mis-grades real luac
     output: this refusal is reachable from the committed corpus, not merely a
     defensive check for a hypothetical mistake in the accounting.
@@ -352,13 +352,11 @@ def test_reading_a_consumed_staging_register_again_is_refused():
 # drafted alongside, so the next census (Task 6) inherits the diagnosis rather
 # than re-deriving it.
 KNOWN_RESIDUAL = [
-    # `_emit_multi`: a `CALL` with several fixed results is one `Expr` and
-    # cannot be split into independently-inlinable per-register pieces, so
-    # every target is materialized. A generic `for` over `pairs(t)` therefore
-    # prints `local l0_1, l0_2, l0_3 = pairs(l0_0)` where luac left the triple
-    # in the control slots, and the recompile grows three MOVEs. Nothing to do
-    # with register classification: all three slots are already in `rc.temps`.
-    b"local t = {} for k, v in pairs(t) do f(k, v) g(k) end",
+    # (The `_emit_multi` entry that used to lead this list -- a generic `for`
+    # over `pairs(t)` printing `local l0_1, l0_2, l0_3 = pairs(l0_0)` -- was
+    # closed by M5 task 5 and promoted, per this test's own instruction, to
+    # `tests/test_express_residual.py::GENERIC_FOR_ITERATOR`.)
+    #
     # NEWTABLE's size hints. The constructor fold turns a following
     # `t.k = s` statement into `{["k"] = s}`, so the recompiled NEWTABLE
     # carries a hash-size hint of 1 where the original had 0.

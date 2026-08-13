@@ -1,4 +1,4 @@
-# M3/M4 backlog, and the M5 agenda
+# M3/M4/M5 backlog, and the M6 agenda
 
 This file exists because the SDD execution workspaces (`.superpowers/sdd/...`)
 are scratch and get deleted. It started as the M2 final-review backlog for M3;
@@ -6,11 +6,15 @@ at the close of M3 it absorbed M3's own deferred findings, and at the close of
 M4 it absorbed M4's, for the same reason. It is an agenda, not a plan — plans
 get written with `superpowers:writing-plans` when the milestone begins.
 
-**Reading order.** The "M4 agenda" section below is now a *record*: its items
-are marked DONE with the task that closed them, and the entries kept verbatim
-underneath contain retracted claims that must not be re-derived. **What is
-still open is the "M5 agenda" section at the very end of this file.** Start
-there.
+**Reading order.** The "M4 agenda" and "M5 agenda" sections below are now
+*records*: their items are marked DONE / CLOSED / SWEPT with the task that
+closed them, and the entries kept verbatim underneath contain retracted claims
+that must not be re-derived. **What is still open is the "M6 agenda" section at
+the very end of this file.** Start there.
+
+**File name.** It is still `m3-backlog.md` because three milestones of
+cross-references point at that path; renaming it would break more than it would
+clarify.
 
 Status at the end of M2: 229/229 corpus files produce compilable Lua via the
 fallback emitter; 130 tests pass; `corpus/ledger.jsonl` holds 1478 unique proto
@@ -34,6 +38,23 @@ files ship genuinely structured source** (92 at M3 close); the other 17 still
 ship the M2 fallback. Every non-`L3` row now records `refusal_reason` saying
 why. Readability against the predecessor's shipped output is evaluated in
 `docs/reports/m4-readability.md`.
+
+Status at the end of M5 (all figures measured 2026-08-13, at the task-12 tree
+or, where the final fix and residual rounds moved them, after those):
+229/229 still compile; **867 tests pass in 42.1–44.1s** on macOS 15.2 /
+Apple M4 (arm64) against a 45s ceiling — **test ordering is UNMEASURED**: no
+randomiser is installed, so neither M5 claim about it varied the order at all;
+see M6 agenda item 6; the ledger
+holds the same 1478 unique hashes over 1944 occurrences, of which **1430 unique
+(96.8%) / 1896 occurrences (97.5%)** are `L3`, against M5 exit floors of
+**0.94 unique** and 0.96 occurrences, plus 0.85 structured reach and 0.96 quality
+(`tests/test_m5_exit.py`). **216 files ship fully structured source, 6 ship
+hybrid (structured with fallback holes), 7 still ship the whole-file M2
+fallback**; per occurrence, **1747/1944 (89.9%) ship structured text**. The
+ported quality metric reads **0.968833** (0.935633 at M5 start); the
+predecessor's 0.997 was carried to M6 as its exit by the human partner's
+decision of 2026-08-12. L2 differential certification is online with a measured
+reach of **one file**. Evaluated in `docs/reports/m5-quality.md`.
 
 ## Ordered backlog (M2 → M3)
 
@@ -138,7 +159,16 @@ gap rather than a defect:
   shared by three modules across two layers.
   The misplacement is still real; the fix is no longer "move it into
   fallback.py" but a shared codegen-side home. Lower priority than when it
-  had one consumer.)*
+  had one consumer.)* **M5 task 6 round 2 review (Residual B) added a third
+  instance of the same open question**: `emit/lua.py` imports `const_lit,
+  inline_function_parts` from `structure/fallback.py` (an emit -> structure
+  dependency), while `structure/structured.py` imports FROM `emit/lua.py` --
+  mutual dependency through `fallback.py`. `const_lit` predates task 6;
+  `inline_function_parts` is the hybrid boundary's own addition and cannot
+  currently live anywhere neutral because nowhere neutral exists yet.
+  Recorded at the import site in `emit/lua.py` rather than given a bespoke
+  fix; folds into whatever shared codegen-side home eventually gets built for
+  `LUA_KEYWORDS` and the proto-path convention below.
 - Duplicated proto-path convention — `pipeline.walk_proto_paths`'s own
   `f"{path}_{i}"` call (line 57 at the M4 branch point; a docstring expansion
   since pushed it to line 63 without this citation being re-swept — found
@@ -407,13 +437,14 @@ entry is about went from 253 to 4. The 35 that remain are broken down by
 opcode-histogram delta AND by first differing field in
 `structured-pipeline.md` -> "Current capability boundary" point 3; the two
 decompositions agree exactly. The constant-pool-order sub-case below was
-re-measured at 10 (from 9) and the rung declined again — M5 agenda item 4.
-Original entry follows.*
+re-measured at 10 (from 9) and the rung declined again — M5 agenda item 4,
+which M5 task 5 then CLOSED at 0 by fixing the defect that produced the
+population (see item 4 below). Original entry follows.*
 
 These print fine and recompile to a *different* proto. All 58 differ on `code`;
 24 also on `maxstacksize`, 11 on `constants.len`, 11 on an individual constant.
 This is the residual approximation in the freereg simulation
-(`express/names.py::_stack_discipline`) — statement grouping and register
+(`express/freereg.py::stack_discipline`) — statement grouping and register
 allocation that do not quite match luac's.
 
 (An earlier pass of this breakdown also reported 1 of the 58 differing on
@@ -447,11 +478,27 @@ default; `NO_METAMETHOD` is a permitted per-pass opt-in scoped to
 script-constructed tables (the census finds 0 metamethod-related constants in
 71414 constants, but 56 of 164 global names read are never written by the corpus
 and so come from the engine, where the census is blind); `TRUSTING` is not
-recommended — it moves only 3 rows (`GETGLOBAL`/`GETTABLE`/`SELF`) and the corpus
-falsifies all three. `lift/effects.py`'s behaviour is unchanged. Two rows were
-found under-graded and left alone pending the full axiom-change protocol: `LEN`
-at `NO_METAMETHOD`, and `NEWTABLE`/`CLOSURE`'s GC path. The original entry
-follows.*
+recommended — ~~it moves only 3 rows (`GETGLOBAL`/`GETTABLE`/`SELF`)~~ **it
+moves 4 rows since M5 task 1 regraded `LEN`** (`GETGLOBAL`/`GETTABLE`/`SELF`
+plus `LEN`, which joined the delta because with `NO_METAMETHOD` at `READ_HEAP`
+it is `TRUSTING`'s own "a table read may be reordered freely" that takes it back
+to `PURE`) — and the corpus falsifies the first three. `lift/effects.py`'s
+behaviour ~~is unchanged~~ **changed in exactly one row at M5 task 1**. Two rows
+were found under-graded and left alone pending the full axiom-change protocol:
+~~`LEN` at `NO_METAMETHOD`~~ **`LEN` was regraded `PURE` → `READ_HEAP` at
+`NO_METAMETHOD` by M5 task 1 (§1 of the M5 agenda below), with a null
+differential over all 1944 protos**, and `NEWTABLE`/`CLOSURE`'s GC path, which
+is still open and still not recommended.
+
+*Two corrections above, both landed at M5 task 12; the strikethroughs are kept
+rather than silently rewritten, because this paragraph is cited from CLAUDE.md
+as the place the M4 finding is recorded and a reader arriving from there needs
+to see what moved. The third correction from the same M5 task 1 note is in
+`lift/effects.py`'s own module docstring, which claimed the inlining gate
+consumes this table — untrue since M3 task 8, and the paragraph two below says
+so.*
+
+The original entry follows.*
 
 `lift/effects.py` grades every opcode under three modes — `STRICT`,
 `NO_METAMETHOD`, `TRUSTING`. Per CLAUDE.md **only `STRICT` has a
@@ -1083,17 +1130,25 @@ original's".
 
 # M5 agenda
 
-Everything below is **open**. It came out of M4 and, like the M3 material
-above, would otherwise be lost with the SDD workspace. Written at the M4 wrap
-(task 12, 2026-08-12). Numbered so items can be cited; the numbering is not a
-priority order — sizes are noted per item.
+Everything below is **open unless its heading says otherwise**. It came out of
+M4 and, like the M3 material above, would otherwise be lost with the SDD
+workspace. Written at the M4 wrap (task 12, 2026-08-12). Numbered so items can
+be cited; the numbering is not a priority order — sizes are noted per item.
+Items closed during M5 keep their record verbatim and gain a "Closed" section,
+same convention as §§1–9 above.
 
 Provenance and honesty rules, same as the sections above: every figure quoted
 here was measured this session unless it says otherwise, and where a figure
 carried forward from an earlier task did not reproduce, the discrepancy is
 stated rather than smoothed over.
 
-## 1. Regrade `LEN` at `NO_METAMETHOD`: `PURE` → `READ_HEAP` (axiom layer)
+## 1. Regrade `LEN` at `NO_METAMETHOD`: `PURE` → `READ_HEAP` (axiom layer) — DONE (M5 task 1)
+
+*Everything until "Closed — M5 task 1" below is the record as it stood before
+the change; present tense in it means "before M5 task 1". Its figures and
+citations were re-measured and all of them reproduced. The figure that did
+**not** reproduce is one the M5 plan added on top of this item — see the Closed
+section.*
 
 **This is a confirmed-wrong row in the axiom table.** It was found by M4 task
 11 and left alone deliberately, because CLAUDE.md requires an `lvm.c` citation
@@ -1127,6 +1182,67 @@ reason before and after, plus `scripts/run_corpus.py` reproducing
 follow its shape, including the synthetic fixture that proves the row is
 load-bearing even when the corpus cannot move.
 
+### Closed — M5 task 1 (commit `b0852ff`)
+
+The row is now `ARB / READ_HEAP / PURE`. `src/pyluadec/lift/effects.py`'s
+`UNM | LEN` branch was **split** so the regrade could not drag `UNM` with it
+(`UNM` at `NO_METAMETHOD` genuinely is `PURE`); `tests/test_effects_len.py`
+pins both halves and owns the full record.
+
+**Citations, all re-verified against `vendor/lua-5.1/src/` after the edit** —
+the M4 ranges quoted above reproduced exactly:
+
+| range | what it is |
+| --- | --- |
+| `lvm.c:514-533` | the whole `case OP_LEN:` |
+| `lvm.c:517-520` | `case LUA_TTABLE:` → `luaH_getn` — a table never reaches the metamethod arm, so `NO_METAMETHOD` removes nothing |
+| `lvm.c:521-524` | `case LUA_TSTRING:` → `tsvalue(rb)->len`, genuinely pure |
+| `lvm.c:525-530` | `default:` → `call_binTM(..., TM_LEN)` / `luaG_typeerror` — the only metamethod arm |
+| `ltable.c:560-576` | `luaH_getn`: reads `t->sizearray`, binary-searches `t->array[...]` (561-571) |
+| `ltable.c:532-553` | `unbound_search`, the hash-part path |
+| `ltable.c:435-449` | `luaH_getnum`, called repeatedly by the above |
+
+**The differential run was null.** `classify_registers`' four fields
+(`locals`/`temps`/`loop_vars`/`temp_defs`) plus every proto's certification
+level, rung and refusal reason, swept over all **1944 proto occurrences of
+229 files** before and after: the two sweeps are byte-identical (sha256
+`5d5e4335…0efea3fe`), and `scripts/run_corpus.py` reproduced
+`corpus/ledger.jsonl` byte-for-byte (`a45d8e06…7ddb1039`; 1389/1478 unique
+`L3`, 94.0%; 1855/1944 occurrences, 95.4%).
+
+Null was predicted, and the *reason* is stronger than the prediction: not only
+does nothing in `src/` select `NO_METAMETHOD`, **nothing in `src/` reads
+`InstrEffects.effect` at all.** Downstream consumes only
+`reads`/`writes`/`reads_open`/`writes_open`; the lattice stopped being the
+inlining gate at M3 task 8 and has had no consumer since. That is measured and
+pinned (`test_nothing_in_src_reads_the_effect_field`), and it means **no
+synthetic fixture can show this row load-bearing** the way M4 task 8's
+`TAILCALL` fixture could — that row moved `classify_registers`, which reads
+`writes_open`. Stated rather than papered over: this correction is
+unobservable in today's pipeline and was made because the axiom layer is
+supposed to be true.
+
+**One knock-on, and one figure from the M5 plan that did not reproduce:**
+
+- Knock-on: `LEN` **joins `TRUSTING`'s delta**. With both looser columns at
+  `PURE`, `TRUSTING` moved nothing on this row; with `NO_METAMETHOD` at
+  `READ_HEAP`, `TRUSTING`'s own assumption ("a table read may be reordered
+  freely") is what takes it back to `PURE`. So `TRUSTING` now moves **4** rows
+  below `NO_METAMETHOD`, not 3 — `GETGLOBAL`, `GETTABLE`, `SELF`, `LEN` — and
+  all 4 are `# UNARGUED`. `NO_METAMETHOD`'s `# UNARGUED` count went 1 → 0 as
+  planned.
+- Did not reproduce: the M5 plan predicted "the 20/18 entailment split moves".
+  **It does not.** `test_mode_columns_split_20_entailed_18_relaxed` passed
+  unmodified: `LEN` was already one of the relaxed 18 (its `STRICT` column is
+  `ARBITRARY` and its looser columns were below it) and it still is. The split
+  is derived from `analyze()` rather than asserted in prose, which is exactly
+  why the test settled this instead of a person arithmetic-ing it.
+- Also re-measured and reproduced: **22 `LEN` sites** in the corpus, across
+  **8** protos of the 1944.
+
+Suite after: **516 passed in 42.09s** (4 new tests, all in
+`tests/test_effects_len.py`, which costs 0.04s on its own).
+
 ### Recorded beneath item 1, deliberately NOT to be fixed
 
 These two came out of the same review and are **not** defects to schedule.
@@ -1152,8 +1268,20 @@ They are here so they are not rediscovered and re-litigated:
   nothing checks it. If item 1 is picked up, write that convention down in the
   same pass — it is cheaper than rediscovering why a future pass that reuses
   `[b, c]` after a `CONCAT` produces wrong code.
+  **Status after M5 task 1: item 1 was picked up and this was NOT done.** The
+  task's brief scoped it to one cell of the `LEN` row plus the mode-column
+  census, and writing a scratch-register convention means auditing every
+  consumer of `CONCAT`'s operand range, which is its own piece of work. The
+  trigger is left standing here deliberately, pointed at whoever next touches
+  `express/reconstruct.py`'s handling of `CONCAT`.
 
-## 2. Full ratchet CI — baseline diff, downgrade = fail (spec §5's complete form)
+## 2. Full ratchet CI — baseline diff, downgrade = fail (spec §5's complete form) — DONE (M5 task 8)
+
+*Everything from "Carried from §7" to the "Closed" heading below is the record
+as it stood before the change; present tense in it means "before M5 task 8".
+All three of its figures were re-measured and reproduced exactly. The one
+number it did not carry — what splitting the key would cost — is in the Closed
+section.*
 
 Carried from §7 above, where it was scoped to M4 and did **not** get done. M4
 delivered the field that makes it *useful* (`refusal_reason`, so a regression
@@ -1201,7 +1329,156 @@ the time), and it means the ported fuzz harness is mostly *available* rather
 than *standing*. A ratchet CI is the natural place to run the full 24 —
 nightly or on the baseline-diff job — rather than in the per-commit suite.
 
-## 3. The 89 non-`L3` unique protos, and the 17 files still on fallback
+### Closed — M5 task 8 (commits `1127e25`, docs to follow)
+
+All three parts landed. Authority for the details is
+`docs/runbooks/structured-pipeline.md` → "Ratchet the ledger against a
+baseline", "The `git bisect run` predicate", "CI: there is none", and "The
+ledger's grouping key — pinned, not split".
+
+**1. `scripts/ratchet_diff.py OLD NEW`.** Exits 1 on seven regressions — level
+downgrade, rung downgrade (a *higher* `l3_level` is a *weaker* proof), removed
+row, an occurrence no longer walked while its row survives, an `L3` row
+carrying a `refusal_reason`, a per-occurrence `shipped` going `structured` →
+`fallback`, and a row arriving at `L0` — printing the offending rows grouped by
+`refusal_reason` cluster. 0 on upgrades, added rows and fields the *baseline*
+lacks. Two real diffs at the M5 task-8 commit: `eb08890` → HEAD is **41
+upgraded, 0 downgraded** (L3 1389 → 1430); `bbe74f6` → HEAD is **318 upgraded,
+0 downgraded** (1112 → 1430).
+
+**Exit codes, corrected in round 1.** This entry previously said "2, never 1,
+on an unreadable input (bisect reads 1 as 'bad')". That protection did not
+exist: `git-bisect(1)` reads **every** code in 1..127 except 125 as bad, so 2
+was a verdict too, and a mistyped predicate would have converged silently on an
+innocent commit (measured on a scratch repo — `git bisect run` with an
+unconditional `exit 2` announced a first bad commit). The non-verdict codes are
+now **125** (this tree cannot be judged: the ledger under test is missing,
+malformed, or has duplicate `shash` rows → git skips) and **128** (the
+instrument is misconfigured: usage, a bad baseline, or an internal error in the
+diff → git aborts). The internal-error case matters on its own: an uncaught
+`KeyError` used to escape `main` and become exit 1, i.e. an instrument fault
+reported as a tree verdict.
+
+Non-vacuity is the deliverable and was treated as one. `tests/test_ratchet_diff.py`
+is **43** tests (37 at this task's close; M5 task 9 added 6 more for the
+`l2-lost` and `l2-coverage-downgrade` kinds — re-counted 2026-08-13),
+one named case per failure mode plus the CLI contract, each
+feeding a hand-mutated copy of the real committed ledger and asserting a
+non-zero exit **naming the row**. The standing claim is that neutering any one
+check turns at least one named case red and only cases belonging to that
+check — deliberately weaker than the "exactly its own test(s)" this entry used
+to assert, because the mutation pass caught something on each of the last two
+rounds: round 1's exit-code tests were written against the *symbols*, so
+reverting both constants to 2 left all 24 green; round 2 found that the pass
+had never been run over round 1's `load_rows` guards, two of which were
+unpinned and one load-bearing (deleting `isinstance(row, dict)` left the whole
+664-test suite green while a scalar ledger line escaped as an `AttributeError`
+and exited 1 — a tree verdict from an instrument fault, which is finding 2
+reintroduced by its own fix). Both are pinned now; see
+`structured-pipeline.md` → "Non-vacuity".
+
+The `git bisect run` predicate was **verified by running a bisect**, not
+described. Round 1 rewrote it: the original `run_corpus.py … || exit 125`
+mapped a **compile regression** to *skip*, because `run_corpus.py` returns 1
+when a file fails to compile *after* writing a ledger full of `L0` rows — so
+the loudest regression class the ratchet exists for was unbisectable, and the
+original verification (an injected `StructureError`, which falls back and still
+compiles) never touched that path. The predicate now asks whether a ledger was
+produced (`rm -f corpus/ledger.jsonl` … `test -s corpus/ledger.jsonl || exit
+125`) rather than what `run_corpus.py` returned, and was re-verified against an
+injected compile regression: at the injecting commit `run_corpus.py` exits 1
+with `compiled 222/229` and a ledger holding **188 `L0` rows**, the old
+predicate returns **125 (skip)**, and the new one bisects to that commit in
+**22s / 2 probes** with 191 clustered regressions. Details and evidence:
+`structured-pipeline.md` → "The `git bisect run` predicate".
+
+**2. The ledger key: PINNED, not split. The ledger did not move** —
+`corpus/ledger.jsonl` is byte-identical. Re-measured 2026-08-12 and reproducing
+the figures above exactly: **16 of 1478** groups carry >1 debug fingerprint,
+**462** fingerprints between them (446 more than one each), **0** groups
+disagree on `(level, rung, refusal_reason)` — the last re-measured on the
+*triple*, one field stronger than the `(level, rung)` this entry claimed, and
+still 0. The number this entry did not have: splitting would take the ledger
+from **1478 rows to 1924**, all 446 additions duplicate verdicts, landing in
+the same commit as the instrument that diffs the ledger by row identity. So
+`run_corpus.py::key_disagreements` asserts the invariant over every occurrence
+instead, and `main()` refuses to write a violating ledger; the exposure figures
+now print on every run. If it ever fires, the fix is to split the key.
+
+**3. The full generated sweep** is gate 3 of `scripts/ratchet_job.sh`.
+Re-measured: **24 cases in under 3 seconds** (13 runs across this task span
+2.21–2.54s) against **~0.3s** for the standing 3 — so this entry's "~1.7s" did
+not reproduce, and neither the point value "2.48s" nor the range
+"2.29–2.54s" survived contact with the next routine run. The fold-in costs the
+ratchet ~2s and the per-commit suite nothing.
+
+**Known limitation, recorded not fixed (round 2, N4).**
+`src/pyluadec/verify/ledger.py::write_ledger` writes `corpus/ledger.jsonl` in
+place, with no write-to-temp-then-rename. So a `run_corpus.py` killed
+mid-write can leave a *shorter but syntactically valid* ledger, and the two
+truncation shapes land on opposite sides of the verdict/non-verdict line:
+
+- truncated at a **line** boundary → valid JSONL with rows missing →
+  `ratchet_diff.py` reports `row-removed` and exits **1**, i.e. an I/O
+  interruption reported as a bad commit;
+- truncated **mid-line** → `json.JSONDecodeError` in `load_rows` → exits
+  **125**, correctly.
+
+The fix is a tmp+rename in `write_ledger`, which is a change to how the
+committed artifact is produced and does not belong in a round whose constraint
+is that the ledger stay byte-identical. Recorded here so the next person does
+not rediscover it from a confusing bisect.
+
+**CI: there is none.** Checked — no `.github/workflows/`, no `.gitlab-ci.yml`,
+no runner config anywhere in the repo. No workflow was invented for a repo that
+has never had one; the ratchet is `scripts/ratchet_job.sh` (suite + baseline
+diff + full sweep, 37.9s end to end), run at a wrap and before any merge that
+touches the ledger. If a runner is ever added, that script is the job body.
+
+Suite after round 3: **676 passed in 35.0-35.3s** (3 runs; 636 in 36.0s before
+the task, 655 at the task commit, 664 after round 1, 673 after round 2),
+against the 45s ceiling; +40 tests over the whole task at no measurable time
+cost, and all 37 `ratchet_diff` tests need no corpus.
+
+## 3. The 89 non-`L3` unique protos, and the 17 files still on fallback — LARGELY CLOSED (M5 tasks 4, 5, 6); the remainder is M6 agenda 1
+
+### Closed — M5 tasks 4/5/6 (measured 2026-08-13 at the task 12 tree)
+
+**89 non-`L3` occurrences → 48. 17 whole-file fallbacks → 7.** Route by route:
+
+- Task 4 closed the `build_sir` refusal leaves: refusals 31 → 13, `L3` unique
+  1389 → 1403, 3 files off fallback. The residual collapsed to **one defect**:
+  all 13 remaining refusals are **compound `if` conditions** (`and`/`or` with
+  an else arm) needing a condition tree in `regions.If`, with a committed
+  26-instruction repro at
+  `tests/test_sir_longtail2.py::COMPOUND_CONDITION_EXEMPLAR`.
+- Task 5 closed the mismatch/reconstruct leaves: `L3` unique 1403 → 1430, one
+  more file off fallback.
+- Task 6 added **hybrid emission**, which is what took the file count from 13
+  to 7 without needing every leaf closed: a chunk whose root does not certify
+  now ships structured text with fallback holes at the `CLOSURE` sites it
+  could not certify. 6 files ship that way.
+
+**The finding that matters for M6** is task 6's: the 7 remaining whole-file
+fallbacks are blocked on their own **root** proto, which a hybrid substitution
+cannot replace — and hybrid emission *unmasked* 4 roots whose faithfulness had
+never been compared at all, because certification used to die on a descendant's
+refusal before any comparison ran. One is adjudicated: `snr_music.lua`'s main
+collapses four distinct nested table constructors into **one aliased table**,
+i.e. `classify_registers` treating a temp as a local. Certification catches it,
+so nothing wrong ships. **The residual in the 7 is RECONSTRUCTION, not
+unrecognised control flow.** Carried to M6 agenda 1.
+
+The two `tests/test_semantic_regressions.py` cases this item said would go
+stale on purpose both did: `test_counter_closure_and_dispatch_mix` now
+certifies `L3` (closed by task 5, and its assertion was *strengthened* to pin
+both the level and the absence of `__pld_pc`), and
+`test_if_and_elseif_conjunctions_preserved` did not flip — it is one of the 13
+compound-`if` refusals, i.e. exactly the one defect above.
+
+*Original entry follows.*
+
+## 3 (original). The 89 non-`L3` unique protos, and the 17 files still on fallback
 
 The structuring residual after M4. `structured-pipeline.md` → "Current
 capability boundary" is the authority; it censuses the 89 two independent
@@ -1233,13 +1510,29 @@ certify" residual) and `test_if_and_elseif_conjunctions_preserved` (the
 both assertions in those two tests go stale on purpose, which is the signal
 to update them.
 
-## 4. The `L3.2 = canonical constant-pool order` rung: declined twice, decide or drop
+## 4. The `L3.2 = canonical constant-pool order` rung: CLOSED at 0 (M5 task 5)
 
-M3 measured 9 protos that differ from the original ONLY by constant-pool
-order; M4 task 6 re-measured **10** against a bar of ≥20 and declined again.
-Buying 10 rows costs a permanent widening of the certification gate — rung 2
-would have to argue that permuting a pool is meaning-preserving, and every
-future certification would then run under that admission. The full
+*Closed 2026-08-12. Do not re-open or re-measure. Original entry after the
+verdict.*
+
+**Verdict: the population is 0 and the rung is decided-not-doing.** M5 task 5
+found that every proto that had ever been in this population was one defect,
+not a normalization problem: `codecomp` (lcode.c:673-686) compiles `a > b` by
+evaluating `a` then `b` and then exchanging the operands to emit `OP_LT`, and
+`luaK_infix` interns `e1` before `e2` is parsed — so printing every `LT` as
+`<` reversed the interning order of the two operands' constants.
+`Reconstructor._reads_as_gt` recovers the `>`, and the re-measurement after
+it (same exact method) returns **0 of the 48 remaining non-`L3` protos**.
+`NORMALIZATIONS` and `LADDER_VERSION` were never touched. Full account:
+`structured-pipeline.md` → "The `L3.2 = canonical constant-pool order` rung:
+CLOSED, decided-not-doing".
+
+*Original entry:* M3 measured 9 protos that differ from the original ONLY by
+constant-pool order; M4 task 6 re-measured **10** against a bar of ≥20 and
+declined again. (M5 task 5 re-measured **11** at its start, before its
+fixes.) Buying 10 rows costs a permanent widening of the certification gate —
+rung 2 would have to argue that permuting a pool is meaning-preserving, and
+every future certification would then run under that admission. The full
 measurement method (exact, not a proxy) is in `structured-pipeline.md`. Either
 argue the rung properly or close this item; it has been re-measured twice at
 essentially the same number and re-deciding it a third time is waste.
@@ -1261,7 +1554,11 @@ a wrong split cannot certify). The gap is confined to protos still on the
 fallback path, which is why this item shrinks as item 3 progresses and why
 `snr_novel` is one of the 17.
 
-## 6. L2 differential-execution certification, and the key-sequence harness
+## 6. L2 differential-execution certification, and the key-sequence harness — DONE (M5 task 9)
+
+*Everything until "Closed — M5 task 9" below is the record as it stood before
+the change. One of its figures is right about the mechanism and wrong about
+the count; the correction is in the Closed section, not smoothed away here.*
 
 Spec M5 proper. The behaviour probe (L1.75) is the deepest instrument today
 and its reach ceiling is measured, not guessed: **the 3000-event cap truncates
@@ -1274,7 +1571,81 @@ predecessor's `pyluadec/DEBUG_KEY_SEQUENCE_HARNESS.md`, which carries two
 concrete historical bug checkpoints that convert directly into regression
 cases.
 
-## 7. Extract `express/names.py::_stack_discipline`
+### Closed — M5 task 9
+
+`scripts/probe_keyseq.{lua,py}`, `tests/test_l2_keyseq.py`, the `l2` ledger
+field, the dashboard rows, and two new `ratchet_diff` regression kinds
+(`l2-lost`, `l2-coverage-downgrade`). Full design, grammar, taint argument and
+coverage caveats: `docs/runbooks/structured-pipeline.md`, "The L2 gate".
+
+**The figure above that did not reproduce.** "The 3000-event cap truncates 132
+of 229 files mid-loop … getting past that ceiling wants a key-sequence-driven
+harness" is right that the cap binds on 132 files and right that key sequences
+are the lever for input-blocked ones — but the two sets barely overlap.
+Measured 2026-08-12, taking each capped file's most frequent recorded call
+over the whole trace: **101 are `vms`-dominated** (linear story scripts
+truncated by volume), **26 are `wait`-dominated** (24 of them containing
+`doScriptScene`, i.e. spinning in a dispatch loop), and only **5 are
+`pressButton`-dominated**. Nine files contain `pressButton` at all; five reach
+the poll, and the other four (`snr_mainmenu`, `snr_novel`,
+`snr_fragment_main`, `snr_story_main`) error before getting there under the
+frozen stub policy — a live M6 lead rather than dead ground.
+
+**Reach delivered: one file.** `snr_lib.lua` at L2@100% (3/3 protos entered,
+block coverage in [0.39, 0.95] of 57). The other four authored files are
+refused `taint-static`. In the committed ledger that is 2 rows / 3 proto
+occurrences badged and 164 occurrences carrying an explicit refusal.
+
+**The reason reach is one and not five** is the round-1 Critical: runtime
+taint marking is structurally blind to `stub == "literal"`, because `lvm.c`'s
+`equalobj` checks `ttype(o1) == ttype(o2)` before ever consulting `__eq`.
+Twelve laundering routes were measured granted with zero marks, and the idiom
+is the corpus' dominant one (`doScriptScene == "<literal>"`, **427 sites
+across 23 of the 229 files** measured on the original bytecode; the
+310-across-20 figure that first appeared here counts the decompiled artifact
+text, a 27% smaller population). A static stub-taint analysis over the
+original lifted bytecode now refuses them. It is path-insensitive, so a single
+site anywhere in a file refuses the whole file — conservative on purpose.
+
+Rounds 2, 3 and 4 each closed further holes **inside the code written to
+close the previous one** — twelve laundering routes in round 0, four in round
+2 (the `read - written` seed exemption, a stub table key, an accessor's return
+value), eight more in round 3 (the trusted-callee list trusting `pcall` /
+`assert` / `rawget`, a shadowed base name, `_G` and `getfenv()`, a closure
+writing the parent's local, a stub-decided loop trip count, and a hard-coded
+loop-variable window that lost taint past four variables), and six in round 4
+(a stub in an allowlisted callee's arguments, harness state carried between
+calls, and four more environment-substitution mechanisms). Every one was a
+byte-equal trace with zero runtime marks and a grant. **Reach stayed at 1/5
+through all four rounds** — every fix refused fixtures, never a corpus file. Read the
+"what the pair still cannot see" list in `structured-pipeline.md` as *what
+could be constructed*, not as a proof.
+
+Round 2 closed a hole of the same class in that analysis' own seed rule: it
+exempted globals the chunk writes, computed as `read - written` over the whole
+chunk with no ordering, and `env.__index` resolves a global from `envfields`
+only once the write has actually executed. Three fixtures granted through it,
+including laundering *through* the exemption. The exemption is deleted rather
+than made sound, because it was measured to buy no reach. Round 2 also made a
+stub table KEY and a call's RETURN value stub-derived; the remaining gaps are
+arguments, script-table round trips and `VARARG`, each a committed test.
+
+**What is still open after this.** The two historical checkpoints from
+`DEBUG_KEY_SEQUENCE_HARNESS.md` are *runnable* (their sequences are authored:
+`entry=systemOption.OptionMain`, `entry=systemConfig.ConfigMain`) but
+`snr_common.lua` refuses on `taint-static`, so they carry no badge; what they
+ASSERT is M5 task 10 either way. Making the static analysis path-sensitive
+(only refusing on sites the sequences actually reach) is the obvious lever for
+reach and needs proto correspondence between original and artifact that the
+fallback files do not have. The three named gaps in the analysis — call
+arguments, script-table round trips, aliased launderers — are each a committed
+failing-by-construction test in `tests/test_l2_keyseq.py`.
+
+## 7. Extract `express/names.py::_stack_discipline` — DONE (M5 task 11)
+
+*Everything until "Closed" below is the record as it stood before the
+change. Three of its five figures did not reproduce; see the Closed
+section.*
 
 Deferred during M4 task 13 and recorded **only in a gitignored report**, which
 is exactly the failure mode this file exists to prevent. Re-derived
@@ -1294,7 +1665,164 @@ not for leaving it alone. (An earlier note put `names.py` at 832 lines; it is
 831. Trivial, recorded because carried-forward numbers are how this project
 gets bitten.)
 
-## 8. The ledger's `refusal_reason` drops `Mismatch.path`
+### Closed — M5 task 11 (commits `61f55af`, `b01894a`, and this one)
+
+Split into `src/pyluadec/express/freereg.py`, exporting `stack_discipline`.
+`names.py` keeps the half of the analysis that is about `for` headers (which
+slots a loop header owns, over which pcs) and calls the other half through the
+four callbacks that were **already** its whole interface — `_stack_discipline`
+never closed over `classify_registers`' state, which is why step 1 could move
+the body textually.
+
+**Three of the five figures above did not reproduce** (re-derived 2026-08-13 at
+`e1dc62c` by AST, before any edit):
+
+| figure | this item said | measured |
+| --- | --- | --- |
+| `_stack_discipline` lines | 462 | **467** |
+| `if`s in it | 33 | 33 ✓ |
+| nested closures in it | 11 | 11 ✓ |
+| `names.py` lines | 831 | **968** |
+| `classify_registers` lines / closures | 278 / 4 | **410 / 11** |
+| "one function is 56% of the module" | 56% | **48.2%** |
+
+The module and `classify_registers` had both grown since 2026-08-12 (M5 task 5
+put the loop-ownership windows in), which is the whole reason the fraction
+moved the *opposite* way from what a growing extraction target would suggest.
+
+After (measured the same way at the tip):
+
+| | before | after |
+| --- | --- | --- |
+| `names.py` | 968 lines | **494** |
+| `freereg.py` | — | **558** |
+| the walk itself | 467 lines / 33 `if` / 11 closures | **308 / 22 / 7** |
+
+A fourth figure worth recording because it reframes the item: of the walk's 467
+lines, **only ~192 were code** — 121 docstring, 117 comment-only, 37 blank. The
+prose is the asset here (each claim in it was individually verified in an M4
+review), so "extract" had to mean *move the evidence with the code it
+describes*, not compress it. Nothing was deleted except one dangling
+half-sentence (below).
+
+What changed inside, beyond the move:
+
+- The three state-independent barriers became module-level functions
+  (`_same_block(block_floor, d, r)`, `_renders_as_literal(fn, def_pc)`,
+  `_bar_literal_operands(fn, li, pending)`) under a section heading matching
+  `structured-pipeline.md`'s "The four barriers on top of the pop-once rule",
+  so the runbook's map and the module's layout are isomorphic. The fourth
+  barrier stayed put and is marked in place — see the finding below.
+- The `pending` entry was a 4-element list read by magic index (`ent[3] = 1`);
+  it is now a `@dataclass(slots=True)` `_Pending` (`ent.bad = True`). Crossing
+  a function boundary with the raw list would have made the indices worse, not
+  better.
+- `push` was defined **inside** the `for pc in ordered` loop, rebuilt once per
+  instruction. It now takes `pc` and is defined once.
+- Deleted a dangling half-sentence comment, "`# Back-edge spans [target,
+  source]. luac's loops are natural and its`", which has sat above
+  `_same_block` since M4 task 13 (`783d15c`) describing nothing in the code.
+
+**Finding: the "four barriers" pin claim was true of three of them.**
+`structured-pipeline.md` said each of the four "is pinned by a fixture that
+fails when it is neutered (see `tests/test_express_liverange.py`)". Neutering
+each in turn (2026-08-13, before and again after the extraction, with identical
+results both times):
+
+| barrier | full-suite failing test ids with it neutered |
+| --- | --- |
+| 1 `_same_block` | 7: `test_express_liverange.py::…_cert_only[0]`, `test_express_testset.py::test_fixtures_certify_l3`, `test_certify_stripmode.py::test_stricter_gate_refuses_reconstructions_that_invent_a_local[return a and b or c-…]`, `test_effects_reconstructor_consistency.py::test_the_printer_arm_is_not_carried_entirely_by_arm_one`, `…::test_closures_captured_upvalue_is_covered_by_arm_one_only`, `test_hybrid_chunk.py::test_probe_reach_of_the_substituted_code`, `test_ledger_ratchet.py::…fixed_point` |
+| 2 RK/literal | 7, all of them in `tests/test_express_*.py`: `test_express_liverange.py::test_genuine_locals_are_not_inlined_away[5,8,9]`, `test_express_testset.py::test_fixtures_certify_l3`, three in `test_express_reconstruct.py` |
+| 3 `MOVE d, s` | 6: `test_express_liverange.py::…[13]`, `[14]`, `test_hybrid_chunk.py::test_corpus_hybrid_invariant_on_one_file`, `…::test_probe_reach_of_the_substituted_code`, `test_ledger_ratchet.py::…fixed_point`, `test_semantic_regressions.py::test_counter_closure_and_dispatch_mix` |
+| 4 read-poison blame | 2, and **nothing in any `test_express_*.py`** (126/126 still pass): `test_sir_loops_longtail.py::test_repeat_fixture_claims_every_pc_and_certifies[6]`, `test_ledger_ratchet.py::…fixed_point` |
+
+The express-scoped sets (which is what the first version of this table
+reported, without saying so) are identical before and after the extraction.
+
+### What each barrier is worth on the corpus
+
+Measured in round 1 by neutering each alone and **regenerating the ledger**:
+
+| barrier | corpus protos reclassified | `corpus/ledger.jsonl` |
+| --- | --- | --- |
+| 1 `_same_block` | 28 / 1944 | moves, 9 lines — 5 rows `L1`→`L3`, 1 `L3`→`L1` |
+| 2 RK/literal | **0 / 1944** | unchanged |
+| 3 `MOVE d, s` | 3 / 1944 | moves, 2 lines — 2 rows `L3`→`L1` |
+| 4 read-poison blame | 3 / 1944 | moves, 2 lines — no level change |
+
+So barrier 4 is load-bearing, and its pin is nowhere near where the runbook
+sent a reader — that finding stands. **But this section's first version bolted
+an unmeasured superlative onto it**: "it is in fact the only one of the four
+whose absence *moves the committed ledger*". That is FALSE — three of the four
+move it. The sole exception is barrier **2**, and that is the sharper result:
+`_bar_literal_operands`' literal test (and, separately, its RK C-slot arm
+alone) reclassifies **zero** corpus protos, so the corpus can say nothing at
+all about it and its entire evidence is the seven synthetic fixtures in the
+row above. It is the cleanest instance in this module of "the corpus is a
+weaker oracle than it looks", and the first version put the sentence on the
+wrong barrier. Corrected here, in `structured-pipeline.md`, in `CLAUDE.md`,
+and in the code comment on barrier 4 — the false claim shipped in commit
+`f99f307`, whose message repeats it; the message is left as written and this
+is the record.
+
+**Acceptance.** `corpus/ledger.jsonl` regenerated and byte-identical after each
+of the three commits. Suite 833 passed. Timing, interleaved OLD/NEW with
+`-p no:randomly` (which is a **no-op here** — no randomiser is installed; see
+§6 of the M6 agenda, added in the M5 final fix round — so this was an
+OLD-vs-NEW comparison in one fixed order, which is what it needed to be
+anyway), three pairs: OLD 37.40 / 37.93 / 38.61s, NEW 37.82 / 37.80 /
+38.42s — means 37.98 vs 38.01s, a 0.03s difference against a 1.21s spread
+*within* the OLD arm, i.e. no measurable change and no regression of M5 task
+2's recovery. Because the suite is dominated by `luac_sz4` subprocesses and
+would hide even a large regression in this function, `classify_registers` was
+also benchmarked directly over all 1944 corpus protos (best of 5, three
+interleaved pairs): OLD 509.6 / 507.9 / 511.7 ms, NEW 492.6 / 477.0 / 489.9 ms
+— **4.6% faster**, plausibly the per-instruction closure construction that
+`push` no longer does. That benchmark also sums `len(temp_defs)` over all 1944
+protos and gets **157236** on both arms, which is a behaviour-identity check
+that does not route through the ledger.
+
+**What corpus invariance does and does not prove.** A byte-identical ledger and
+an identical `temp_defs` total say the 1944 corpus protos classify identically.
+They say nothing about inputs the corpus lacks — and the corpus reaches 33 of
+38 opcodes, so the `VARARG` and `SETLIST`-open arms of the dispatch, among
+others, are exercised only by synthetic fixtures in the suite. Those fixtures
+pass; that is the evidence, and it is weaker than the corpus number looks.
+
+
+## 8. The ledger's `refusal_reason` drops `Mismatch.path` — DONE (M5 task 12)
+
+### Closed — M5 task 12
+
+`structure/structured.py::_rejected` now emits `mismatch: <field> at <path>`
+when the first mismatch is not at `root`, and the bare `mismatch: <field>` when
+it is. The path is safe for a checked-in file for the reason the item gives:
+`verify/normalize.py::_cmp` builds it from `"root"` and subproto INDICES
+(`f"{path}/{i}"`), so it carries no bytecode-derived text by construction,
+unlike `Mismatch.a`/`.b`.
+
+**What it bought, measured 2026-08-13 over all 22 `mismatch` occurrences: 20
+are at `root`, 2 are not** — `snr_s1_10_s.lua:main` at `root/48` and
+`snr_s3_10_s.lua:main` at `root/59`, both hybrid roots whose real defect is a
+descendant's `code`. So the ledger moved exactly 2 rows;
+`scripts/ratchet_diff.py` against `affd56f` reports 0 removed / 0 downgraded /
+0 rung downgrades, exit 0, and the `refusal_reason` KIND is unchanged
+(`cluster_of` splits at the first colon), so `test_m3_exit.py` and
+`test_m4_exit.py`'s vocabulary coupling holds untouched.
+
+**One correction to the item's own text.** Its verification example —
+"`snr_lib.lua:main` has `n_insns: 5` and reports `structure: pc 73: if targets
+out of range`" — does not illustrate the defect it names. That is a
+`structure:` reason from `_refused`, produced when an ancestor adopts a
+descendant's `StructureError`; `_rejected` and `Mismatch.path` are not
+involved. The ancestor-adopts-descendant confusion is real and is a **separate**
+gap that this fix does not close: a `StructureError`'s `pc` is relative to
+whichever proto raised it and nothing in the string says which. Carried to M6
+agenda 5.
+
+*Original entry follows.*
+
+## 8 (original). The ledger's `refusal_reason` drops `Mismatch.path`
 
 `structure/structured.py::_rejected` builds the reason as
 `f"mismatch: {mismatches[0].field}"`, discarding `Mismatch.path`. Because
@@ -1309,7 +1837,35 @@ file, and `path` was dropped alongside them. But `path` is a proto path, not
 payload, so it can be included; doing so is what makes the field usable for
 item 2's clustering without opening the artifact to corpus text.
 
-## 9. The `compile:` refusal vocabulary is unexercised
+## 9. The `compile:` refusal vocabulary is unexercised — DONE (M5 task 12)
+
+### Closed — M5 task 12
+
+`tests/test_structured_certify.py::test_the_compile_refusal_vocabulary_is_reachable`
+drives all **three** producers by monkeypatching the printer to emit text
+`luac_sz4` rejects, and asserts each reason string exactly:
+
+* `compile: candidate chunk did not recompile` (chunk-root path),
+* `compile: candidate wrapper did not recompile` (nested path),
+* `compile: wrapper yielded 2 nested functions, expected 1` (nested path,
+  wrapper shape) — reached with a body that closes the wrapper's own function
+  early and adds a second one to the same `return` list, which is what makes
+  the wrapper's *main* proto carry two children.
+
+Two things worth keeping. Each case needs a **distinct** proto, because
+`certify_proto` memoizes per `(oracle identity, is_chunk_root, _memo_key)` and
+would otherwise hand case 3 case 2's verdict — the first draft did exactly
+that and failed. And a patch is the *only* way in: M5 task 8 measured that a
+compile fault cannot be injected into the structured emitter at all, because
+the certification gate converts it into an `L1` verdict and a fallback
+artifact. The counts the item quotes are re-measured 2026-08-13 on the
+committed ledger: `structure` 21, `mismatch` 22, `reconstruct` 5, **`compile`
+still 0** — this closes the *demonstration* gap, not the corpus one, and the
+corpus one is not a defect.
+
+*Original entry follows.*
+
+## 9 (original). The `compile:` refusal vocabulary is unexercised
 
 `test_m4_exit.py`'s `REASON_KINDS` commits four kinds. Measured on the
 committed ledger 2026-08-12: `structure` 49, `mismatch` 35, `reconstruct` 5,
@@ -1321,7 +1877,57 @@ is `run_corpus.py::_L0_REASON`, a different producer. A synthetic fixture that
 makes the printer emit something `luac_sz4` rejects would close this; until
 then a fourth of the committed vocabulary is asserted but not demonstrated.
 
-## 10. Test-hygiene set (carried from the M4 task 2 review, unfixed)
+## 10. Test-hygiene set — SWEPT (M5 task 12): 2 fixed, 1 closed-as-unlocatable, 3 re-deferred
+
+### Closed — M5 task 12, item by item
+
+The suite-time measurement pass this set was deferred for: **860 passed,
+42.2–43.4s** on macOS 15.2 / Apple M4 (arm64), against a 45s ceiling. That is
+**1.6s** of headroom at worst on this host (a reviewer's host measures the same
+tree at 39.4–41.1s, i.e. ~4s — quote the host with the number), which is itself
+now an M6 item (agenda 6) — and it is the reason the three remaining entries
+were re-deferred rather than swept: each adds test code, and two of them add
+test *count*.
+
+1. **"A dead loop-invariant condition inside an unpack generator" —
+   CLOSED AS UNLOCATABLE, with the measurement.** Two AST scans over all 62
+   `tests/*.py` and all `scripts/*.py`: (a) every comprehension whose `if`
+   condition uses no name bound by its own `for` target → **0 hits**;
+   (b) every `for` inside a generator function whose nested `if`/`while` test
+   uses no loop-target name → 2 hits, both false positives
+   (`tests/test_effects_reconstructor_consistency.py::pcs_frame`, where the
+   tested names `li` and `fx` are assigned in the loop BODY). Either it was
+   fixed incidentally between M4 and now, or the description does not match
+   what was found. Not re-deferred: an unlocatable item is not an item.
+2. **`mismatches[0].field` assertions pinning `_cmp`'s field ordering —
+   RE-DEFERRED**, and the item overstates it: there is **one** such site in the
+   whole suite (`tests/test_emit_while.py:242`), not several. It is a genuine
+   coupling and the repair (assert set membership over all mismatches) is two
+   lines, but it would weaken the only test that pins *which* field diverges
+   for that shape. Re-deferred as M6 agenda 6.
+3. **A fallback assertion coupled to the `__pld_` textual preamble —
+   RE-DEFERRED.** Same shape as 2 and same reason; note that M5 task 5
+   deliberately *added* a `b"__pld_pc" not in out.source` assertion in
+   `tests/test_semantic_regressions.py` as a strengthening, so "coupled to the
+   preamble" is now sometimes the right coupling. Needs a per-site judgement,
+   not a blanket sweep. M6 agenda 6.
+4. **Three hand-rolled region walks → one `_CHILDREN`-driven generator —
+   RE-DEFERRED.** Still correct, still worth doing, still pure test-code churn
+   at a milestone wrap. M6 agenda 6.
+5. **15 `CASES` driven by a plain `for` loop — FIXED.**
+   `tests/test_express_testset.py::test_fixtures_certify_l3` is now
+   `pytest.mark.parametrize`d, so a failure names the case rather than the
+   loop. There are **17** cases, not 15 (measured 2026-08-13); the
+   parametrisation makes the count self-maintaining.
+6. **`Repeat.negated`'s inverted name — DECISION REAFFIRMED, unchanged.** No
+   consumer reads it (the printer derives polarity from the instruction's own
+   A/C field, and `Printer.condition`'s docstring says so). Renaming a field
+   nothing reads is churn; the rule stands that if a consumer ever appears,
+   the rename happens first.
+
+*Original entry follows.*
+
+## 10 (original). Test-hygiene set (carried from the M4 task 2 review, unfixed)
 
 Re-deferred at task 12 as a group rather than piecemeal, with one reason: they
 are all in `tests/`, none changes behaviour, and the suite is at 40.0s against
@@ -1345,7 +1951,46 @@ measurement pass, not a wrap commit's leftover headroom. Individually:
   reads it** — the printer derives polarity from the instruction's own A/C
   field. If a consumer ever appears, the rename must happen first.
 
-## 11. Probe minors (`scripts/probe_global_state.*`, `scripts/probe_behaviour.*`)
+## 11. Probe minors — SWEPT (M5 task 12): 1 documented in place, 4 re-deferred as future-corpus traps
+
+### Closed — M5 task 12
+
+Every entry here is latent on today's corpus by the item's own admission, so
+the sweep asked one question per entry: *is there a repair that does not change
+the probes' wire format?* The wire format is load-bearing — `_PINNED_DIVERGENCES`
+in `scripts/probe_global_state.py` and the behaviour probe's two pins are exact
+strings in it — so "escape it on the Lua side" is not the cheap fix it looks
+like.
+
+- **`payload_of` mis-splits an `ERR|` message containing `|` — DOCUMENTED IN
+  PLACE, not fixed.** Both candidate repairs cost more than the defect
+  (escaping `|` moves the wire format under four pinned strings; splitting from
+  the right is no better, since the globals block can contain `|` inside a
+  serialised string value). And it is measurably dead: **this branch has no
+  live caller** — both call sites in `tests/test_global_state_probe.py` reach
+  `payload_of` only for results starting `OK|`. That fact is now a comment at
+  the site, so the next reader does not have to re-derive it.
+- **Value-side serialisation ambiguity (`X="a" Y=1` vs `X="a\nstring:Y=1"`) —
+  RE-DEFERRED.** Same family as the key collision that WAS fixed, and the fix
+  is the same shape (a length-prefixed or escaped encoding), which is a wire
+  format change. 222/229 payloads are `string:main=<function>`. M6 agenda 4.
+- **`strip_location` strips only the FIRST location prefix — RE-DEFERRED.**
+  This is the one remaining way `ERR|` residue can be representation-dependent
+  for a reason other than `getobjname`, and it needs a re-raised error to fire.
+  M6 agenda 4.
+- **Table/function-valued KEYS serialise via `tostring(k)` (an address) —
+  RE-DEFERRED.** 0 occurrences today; would make the probe non-deterministic
+  across its two processes the moment one appears, which is a loud failure, not
+  a silent one. M6 agenda 4.
+- **`pfields`/`envfields` keep the proxy and `env` raw tables permanently
+  empty, so `pairs`/`next`/`rawget` on them report empty — RE-DEFERRED.** Lua
+  5.1 has no `__pairs`, so this is not fixable inside the metatable design at
+  all; it needs a different stub representation. Already commented at both
+  sites (M4 task 12). M6 agenda 4.
+
+*Original entry follows.*
+
+## 11 (original). Probe minors (`scripts/probe_global_state.*`, `scripts/probe_behaviour.*`)
 
 All latent on today's corpus; each is a correctness trap for a *future* corpus
 or a future probe user, which is why they are recorded rather than closed.
@@ -1380,7 +2025,118 @@ together 54% of the wall clock. A process-level memo was estimated at ~24% of
 the subprocess cost. A review has already agreed neither test should be
 *sampled*, so caching is the only lever left. The ceiling is 45s.
 
-## 13. Readability items surfaced by the M4 evaluation
+### Closed — M5 task 2 (commit `5b7d893`)
+
+Done, and **two of the numbers above are wrong**; the mechanism that actually
+paid is not the one this item describes.
+
+- "the corpus holds 1478 unique `_memo_key`s over 1944 protos" — **false**.
+  1478 is the number of distinct `structural_hash`es (it is the ledger's own
+  unique-proto count). Distinct `_memo_key`s, which is what the memo is keyed
+  on and must stay keyed on, number **1924** over the same 1944 occurrences
+  (229 chunk roots + 1695 nested). Only 16 `structural_hash` groups carry more
+  than one debug fingerprint, but those 16 hold **462** fingerprints between
+  them, i.e. **446 more than one each** — and 446 is exactly 1924 − 1478, so
+  the whole gap between the two counts lives in those 16 groups. (An earlier
+  revision of this bullet said "~446 fingerprints", attaching the right number
+  to the wrong quantity; re-measured 2026-08-12, both figures above reproduce
+  exactly.) They are tiny repeated closures: 482 occurrences with 1–39
+  instructions each, at 444 distinct `linedefined` values, and the largest
+  single group is a **one-instruction** proto appearing 292 times under 273
+  different line numbers.
+- "~24% of the subprocess cost" — **false**, and it is 466/1944 = 24.0%, i.e.
+  arithmetic on the wrong 1478. The true *intra*-pass redundancy is
+  **20/1944 = 1.0%**. `scripts/run_corpus.py`, which makes exactly one pass,
+  gains ~1%.
+
+What actually recovered the time is **cross-pass** reuse, which this item did
+not identify: the suite certifies the whole corpus at least twice per process
+(conftest's session `decompiled` fixture, then `test_ledger_ratchet`'s fresh
+`run_corpus.main()`), and the second pass is now free. A second full corpus
+pass in one process costs **0.65s** against ~9s cold.
+
+Measured on macOS arm64, 2026-08-12, same machine both sides:
+
+| | before | after |
+|---|---|---|
+| full suite | 43.90 / 43.42 / 46.10 / 44.85 / 43.75s (516 tests) | 32.04 / 32.04 / 32.42s (519 tests) |
+| `test_ledger_ratchet` (in suite) | 13.64 / 13.17s | 1.89 / 1.87 / 1.89s |
+| `test_behaviour_probe` setup | 11.40 / 11.06s | 10.68 / 10.82 / 10.95s |
+
+**~11.9s recovered** on the median (43.90 → 32.04), against a ≥6s target. Note
+the "before" row: the item's own 11.7s/40.0s figures had already drifted to
+13.2-13.6s of 43.4-46.1s, i.e. the suite was over the 45s ceiling on one run
+of five before this landed.
+
+The behaviour-probe setup is unchanged by design — it is the *first* payer.
+`test_ledger_ratchet` run alone is still 9.8-10.0s. The saving is a transfer,
+not a disappearance.
+
+Implementation: the memo moved from `emit_certified_chunk` (per chunk) into
+`structure.structured.certify_proto` (module-level dict, per process), keyed on
+`_oracle_identity() + (is_chunk_root,) + _memo_key(proto)`. `is_chunk_root` is new
+to the key and is a genuine soundness fix for the wider scope — it retires the
+"a proto cannot equal a strict descendant of itself" argument that
+`ProtoCert.source`'s field comment used to have to make. `corpus/ledger.jsonl`
+is byte-identical (md5 `d4a5ac56938ef0e19f22e7d36a6be0d7` before and after).
+
+Two costs, both accepted rather than hidden: a long-running process accumulates
+1924 entries holding 4.08 MB of chunk `source` bytes (`clear_certification_cache()`
+releases them), and `test_ledger_ratchet` no longer re-executes `luac` per
+proto, so a hypothetical non-determinism in certification would now be masked
+there rather than caught — recorded in `tests/conftest.py`'s `decompiled`
+docstring, which previously promised the ratchet consumed nothing another test
+computed.
+
+**Round 1 (fix commit `0d3d1b6`)** changed two things and re-measured a third.
+The oracle component of the key was `oracle_version()` memoized into a module
+global, which is constant for the life of a process and therefore could not
+partition the cache in any real scenario: the review demonstrated a warm cache
+serving a stale `L3` after `PYLUADEC_BUILD_DIR` (a supported knob that
+`oracle.build_dir()` re-reads per compile) was pointed at a `luac_sz4` that
+refuses everything. It is now the binary's own `(path, mtime_ns, size)`,
+re-`stat`ed per lookup, which catches both that swap and an in-place rebuild;
+cost 17.8 µs per lookup, ~45 ms on a warm corpus pass, nothing measurable on
+the suite. Second, the shared cache had no fence against a test poisoning it
+under a `monkeypatch` (whose teardown restores the attribute but not the cache
+entries computed under it): `tests/conftest.py` now snapshots and restores the
+dict around every test, at a cost that six interleaved A/B full-suite runs
+could not resolve against the suite's own noise (the fixture's docstring has
+the table). Suite after both: **523 tests, 31.98–34.18 s over 12 runs**, the
+spread being session-long thermal drift rather than anything in the diff;
+`corpus/ledger.jsonl` still byte-identical (md5
+`d4a5ac56938ef0e19f22e7d36a6be0d7`).
+
+## 13. Readability items surfaced by the M4 evaluation — DONE (M5 task 7)
+
+### Closed — M5 task 7 (output surface v2), re-measured at task 12
+
+All four printer-level items below landed, plus `elseif` (which the M4 report
+named as the highest-value one and this entry does not list). Re-measured
+2026-08-13 over the **216** fully-structured files against the predecessor's
+same 216: `["` **6085 → 0**, high-byte decimal escapes **991233 → 0**, `(-`
+**570 → 0**, line-leading `elseif` **0 → 282** (predecessor 278), and maximum
+nesting depth **61 → 8** against the predecessor's **10** — with ours deeper
+than the predecessor in **0 of 216** files. Non-ASCII bytes in our output:
+991233, against the predecessor's 991263.
+
+The downstream-coupling question this entry said to decide first WAS decided,
+by the human partner, and the answer is explicit versioning rather than
+preservation: the `post_process/` chain had already been broken two milestones
+earlier by our `l<depth>_<reg>` names, so v1's quirks are not kept. See
+CLAUDE.md's 「下游耦合」 section and `structured-pipeline.md`'s "Output surface
+v2" table. The bytes red line got a scoped, human-approved amendment for the
+UTF-8 item, implemented in exactly one function (`emit/lua.py::_str_lit`).
+
+Each of the five changes was verified by regenerating the whole ledger and
+requiring it byte-identical — which is the operational definition of a
+presentation-layer change, and which caught the one attempt that was not one
+(the first `elseif` draft dropped a semantic-regression case from `L3` to
+`L1`).
+
+*Original entry follows.*
+
+## 13 (original). Readability items surfaced by the M4 evaluation
 
 From `docs/reports/m4-readability.md`, which compares our output against the
 predecessor's shipped text at `<predecessor>/post_process/input/` (229 UTF-8
@@ -1410,7 +2166,70 @@ done without deciding the downstream-coupling question in CLAUDE.md's
   "顶层无缩进"), so check that before changing it.
 - Unary minus prints as `(-1)` where the predecessor prints `-1`.
 
-## 14. Still-open minors inherited from M2 and M3
+## 14. Still-open minors inherited from M2 and M3 — SWEPT (M5 task 12): 2 fixed, the rest decided
+
+### Closed — M5 task 12, item by item. None silently dropped.
+
+**Fixed:**
+
+- **`ingest/dispatch.py` — `_bridge_for()` outside the `try/except`.** Now
+  inside its own handler, re-raising `_bridge_for`'s own message as
+  `IngestError` (the message already names the cause and the repair command, so
+  re-wording it would only let the two drift). `ValueError` is deliberately NOT
+  caught: an unsupported width is a `BadHeader`-class fact about the input and
+  `parse_header` owns rejecting it. Pinned by
+  `tests/test_ingest_errors.py::test_a_stale_bridge_so_raises_ingest_error_not_bare_runtimeerror`,
+  which monkeypatches `serial_sizet_width()` to lie; neuter-proved by moving
+  the call back above the `try` and watching the `RuntimeError` escape
+  `pytest.raises(IngestError)`.
+- **`cfg/dom.py` — `_reverse_postorder`'s recursive DFS mutating the
+  process-global recursion limit.** Rewritten with an explicit stack; the
+  `sys.setrecursionlimit` pair is gone. Order preservation is argued
+  structurally in the docstring (mark at push = mark at `dfs` entry; append on
+  iterator exhaustion = append after the recursive loop) **and measured**: over
+  all 1944 corpus protos the old and new implementations return identical
+  lists, 0 differing, and `corpus/ledger.jsonl` is unaffected.
+
+**Decided, not fixed, each with the reason:**
+
+- **`cfg/blocks.py`'s proven-equivalent `leaders.add(pcs[i + 1])` mutant, and
+  `Cfg.preds` sortedness being untested** — the first is proven equivalent over
+  20k synthetic CFGs and all 1944 corpus protos and the entry's own text says
+  it only becomes load-bearing under a refactor that has not happened; the
+  second is a determinism hazard whose consumer (M3 structuring) now exists, so
+  it is the one of the pair worth doing. Both to M6 agenda 6.
+- **`lift/lift.py`'s successor validation not checking `s in instrs`** — not
+  reachable from luac output; matters for hand-crafted or corrupted bytecode,
+  which is the same population `tests/synth.py` serves. M6 agenda 6.
+- **`LUA_KEYWORDS`' home / empty `__init__.py`s / the `emit` ↔ `structure`
+  mutual dependency through `fallback.py`** — one open question with three
+  instances, and the answer is the same for all three: it needs a shared
+  codegen-side package that does not exist and that nothing yet needs badly
+  enough to justify. Third instance recorded at the import site in
+  `emit/lua.py` (M5 task 6). M6 agenda 6.
+- **The `f"{path}_{i}"` proto-path convention at three sites** — documented at
+  all three; the closing test named in the entry ("assert one file's fallback
+  `__pld_F` key set equals the set of `proto_path`s the ledger records for it")
+  is still the right one and is still unwritten. M6 agenda 6.
+- **`verify/ledger.py`'s write-only `n_insns`** — it acquired a reader in M5:
+  `docs/reports/m5-quality.md` §2's instruction-volume basis is computed from
+  it, and so is `scripts/run_corpus.py`'s own reporting. It is no longer
+  "forward schema nobody reads"; leaving it is now correct rather than
+  tolerated.
+- **`express/reconstruct.py::_emit_multi`'s overstated shadowing comment**, and
+  **`tests/test_express_names.py::_temp_write_violations`' undocumented open-read
+  ceiling (14369 corpus temp-writes with no explicit reader)** — both are prose
+  defects of the exact kind this milestone kept producing, and both need a
+  measurement pass rather than a wording pass. M6 agenda 6.
+- **The three M2-era mutants no test can fail** (boxed parameters emitted
+  unboxed, `UNM` as `0-(x)`, `FORLOOP`'s `step > 0` weakened to `>=`) — two of
+  the three involve opcodes the corpus does not contain (`UNM`), and the third
+  manifests as a **hang**. Still open, and the standing warning stands: any
+  mutation testing must keep `oracle.run_bytes`'s timeout in place. M6 agenda 6.
+
+*Original entry follows.*
+
+## 14 (original). Still-open minors inherited from M2 and M3
 
 Not re-verified at task 12 except where noted; see "Deferred minors carried
 out of M2" and §6 above for the full text of each.
@@ -1426,7 +2245,11 @@ out of M2" and §6 above for the full text of each.
   concern shared by three modules across two layers; `structure/__init__.py`
   and `verify/__init__.py` are empty while `lift/` and `cfg/` export curated
   `__all__`. (`emit/__init__.py` was brought into line at task 12 —
-  `print_chunk_or_raise` is now exported.)
+  `print_chunk_or_raise` is now exported.) Same open question, third
+  instance (M5 task 6 round 2, Residual B): `emit/lua.py` imports from
+  `structure/fallback.py` while `structure/structured.py` imports from
+  `emit/lua.py` — a mutual dependency through `fallback.py`, undissolved
+  because the shared codegen-side home neither of these needs yet exists.
 - The `f"{path}_{i}"` proto-path convention is implemented independently at
   three sites; documented at all three rather than extracted, because the
   extraction needs a neutral home (same open question as `LUA_KEYWORDS`) and
@@ -1447,3 +2270,320 @@ out of M2" and §6 above for the full text of each.
   unboxed, `UNM` as `0-(x)`, `FORLOOP`'s `step > 0` weakened to `>= 0`). The
   third manifests as a **hang**, not an assertion failure — any future mutation
   testing must keep `oracle.run_bytes`'s timeout in place.
+
+---
+
+# M6 agenda
+
+Written at the M5 wrap (task 12, 2026-08-13). Same conventions as the M4 and
+M5 agendas above: **open unless the heading says otherwise**, numbered so items
+can be cited, numbering is not a priority order, and **every figure quoted here
+was measured at the M5 task 12 tree unless it says otherwise**. Where a figure
+carried forward did not reproduce, the discrepancy is stated rather than
+smoothed over.
+
+M5's own closed items keep their record in place above (§§1–14), including the
+retracted claims inside them; do not re-derive from those.
+
+**Starting state, measured 2026-08-13.** 229/229 compile; **867 tests pass in
+42.1–44.1s** on macOS 15.2 / Apple M4 (arm64), against a 45s ceiling (860 at
+42.2–43.4s before the final fix round and the residual round, which added 5
+and 2 tests); the
+ledger holds 1478 unique shapes over 1944 occurrences, of which **1430 (96.8%)
+/ 1896 (97.5%)** are `L3`; **216 files ship fully structured, 6 hybrid, 7 whole-
+file fallback**; **1747/1944 (89.9%) occurrences ship structured text**; ported
+quality metric **0.968833**; L2 reach **1 file**. `./scripts/ratchet_job.sh`
+exits 0.
+
+## 1. Close the reconstruction residual, and reach `avg_score ≥ 0.997`
+
+**This is M6's exit criterion**, inherited from M5 by the human partner's
+decision of 2026-08-12 (recorded in the spec's §2 decision table, not only
+here). Everything below is the diagnosis M5 handed over; none of it is
+hand-waving and each part has a committed artefact to start from.
+
+The 48 non-`L3` unique protos / 48 non-`L3` occurrences split by
+`refusal_reason` on the committed ledger: **`structure` 21, `mismatch` 22,
+`reconstruct` 5, `compile` 0**. Two named defects account for most of it:
+
+- **13 compound-`if` refusals — ONE defect.** `and`/`or` conditions with an
+  else arm need a condition tree in `sir/regions.py::If`; today `_structure_if`
+  cannot represent them and refuses. Start from
+  `tests/test_sir_longtail2.py::COMPOUND_CONDITION_EXEMPLAR`, a committed
+  26-instruction runnable repro, rather than from a 124 KB corpus file. One of
+  `tests/test_semantic_regressions.py`'s five named cases
+  (`test_if_and_elseif_conjunctions_preserved`) is pinned at `L1` by exactly
+  this and is the signal for when it closes.
+- **4 root reconstruction defects that hybrid emission UNMASKED.** Their
+  certification previously died on a descendant's refusal before any comparison
+  ran, so their faithfulness had never been compared at all. One is
+  adjudicated: `snr_music.lua`'s main collapses four distinct nested table
+  constructors into **one aliased table** — `express/names.py::classify_registers`
+  grading a temp as a local, the same family as `snr_common.lua`'s
+  consumed-register read. Certification catches it, so nothing wrong ships;
+  what it costs is the file.
+
+**The leverage is still superlinear and still the same mechanism**: `print_chunk`
+inlines the whole tree at each `CLOSURE` site, so one unstructurable inner
+function forfeits its entire ancestor chain. Hybrid emission (M5 task 6)
+softened that for descendants but cannot help a **root**, which is why the
+remaining 7 whole-file fallbacks are exactly the 7 whose roots do not certify.
+
+**The arithmetic to plan against** (re-derived 2026-08-13): 216 files score
+exactly 1.000000, so the remaining 13 must average **≥ 0.947** for the corpus
+to clear 0.997. Converting all 7 fallbacks to hybrids at the measured hybrid
+quality of **0.816791** reaches only **0.9896**. So the target is not a better
+assembly strategy; it is closing the two defects above so those files certify
+outright.
+
+## 2. Corpus-wide L2, and the taint analysis's four known gaps
+
+L2's instrument is done (M5 task 9) and its two historical checkpoints are
+green (task 10). What is **not** done is reach: **1 of 229 files** carries the
+badge (`snr_lib.lua`, `L2@100%`, 2 ledger rows / 3 occurrences), 4 more are
+refused `taint-static`, and **220 of 229 files contain no `pressButton` at
+all** — for those there is no input loop to drive and no key sequence can
+change that, which is a stronger statement than "not yet authored".
+
+Two independent halves, and they should not be confused:
+
+**(a) Authoring.** 9 files contain `pressButton` (re-derived 2026-08-13 by
+scanning every proto's `GETGLOBAL` constants: 9 files, 220 without); 5 reach
+the poll; **4 error before it** under the frozen stub policy (`snr_mainmenu`,
+`snr_novel`, `snr_fragment_main`, `snr_story_main`). Those 4 are a live lead —
+they *have* input loops. Of the 132 files that hit the behaviour probe's event
+cap, the split is **101 `vms`-dominated, 26 `wait`-dominated (24 with
+`doScriptScene`), 5 `pressButton`-dominated** — measured at M5 task 9 round 1
+and independently reproduced by its scoped re-review over all 229 files; **not**
+re-derived at task 12, which re-ran the probe only far enough to confirm its
+headline (229 files, 227 identical, 2 pinned divergences, 398196 events, all
+exact).
+
+**(b) Soundness.** The static may-analysis that gates the grant has four
+documented gaps, each a committed test that GRANTS and should not, and the list
+is labelled "what could be constructed", not "complete" — across four rounds,
+thirty routes were found granting and every one of them was inside the previous
+round's fix.
+
+- a stub passed as a call **argument** (intra-proto: parameters are roots);
+- a **script-built table** round trip (`t.x = stub` then `t.x == "a"`);
+- **`VARARG`** — and note `snr_common.lua` has 26 `VARARG`s meeting 26 `select`
+  calls, though M5 task 10 measured that neither checkpoint's subtree contains
+  any of them;
+- **harness state**, which is the different one: `waitf(n)` does
+  `local m = tonumber(n)`, `nil` for a proxy, so the frame counter itself
+  becomes stub-decided. **A register-level may-analysis is structurally blind
+  to this** — it is the first limit found here that is not a propagation gap,
+  and it was closed at the *boundary* (a `blind-harness` site kind fires when a
+  stub-derived value reaches a `_CLEAN_CALLEES` argument window) rather than in
+  the analysis. Any other harness state carried between calls is the same
+  shape.
+
+`snr_lib.lua`'s grant is safe by a profile that should be re-checked if it ever
+changes: 0 `SETUPVAL`, 0 captured registers, 0 `TFORLOOP`, 0 `VARARG`, 0 `_G`
+reads, and it calls no base global.
+
+**(c) Truncation, which the M5 final fix round narrowed but did not close.**
+That round found a grant that could rest *entirely* on a run cut off at
+`MAX_EVENTS = 3000` — nothing read the trace status, so "byte-equal" silently
+meant "equal over the first 3000 events". A grant now requires at least one
+sequence to reach `OK`, and `cov` is measured over those alone. What remains,
+constructed by review and committed as a known-open route
+(`tests/test_l2_keyseq.py::test_a_branch_only_a_capped_sequence_enters_is_
+granted_on_a_truncated_prefix`):
+
+```lua
+if pressButton("CIRCLE")==true then
+  for i=1,5000 do engine.Go(i) end engine.OriginalTail()
+else engine.Short() end
+```
+
+with the artifact differing only in the tail call. `tail=` finishes at `OK|5`
+through the `else` arm; `k=1,CIRCLE;tail=` caps at `CAP|3001` before reaching
+the divergent tail. Traces agree, taint is empty, both protos are `L3` —
+**granted at `cov` 1.0**. So a capped run can no longer be the only evidence
+for a *file*, but it can still be the only evidence for a *branch* no
+completing sequence enters.
+
+**Not cheaply closable, which is why it is here and not in M5.** `cov` cannot
+see it: **both** specs enter 2 of 2 protos, so proto granularity is blind to a
+branch. Two candidate instruments, neither small — **branch-level coverage**
+(the badge was deliberately moved off basic blocks in M5 task 9 because block
+attribution is by source line and therefore moves when the printer moves a
+newline, which would make `cov` a presentation-layer value and break the
+ledger's byte-stability rule — so this needs a line-free seam), or a
+**post-cap divergence check** (continue both runs past the cap comparing a
+digest rather than a full trace).
+
+**Do not "fix" it by requiring every sequence to complete.** Measured twice:
+`snr_lib.lua` under `tail=CIRCLE` reports `CAP|3000001` with the cap raised
+1000×, i.e. the degenerate sequences do not halt at any budget, and every one
+of the five authored files carries at least one (completions are 2/3, 2/3,
+2/3, 1/2, 1/2). That rule fixes L2 reach at 0 permanently.
+
+**The live grant is not resting on this**, measured rather than argued:
+`snr_lib.lua`'s capped `tail=CIRCLE` re-run at 10× budget with every decimal
+token normalised out yields **15 distinct event shapes at 3000 events and the
+same 15 at 30000, none new** — the post-cap tail is pure repetition of the
+menu's redraw/poll cycle. That is a property of that one sequence, measured
+once; **the gate does not check it**, and any new sequence needs its own
+measurement.
+
+A related loose end: **truncation never reaches `corpus/ledger.jsonl`**. The
+completed/total count lives only in `L2Result.detail`, which is CLI-facing;
+the granted row is `{"cov": 1.0}`. Adding a key rewrites every driven row, so
+it was left alone on a branch whose ledger is byte-frozen.
+
+## 3. The `next`/`pairs` iteration-order gap (carried from M2 backlog item 5)
+
+Unchanged and still the only place with **corpus-level runtime evidence** of a
+real semantic gap rather than a theoretical one: `snr_novel.lua`'s single
+`pairs` loop iterates a table the original builds with `NEWTABLE 1 0 23`
+followed by 29 `SETTABLE`s, where the fallback emits a bare `{}` and luac gives
+it `NEWTABLE ... 0 0` — different node array, different `next()` order, the
+same multiset of 43 trace lines in a different order.
+
+Scope carefully, because it is smaller than it was: presize fidelity is
+guaranteed *indirectly* for anything that certifies `L3` (`NEWTABLE`'s `B`/`C`
+are part of `code`), so the gap is confined to protos still on the fallback
+path — which is now **197 of 1944 occurrences**, and `snr_novel.lua` is one of
+the 7. This item therefore shrinks as agenda 1 progresses and may vanish with
+it. Full text at "5. Table internal layout" in the M5 agenda above.
+
+## 4. Probe hardening (the four re-deferred entries from M5 agenda 11)
+
+All four are correctness traps for a *future* corpus or a future probe user,
+all currently latent, and all blocked on the same thing: **the probes' wire
+format is load-bearing** (four exact pinned divergence strings in
+`scripts/probe_global_state.py`, two more in the behaviour probe), so the
+obvious repairs are format changes that would move the pins. Doing them
+together, with the pins re-derived once, is cheaper than doing them one at a
+time. Full text and the per-entry reasoning are in §11 above:
+value-side serialisation ambiguity; `strip_location` stripping only the first
+location prefix; table/function-valued keys serialising to an unstable address;
+and `pfields`/`envfields` making `pairs`/`next`/`rawget` on a stub report empty
+(not fixable inside the metatable design at all — Lua 5.1 has no `__pairs`).
+
+A fifth, from M5 task 9's own closing concern: `scripts/probe_keyseq.lua`
+duplicates ~250 lines of `scripts/probe_behaviour.lua`. Deliberate, and pinned
+by a drift test — but a **fourth** probe should extract the engine rather than
+copy it a third time.
+
+## 5. A `StructureError` does not say which proto raised it
+
+Found while closing M5 agenda 8. `structure/structured.py::_refused` builds
+`structure: <StructureError message>`, and the message's `pc` is relative to
+**whichever proto in the subtree raised it** — an ancestor adopts a
+descendant's refusal verbatim. `snr_lib.lua:main` has `n_insns: 5` and reports
+`structure: pc 73: if targets out of range`. M5 task 6 hit the same thing from
+the other side and had to retract an argument that read a descendant's pc as
+the ancestor's own.
+
+Agenda 8's fix does **not** cover this: it added `Mismatch.path` to the
+`mismatch:` kind, and this is the `structure:`/`reconstruct:` kind, which has
+no `Mismatch` to take a path from. The fix is to thread the refusing proto's
+own path through `_refused` the way `_rejected` now threads `Mismatch.path` —
+a proto path is index-derived and carries no corpus payload, so the red line is
+not in the way. Small, and it makes `refusal_reason` usable for clustering the
+residual in agenda 1.
+
+## 6. Engineering debt, swept and re-deferred at M5 task 12
+
+Each of these was individually decided at the M5 wrap rather than left silent;
+the per-item reasoning is in §§10, 11 and 14 above. Grouped here because they
+share one property — none changes behaviour, and several add test code to a
+suite whose headroom is **host-dependent and, on the tightest host measured,
+1.6 seconds**.
+
+- **Suite headroom is the first of them.** 867 tests. Measured 2026-08-13 on
+  macOS 15.2 / Apple M4 (arm64), five runs: **42.1–44.1s**, i.e. **0.9s** under
+  the 45s ceiling at worst. The spread is this laptop's documented
+  within-session upward drift, not the 7 tests M5's last two rounds added --
+  those cost **0.16s** together, measured with `--durations`. A second host
+  measures the same tree at 39.4-41.1s. **Quote the host and the position in
+  the session with the number.** A reviewer's host measures the same tree at **39.4–41.1s
+  over 10 runs**, i.e. ~4s. Quote the host with the number.
+
+  **Test ordering is UNMEASURED — neither M5 claim about it was a measurement
+  of ordering.** M5 task 11 reported 37.2–37.6s "fixed" against 39.5–40.4s
+  "random" and that split propagated into `CLAUDE.md`, the `CHANGELOG` and
+  this file; task 12 round 1 re-measured interleaved (5 pairs: 42.28 / 42.25 /
+  42.26 / 42.99 / 43.39 against 42.57 / 42.69 / 42.97 / 43.09 / 42.78) and
+  wrote "ordering is not a factor". **Neither arm ever varied the order.**
+  Measured 2026-08-13: no randomiser is installed — `pytest --trace-config`
+  registers exactly one third-party plugin (`pytest-timeout 2.4.0`) and
+  `find_spec("pytest_randomly")` is `None` — so `-p no:randomly` deselects a
+  plugin that does not exist and pytest accepts it as a **silent no-op**
+  (`uv run pytest -p no:randomly --co -q` → 867 collected, exit 0). Both arms
+  of every one of those A/Bs, including the reviewer's 10 on a second host,
+  ran the same collection order.
+
+  What survives is the variance, not the comparison: **1–2s of run-to-run
+  spread**, which is why a single-run comparison across sessions has
+  repeatedly "shown" an effect that nothing here could have produced.
+  Answering the ordering question at all requires installing
+  `pytest-randomly`; that is the M6 item, and it should be decided on whether
+  order-independence is worth a dependency, not on these numbers.
+
+  M5 task 2 recovered ~11.9s with a process-level certification
+  memo and the milestone spent all of it. The two biggest single costs are
+  `tests/test_behaviour_probe.py`'s corpus fixture (11.3s, and it is the *first
+  payer* — the saving is a transfer, not a disappearance) and, new at task 12,
+  `tests/test_m5_exit.py::test_m5_exit_quality_no_regression` (2.4s, 229
+  `luac_sz4` runs). Raising the ceiling is not the answer. The concrete lever,
+  and it is a real one: **`oracle.compile_source` has no cache and every call
+  is a subprocess**, while `tests/test_corpus_compile.py` calls it on the
+  *identical* 229 sources this new test does — memoizing it collapses one of
+  the two passes outright. Failing that, split the corpus-wide arms behind a
+  marker.
+- Three hand-rolled region walks that should be one `_CHILDREN`-driven
+  generator (§10).
+- The one `mismatches[0].field` assertion that pins `_cmp`'s field *ordering*,
+  and the fallback assertions coupled to the `__pld_` preamble — both need a
+  per-site judgement, and M5 task 5 deliberately *added* one of the latter as a
+  strengthening (§10).
+- `Cfg.preds` sortedness untested, now that M3 structuring iterates
+  predecessors; `cfg/blocks.py`'s proven-equivalent `leaders.add` mutant;
+  `lift/lift.py`'s successor validation not checking `s in instrs` (§14).
+- `LUA_KEYWORDS`' home, the empty `structure/`/`verify/` `__init__.py`s, the
+  `emit` ↔ `structure` mutual dependency through `fallback.py`, and the
+  `f"{path}_{i}"` proto-path convention at three sites — **one open question
+  with four instances**: there is no shared codegen-side home, and nothing has
+  needed one badly enough yet. The test that would close the last of them is
+  named in §14 (§14).
+- `express/reconstruct.py::_emit_multi`'s overstated shadowing comment and
+  `tests/test_express_names.py::_temp_write_violations`' undocumented open-read
+  ceiling (14369 corpus temp-writes with no explicit reader) — both are prose
+  defects needing a measurement pass (§14).
+- The three M2-era mutants no test can fail. Two involve `UNM`, which the
+  corpus does not contain; the third manifests as a **hang**, so any mutation
+  testing must keep `oracle.run_bytes`'s timeout in place (§14).
+- Two pre-existing printer defects recorded but not fixed at M5 task 7, both
+  verified at `923b41b`: a table constructor **mixing array and hash items**
+  certifies `L1` because array items are emitted first (a real fidelity gap,
+  and it is inside the `mismatch: code` cluster agenda 1 has to clear); and
+  `_SIMPLE_PREC == _PREC["^"]` parenthesises any constant left of `^` (measured
+  **unreachable** — 0 `^` in corpus output — so this one is cosmetic and may
+  stay recorded forever).
+- `verify/ledger.py::write_ledger` writes in place with no tmp+rename, so a
+  kill that truncates at a **line** boundary leaves valid JSONL with rows
+  missing, and `scripts/ratchet_diff.py` then returns 1 ("bad commit") from an
+  I/O interruption. Mid-**line** truncation correctly yields 125. Recorded at
+  M5 task 8 and deliberately not fixed there.
+
+## 7. M1's Linux x86_64 verification is still outstanding
+
+Not an M5 item and not an M6 item in the ordinary sense — it is an **M1 exit
+criterion that has been half-satisfied since 2026-08-10**. `docs/runbooks/64bit-migration.md`
+requires *both* 64-bit platforms green, not either; only macOS arm64 has been
+proven (`ALL MIGRATION GATES PASSED on arm64 / Darwin`). Nothing since has
+touched the ingest layer's width dispatch, so there is no reason to expect a
+failure — which is exactly why it keeps not getting run.
+
+M5 produced one concrete piece of evidence that this is not purely ceremonial:
+`scripts/ratchet_job.sh`'s `mktemp -t` is **BSD-only** (GNU coreutils needs ≥3
+trailing `X`s), so under `set -e` the job would die at that line on Linux, the
+project's primary documented environment. That was found by reading upstream
+`coreutils/src/mktemp.c`, **not by running it**, because no Linux host was
+available — and it was fixed unverified. Both facts belong to whoever runs the
+Linux gate first.

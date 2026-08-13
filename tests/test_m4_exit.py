@@ -21,25 +21,39 @@ them fails twice): the thresholds are milestone COMMITMENTS, not measurements.
 They must not be edited to match whatever the implementation currently
 achieves. If the corpus rate falls below one, the fix is in the reconstructor.
 
-**Why the floors are 0.85 when the achieved rates are 94.0% / 95.4%.** A floor
+**Why the floors are 0.85 when the achieved rates are 96.8% / 97.5%** (measured
+2026-08-12 at M5 task 8; they were 94.0% / 95.4% at the M4 wrap, and this
+paragraph did not move as M5 tasks 4-6 raised them). A floor
 set at the measurement is not a floor, it is a tripwire: every legitimate
 variation -- a corpus refresh, an oracle rebuild, a refactor that trades three
 protos in one cluster for four in another -- becomes a red suite with nothing
 actually broken, and the standard repair is to edit the threshold, which is
-how a gate stops meaning anything. 0.85 is what M4 promised; the ~9 points
-above it are headroom, and the achieved figure is reported in the assertion
-message so a drop is still visible in the failure text of whatever else breaks.
+how a gate stops meaning anything. 0.85 is what M4 promised; the ~12 points
+above it are headroom (~9 at the M4 wrap), and the achieved figure is reported
+in the assertion message so a drop is still visible in the failure text of
+whatever else breaks.
 Cross-revision monotonicity (no `L3` -> `L1` on any individual row) is NOT
-asserted here: that needs a committed baseline to diff against, which is M5's
-ratchet CI. See `docs/runbooks/structured-pipeline.md`, "Not asserted".
+asserted here, and not anywhere in the suite: it needs a committed baseline to
+diff against, and a baseline is a git ref rather than a fixture. Since M5 task
+8 it IS asserted, by `scripts/ratchet_diff.py` as gate 2 of
+`scripts/ratchet_job.sh` -- run at a milestone wrap and before any merge that
+touches the ledger, not per commit. That is what makes the 0.85 floor above
+safe to leave slack: the floor catches a catastrophe without churning, the
+baseline diff catches the single row this file would wave through. See
+`docs/runbooks/structured-pipeline.md`, "Ratchet the ledger against a
+baseline".
 
-**Measured at the M4 wrap (task 12, 2026-08-12), and recorded here because
-nothing asserts it.** Diffing `corpus/ledger.jsonl` at `bbe74f6` (the M4
-branch point) against HEAD: the two files carry the *same* 1478 `shash` keys,
-**277 rows upgraded `L1` -> `L3`, 1201 unchanged, 0 downgraded**, 0 `L0`,
-`compile_ok` true on all 1478, 1944 occurrences on both sides. So M4's ledger
-change is monotone in fact. It is monotone by review, not by machine -- redo
-this diff by hand at the next milestone wrap until the ratchet CI exists.
+**Measured at the M4 wrap (task 12, 2026-08-12), when nothing asserted it.**
+Diffing `corpus/ledger.jsonl` at `bbe74f6` (the M4 branch point) against the
+M4 tip: the two files carry the *same* 1478 `shash` keys, **277 rows upgraded
+`L1` -> `L3`, 1201 unchanged, 0 downgraded**, 0 `L0`, `compile_ok` true on all
+1478, 1944 occurrences on both sides. So M4's ledger change is monotone in
+fact. It was monotone by review; it no longer has to be. The same diff is now
+one command, and re-run at M5 task 8 it reports `bbe74f6` -> HEAD as **318
+upgraded, 0 downgraded** (L3 1112 -> 1430):
+
+    git show bbe74f6:corpus/ledger.jsonl > /tmp/base.jsonl
+    uv run python scripts/ratchet_diff.py /tmp/base.jsonl corpus/ledger.jsonl
 """
 import json
 from pathlib import Path
@@ -49,9 +63,10 @@ LEDGER = Path(__file__).resolve().parents[1] / "corpus" / "ledger.jsonl"
 # The kinds `structure.structured.ProtoCert.reason` can produce, as the
 # committed vocabulary of the ledger's `refusal_reason` field. Asserting the
 # kind (not the whole message, which carries pcs and register numbers and is
-# expected to churn) is what lets M5's ratchet CI cluster a regression by
-# cause instead of by string equality. Adding a kind is a deliberate act:
-# extend this tuple in the same commit that introduces it.
+# expected to churn) is what lets the ratchet (`scripts/ratchet_diff.py`, M5
+# task 8) cluster a regression by cause instead of by string equality. Adding
+# a kind is a deliberate act: extend this tuple in the same commit that
+# introduces it.
 REASON_KINDS = ("structure: ", "reconstruct: ", "compile: ", "mismatch: ")
 
 
@@ -133,7 +148,8 @@ def test_reason_coupling_actually_rejects_bad_rows():
     assert reason_violations([good_l3, good_l1]) == []
 
     # 1. not certified and silent about it -- the shape that existed before
-    #    this field, and the one M5's ratchet CI cannot work without.
+    #    this field, and the one `scripts/ratchet_diff.py` cannot cluster
+    #    without.
     silent = dict(good_l1, refusal_reason=None)
     assert len(reason_violations([silent])) == 1
     assert len(reason_violations([dict(good_l1, refusal_reason="  ")])) == 1

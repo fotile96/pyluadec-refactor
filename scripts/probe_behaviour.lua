@@ -132,9 +132,12 @@ local function idof(v)
 end
 
 -- One event is one line, so a byte that would break that (or the "|" field
--- separator) is escaped. Strings from this corpus are Japanese game text and
--- are frequently not UTF-8; they are passed through byte-for-byte otherwise,
--- never decoded or normalised.
+-- separator) is escaped. Strings from this corpus are Japanese game text; they
+-- are passed through byte-for-byte, never decoded or normalised. (This comment
+-- used to say they are "frequently not UTF-8". CLAUDE.md records that as
+-- measured-FALSE: 49063 string constants, 17411 non-ASCII, **0** non-UTF-8.
+-- Nothing here decodes because of the red line, not because of an encoding
+-- fact. M5 task 9 round 1.)
 local function esc(s)
   if not (sfind(s, "\\", 1, true) or sfind(s, "\n", 1, true)
           or sfind(s, "\r", 1, true) or sfind(s, "|", 1, true)) then

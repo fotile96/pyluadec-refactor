@@ -1,9 +1,16 @@
 """反编译驱动（spec §7）。
 
 M3 起，每个 proto 都先经 `structure.structured.emit_certified_chunk` 做逐 proto
-L3 认证；等级（proof record，逐 proto）与产物源码（逐 chunk，root 认证才发结构化
-源码）**刻意解耦**——见 `structure.structured` 的模块文档。confession 只记在未认证
-的 proto 上：等级上升、confession 下降，正是台账的 ratchet 信号。
+L3 认证；等级（proof record，逐 proto）与产物源码（逐 chunk）**刻意解耦**——见
+`structure.structured` 的模块文档。confession 只记在实际发了 fallback 文本的
+proto 上：等级上升、confession 下降，正是台账的 ratchet 信号。
+
+**「root 认证才发结构化源码」这条自 M5 task 6 起不成立**（本行原文如此，M5 task 12
+更正）。产物有三档，按顺序试：root 自己认证过的字节；否则 `certify_hybrid` 认证过
+的 hybrid——结构化代码，只在无法认证的 CLOSURE 站点填入语义精确的 fallback，此时
+**root 并未认证**却仍发结构化文本；否则整块 fallback。语料上 216 / 6 / 7。不变的
+是更弱也更真的那句：产物里每个 proto 要么被「编译了这串字节」的那次认证逐字段覆盖，
+要么由 fallback 发射并在台账 confess。
 """
 from __future__ import annotations
 
@@ -26,6 +33,17 @@ class DecompileResult:
     # indistinguishable in the ledger. Vocabulary and payload rules:
     # `structure.structured.ProtoCert.reason`.
     reasons: dict[str, str | None] = field(default_factory=dict)
+    # proto_path -> did THIS proto's text in `source` come from the fallback
+    # state machine? (M5 task 6.) This is a fact about the shipped artifact,
+    # and it is deliberately NOT `levels[path] != "L3"`: in a hybrid chunk a
+    # proto can miss `L3` on its own (its subtree contains something the
+    # recognizer refuses) and still ship structured, because the hybrid
+    # certification compared its own fields against the original exactly. It
+    # is what `confessions_by_proto` is keyed on.
+    shipped_fallback: dict[str, bool] = field(default_factory=dict)
+    # Did the chunk ship as a hybrid at all? False for a fully-structured
+    # chunk and for a whole-file fallback.
+    hybrid: bool = False
 
 
 def walk_proto_paths(path: str, p: Proto, out: dict[str, Proto]) -> None:
@@ -72,26 +90,36 @@ def decompile_chunk(root: Proto) -> DecompileResult:
     rungs = {path: out.certs[path].rung for path in protos}
     reasons = {path: out.certs[path].reason for path in protos}
     # The confession names `structure.fallback` as the pass that emitted this
-    # proto's text, and that is only literally true when the CHUNK shipped
-    # fallback -- i.e. when the root is not `L3`. A non-`L3` proto inside a
-    # chunk whose root DID certify would be stamped with it anyway, and its
-    # text actually came from the structured printer. Measured 2026-08-12 over
-    # all 229 files: **0** such protos, because a root that certifies has had
-    # its whole subtree compared field by field, and the per-proto wrapper
-    # verdict has not yet disagreed with that on this corpus. Left unguarded
-    # rather than made conditional on `levels["main"]`, because adding the
-    # guard would change nothing today and `tests/test_m4_exit.py` asserts the
-    # row-local coupling (non-`L3` => exactly one such confession) that a
-    # conditional would break. If the measurement ever comes back non-zero,
-    # the fix is a second confession `reason`, not dropping this one.
+    # proto's text, so it is keyed on what actually happened to this proto in
+    # THIS chunk -- `out.fallback_paths` -- and not on its certification level.
+    #
+    # Until M5 task 6 the two were the same predicate (`levels[path] != "L3"`),
+    # because a chunk was all-structured or all-fallback and the root's `L3`
+    # covered its whole subtree. The comment that stood here noted the one way
+    # they could come apart (a non-`L3` proto inside a certified root) and
+    # recorded 0 such protos on this corpus. Hybrid emission makes the OTHER
+    # direction real: **6 of the 13** formerly-fallback files became hybrids
+    # (`snr_story_main`, `snr_fragment_main`, `snr_s1_10_s`, `snr_s3_10_s`,
+    # `snr_s4_10_s`, `snr_s5_10_s`), and each ships **one** proto occurrence
+    # that is not individually `L3` -- 6 occurrences in 6 files, re-derived
+    # from the committed ledger 2026-08-13. (This comment said "12 of the 13",
+    # which is 2x the count of hybrids that exist; the other 7 still ship the
+    # whole-file fallback.) Stamping those 6 with `fallback-state-machine`
+    # would be a false confession -- the
+    # text came from the structured printer and was compared field for field
+    # by `certify_hybrid`. The level stays exactly what `certify_proto` said;
+    # only the confession moved to the shipped-artifact fact it was always
+    # describing.
+    shipped_fallback = {path: path in out.fallback_paths for path in protos}
     confessions = {
-        path: ([] if levels[path] == "L3" else
-               [{"pc_lo": 1, "pc_hi": len(p.code),
-                 "reason": "fallback-state-machine", "pass": "structure.fallback"}])
+        path: ([{"pc_lo": 1, "pc_hi": len(p.code),
+                 "reason": "fallback-state-machine", "pass": "structure.fallback"}]
+               if shipped_fallback[path] else [])
         for path, p in protos.items()
     }
     return DecompileResult(source=out.source, confessions_by_proto=confessions,
-                           levels=levels, rungs=rungs, reasons=reasons)
+                           levels=levels, rungs=rungs, reasons=reasons,
+                           shipped_fallback=shipped_fallback, hybrid=out.hybrid)
 
 
 def decompile_file(path) -> DecompileResult:

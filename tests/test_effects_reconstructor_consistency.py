@@ -484,17 +484,31 @@ def instrumented(rec: _Recorder):
                            type(r).__name__):
             return saved["region"](self, r, indent)
 
-    def closure_parts(self, e):
+    def closure_parts(self, e, *args, **kw):
+        # `*args`/`**kw` for the same reason `_print_proto_body` below has
+        # them: production grew an argument (M5 task 7 change 4 passes the
+        # enclosing statement's indent so the closure body can be indented
+        # under it) and a seam that pins an arity silently stops matching --
+        # or, worse, keeps matching a stale call shape. Accepting what
+        # production passes is the seam's job.
         pc = self._closure_pc(e.proto_idx)
         child = self.proto.subprotos[e.proto_idx]
         with rec.pcs_frame(self.fn, (pc,), self.depth, "CLOSURE",
                            param_depth=self.depth + 1,
                            param_limit=child.numparams):
-            return saved["closure_parts"](self, e)
+            return saved["closure_parts"](self, e, *args, **kw)
 
-    def _print_proto_body(proto, depth, upval_names):
+    def _print_proto_body(proto, depth, upval_names, *args, **kw):
+        # `*args`/`**kw` rather than the 3-parameter shape this used to have:
+        # `Printer.closure_parts` passes the child's proto_path and the hybrid
+        # substitution set too (M5 task 6). Round 1 of that task kept a
+        # 3-argument call in production, guarded by `if not
+        # self.fallback_paths`, just so this replacement would keep matching --
+        # which meant the hybrid print path was never instrumented. Accepting
+        # what production passes is the seam's job, not production's.
         with rec.function_frame(depth):
-            return saved["_print_proto_body"](proto, depth, upval_names)
+            return saved["_print_proto_body"](proto, depth, upval_names,
+                                              *args, **kw)
 
     def name_for(reg, depth):
         rec.named(reg, depth)
@@ -532,12 +546,38 @@ _WRAPPED_ACCESSORS = frozenset({
     "_read_reg", "take_expr", "_stable_ref", "_value_run",
     "stage", "force_materialize", "write_reg", "_emit_multi"})
 
-# The one `reg`-taking method deliberately NOT wrapped. It neither reads nor
-# writes `reg`'s slot: it scans the *other* still-staged entries of `env` for
-# a `LocalExpr(reg)` that a pending write would invalidate. Its `reg` is
-# always the register `force_materialize` is about to write and has already
-# recorded, so wrapping it would double-count, not add coverage.
-_UNWRAPPED_BY_DESIGN = frozenset({"_refuse_stale_reference"})
+# The `reg`-taking methods deliberately NOT wrapped.
+#
+# `_refuse_stale_reference` neither reads nor writes `reg`'s slot: it scans
+# the *other* still-staged entries of `env` for a `LocalExpr(reg)` that a
+# pending write would invalidate. Its `reg` is always the register
+# `force_materialize` is about to write and has already recorded, so wrapping
+# it would double-count, not add coverage.
+#
+# `declare_loop_vars` (M5 task 5) does not touch a register's VALUE at all --
+# it only brings the `for` statement's own variables into scope for the
+# duration of its body, i.e. it edits `declared`, never `env`/`_pending`.
+# The registers it names are the ones `emit.lua`'s `NumericFor`/`GenericFor`
+# arms have already put through `name_for` for the header line, which this
+# gate's `named()` wrapper does record; wrapping this too would count the
+# same registers a second time against whichever opcode's frame happened to
+# be open.
+# `_is_generic_for_iterator` (M5 task 5) is a pure PREDICATE over `regs`: it
+# reads `rc`/`declared`/`fn.instrs` and returns a bool. It neither reads nor
+# writes any register's slot -- whichever way it answers, the registers are
+# then touched by `stage` or by the materializing branch below it, both of
+# which this gate already wraps.
+# `_is_stack_temp(reg, pc)` (M5 task 5, fix round 1) is the shared predicate
+# `_is_generic_for_iterator` and `_reads_as_gt` both consult: it asks
+# `rc.temps`/`rc.temp_defs` whether a register is an expression-stack
+# temporary and returns a bool. Same reasoning as the entry above -- it reads
+# the CLASSIFICATION of a register, never the register's slot, and the actual
+# read of the operand it is asked about has already gone through
+# `cond_operand` -> `rk` -> `_read_reg`, which this gate wraps.
+_UNWRAPPED_BY_DESIGN = frozenset({"_refuse_stale_reference",
+                                  "declare_loop_vars",
+                                  "_is_generic_for_iterator",
+                                  "_is_stack_temp"})
 
 # `_consume_open(start)` is not in either set: its parameter is a range start
 # rather than a register, and every slot it reads goes through `_read_reg`.
@@ -680,10 +720,28 @@ def test_the_printer_arm_is_not_carried_entirely_by_arm_one(corpus_scan):
     If every printed register were already reconciled by Arm 1, the
     `reg in fr.covered` branch would be dead and the printer's own
     `NumericFor` `A+3` / `GenericFor` `A+3+i` decodes would be unchecked by
-    anything. Measured: 21 of the 12118 printed names on this corpus reach
-    text without any reconstructor accessor having touched them first --
-    `by_kind` breaks down as `{NumericFor: 19, GenericFor: 2}` exactly
-    (round-1 measurement, 2026-08-12), pinned below.
+    anything. Measured: 31 printed names on this corpus reach text without any
+    reconstructor accessor having touched them first -- `by_kind` breaks down
+    as `{NumericFor: 28, GenericFor: 3}` exactly, pinned below.
+
+    The counts moved in M5 task 4, from `{NumericFor: 19, GenericFor: 2}`: the
+    jpc-threading and dead-code work in `sir/build.py` made more protos
+    structure, so more `for` headers reach the printer at all. It is a
+    POPULATION figure, not a floor -- when it moves, re-measure and say why,
+    do not widen it into an inequality.
+
+    Two corpus-wide file counts moved alongside it and are easy to conflate
+    into one number, but they are NOT the same quantity, re-measured
+    separately 2026-08-12 (fix round 1): the PRINTABLE count
+    (`print_chunk(root) is not None` over all 229 files -- the whole tree
+    structures and reconstructs, whether or not it recompiles field-identical)
+    is **218**; the SHIPPED/CERTIFIED count (ledger `level == "L3"` at the
+    file root, `scripts/quality_score.py`'s `structured` row -- what actually
+    ships structured source) is **215**. 212 was the certified count
+    specifically at M4 close (`docs/runbooks/structured-pipeline.md`: "92 at
+    M3 close, 212 at M4 close"); a printable-but-uncertified proto still ships
+    fallback for its whole chunk, so the two counts are two different
+    measurements of two different gates, not one sequence.
 
     NOT included here: a `CLOSURE`'s captured `ps.b` (the printer's third
     register decode). A round-1 measurement found it passes via the *first*
@@ -697,7 +755,7 @@ def test_the_printer_arm_is_not_carried_entirely_by_arm_one(corpus_scan):
     assert rec.printed_via_frame > 0, rec.printed_via_frame
     assert rec.printed_via_arm1 > 0, rec.printed_via_arm1
     assert rec.printed_via_arm1 + rec.printed_via_frame == rec.printed
-    assert rec.printed_via_frame_by_kind == {"NumericFor": 19, "GenericFor": 2}, (
+    assert rec.printed_via_frame_by_kind == {"NumericFor": 28, "GenericFor": 3}, (
         rec.printed_via_frame_by_kind)
 
 
@@ -707,16 +765,18 @@ def test_closures_captured_upvalue_is_covered_by_arm_one_only(corpus_scan):
     The module docstring's earlier claim -- "all four [printer register
     decodes] covered by Arm 2" -- did not reproduce for the `CLOSURE`
     capture decode (`emit/lua.py:287`'s `name_for(ps.b, self.depth)`).
-    Measured: of the 907 corpus calls to `name_for` under a `CLOSURE` frame,
-    all 907 pass via Arm 1 (the register was already reconciled against its
+    Measured: of the 912 corpus calls to `name_for` under a `CLOSURE` frame,
+    all 912 pass via Arm 1 (the register was already reconciled against its
     own definition site earlier in the enclosing function) and 0 via the
-    frame's covered set. Pinned here rather than left as prose so a future
+    frame's covered set. (907 before M5 task 4's jpc-threading fix, which put
+    five more protos through the structured printer -- a population figure,
+    re-measured 2026-08-12, not a floor.) Pinned here rather than left as prose so a future
     change that routes some of these through the frame disjunct instead (or
     stops reconciling them via Arm 1 at all) is caught, not re-asserted by
     hand next time someone reads the docstring.
     """
     rec = corpus_scan["rec"]
-    assert rec.printed_via_arm1_by_kind.get("CLOSURE", 0) == 907, (
+    assert rec.printed_via_arm1_by_kind.get("CLOSURE", 0) == 912, (
         rec.printed_via_arm1_by_kind.get("CLOSURE"))
     assert "CLOSURE" not in rec.printed_via_frame_by_kind, (
         rec.printed_via_frame_by_kind)

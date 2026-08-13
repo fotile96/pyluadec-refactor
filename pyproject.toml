@@ -28,14 +28,30 @@ testpaths = ["tests"]
 # never returns -- no failure name, no diff, easy to mistake for flakiness
 # and re-run.
 #
-# Sizing (re-measured 2026-08-12 on macOS arm64, 512 tests, corpus present):
-# the full suite is ~40s wall clock and the slowest SINGLE test is
-# tests/test_ledger_ratchet.py::test_ledger_is_a_reproducible_fixed_point at
-# 12.0s, followed by tests/test_behaviour_probe.py's corpus fixture at 10.0s --
-# both re-run the whole corpus pipeline, ~1478 luac_sz4 subprocesses each. So
-# 60s is ~5x headroom on THIS platform, but CLAUDE.md documents the primary environment
+# Sizing (test count 867 at the M5 residual round, 860 at task 12 round 1: corpus
+# present -- it read 523 from M5 task 2 through task 8, then 676 from task 8
+# through task 11, stale both times. The wall-clock analysis below is
+# unaffected either way, since what sizes this backstop is the slowest SINGLE
+# entry, not the count. The timings below were measured 2026-08-12 on macOS
+# arm64, AFTER M5 task 2's process-level certification cache -- an earlier
+# revision of this comment carried the same date and the pre-cache numbers,
+# ~40s suite / 12.0s ratchet / 10.0s probe, which are all now wrong):
+# the full suite was 32-34s wall clock (12 runs, drifting upward across a
+# session on this laptop) and is 42.2-43.4s at task 12 round 1. Ordering is
+# UNMEASURED, not "not a factor": no randomiser is installed, so `-p
+# no:randomly` is a silent no-op and every A/B in M5 ran both arms in the same
+# collection order (measured 2026-08-13; see m3-backlog.md, M6 agenda 6). The
+# 1-2s spread those runs show is plain run-to-run variance. That total is NOT
+# what this setting is sized against, since the timeout applies per test. The slowest SINGLE entry is
+# tests/test_behaviour_probe.py's corpus fixture SETUP at 10.4-11.9s -- it is
+# the first payer of the ~1900 luac_sz4 certification subprocesses, and every
+# later corpus pass now reads that cache instead (the ratchet test, previously
+# the slowest at 12.0s, is 1.66-1.85s in-suite). So 60s is ~5x headroom on THIS
+# platform, but CLAUDE.md documents the primary environment
 # as a 32-bit i686 userland under WSL2, where subprocess spawn is materially
-# slower; 60s is plausibly reachable there for the ratchet test alone, and a
+# slower; 60s is plausibly reachable there for the ratchet test alone -- run it
+# BY ITSELF and the cache is cold, so it pays that full certification pass
+# again (9.82s and 10.03s standalone here) -- and a
 # timeout that fires presents as exactly the ambiguous "hang" this setting
 # exists to disambiguate. The ratchet test therefore carries its own
 # @pytest.mark.timeout(300) so this global value can stay tight for

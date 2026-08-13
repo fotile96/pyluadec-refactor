@@ -564,7 +564,7 @@ def test_injected_arithmetic_swap_is_caught(corpus_dir, decompiled):
     the majority path: 212 of 229 files ship structured output."""
     orig, mutated = _injected(
         corpus_dir, decompiled, "snr_crd_10.lua",
-        b"\n    l1_1 = l1_1 + 1\n", b"\n    l1_1 = l1_1 - 1\n")
+        b"\n            l1_1 = l1_1 + 1\n", b"\n            l1_1 = l1_1 - 1\n")
     assert mutated != orig
 
 
@@ -577,7 +577,7 @@ def test_injected_loop_bound_is_caught(corpus_dir, decompiled):
     below."""
     orig, mutated = _injected(
         corpus_dir, decompiled, "snr_crd_10.lua",
-        b"\nwhile l1_0 < 1 do\n", b"\nwhile l1_0 < 0 do\n")
+        b"\n    while l1_0 < 1 do\n", b"\n    while l1_0 < 0 do\n")
     assert mutated != orig
 
 

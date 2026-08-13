@@ -49,9 +49,11 @@ def probe_raw(payload: bytes, *, is_source: bool, timeout: float = 120.0) -> byt
     """Run the behaviour probe over one chunk and return its raw stdout.
 
     Bytes, not str: the trace embeds string constants straight from the corpus,
-    which is Japanese game text and frequently not UTF-8. Nothing here decodes
-    them -- the digest is taken over the bytes, so no decoding policy can affect
-    what the gate compares.
+    which is Japanese game text. Nothing here decodes them -- the digest is
+    taken over the bytes, so no decoding policy can affect what the gate
+    compares. (This said "and frequently not UTF-8"; CLAUDE.md records that as
+    measured-FALSE -- 49063 constants, 0 non-UTF-8. The reason is the red line,
+    not the encoding. M5 task 9 round 1.)
     """
     from pyluadec import oracle
     with tempfile.TemporaryDirectory() as td:

@@ -7,10 +7,14 @@ records `fallback-state-machine`. Ledger levels going up while confessions go
 down is the ratchet signal M3 exists to produce.
 
 The shipped SOURCE and the per-proto LEVEL are deliberately decoupled (see
-`structure.structured`'s module docstring): the artifact is structured only
-when the ROOT certifies, because a chunk file is all-or-nothing, while a level
-is a per-proto proof record. `test_mixed_chunk_levels_are_per_proto` pins that
-decoupling directly.
+`structure.structured`'s module docstring): a level is a per-proto proof
+record, while the shipped artifact is a chunk-level choice among three tiers
+-- the root's own certified bytes, a hybrid (structured everywhere except at
+the CLOSURE sites a hybrid certification could not clear, M5 task 6), or the
+whole-chunk fallback -- not the all-or-nothing "root certifies or the whole
+file falls back" rule this docstring stated before the task-6 review's F6/
+Residual A correction. `test_mixed_chunk_levels_are_per_proto` pins the
+decoupling directly, and `tests/test_hybrid_chunk.py` pins the hybrid tier.
 """
 
 
@@ -63,23 +67,59 @@ def test_mixed_chunk_levels_are_per_proto():
     res = decompile_chunk(load_bytes(bc))
     assert res.levels["main"] == "L1"
     assert res.levels["main_0"] == "L3"
-    assert res.confessions_by_proto["main_0"] == []
-    # ...but the ARTIFACT is still the fallback chunk, because the root did
-    # not certify. Level and shipped source are decoupled by design.
+    # ...but the ARTIFACT is still the fallback chunk: the root's OWN body does
+    # not print (`(p or q) == 1`), so there is no structured code to keep and
+    # hybrid emission has nothing to assemble. Level and shipped source are
+    # decoupled by design.
     assert b"__pld_pc" in res.source
+    assert res.hybrid is False
+    # M5 task 6 corrected the confession here. `main_0` certified `L3` on its
+    # own, and until this task that alone cleared its confession -- while its
+    # text in `res.source` was, and still is, the state machine. The confession
+    # says which PASS emitted a proto's text ("pass": "structure.fallback"), so
+    # it now tracks shipping rather than level, and this chunk's `L3` child
+    # confesses because it really did ship as a state machine. The level is
+    # untouched: that is the proof record, and it stays `L3`.
+    assert res.shipped_fallback["main_0"] is True
+    assert (res.confessions_by_proto["main_0"][0]["reason"]
+            == "fallback-state-machine")
 
 
 def test_uncertified_source_is_never_shipped():
-    """The one invariant emit_certified_chunk exists to hold, restated at the
-    pipeline boundary: if any proto is not L3, the emitted source must be the
-    semantically-exact fallback, never a partially-structured print."""
+    """The invariant `emit_certified_chunk` exists to hold, at the pipeline
+    boundary: no proto's structured print ships unless something compiled and
+    compared those exact bytes.
+
+    **The docstring this replaces was retired by M5 task 6 and said so nowhere**
+    (round-1 review, F6). It read "if any proto is not L3, the emitted source
+    must be the semantically-exact fallback, never a partially-structured
+    print", which was the M3/M4 all-or-nothing rule. Hybrid emission is
+    *deliberately* a partially-structured print: a root that misses `L3` ships
+    structured everywhere except at the CLOSURE sites it could not certify.
+    This test kept passing only because both fixtures below have nothing to
+    substitute -- neither root has a subproto that is both non-`L3` and
+    printable-around -- so the whole-file fallback is still the only artifact
+    available for them.
+
+    What it guards, restated for the current gate: a root that does not certify
+    and has no hybrid ships the semantically-exact state machine, and the
+    result compiles. The hybrid branch is guarded in `tests/test_hybrid_chunk.py`,
+    which is where the shipping invariant now lives in full.
+    """
     from pyluadec import oracle
     from pyluadec.ingest import load_bytes
     from pyluadec.pipeline import decompile_chunk
     for src in (_UNSTRUCTURABLE,
                 b"local t = {} t[1] = 2 return t"):
-        res = decompile_chunk(load_bytes(oracle.compile_source(src, strip=True)))
+        root = load_bytes(oracle.compile_source(src, strip=True))
+        # The premise the assertions below rest on, asserted rather than
+        # assumed: there is no hybrid for these two, so "not L3" really does
+        # mean "the whole-file fallback".
+        assert root.subprotos == ()
+        res = decompile_chunk(root)
         assert res.levels["main"] == "L1"
+        assert res.hybrid is False
+        assert all(res.shipped_fallback.values())
         assert b"__pld_pc" in res.source
         oracle.compile_source(res.source)
 

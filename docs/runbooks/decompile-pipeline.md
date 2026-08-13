@@ -663,6 +663,11 @@ of a `LedgerEntry` (`pyluadec.verify.ledger.LedgerEntry`):
   `null`) but nothing in M2 populates them yet — that's later milestones
   (`L2` differential-exec certification is M5 per the plan's explicit
   non-goals; `L3.1+` normalization rungs are M3).
+  **Superseded for `L2` by M5 task 9**: it landed as a separate per-occurrence
+  `l2` field (`{"cov": 0.xx}`), *not* as a `level` value, because `L2` and
+  `L3` are independent proofs and folding L2 into the rank would force an
+  `L3` row that also passed differential execution to discard one of the two.
+  See `structured-pipeline.md`, "The L2 gate".
   **Plainly stated, `L1` means: this proto shape's fallback emission
   compiled, and — only for the synthetic cases the differential-exec suite
   happens to construct from source — matched stdout/exit code on those
@@ -678,6 +683,15 @@ of a `LedgerEntry` (`pyluadec.verify.ledger.LedgerEntry`):
 - `fallback` — whether this entry's translation came from the fallback pass
   specifically (as opposed to some future structural pass). Always `true` in
   M2.
+  **Redefined by M5 task 6**, and the change is not cosmetic: it now means
+  "at least one occurrence of this shape actually shipped fallback text",
+  where M3/M4 had made it a synonym for `level != "L3"`. The two were
+  equivalent only while a chunk was all-or-nothing; hybrid emission broke that,
+  and on the committed ledger there are now 150 `L3` rows that ship the state
+  machine (they live in one of the 7 whole-file-fallback files) and 6 `L1` rows
+  that ship structured text. `level` is a per-proto **proof record**;
+  `fallback`/`shipped` are facts about the **artifact**. See
+  `structured-pipeline.md`, "Hybrid chunks".
 - `n_insns` — `len(proto.code)`, for a quick sense of how big/small the
   shape is when scanning the file.
 - `confessions` — the list from `DecompileResult.confessions_by_proto`,
@@ -688,10 +702,28 @@ of a `LedgerEntry` (`pyluadec.verify.ledger.LedgerEntry`):
   what lets the dashboard report "1478 unique protos, 1944 occurrences,
   229 files" — 1944 total protos across the corpus collapse to 1478 unique
   shapes.
+  **Three more keys since M3/M5**, each per occurrence because each is a fact
+  about a *file* rather than about a shape: `shipped` (`"structured"` /
+  `"fallback"`, M5 task 6), `hybrid` (is this occurrence's chunk a hybrid
+  artifact, M5 task 6), and `l2` (`{"cov": n}` / `{"refused": <kind>}` /
+  `null`, M5 task 9, with the row-level pure aggregate
+  `verify.ledger.row_l2`). The `l2` split is the sharpest illustration of why
+  the split exists at all: one `shash` can span 27 files, and whether a chunk
+  was driven under an authored key sequence is not a property of the shape.
 - `oracle` — see below, its own subsection.
 - `ladder` — `verify.normalize.LADDER_VERSION` at the time this entry was
-  generated (`"l3-ladder-v0"` currently). Exists so that a future ladder
-  version bump can be detected per-entry without re-diffing the whole file.
+  generated (~~`"l3-ladder-v0"`~~ **`"l3-ladder-v1"` since M3**, and unchanged
+  through M4 and M5 — the one candidate rung considered since, `L3.2 = canonical
+  constant-pool order`, was CLOSED at a measured population of 0 by M5 task 5
+  after three milestones had read a printer bug as a gate-widening question).
+  Exists so that a future ladder version bump can be detected per-entry without
+  re-diffing the whole file.
+- `refusal_reason` — added M4 task 6; **why** a non-`L3` row did not certify,
+  in a committed four-kind vocabulary (`structure:` / `reconstruct:` /
+  `compile:` / `mismatch:`) that `tests/test_m4_exit.py` couples to `level` in
+  both directions. Since M5 task 12 a `mismatch:` reason also names the
+  subproto path when the differing field is not the row's own
+  (`mismatch: code at root/48`).
 
 ### The ratchet
 
@@ -700,11 +732,18 @@ Three rules, enforced by `tests/test_ledger_ratchet.py`:
 1. **Levels only go up.** A committed ledger must never contain `L0`
    (`test_committed_ledger_exists_and_holds_the_line` asserts `level in
    ("L1", "L2", "L3")` for every entry, and `compile_ok` for all of them).
-   There is not yet a full "did an entry regress from L2 to L1" check across
-   commits — that needs git history diffing and is explicitly out of scope
-   for M2 (see the plan's non-goals: "完整 Ratchet CI" is M3). What exists
-   now is the floor: nothing you commit may contain a level below where M2
-   left it.
+   ~~There is not yet a full "did an entry regress from L2 to L1" check across
+   commits~~ — **landed at M5 task 8** as `scripts/ratchet_diff.py OLD NEW`
+   (gate 2 of `scripts/ratchet_job.sh`). It is a *command*, not an automatic
+   trigger: this repository still has no CI runner configuration. It lives
+   outside the pytest suite because the baseline is a git ref rather than a
+   fixture, and it judges level downgrades, rung downgrades, disappeared rows,
+   occurrences no longer walked, `L3` rows that grew a `refusal_reason`,
+   `shipped` going structured → fallback, new `L0`s, and lost/weakened `l2`
+   grants. Exit codes 0 / 1 / 125 (tree untestable — `git bisect skip`) / 128
+   (instrument misconfigured — abort); there is no 2. What the suite still
+   contributes is the floor: nothing you commit may contain a level below where
+   the milestone exit gates left it.
 2. **`corpus/ledger.jsonl` is produced only by `scripts/run_corpus.py`, and
    committed whole — never hand-edited.** There is no supported partial
    update. If you touch the fallback emitter, the effects table, or
@@ -823,18 +862,21 @@ author who lands on this file first is not sent the wrong way:
   region. It is not a safe global default precisely because the unproven case
   dominates.
 - **`TRUSTING` is recommended against for any pass.** Its entire delta over
-  `NO_METAMETHOD` is three rows (`GETGLOBAL`/`GETTABLE`/`SELF` →`PURE`), and
-  the corpus *falsifies* all three rather than merely failing to support them:
+  `NO_METAMETHOD` is four rows (`GETGLOBAL`/`GETTABLE`/`SELF`/`LEN` →`PURE`),
+  and the corpus *falsifies* them rather than merely failing to support them:
   892 `SETGLOBAL` sites, 29 protos that read and write the same global name,
   1667 `SETTABLE` + 92 `SETLIST` + 44809 `CALL` sites. It is kept in the enum
-  (removing it would be an axiom-layer behaviour change) with all three
-  distinguishing rows marked `# UNARGUED`.
+  (removing it would be an axiom-layer behaviour change) with all four
+  distinguishing rows marked `# UNARGUED`. (`LEN` joined that delta at M5
+  task 1 — see below.)
 
 Two rows were found under-graded during that calibration and deliberately
 left alone pending the full axiom-change protocol (`lvm.c` citation plus a
 differential run): `LEN` at `NO_METAMETHOD`, and `NEWTABLE`/`CLOSURE`'s GC
-path. The `LEN` one is a real defect and is item 1 of the M5 agenda in
-`docs/runbooks/m3-backlog.md`.
+path. **`LEN` was corrected at M5 task 1** (`PURE` → `READ_HEAP`; citation and
+null-differential record in `tests/test_effects_len.py`, discussion in
+`structured-pipeline.md` → "The `LEN` regrade"). The GC one still stands, and
+`docs/runbooks/m3-backlog.md` §M5.1 says why it is not scheduled.
 
 ## Known semantic gaps
 
