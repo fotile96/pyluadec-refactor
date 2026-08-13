@@ -47,17 +47,37 @@ this scans the unmodified predecessor corpus).
 The `state` and `behaviour` arms are byte comparisons -- no threshold to
 choose. The `fingerprint` arm is a graded metric and needs one, so:
 
-    a fingerprint row is queued iff `FileScore.hard_issues` is non-empty
-    or `FileScore.drift_type == "semantic_candidate"`.
+    a fingerprint row is queued iff `FileScore.hard_issues` is non-empty,
+    or `FileScore.drift_type == "semantic_candidate"`,
+    or ANY proto path's `cfg_reachable`/`cfg_all` component is below 1.0.
 
 NOT `score < 1.0`. Measured over all 229 files (2026-08-14): 92 score exactly
 1.0, 137 do not, and **zero** have a hard issue. Task 2's census already
 established that byte-level divergence is the normal state on this pair
 (0/229 byte-faithful, 3903 substantive mismatches), so "score < 1.0" would
-queue 60% of the corpus and mean nothing. `drift_type` is the metric's own
-answer to "is this difference in a semantically sensitive dimension"
-(`SEMANTIC_SENSITIVE_THRESHOLDS`: global reads/writes, call targets, call
-shapes, return arity, plus a non-numeric constant difference) and it selects 5.
+queue 60% of the corpus and mean nothing.
+
+**The third disjunct is a round-1 repair and it matters more than the other
+two.** `drift_type` is the metric's own sensitivity answer, but
+`SEMANTIC_SENSITIVE_THRESHOLDS` (global reads/writes, call targets, call
+shapes, return arity, plus a non-numeric constant difference) has **no
+control-flow term** -- so a purely control-flow defect, which is the class of
+BOTH defects M6 task 4 found by hand, was queued only when it happened to also
+perturb one of those. Measured on `snr_crd_0.lua` (predecessor side, temp dir,
+2026-08-14): wrapping one call in `if 1 == 2 then ... end` -- a call that can
+never run again -- left `drift_type == "structural_only"` at score
+**0.854665**, *lower* than `snr_music.lua`'s queued 0.890039. `snr_music.lua`
+being caught by the first two disjuncts was luck, not coverage. With the
+control-flow disjunct the corpus queue goes **5 -> 16 files**, and the guarded
+call is caught (`tests/test_cross_corpus.py::
+test_fingerprint_arm_catches_a_synthetic_control_flow_defect`).
+
+**What the fingerprint arm still cannot see, measured, same battery.** Deleting
+one call statement outright (score 0.999077) and dropping one call argument
+(0.999574) both leave every component's control-flow term at 1.0 and are NOT
+queued by this arm. The behaviour arm catches the deletion; nothing in this
+harness catches either statically. Those are statement-level edits, not
+control-flow edits, and no threshold on `_cfg_shape` reaches them.
 
 ## Reach: an arm that never fired is not evidence of agreement
 
@@ -70,6 +90,21 @@ and 229 invoked, and every one of the 78 never-invoked ones is in that file.
 So every `ArmResult` carries a `reach` token and the CLI prints the split;
 `agree` at `reach="truncated"` is a weaker claim than `agree` at
 `reach="complete"` and the queue must not blur them.
+
+**Round-1 repair: the token now carries the invocation gap.** The first
+version derived `reach` from the header status alone, which measured out as a
+pure function of it (`truncated` <-> `status != "OK"` on 132/132, `complete`
+<-> `status == "OK"` on 97/97) -- so it re-printed something the evidence pair
+already showed and left `snr_common.lua`'s 1-of-79 indistinguishable from the
+other 131 capped files, in `detail` only. It also could not report a silent
+arm at all: the old `silent` branch was `defined and not invoked`, which
+short-circuits when nothing is defined, and it fired on **0 of 229** files
+while `config.lua` -- 3 events, **0** function-valued globals defined, **0**
+invoked -- was labelled `complete`. Now `silent` means `invoked == 0`, and
+every behaviour token is suffixed `<invoked>/<defined>`. Measured census over
+229 files: `complete=96`, `truncated=132`, `silent=1`; `config.lua` is
+`silent:0/0`, `snr_common.lua` is `truncated:1/79`, `snr_lib.lua` is
+`truncated:2/2`.
 
 ## The red line
 
@@ -128,11 +163,24 @@ ARMS = ("fingerprint", "state", "behaviour")
 KINDS = ("agree", "divergent", "probe-error")
 
 #: `reach` vocabulary -- how much of the original this arm actually exercised.
-#: `static` is the fingerprint arm (it compares every proto but executes none);
-#: `loaded`/`load-error` are the L1.5 arm's two outcomes; `complete`/
-#: `truncated`/`silent` are the L1.75 arm's.
-REACH = ("static", "loaded", "load-error", "complete", "truncated", "silent",
-         "unknown")
+#: The `reach` FIELD may carry a suffix (`truncated:1/79`); this tuple is the
+#: set of prefixes, and `reach_kind()` is how to read one back.
+#:
+#: * `static` -- the fingerprint arm: every proto compared, none executed.
+#: * `ran` / `raised` / `load-fail` -- the L1.5 arm. Round-1 rename: the first
+#:   version called the `ERR` outcome `load-error`, which is wrong and the
+#:   report repeated it. Measured 2026-08-14: **no corpus file fails to load**;
+#:   the 5 `ERR` files load fine and raise at run time, and `LOADFAIL` (a
+#:   chunk luac/`loadstring` refuses) occurs on 0 of 229.
+#: * `complete` / `truncated` / `silent` -- the L1.75 arm, suffixed with the
+#:   invocation gap.
+REACH = ("static", "ran", "raised", "load-fail", "complete", "truncated",
+         "silent", "unknown")
+
+
+def reach_kind(reach: str) -> str:
+    """The prefix of a `reach` token, i.e. its `REACH` member."""
+    return reach.split(":", 1)[0]
 
 #: First-cut triage vocabulary. NOT verdicts -- Task 6 adjudicates with the
 #: pin vocabulary (`real-bug` / `suspect` / `probe-artifact`).
@@ -353,33 +401,53 @@ def _fingerprint_one(corpus_dir: Path, pred_dir: Path, name: str) -> ArmResult:
         # a future corpus could overturn.
         candidate = load_pred_proto(pred_dir, name,
                                     strip=not carries_debug(original))
-    except oracle.OracleError as e:
+    except (oracle.OracleError, OSError) as e:
+        # OSError covers a predecessor corpus that is missing the file at all
+        # -- a reportable outcome about the pair, not a crash of the scan.
         return ArmResult(name, "fingerprint", "probe-error", "static",
-                         ("compiled", f"oracle-error:{type(e).__name__}"),
+                         ("compiled", f"error:{type(e).__name__}"),
                          {"error": type(e).__name__})
 
     fs = score_protos(original, candidate, file_size=src.stat().st_size)
+    sensitive = set(fs.semantic_sensitive_paths)
+
+    def below(p, key):
+        return (p.components or {}).get(key, 1.0) < 1.0
+
+    # The three flag reasons, kept apart because they are not equally strong
+    # and `first_cut` reads them separately (see its docstring).
+    flagged = [p for p in fs.proto_scores
+               if p.path in sensitive
+               or below(p, "cfg_reachable") or below(p, "cfg_all")]
     detail = {
         "score": fs.score,
         "status": fs.status,
         "drift_type": fs.drift_type,
         "hard_issues": list(fs.hard_issues),
         "sensitive_paths": [_path_name(p) for p in fs.semantic_sensitive_paths],
+        # Round-1 fix: the evidence pair names ONE path, so a file's other
+        # flagged paths used to vanish from the queue entirely (snr_common.lua
+        # alone hides `main_23` (7,6,0)->(3,2,0), `main_59` (5,5,1)->(6,6,1)
+        # and `main_76_8` (25,24,0)->(21,20,0) behind `main_76_2`). All of
+        # them are recorded here, worst first.
+        "flagged_paths": [
+            {"path": _path_name(p.path), "score": p.score,
+             "components": {k: v for k, v in (p.components or {}).items()
+                            if v < 1.0}}
+            for p in sorted(flagged, key=lambda p: p.score)],
+        "any_cfg_reachable_diff": any(below(p, "cfg_reachable") for p in flagged),
+        "any_cfg_all_diff": any(below(p, "cfg_all") for p in flagged),
+        "any_call_target_diff": any(below(p, "call_targets") for p in flagged),
     }
-    queued = bool(fs.hard_issues) or fs.drift_type == "semantic_candidate"
-    if not queued:
+    if not (fs.hard_issues or flagged):
         return ArmResult(name, "fingerprint", "agree", "static",
                          (f"score={fs.score:.6f}", f"score={fs.score:.6f}"),
                          detail)
 
-    # Evidence pair = the WORST sensitive path's per-side signature summary.
-    # Per-file granularity necessarily loses information when a file carries
-    # several (snr_common.lua carries 5, one of which is a deliberate
-    # localization edit and another is Task 4's hand-found defect); the full
-    # list stays in `detail.sensitive_paths` and the pair names the worst.
-    sensitive = set(fs.semantic_sensitive_paths)
-    worst = min((p for p in fs.proto_scores if p.path in sensitive),
-                key=lambda p: p.score, default=None)
+    # Evidence pair = the WORST flagged path's per-side signature summary. Per
+    # -file granularity necessarily loses information when a file carries
+    # several; `detail.flagged_paths` is where the rest live.
+    worst = min(flagged, key=lambda p: p.score, default=None)
     if worst is None:
         return ArmResult(name, "fingerprint", "divergent", "static",
                          (f"score={fs.score:.6f} hard={','.join(fs.hard_issues)}",
@@ -416,15 +484,15 @@ def _state_one(corpus_dir: Path, pred_dir: Path, name: str) -> ArmResult:
                                         is_source=False)
         pred = probe_global_state.probe((pred_dir / name).read_bytes(),
                                         is_source=True)
-    except probe_global_state.ProbeError as e:
+    except (probe_global_state.ProbeError, OSError) as e:
         return ArmResult(name, "state", "probe-error", "unknown",
-                         ("probe-error", f"probe-error:{_short(str(e).encode()[:64])}"),
-                         {"error": "ProbeError"})
-    om, pm = orig.split("|", 1)[0], pred.split("|", 1)[0]
+                         ("probe-error", f"error:{type(e).__name__}"),
+                         {"error": type(e).__name__})
+    om, pm = orig.split("|", 1)[0].strip(), pred.split("|", 1)[0].strip()
     detail = {"orig_marker": om, "pred_marker": pm,
               "orig_payload_len": len(probe_global_state.payload_of(orig)),
               "pred_payload_len": len(probe_global_state.payload_of(pred))}
-    reach = "loaded" if om == "OK" else "load-error"
+    reach = {"OK": "ran", "ERR": "raised"}.get(om, "load-fail")
     if orig == pred:
         return ArmResult(name, "state", "agree", reach,
                          (f"{om} len={detail['orig_payload_len']}",
@@ -461,21 +529,27 @@ def _behaviour_one(corpus_dir: Path, pred_dir: Path, name: str) -> ArmResult:
                                          is_source=False)
         pred = probe_behaviour.probe_raw((pred_dir / name).read_bytes(),
                                          is_source=True)
-    except probe_behaviour.ProbeError as e:
+    except (probe_behaviour.ProbeError, OSError) as e:
         return ArmResult(name, "behaviour", "probe-error", "unknown",
-                         ("probe-error", f"probe-error:{_short(str(e).encode()[:64])}"),
-                         {"error": "ProbeError"})
+                         ("probe-error", f"error:{type(e).__name__}"),
+                         {"error": type(e).__name__})
     ost, oev = probe_behaviour.header(orig)
     pst, pev = probe_behaviour.header(pred)
     defined, invoked = _invocation_reach(orig)
-    if ost != "OK":
-        reach = "truncated"
-    elif defined and not invoked:
-        reach = "silent"
-    elif invoked < defined:
-        reach = "truncated"
+    # `silent` FIRST and on `invoked == 0` alone (round-1 fix): the previous
+    # order tested `defined and not invoked`, which short-circuits when the
+    # chunk defines nothing, so `config.lua` -- 3 events, 0 defined, 0 invoked,
+    # nothing executed at all -- came back `complete`, and the branch fired on
+    # 0 of 229 files. The suffix is the measurement the token exists for; a
+    # bare status word is a function of the header the evidence pair already
+    # prints.
+    if invoked == 0:
+        base = "silent"
+    elif ost != "OK" or invoked < defined:
+        base = "truncated"
     else:
-        reach = "complete"
+        base = "complete"
+    reach = f"{base}:{invoked}/{defined}"
     detail = {"orig_status": ost, "orig_events": oev,
               "pred_status": pst, "pred_events": pev,
               "fn_globals_defined": defined, "fn_globals_invoked": invoked}
@@ -506,6 +580,18 @@ def _same_multiset(orig: bytes, pred: bytes) -> bool:
 
     Strict on purpose: a file that reorders AND does something else falls
     through to `suspect` rather than being absorbed here.
+
+    **What this rule can hide, measured (2026-08-14).** "Same events, different
+    order" is not the same claim as "same behaviour". Swapping two adjacent
+    side-effecting calls in a predecessor source -- `comEffectFadeOut(100)` and
+    the `vms(...)` line after it in `snr_crd_0.lua`, in a temp dir -- produces
+    `divergent` with `multiset_equal_after_objname == True`, so this rule
+    labels a genuine semantic change (the fade now runs after the line
+    displays) `probable-artifact`. The docstring's two justifications are table
+    ITERATION order and error-message nouns; neither covers intra-function
+    STATEMENT order, and nothing here distinguishes the two. That is tolerable
+    only because the label is triage and Task 6 adjudicates every row by hand;
+    it would not be tolerable as a filter that drops rows.
     """
     return (collections.Counter(normalize_objname(x) for x in orig.split(b"\n"))
             == collections.Counter(normalize_objname(x) for x in pred.split(b"\n")))
@@ -544,12 +630,26 @@ def first_cut(r: ArmResult) -> str:
     (a rule with no instance is not added; see MEMORY.md "guards must be proven
     load-bearing"):
 
-    * `candidate-defect` -- **control-flow evidence**. Behaviour arm: the two
-      headers disagree, i.e. one side's run reached a different status or a
-      different event count, which cannot happen without the two chunks taking
-      different paths. Fingerprint arm: a hard issue, or a sensitive path whose
-      `cfg_reachable`/`cfg_all` component is below 1.0 -- the block/edge counts
-      of the reconstructed control-flow graph differ.
+    * `candidate-defect` -- **control-flow or call-site evidence**. Behaviour
+      arm: the two headers disagree, i.e. one side's run reached a different
+      status or a different event count, which cannot happen without the two
+      chunks taking different paths. Fingerprint arm: a hard issue, a
+      *reachable*-CFG shape difference (`cfg_reachable < 1.0`), or a
+      **call-target** difference (`call_targets < 1.0`).
+
+      Round-1 correction, and it changed the labels. The first version said
+      "`cfg_reachable`/`cfg_all`", treating the two as one signal. They are
+      not: `cfg_all` counts blocks the crude walker calls unreachable, and
+      lumping them mislabelled `snr_mainmenu.lua` -- whose measured profile is
+      `call_targets == 1.0`, `cfg_reachable == 1.0`, `cfg_all == 0.0`, with
+      CALL 271 -> 271 and an opcode delta (GETGLOBAL -8, GETTABLE -16,
+      GETUPVAL -8, MOVE +92, TESTSET 20 -> 0 / TEST 0 -> 20) that is textbook
+      hoisting plus `or`-chain re-expression -- as equivalent to
+      `snr_s2_10_s.lua`, whose CALL count goes 93 -> 97 with **`wait` +2**, the
+      same call-target signature both hand-confirmed defects carry. Adding the
+      call-target term separates them: `snr_mainmenu.lua` drops to `suspect`,
+      `snr_s2_10_s.lua` stays `candidate-defect` on measured evidence rather
+      than by accident.
     * `probable-artifact` -- the two traces are the SAME MULTISET of events once
       `getobjname` nouns are erased (`_same_multiset`): a reordering plus a
       naming difference, both classes already pinned on our own side with
@@ -575,10 +675,9 @@ def first_cut(r: ArmResult) -> str:
             return "candidate-defect"
         return "suspect"
     if r.arm == "fingerprint":
-        if r.detail.get("hard_issues"):
-            return "candidate-defect"
-        comps = r.detail.get("worst_components") or {}
-        if any(comps.get(k, 1.0) < 1.0 for k in ("cfg_reachable", "cfg_all")):
+        if (r.detail.get("hard_issues")
+                or r.detail.get("any_cfg_reachable_diff")
+                or r.detail.get("any_call_target_diff")):
             return "candidate-defect"
         return "suspect"
     return "suspect"
@@ -696,7 +795,8 @@ def main(argv: list[str] | None = None) -> int:
 def _reach_census(res: dict[str, ArmResult]) -> str:
     counts: dict[str, int] = {}
     for r in res.values():
-        counts[r.reach] = counts.get(r.reach, 0) + 1
+        k = reach_kind(r.reach)
+        counts[k] = counts.get(k, 0) + 1
     return " ".join(f"{k}={counts[k]}" for k in sorted(counts))
 
 
@@ -708,7 +808,8 @@ def _summary(results, rows) -> dict:
     for arm, res in results.items():
         per: dict[str, int] = {}
         for r in res.values():
-            per[r.reach] = per.get(r.reach, 0) + 1
+            k = reach_kind(r.reach)
+            per[k] = per.get(k, 0) + 1
         reach[arm] = {k: per[k] for k in sorted(per)}
     return {"first_cut": {k: cut[k] for k in sorted(cut)},
             "reach": reach,

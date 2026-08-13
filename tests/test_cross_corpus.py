@@ -52,6 +52,11 @@ SMOKE = ["config.lua", "snr_crd_0.lua", "snr_music.lua"]
 MUT_FROM = b"vms(104,"
 MUT_TO = b"vms(999,"
 
+# The fingerprint arm's own mutation site (round 1). A whole call statement,
+# so it can be deleted, guarded or de-argumented -- three mutations that look
+# similar and that the arm answers very differently.
+FP_SITE = b'    comPoseLoad("po2_aya_f_1_a")\n'
+
 
 @pytest.fixture
 def smoke_scan(corpus_dir, pred_corpus_dir):
@@ -86,6 +91,10 @@ def test_state_arm_returns_a_payload_comparison(smoke_scan):
     assert r.detail["orig_marker"] in ("OK", "ERR", "LOADFAIL")
     assert r.detail["pred_marker"] == r.detail["orig_marker"]
     assert r.kind == "agree"
+    # Round-1 rename: the ERR outcome used to be called `load-error`, which is
+    # wrong -- those chunks load and then raise. `config.lua` is one of the 5.
+    assert r.reach == "ran"
+    assert smoke_scan("state", files=["config.lua"])["config.lua"].reach == "raised"
 
 
 def test_behaviour_arm_returns_a_trace_comparison(smoke_scan):
@@ -95,8 +104,28 @@ def test_behaviour_arm_returns_a_trace_comparison(smoke_scan):
     assert r.kind == "agree"
     # The reach vocabulary is the "silent arm" defence: an arm that never fired
     # is not evidence of agreement, and the harness has to say which it is.
-    assert r.reach in cross_corpus.REACH
+    assert cross_corpus.reach_kind(r.reach) in cross_corpus.REACH
     assert r.detail["orig_events"] > 0
+
+
+def test_reach_token_carries_the_invocation_gap_not_just_the_status(smoke_scan):
+    """Round-1 fix. The first version derived `reach` from the header status
+    alone, which measured out as a pure function of it (`truncated` <->
+    `status != "OK"` on 132/132) -- so the token re-printed what the evidence
+    pair already showed, and the invocation gap that makes `snr_common.lua` a
+    SILENT arm rather than an agreement survived only inside `detail`.
+
+    Two files pin the two ends. `config.lua` executes 3 events, defines **0**
+    function-valued globals and invokes **0**: the old rule labelled it
+    `complete`, because `defined and not invoked` short-circuits on
+    `defined == 0`, and `silent` fired on 0 of 229 files. `snr_common.lua`
+    defines 79 and the capped run invokes 1."""
+    r = smoke_scan("behaviour", files=["config.lua"])["config.lua"]
+    assert r.kind == "agree"
+    assert r.reach == "silent:0/0"
+    assert (r.detail["fn_globals_defined"], r.detail["fn_globals_invoked"]) == (0, 0)
+    c = smoke_scan("behaviour", files=["snr_common.lua"])["snr_common.lua"]
+    assert c.reach == "truncated:1/79"
 
 
 def test_behaviour_arm_catches_the_known_music_defect(smoke_scan):
@@ -176,9 +205,94 @@ def test_the_sha_discriminator_in_behaviour_evidence_is_load_bearing(
     assert r.detail["orig_shape"] == r.detail["pred_shape"]
 
 
+@pytest.fixture
+def fp_mutant(pred_corpus_dir, tmp_path):
+    """A temp predecessor dir with one mutation applied to `snr_crd_0.lua` at
+    `FP_SITE`. `kind` selects the mutation; the real corpus is never written."""
+    def go(kind: str):
+        src = (pred_corpus_dir / "snr_crd_0.lua").read_bytes()
+        assert FP_SITE in src, "fingerprint mutation site vanished from the corpus"
+        repl = {
+            # A call that can never run again: a purely CONTROL-FLOW defect,
+            # which is the class of both defects Task 4 found by hand.
+            "guard": b"    if 1 == 2 then\n" + FP_SITE + b"    end\n",
+            "delete": b"",
+            "drop-arg": b"    comPoseLoad()\n",
+        }[kind]
+        d = tmp_path / kind
+        d.mkdir()
+        (d / "snr_crd_0.lua").write_bytes(src.replace(FP_SITE, repl, 1))
+        return d
+    return go
+
+
+def test_fingerprint_arm_catches_a_synthetic_control_flow_defect(
+        smoke_scan, fp_mutant):
+    """The fingerprint arm's non-vacuity proof (round 1 -- it had none, and
+    measured it would have failed one).
+
+    `SEMANTIC_SENSITIVE_THRESHOLDS` has no control-flow term, so before this
+    task's third queue disjunct a purely control-flow defect was queued only
+    when it happened to also perturb `global_reads`/`call_targets`. Measured
+    2026-08-14: wrapping this one call in `if 1 == 2 then ... end` leaves
+    `drift_type == "structural_only"` at score **0.854665** -- *lower* than
+    `snr_music.lua`'s queued 0.890039 -- so the old criterion said `agree`.
+
+    Neuter proof: drop `below(p, "cfg_reachable") or below(p, "cfg_all")` from
+    `_fingerprint_one`'s `flagged` and this test is what goes red."""
+    r = smoke_scan("fingerprint", files=["snr_crd_0.lua"],
+                   pred=fp_mutant("guard"))["snr_crd_0.lua"]
+    assert r.kind == "divergent"
+    assert r.detail["drift_type"] == "structural_only"   # the old term is silent
+    assert r.detail["any_cfg_reachable_diff"] is True    # the new one is not
+    assert cross_corpus.first_cut(r) == "candidate-defect"
+
+
+def test_fingerprint_control_arm_agrees_on_the_unmutated_file(smoke_scan):
+    r = smoke_scan("fingerprint", files=["snr_crd_0.lua"])["snr_crd_0.lua"]
+    assert r.kind == "agree"
+    assert r.detail["score"] == 1.0
+
+
+@pytest.mark.parametrize("mutation", ["delete", "drop-arg"])
+def test_fingerprint_arm_is_blind_to_statement_level_edits(
+        smoke_scan, fp_mutant, mutation):
+    """The other half of a non-vacuity proof: what the instrument CANNOT see,
+    pinned so nobody reads the arm as a completeness claim.
+
+    Deleting the call statement outright (measured score 0.999077) and dropping
+    its argument (0.999574) both leave every control-flow component at 1.0 and
+    every sensitivity threshold unbreached. No threshold on
+    `semantic_score._cfg_shape` reaches a statement-level edit. The behaviour
+    arm catches the deletion (asserted below); nothing in this harness catches
+    the dropped argument, and the queue in
+    `docs/reports/m6-cross-corpus.md` §2 must be read with that in mind."""
+    d = fp_mutant(mutation)
+    fp = smoke_scan("fingerprint", files=["snr_crd_0.lua"], pred=d)["snr_crd_0.lua"]
+    assert fp.kind == "agree", "if this ever fails the arm got STRONGER -- re-measure and retire the pin"
+    assert fp.detail["score"] < 1.0        # the difference is seen ...
+    assert fp.detail["drift_type"] == "structural_only"   # ... and not queued
+    if mutation == "delete":
+        bh = smoke_scan("behaviour", files=["snr_crd_0.lua"], pred=d)["snr_crd_0.lua"]
+        assert bh.kind == "divergent", "the dynamic arm is what covers this class"
+
+
 # --------------------------------------------------------------------------
 # Red line + pin discipline
 # --------------------------------------------------------------------------
+
+def test_assert_ascii_actually_refuses(smoke_scan):
+    """Round-1 pin. `_assert_ascii`'s raise was replaceable with `pass` and the
+    whole file stayed green, because `json_safe` was only ever asserted True --
+    so the guard standing between a Japanese string constant and a committed
+    queue was not proven to do anything. Both directions now."""
+    assert cross_corpus.json_safe({"k": ["ok", 1, None]}) is True
+    assert cross_corpus.json_safe({"k": "caf\u00e9"}) is False
+    assert cross_corpus.json_safe(["a", ["b", "\u65e5"]]) is False
+    assert cross_corpus.json_safe({"\u65e5": "a"}) is False
+    with pytest.raises(ValueError):
+        cross_corpus._assert_ascii({"evidence": ["a", "\u65e5"]})
+
 
 def test_evidence_is_ascii(smoke_scan):
     for arm in cross_corpus.ARMS:
@@ -299,6 +413,21 @@ def test_a_candidate_that_does_not_load_is_never_reported_as_agreement(
     assert go("behaviour").detail["pred_status"] == "LOADFAIL"
 
 
+def test_a_missing_predecessor_file_is_a_row_not_a_crash(corpus_dir, tmp_path):
+    """Round-1 minor: the arms caught only `OracleError`/`ProbeError`, so a
+    predecessor corpus missing a file raised `FileNotFoundError` out of `scan`
+    and took the whole 229-file job with it. A missing file is a reportable
+    fact about the pair, and every arm now says so the same way."""
+    empty = tmp_path / "pred"
+    empty.mkdir()
+    for arm in cross_corpus.ARMS:
+        r = cross_corpus.scan(arm, ["config.lua"], corpus_dir=corpus_dir,
+                              pred_dir=empty)["config.lua"]
+        assert r.kind == "probe-error", arm
+        assert r.detail["error"] == "FileNotFoundError", arm
+        assert cross_corpus.first_cut(r) == "suspect"
+
+
 def test_scan_rejects_an_unknown_arm(corpus_dir, pred_corpus_dir):
     with pytest.raises(ValueError):
         cross_corpus.scan("nonsense", ["config.lua"], corpus_dir=corpus_dir,
@@ -310,11 +439,15 @@ def test_predecessor_corpus_is_never_written_to(pred_corpus_dir, tmp_path,
     """A Global Constraint ("do not modify anything under either corpus
     directory") turned into a check: snapshot the mtimes/sizes of the files the
     smoke subset touches, run all three arms, compare."""
-    before = {n: (pred_corpus_dir / n).stat() for n in SMOKE}
+    def snapshot():
+        # Round-1 widening: the first version snapshotted only the 3 SMOKE
+        # files, so a write to any of the other 226 -- or a NEW file -- passed.
+        return {p.name: (p.stat().st_size, p.stat().st_mtime_ns)
+                for p in sorted(pred_corpus_dir.iterdir()) if p.is_file()}
+
+    before = snapshot()
+    assert len(before) >= len(SMOKE)
     for arm in cross_corpus.ARMS:
         cross_corpus.scan(arm, SMOKE, corpus_dir=corpus_dir,
                           pred_dir=pred_corpus_dir)
-    for n in SMOKE:
-        after = (pred_corpus_dir / n).stat()
-        assert (after.st_size, after.st_mtime_ns) == (
-            before[n].st_size, before[n].st_mtime_ns), n
+    assert snapshot() == before
