@@ -125,11 +125,38 @@ call graph rather than this list. Recorded rather than patched.
 A CHANNEL of a proto is a dotted access path whose value reaches a branch
 decision (`EQ`/`LT`/`LE` against a constant, or `TEST`/`TESTSET`) and is rooted
 at a global read or a call result -- exactly the owner's (a) and (b). Its
-DOMAIN SIZE is `|distinct constants compared against| + 1` (one witness for
-"none of the above"), or 2 when it is compared against no constant at all --
-a truth test, or a comparison against another register. The
+DOMAIN SIZE is `|distinct const_lit RENDERINGS compared against| + 1` (one
+witness for "none of the above"), or 2 when it is compared against no constant
+at all -- a truth test, or a comparison against another register. The
 INPUT SPACE is the product, and a proto is `drivable` iff that product is at
 most `BUDGET` (4096, the figure the plan names).
+
+**The `const_lit` rendering is a fourth limit of `input_space`, and it is the
+one that bites hardest.** This definition used to read "`|distinct constants
+compared against| + 1`", which is FALSE whenever a channel meets two or more
+distinct strings (or two distinct non-integer numbers): `const_lit` collapses
+every string to `"str"` and every non-integer number to `"num"`, deliberately,
+because that is how this file stays free of corpus text. So a channel compared
+against N different scene names is ONE element here and N (+1) to anything
+that has to SUPPLY a value -- `x == "a"` does not take the `== "b"` arm.
+
+Re-derived 2026-08-14 against `scripts/probe_enum.py::channels_of`, which
+keeps the distinct constants (as `bytes`, never published):
+
+  * corpus-wide **1944 protos: 26 differ**; within budget **1940 -> 1936**.
+  * candidates **162: 23 differ**; within budget **159 -> 155**.
+  * by class: **`choice-branch` 110/113 -> 106/113**; `ui-keyloop` 11/11 and
+    `neither` 38/38 unchanged.
+  * worst ratios: `snr_s7_10_f.lua:main_53` 4 -> 118 (**29.5x**),
+    `snr_s2_10_s.lua:main_60` 240 -> 5280 (22.0x),
+    `snr_s3_10_s.lua:main_59` 3456 -> 72576 (21.0x),
+    `snr_s4_10_s.lua:main_58` 1152 -> 23616 (20.5x).
+
+Both figures are correct about their own question -- `input_space` sizes the
+BRANCH-OUTCOME space, `channels_of` sizes the ENUMERABLE space -- and a
+consumer that has to drive a proto must re-derive with the latter. `channels`
+now records both: `rec["cmp"]` (renderings, what this file publishes) and
+`rec["raw"]` (the distinct constants, in memory only).
 
 The provenance pass is a forward DATAFLOW, not the block-local pass
 `lift/footprint.py` uses -- see `channels`' docstring for the measurement that
@@ -149,7 +176,8 @@ exactly as a UI screen re-polls the key, only through `oCard.selectCardObj` /
 this is checkable per site rather than taken on trust. What separates the
 classes is therefore the TERMINATION ARGUMENT, not the shape of the input.
 
-Three further limits of `input_space`, all measured, none closed:
+Three further limits of `input_space` (the `const_lit` collapse above is a
+fourth), all measured, none closed:
 
   * **Parameters are not channels.** A proto that branches on an argument
     (e.g. `snr_common.lua:main_75`, `numparams=1`, branching on it at four

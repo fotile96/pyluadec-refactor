@@ -192,6 +192,18 @@ end
 -- Bytes that are not printable ASCII are hex-escaped here rather than passed
 -- through: these lines carry a NAME the report may quote, unlike the trace's
 -- value fields, which stay raw.
+--
+-- `|` (0x7c) and `\\` (0x5c) are hex-escaped for a SECOND reason, and it is a
+-- correctness one rather than a presentation one: the driver recognises its
+-- own entry event by rebuilding this string in Python
+-- (`probe_enum.py::path_text_of`) and matching it against the trace, while the
+-- trace line itself goes through `esc`, which rewrites exactly those two bytes.
+-- A key containing either would therefore never match, `entered` would be
+-- permanently false and the verdict would be a spurious `never-reached`.
+-- Escaping them here makes `esc` a no-op on the result, so the two renderings
+-- agree by construction. Unreachable on this corpus -- `footprints.json`
+-- measured `non_identifier_names == 0` over all 229 files -- so it is covered
+-- by a synthetic test, not by corpus green.
 local function tohex(v)
   local h = {}
   for j = 1, #v do h[j] = sformat("%02x", sbyte(v, j)) end
@@ -206,7 +218,8 @@ local function path_text(segs)
       local v, ok = s[2], true
       for j = 1, #v do
         local b = sbyte(v, j)
-        if b < 0x20 or b > 0x7e or b == 0x2e or b == 0x2f then ok = false end
+        if b < 0x20 or b > 0x7e or b == 0x2e or b == 0x2f
+            or b == 0x5c or b == 0x7c then ok = false end
       end
       out[#out + 1] = (i > 1 and "." or "") .. (ok and v or ("0x" .. tohex(v)))
     elseif s[1] == "i" then out[#out + 1] = "[" .. s[2] .. "]"

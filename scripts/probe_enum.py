@@ -21,6 +21,42 @@ change is a *representation* change -- there is currently no instrument that
 says "and yet the two behave the same on every path this proto's own branches
 can select". This is that instrument.
 
+## What the ENUMERATION bought on this population: measured, and it is little
+
+Two parts of this instrument are easy to conflate, and round 1 of this task's
+review conflated them in four places. They are separable and they are worth
+very different amounts here:
+
+  * **The targeted named entry** (`discover` + `E`) is what found new
+    behaviour. The L1.75 gate invokes every function-valued global a chunk
+    defines, in one process, under one 3000-event budget; on
+    `snr_common.lua` that budget is spent inside the FIRST of 79
+    (`PROBE1|CAP|3001`, one `I|autoSystemSave`), so 78 of its functions are
+    never called at all -- the `truncated:1/79` already on record from task 6.
+    Driving `keyWait` by name reaches it in 116 events.
+
+  * **The enumerated product** bought, on these 13 protos, **nothing that a
+    single default-stub drive would not also have got**. Both pinned
+    divergences reproduce under a no-assignment drive (measured directly, both
+    of them). And 4 of the 10 driven rows produce exactly ONE distinct
+    original-side trace across their whole product, so their "identical over
+    the whole space" says no more than one point would.
+
+  The quantitative case the enumeration DID establish is about sampling rather
+  than about finding: on `snr_mainmenu.lua:main_7` only **16 of 128**
+  assignments diverge (112 agree byte-for-byte), so a driver that sampled one
+  point had a ~12% chance of seeing it -- it is luck, not design, that the
+  default point is one of the 16. That is the measured argument for
+  `budget-exceeded` being a refusal rather than a sample.
+
+  **No row on this population makes the enumeration load-bearing.** Stated
+  plainly because M7 has to decide whether to extend this instrument
+  corpus-wide, and that decision should rest on what it actually bought. The
+  case for keeping it is prospective, not demonstrated: Tasks 9-12 change
+  reconstruction, and a representation change that is wrong on one arm of one
+  branch is exactly the shape a single stub-policy drive cannot see and
+  `snr_mainmenu.lua:main_7`'s 16/128 shows is easy to miss by sampling.
+
 ## The three verdicts the brief demands, and a fourth the corpus demands
 
 `identical` / `divergent(assignment, first-diff)` / `budget-exceeded(size)` are
@@ -76,6 +112,7 @@ otherwise.
 """
 from __future__ import annotations
 
+import hashlib
 import itertools
 import os
 import subprocess
@@ -280,7 +317,16 @@ def encode_value(v) -> str:
         return "b1" if v else "b0"
     if isinstance(v, bytes):
         return "s" + v.hex()
-    return "n%.17g" % float(v)
+    f = float(v)
+    # `%.17g` renders a non-finite as `inf`/`nan`, and the probe's
+    # `parse_value` calls `tonumber`, which returns nil for both -- a silently
+    # WRONG assignment rather than a refused one. Unreachable on this corpus
+    # (a `luac` constant pool can hold an infinity, but no comparison constant
+    # in these 229 files is non-finite), so this is covered synthetically.
+    if f != f or f in (float("inf"), float("-inf")):
+        raise ProbeError(f"non-finite comparison constant {f!r} cannot be "
+                         f"encoded: the probe's tonumber would read it as nil")
+    return "n%.17g" % f
 
 
 def spec_lines(mode: str, *, entry: str | None = None,
@@ -389,22 +435,43 @@ def drive(file, proto_path: str, assignments, *, side: str = "original",
             f"{proto_path} on the {side} side; "
             f"stdout={raw[:400].decode('utf-8', 'replace')!r}")
     status, nev = _header(raw)
-    marker = b"I|" + (path_text_of(entry).encode("ascii") if entry else b"")
-    entered = entry is None or any(
-        line == marker for line in raw.split(b"\n"))
+    # Reach is the `R|<name>|` COMPLETION event, never the `I|<name>` intent
+    # event. `probe_enum.lua` appends `I|` and then checks the budget before
+    # calling: an assignment whose chunk body emits exactly MAX_EVENTS-1
+    # events makes the `I|` itself the event that trips the cap, so the call
+    # is skipped and the target executes NOTHING -- and an `I|`-keyed test
+    # calls that "entered". Constructed and confirmed at 2997 / 2998 / 2999
+    # chunk-body events -> identical / identical(vacuous) / never-reached;
+    # with this check the middle case is `never-reached` too. No instance
+    # among the 13 shipped protos (all 182 driven assignments carry an `R|`),
+    # so no committed verdict changes -- but this is the silent-arm failure
+    # mode this milestone keeps paying for.
+    entered = True
+    if entry is not None:
+        marker = b"R|" + path_text_of(entry).encode("ascii") + b"|"
+        entered = any(line.startswith(marker) for line in raw.split(b"\n"))
     return Trace(raw=raw, status=status, n_events=nev, entered=entered)
 
 
 def path_text_of(encoded: str) -> str:
-    """The `I|` event's rendering of an encoded access path -- the same
+    """The `I|`/`R|` event's rendering of an encoded access path -- the same
     function `probe_enum.lua::path_text` implements, so the driver can
-    recognise its own entry event."""
+    recognise its own entry events.
+
+    `.` `/` `\\` `|` and every non-printable byte render as hex. The last two
+    are there for correctness, not looks: the trace line goes through the
+    probe's `esc`, which rewrites exactly `\\` and `|`, so a key containing
+    either would never match this rendering and `entered` would be
+    permanently false -- a spurious `never-reached`. Escaping them makes `esc`
+    a no-op on the result. Unreachable on this corpus
+    (`non_identifier_names == 0`), so it is covered synthetically."""
     out = []
     for i, tok in enumerate(encoded.split("/")):
         kind = tok[0]
         if kind == "k":
             v = bytes.fromhex(tok[1:])
-            ok = all(0x20 <= b <= 0x7e and b not in (0x2e, 0x2f) for b in v)
+            ok = all(0x20 <= b <= 0x7e and b not in (0x2e, 0x2f, 0x5c, 0x7c)
+                     for b in v)
             out.append(("." if i else "")
                        + (v.decode("ascii") if ok else "0x" + v.hex()))
         elif kind == "i":
@@ -478,11 +545,21 @@ class EnumVerdict:
 
     * `identical`       -- every assignment in the FULL product produced
                            byte-equal traces on both sides, and the target was
-                           entered on every one of them. `n_assignments` is
-                           how many were actually run, and it equals
-                           `space_size`; the two fields are separate so that a
-                           future sampling verdict cannot be mistaken for this
-                           one by a reader who only looks at one of them.
+                           entered on every one of them. `n_assignments`
+                           equals `space_size` here; the two fields are
+                           separate so that a future sampling verdict cannot
+                           be mistaken for this one by a reader who only looks
+                           at one of them.
+
+    `n_assignments` is the number of assignments whose comparison was
+    ADJUDICATED, which on the `divergent` path is the 1-based index of the
+    first differing one and NOT `len(todo)`: `exhaust` returns as soon as it
+    sees a difference. It is deliberately not "subprocesses launched", which
+    is larger and nondeterministic -- `ThreadPoolExecutor.map` keeps up to
+    `jobs` comparisons in flight and cancels the rest when the generator is
+    abandoned, so a `divergent` run over this population launches ~230 drive
+    processes across three measured runs where the adjudicated counts sum to
+    115. `distinct_traces` is likewise over the adjudicated prefix.
     * `divergent`       -- `assignment` is the first (in enumeration order)
                            whose traces differ; `first_diff` is
                            `(line number, original line, decompiled line)` as
@@ -498,6 +575,8 @@ class EnumVerdict:
     n_assignments: int = 0
     n_channels: int = 0
     entry: str | None = None
+    entries: tuple[str, ...] = ()
+    distinct_traces: int = 0
     assignment: Assignment | None = None
     first_diff: tuple[int, bytes, bytes] | None = None
     detail: str = ""
@@ -541,14 +620,22 @@ def exhaust(file, proto_path: str, *, jobs: int = 8,
         return EnumVerdict(kind="budget-exceeded", **common)
 
     entry = None
+    hits: tuple[str, ...] = ()
     if proto_path != "main":
         hits = discover_entries(str(file), proto_path)
         if not hits:
             return EnumVerdict(
                 kind="never-reached", detail="no published name reaches the "
                 "proto's line span", **common)
+        # A proto CAN be published under several names (`Alpha = f; Beta = f`).
+        # The first in sorted order is driven and the rest are carried on the
+        # verdict rather than silently dropped: they are the same function, so
+        # driving one is driving the proto, but a reader comparing two runs
+        # needs to see that a choice was made. No corpus row has more than one
+        # (measured over all 13, 2026-08-14).
         entry = hits[0]
     common["entry"] = entry
+    common["entries"] = hits
 
     todo = list(enumerate_assignments(chans))
 
@@ -559,32 +646,38 @@ def exhaust(file, proto_path: str, *, jobs: int = 8,
 
     statuses: set[str] = set()
     n_entered = 0
+    n_adjudicated = 0
+    seen: set[bytes] = set()
     with ThreadPoolExecutor(max_workers=jobs) as ex:
         for a, t0, t1 in ex.map(one, todo):
             statuses.add(t0.status)
             statuses.add(t1.status)
+            n_adjudicated += 1
+            seen.add(hashlib.sha256(t0.body).digest())
             if t0.body != t1.body:
                 return EnumVerdict(kind="divergent", assignment=a,
                                    first_diff=first_difference(t0.body, t1.body),
-                                   n_assignments=len(todo),
+                                   n_assignments=n_adjudicated,
+                                   distinct_traces=len(seen),
                                    statuses=tuple(sorted(statuses)), **common)
             if t0.entered and t1.entered:
                 n_entered += 1
+    common["distinct_traces"] = len(seen)
     if n_entered == 0:
         return EnumVerdict(
-            kind="never-reached", n_assignments=len(todo),
+            kind="never-reached", n_assignments=n_adjudicated,
             statuses=tuple(sorted(statuses)),
             detail="the entry was named but never called on any assignment",
             **common)
-    if n_entered != len(todo):
+    if n_entered != n_adjudicated:
         return EnumVerdict(
-            kind="never-reached", n_assignments=len(todo),
+            kind="never-reached", n_assignments=n_adjudicated,
             statuses=tuple(sorted(statuses)),
-            detail=f"the target was entered on {n_entered} of {len(todo)} "
+            detail=f"the target was entered on {n_entered} of {n_adjudicated} "
                    f"assignments; agreement on the rest is not evidence "
                    f"about this proto",
             **common)
-    return EnumVerdict(kind="identical", n_assignments=len(todo),
+    return EnumVerdict(kind="identical", n_assignments=n_adjudicated,
                        statuses=tuple(sorted(statuses)), **common)
 
 
@@ -611,21 +704,38 @@ def exhaust(file, proto_path: str, *, jobs: int = 8,
 # shipping through the box model -- at which point adjudication reports `gone`
 # and the pins must be deleted, not left to pass silently.
 #
-# `snr_common.lua:main_81` (`keyWait`) is a NEW instance of that class, and the
-# reason it is new is the whole point of this instrument: the L1.75 gate drives
-# one fixed stub policy, under which `stub_result("pressButton")` is `false`,
-# and `keyWait` then returns at `JMP -> 26` without ever reaching the `DIV` --
-# so that gate cannot see it. Instruction-level evidence, from the original
-# bytecode (1-based pcs, as `pyluadec.lift` and `luac -l -l` both number them):
+# `snr_common.lua:main_81` (`keyWait`) is a NEW instance of that class. It is
+# new because of the TARGETED NAMED ENTRY, not because of the enumeration --
+# an earlier version of this comment claimed the latter and it is measured
+# FALSE (round 1). What actually happens, all re-measured 2026-08-14:
+#
+#   * Driving `keyWait` with NO ASSIGNMENT AT ALL -- i.e. exactly the L1.75
+#     stub policy -- already produces this divergence.
+#   * BOTH assignments reach the `DIV` and produce byte-identical 116-event
+#     traces on the original side. `pressButton() == false` does NOT return
+#     early: pc 12's `EQ 0 R3 K(true)` fails, so pc 13's `JMP -> 16` is taken
+#     straight to the `DIV`; `pressButton() == true` skips pc 13, falls
+#     through pc 14's `EQ 1 R2 K(0)` (R2 is 1 from pc 2's `LOADK`) and skips
+#     pc 15's `JMP -> 26`, arriving at pc 16 as well.
+#   * What the L1.75 gate actually misses it by is TRUNCATION:
+#     `probe_raw(snr_common.lua)` returns `PROBE1|CAP|3001` having invoked
+#     exactly ONE of the file's 79 function-valued globals (`I|autoSystemSave`
+#     -> `R|autoSystemSave|CAP`). This is the `truncated:1/79` already on
+#     record from task 6. `keyWait` is never invoked at all.
+#
+# Instruction-level evidence, original bytecode, 1-based pcs (as
+# `pyluadec.lift` and `luac -l -l` both number them):
+#   pc 2     `LOADK R2 K(1)`
 #   pc 3-5   `GETGLOBAL R3 "pressButton"; LOADK R4 "CIRCLE"; CALL R3 2 2`
-#   pc 6-7   `EQ 1 R3 K(true); JMP -> 9`
+#   pc 12-13 `EQ 0 R3 K(true); JMP -> 16`
+#   pc 14-15 `EQ 1 R2 K(0); JMP -> 26`
 #   pc 16    `DIV R3 R0 K(<number>)` -- R0 is the parameter, and the probe
 #            calls every function with no arguments, so R0 is nil.
 # The original's `DIV` operand is a bare register with no `locvars` (the corpus
 # is stripped), so `kname` finds nothing and Lua says "arithmetic on a nil
 # value"; the fallback's operand came from `__pld_R[0]`, so `kname` says
-# "field '?'". `pressButton()=v0` is the assignment that supplies `true` and
-# reaches pc 16 at all.
+# "field '?'". The pinned assignment is `pressButton()=v0` only because it is
+# the FIRST in enumeration order; `v1` diverges identically.
 EXPECTED_DIVERGENCE: dict[str, tuple[str, bytes, bytes]] = {
     "snr_common.lua:main_81": (
         "pressButton()=v0",
@@ -715,6 +825,7 @@ def main(argv: list[str] | None = None) -> int:
             extra = "  (nothing run)"
         print(f"{f}:{path:12} {v.kind:16} channels={v.n_channels} "
               f"space={v.space_size} run={v.n_assignments} "
+              f"distinct={v.distinct_traces} "
               f"statuses={','.join(v.statuses) or '-'}{extra}")
     unexpected, moved, gone = adjudicate_pins(divergent, EXPECTED_DIVERGENCE)
     print("enum: " + ", ".join(f"{k} {counts[k]}" for k in VERDICTS)

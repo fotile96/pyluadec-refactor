@@ -6,11 +6,14 @@ byte-for-byte. What it is for, and what it deliberately is not for, is in that
 module's docstring; the stub environment and the spec grammar are in
 `scripts/probe_enum.lua`.
 
-The corpus arm of this file is a bounded demonstration over the SMALLEST of
-the 13 compound-`if` leaf refusals. The full 13-proto run is a job
-(`uv run python scripts/probe_enum.py`), not a suite gate, because its
-enumerated product is 1256 assignments and every one of them is two Lua
-subprocesses; its measured cost is in the task report.
+The corpus arm of this file runs the whole 13-proto population as a gate, and
+separately keeps the SMALLEST of them (`snr_music.lua:main_3`, a two-point
+space) as a bounded demonstration that costs 0.09 s. Measured 2026-08-14: of
+the 13, one is over budget and two are never-reached, so **182 assignments**
+are enumerated and adjudicated across the other ten, each a pair of Lua
+subprocesses. (An earlier version of this paragraph said 1256; that number
+reproduces nothing -- 182 driven, 214 if the refused row is counted at its
+`classes.json` size, 23830 at its real one.)
 
 Every synthetic fixture here is labelled as synthetic. The corpus is a weak
 oracle -- it has zero `repeat` loops and misses six opcodes -- so an
@@ -444,9 +447,14 @@ def test_the_probe_uses_the_shared_driver_and_does_not_copy_it():
         assert copied not in b, copied
 
 
-def test_no_lua_patterns_in_the_probe():
-    """Repo-wide rule: plain `string.find(..., true)` and byte indexing only."""
-    b = probe_enum.PROBE.read_text(encoding="utf-8")
+@pytest.mark.parametrize("name", ["probe_enum.lua", "probe_common.lua"])
+def test_no_lua_patterns_in_the_probe(name):
+    """Repo-wide rule: plain `string.find(..., true)` and byte indexing only.
+
+    `probe_common.lua` is covered here because the extraction moved ~460 lines
+    of driver into it and nothing else asserted the rule for that file -- the
+    per-probe checks all read their own `PROBE`."""
+    b = (probe_enum.PROBE.parent / name).read_text(encoding="utf-8")
     for banned in ("string.gsub", "string.match", "string.gmatch",
                    ":gsub(", ":match(", ":gmatch("):
         assert banned not in b, banned
@@ -511,7 +519,7 @@ def test_the_full_leaf_population_verdicts_are_pinned(corpus_dir):
     """The task's deliverable, as a gate. All 13 leaves, every assignment of
     every one that fits the budget, both sides.
 
-    Measured 2026-08-14 (standalone CLI, 5.5s wall on this host): **identical
+    Measured 2026-08-14 (standalone CLI, 5.70/5.78/5.74s wall): **identical
     8, divergent 2, budget-exceeded 1, never-reached 2**. The two divergences
     are pinned in `probe_enum.EXPECTED_DIVERGENCE` with instruction-level
     evidence and are both the already-documented `__pld_R` `getobjname`
@@ -528,9 +536,13 @@ def test_the_full_leaf_population_verdicts_are_pinned(corpus_dir):
     assert len(population) == 13
     counts = {k: 0 for k in probe_enum.VERDICTS}
     divergent = {}
+    total_space = total_adjudicated = 0
     for f, path in population:
         v = exhaust(corpus_dir / f, path)
         counts[v.kind] += 1
+        total_adjudicated += v.n_assignments
+        if v.kind not in ("budget-exceeded", "never-reached"):
+            total_space += v.space_size
         if v.kind == "divergent":
             divergent[f"{f}:{path}"] = probe_enum.evidence(v)
         if v.kind == "identical":
@@ -541,6 +553,14 @@ def test_the_full_leaf_population_verdicts_are_pinned(corpus_dir):
                       "budget-exceeded": 1, "never-reached": 2}, counts
     assert adjudicate_pins(divergent, probe_enum.EXPECTED_DIVERGENCE) \
         == ([], [], [])
+    # The enumerated product over the ten drivable rows is 182 assignments;
+    # 106 of them are ADJUDICATED, because `exhaust` stops at the first
+    # difference on the two divergent rows (indices 1 and 53). Both numbers
+    # are pinned: the first is what "exhaustive" means here, the second is
+    # what `n_assignments` reports, and conflating them is how round 1's
+    # "186 assignments / 372 driven runs" came about.
+    assert total_space == 182
+    assert total_adjudicated == 106
 
 
 def test_the_one_over_budget_leaf_is_refused_with_its_size(corpus_dir):
@@ -563,29 +583,298 @@ def test_the_one_over_budget_leaf_is_refused_with_its_size(corpus_dir):
     assert (v.space_size, v.n_assignments) == (23616, 0)
 
 
-def test_the_enumeration_reaches_states_the_l1_75_gate_cannot(corpus_dir):
-    """Why this instrument is not redundant with the L1.75 gate, measured
-    rather than argued.
+def test_the_targeted_entry_reaches_what_the_l1_75_gate_truncates(corpus_dir):
+    """Why this instrument is not redundant with the L1.75 gate -- and which
+    HALF of it does the work. Round 1 of this task's review falsified the
+    first version of this test's explanation, so every clause here is
+    measured.
 
-    `snr_common.lua:main_81` is `keyWait`. The L1.75 gate drives one fixed
-    stub policy, under which `pressButton` returns `false`; the function then
-    takes `EQ 1 R3 K(true)` at pc 6, falls to `EQ 1 R1 K(0)` at pc 14 and
-    returns at pc 15's `JMP -> 26`, never reaching the `DIV` at pc 16. So the
-    L1.75 trace for this file records no such error at all, while the
-    `pressButton()=v0` assignment reaches it on both sides.
+    The L1.75 gate invokes every function-valued global a chunk defines, in
+    one process, under one 3000-event budget. On `snr_common.lua` that budget
+    is spent inside the FIRST of the 79 it defines: the trace is
+    `PROBE1|CAP|3001` with exactly one `I|` event (`autoSystemSave`), which is
+    the `truncated:1/79` already on record from task 6. `keyWait` is never
+    invoked at all -- so the reason the gate misses this divergence is
+    TRUNCATION, not the stub policy.
+
+    It is specifically NOT the case that the frozen `pressButton -> false`
+    policy makes `keyWait` return early. Measured: both values reach the `DIV`
+    at pc 16 and produce byte-identical 116-event traces, and driving with NO
+    assignment at all already diverges. `pressButton() == false` fails pc 12's
+    `EQ 0 R3 K(true)` and takes pc 13's `JMP -> 16` straight to it; `== true`
+    skips pc 13, falls through pc 14's `EQ 1 R2 K(0)` (R2 is 1 from pc 2's
+    `LOADK`) and skips pc 15's `JMP -> 26`. What buys the finding is the
+    TARGETED NAMED ENTRY, not the enumerated product.
     """
-    from scripts.probe_behaviour import probe_raw
+    from scripts.probe_behaviour import probe_raw, header
     f = corpus_dir / "snr_common.lua"
     beh = probe_raw(f.read_bytes(), is_source=False)
+    assert header(beh) == ("CAP", 3001)
+    assert [l for l in beh.split(b"\n") if l.startswith(b"I|")] \
+        == [b"I|autoSystemSave"]
     assert b"R|keyWait|" not in beh
-    v = exhaust(f, "main_81")
-    assert v.kind == "divergent"
-    assert b"arithmetic" in v.first_diff[1]
+
+    entry = discover_entries(str(f), "main_81")[0]
+    both = [drive(f, "main_81", a, side="original", entry=entry)
+            for a in enumerate_assignments(
+                channels_of(probe_enum._proto_at(f, "main_81")[1]))]
+    assert len(both) == 2
+    assert both[0].raw == both[1].raw            # the space selects nothing
+    assert both[0].n_events == 116
+
+    unassigned0 = drive(f, "main_81", None, side="original", entry=entry)
+    unassigned1 = drive(f, "main_81", None, side="decompiled", entry=entry)
+    assert unassigned0.raw != unassigned1.raw    # no assignment is enough
+    assert first_difference(unassigned0.raw, unassigned1.raw) \
+        == exhaust(f, "main_81").first_diff
+
+
+def test_what_an_identical_verdict_explored_on_each_corpus_row(corpus_dir):
+    """**How much an `identical` is worth, per row, measured.** An
+    enumeration that agreed because every point took the same path says no
+    more than a single drive would, and `test_every_arm_of_every_branch_is_
+    actually_taken` only pins that for a synthetic fixture. This is its corpus
+    counterpart.
+
+    Distinct ORIGINAL-side traces over the whole product, re-measured
+    2026-08-14 (10 driven rows; the other three are refused or unreachable):
+
+        snr_common.lua:main_71        1 / 4     <- selects nothing
+        snr_common.lua:main_74_13     2 / 4
+        snr_common.lua:main_76_2      2 / 24
+        snr_common.lua:main_76_8      1 / 4     <- selects nothing
+        snr_common.lua:main_81        1 / 2     <- selects nothing
+        snr_graphic.lua:main          1 / 2     <- selects nothing, 1 event
+        snr_graphic.lua:main_4        4 / 8
+        snr_mainmenu.lua:main_7      14 / 128
+        snr_memory.lua:main_4         4 / 4
+        snr_music.lua:main_3          2 / 2
+
+    **Four of the ten select nothing**, and `snr_graphic.lua:main`'s entire
+    evidence is a ONE-event trace (`G|main|<function#1>`: it is a chunk root
+    whose body only publishes a function). Their `identical` is honest about
+    what it compared and dishonest only if read as "the space was explored" --
+    which is why the count now rides on the verdict and in the CLI's output.
+
+    This test walks the full product itself rather than reading
+    `EnumVerdict.distinct_traces`, because that field is over the ADJUDICATED
+    prefix and stops early on the two divergent rows.
+    """
+    import hashlib
+    from concurrent.futures import ThreadPoolExecutor
+    expected = {
+        ("snr_common.lua", "main_71"): (1, 4),
+        ("snr_common.lua", "main_74_13"): (2, 4),
+        ("snr_common.lua", "main_76_2"): (2, 24),
+        ("snr_common.lua", "main_76_8"): (1, 4),
+        ("snr_common.lua", "main_81"): (1, 2),
+        ("snr_graphic.lua", "main"): (1, 2),
+        ("snr_graphic.lua", "main_4"): (4, 8),
+        ("snr_mainmenu.lua", "main_7"): (14, 128),
+        ("snr_memory.lua", "main_4"): (4, 4),
+        ("snr_music.lua", "main_3"): (2, 2),
+    }
+    got = {}
+    for (f, path), _ in expected.items():
+        _pr, proto = probe_enum._proto_at(corpus_dir / f, path)
+        chans = channels_of(proto)
+        entry = None
+        if path != "main":
+            entry = discover_entries(str(corpus_dir / f), path)[0]
+        todo = list(enumerate_assignments(chans))
+
+        def one(a, f=f, path=path, entry=entry):
+            return drive(corpus_dir / f, path, a, side="original", entry=entry)
+
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            seen = {hashlib.sha256(t.raw).digest() for t in ex.map(one, todo)}
+        got[(f, path)] = (len(seen), len(todo))
+    assert got == expected
 
 
 # --------------------------------------------------------------------------
 # Guards: neutered, named test red, restored
 # --------------------------------------------------------------------------
+
+def test_reach_requires_the_completion_event_not_the_intent_event(tmp_path):
+    """SYNTHETIC, and the exact shape a round-1 review constructed.
+
+    `probe_enum.lua` appends `I|<name>`, then re-checks the event budget, then
+    calls. A chunk body that emits exactly `MAX_EVENTS - 2` events makes the
+    `I|` itself the event that trips the cap, so the call is SKIPPED and the
+    target executes nothing at all -- while an `I|`-keyed reach test happily
+    says "entered" and `exhaust` returns `identical`.
+
+    Measured this session at 2996 / 2997 / 2998 / 2999 chunk-body loop
+    iterations: `identical` / `identical` / **`never-reached`** / `never-
+    reached`. The 2998 row is the constructed one; before this fix it was
+    `identical` with an empty target run, and the last row is the case where
+    even the `I|` does not fit.
+    """
+    def chunk(n):
+        return _compiled(
+            tmp_path,
+            b"for i = 1, %d do engine.Tick() end\n"
+            b"function main() engine.Inside() end\n" % n,
+            name=f"cap{n}.luac")
+
+    t = drive(chunk(2998), "main_0", None, side="original",
+              entry=encode_path((("k", b"main"),)))
+    lines = t.raw.split(b"\n")
+    assert b"I|main" in lines                       # the intent event IS there
+    assert not any(l.startswith(b"R|main|") for l in lines)
+    assert t.entered is False
+    assert exhaust(chunk(2998), "main_0").kind == "never-reached"
+    # ... and one iteration earlier the call does happen, so this is not a
+    # test that would pass for any chunk.
+    assert exhaust(chunk(2997), "main_0").kind == "identical"
+
+
+def test_the_completion_keyed_reach_is_load_bearing(tmp_path, monkeypatch):
+    """NEUTER PROOF for the fix above: key reach on `I|` instead of `R|` and
+    the 2998 fixture flips back to `identical` -- an agreement about a
+    function that never ran a single instruction."""
+    f = _compiled(tmp_path,
+                  b"for i = 1, 2998 do engine.Tick() end\n"
+                  b"function main() engine.Inside() end\n")
+    assert exhaust(f, "main_0").kind == "never-reached"
+
+    real = probe_enum.drive
+
+    def intent_keyed(file, proto_path, assignments, **kw):
+        t = real(file, proto_path, assignments, **kw)
+        entry = kw.get("entry")
+        marker = b"I|" + probe_enum.path_text_of(entry).encode("ascii")
+        return probe_enum.Trace(
+            raw=t.raw, status=t.status, n_events=t.n_events,
+            entered=any(l == marker for l in t.raw.split(b"\n")))
+
+    monkeypatch.setattr(probe_enum, "drive", intent_keyed)
+    assert exhaust(f, "main_0").kind == "identical"
+
+
+def test_the_partial_reach_guard_is_load_bearing(tmp_path, monkeypatch):
+    """NEUTER PROOF for `if n_entered != n_adjudicated` in `exhaust`. Round 1
+    found this clause deletable with a green tree; this is the reaching shape.
+
+    SYNTHETIC: one channel with a two-point domain, where one assignment lets
+    the entry run to completion and the other spends the whole event budget
+    inside the chunk BODY, so the `I|` trips the cap and the call is skipped.
+    Agreement on the reaching half is not evidence about a proto the other
+    half never entered.
+
+    The fixture needs the SAME access path to be read by the target's own
+    branch (which is what makes it a channel at all -- channels are per-proto)
+    and by the chunk body (which is what lets an assignment decide whether the
+    budget survives to the call). `sys.slow` does both.
+    """
+    f = _compiled(tmp_path, b"""
+function main()
+  if sys.slow == 1 then engine.A() else engine.B() end
+end
+if sys.slow == 1 then
+  for i = 1, 2998 do engine.Tick() end
+end
+""")
+    v = exhaust(f, "main_0")
+    assert v.kind == "never-reached", v
+    assert "entered on 1 of 2" in v.detail
+
+    real = probe_enum.exhaust
+
+    def no_partial_check(*a, **k):
+        # Reproduce `exhaust` with the clause removed, by making every trace
+        # claim it was entered.
+        rd = probe_enum.drive
+
+        def always_entered(*aa, **kk):
+            t = rd(*aa, **kk)
+            return probe_enum.Trace(raw=t.raw, status=t.status,
+                                    n_events=t.n_events, entered=True)
+        monkeypatch.setattr(probe_enum, "drive", always_entered)
+        return real(*a, **k)
+
+    assert no_partial_check(f, "main_0").kind == "identical"
+
+
+def test_the_per_side_reach_conjunction_is_load_bearing(tmp_path, monkeypatch):
+    """NEUTER PROOF for `if t0.entered and t1.entered` -- the OTHER clause
+    round 1 found deletable. The reaching shape is a side that agrees on every
+    recorded event and yet never entered the target: here the decompiled side
+    is replaced by a source that publishes `main` as a TABLE, so the traces
+    agree up to the `G|main|` event and only that side's call is skipped.
+
+    Without the conjunction the run counts as entered on the strength of the
+    original alone.
+    """
+    f = _compiled(tmp_path, b"function main() engine.Inside() end\n")
+    # Same single `G|main|<function#1>` event on both sides, then the original
+    # calls `main` and the substitute cannot.
+    monkeypatch.setattr(probe_enum, "_decompiled",
+                        lambda _p: b"main = function() engine.Inside() end\n")
+    assert exhaust(f, "main_0").kind == "identical"    # control: they agree
+
+    rd = probe_enum.drive
+
+    def blind_side(*a, **k):
+        t = rd(*a, **k)
+        if k.get("side") == "decompiled":
+            return probe_enum.Trace(raw=t.raw, status=t.status,
+                                    n_events=t.n_events, entered=False)
+        return t
+
+    monkeypatch.setattr(probe_enum, "drive", blind_side)
+    v = exhaust(f, "main_0")
+    assert v.kind == "never-reached", v
+
+
+def test_a_bar_or_backslash_in_a_key_still_matches_the_trace_event(tmp_path):
+    """SYNTHETIC (`footprints.json` measured `non_identifier_names == 0`, so
+    nothing real reaches this). The trace line goes through the probe's `esc`,
+    which rewrites `|` and `\\`; the driver rebuilds the same name in Python
+    to recognise its own `R|` event. Both renderings hex-escape those two
+    bytes, so they agree -- without that, `entered` would be permanently false
+    and the verdict a spurious `never-reached`."""
+    f = _compiled(tmp_path, b"""
+local t = {}
+t["a|b"] = function() if sys.flag == 1 then engine.A() else engine.B() end end
+Outer = t
+""")
+    hits = discover_entries(str(f), "main_0")
+    assert hits == (encode_path((("k", b"Outer"), ("k", b"a|b"))),)
+    assert probe_enum.path_text_of(hits[0]) == "Outer.0x617c62"
+    v = exhaust(f, "main_0")
+    assert v.kind == "identical", v
+    assert v.n_assignments == 2
+
+
+def test_a_non_finite_comparison_constant_is_refused_not_silently_nil(tmp_path):
+    """SYNTHETIC and currently unreachable (no comparison constant in the 229
+    corpus files is non-finite). `%.17g` renders an infinity as `inf`, and the
+    probe's `parse_value` calls `tonumber`, which returns nil for it -- a
+    silently WRONG assignment. Refused instead."""
+    with pytest.raises(ProbeError) as e:
+        encode_value(float("inf"))
+    assert "non-finite" in str(e.value)
+
+
+def test_several_publishing_names_are_disclosed_not_silently_dropped(tmp_path):
+    """SYNTHETIC. A proto published under two names is still one proto, so
+    driving either drives it -- but the choice is recorded on the verdict
+    rather than made invisibly. No corpus row has more than one (measured over
+    all 13)."""
+    f = _compiled(tmp_path, b"""
+local f = function() if sys.flag == 1 then engine.A() else engine.B() end end
+Alpha = f
+Beta = f
+""")
+    hits = discover_entries(str(f), "main_0")
+    assert hits == (encode_path((("k", b"Alpha"),)),
+                    encode_path((("k", b"Beta"),)))
+    v = exhaust(f, "main_0")
+    assert v.entry == hits[0] and v.entries == hits
+
+
 
 def test_the_reach_guard_is_load_bearing(tmp_path, monkeypatch):
     """NEUTER PROOF for the `never-reached` verdict. With the reach check
