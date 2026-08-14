@@ -80,10 +80,18 @@ cmake --build cmake-build-debug --target lua luac lua51_proto_extractor
 
   > 字节红线适用于 ingest/lift/比对层；打印层允许做**有回退的呈现判定**（UTF-8 可逆则原样输出，否则十进制转义）——两种写法编译出相同常量，认证门裁决不变性。
 
-  修订**只落在 `emit/`**，实现是唯一的 `emit/lua.py::_str_lit`：strict UTF-8 解码成功、
-  重新编码回原字节、且非纯 ASCII 时原样输出，否则回退到 `structure/fallback.py::str_lit`
-  的十进制转义。`structure/fallback.py` 本身未改（fallback 产物仍全转义），
-  `ingest`/`lift`/`verify` 一个字节都不解码。不得扩大这个口子。
+  第一次修订（M5 task 7）只落在 `emit/lua.py::_str_lit`：strict UTF-8 解码成功、
+  重新编码回原字节、且非纯 ASCII 时原样输出，否则回退到十进制转义。
+  `ingest`/`lift`/`verify` 一个字节都不解码。
+
+  **2026-08-15 第二次作用域修订（human partner 批准，M7 task 5 落地）**：同一呈现判定
+  现有两个落点——`emit/lua.py::_str_lit`（薄委托）与 `structure/fallback.py::str_lit`
+  （判定本体单一归属处，M7 task 5 从 emit 搬入；fallback 产物与 hybrid 内联子树的
+  游戏文本由此原样输出——实测 snr_common 12,159 + snr_novel 42 个常量字节从转义变
+  原样，全语料转义残留 5 处、全是常量内换行控制字节 `\010`，属必转义类）。本条按名
+  反转第一次修订的「不得扩大这个口子」；其余红线不变：`ingest`/`lift`/`verify`
+  一个字节不解码，诊断文本仍绝不包含语料内容。两次修订的裁决不变性机器检验同形：
+  两种拼写编译出相同常量，`corpus/ledger.jsonl` 逐次提交字节不变（M7 task 5 实测）。
   （M5 task 7 的审查提过一个小意见：本节比批准的那一条 bullet 写得**长**。M5 task 12
   逐句核对后**保留**——每一句都是那条 bullet 的作用域说明或其实测依据，没有一句扩大了
   授权范围。红线条款宁可写长也不要留下需要读者自行推断的边界。）
