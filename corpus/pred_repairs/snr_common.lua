@@ -3833,30 +3833,37 @@ autoSystemSave = function(p0)
         return
     end
     wait(1)
-    v1 = succeedLoadSystemdata()
-    if v1 == false then
+    while succeedLoadSystemdata() == false do
         v1 = existSystemdata()
         if v1 then
             if p0 == 1 then
                 v1 = systemConfig.confirm(backLayerName.sys_5_i, 100, 80)
                 if v1 == true then
                     runAutoSave()
+                else
+                    break
                 end
             else
                 v1 = comDlgYesNo(cGetFileName("sysgim", "sys_5_i"), 100, 80)
                 if v1 == true then
                     runAutoSave()
+                else
+                    break
                 end
             end
         elseif p0 == 1 then
             v1 = systemConfig.confirm(backLayerName.sys_5_j, 100, 80)
             if v1 == true then
                 runAutoSave()
+            else
+                break
             end
         else
             v1 = comDlgYesNo(cGetFileName("sysgim", "sys_5_j"), 100, 80)
             if v1 == true then
                 runAutoSave()
+            else
+                break
             end
         end
         wait(1)
