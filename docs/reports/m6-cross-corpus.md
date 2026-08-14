@@ -1543,3 +1543,255 @@ M6 formal-verification instrument cost: it is the
 standing gate for the four corpus-wide loss sweeps, and it is the second
 instrument (after the `PRED_PINS` gate) that turns an adjudication into
 something that fails on regression.
+
+---
+
+## 5. The enumerated differential instrument (task 7)
+
+Task 7 was **re-scoped on 2026-08-14** (plan amendment): the corpus-wide run
+over the whole Class-1 candidate population moves to M7, and what remains is
+the instrument itself plus a demonstration on the compound-`if` refusal
+protos — the population Task 11 will fix. The reason is §3's and §4's
+measurements, not a preference: all six confirmed predecessor defects were
+found by the *static* arm, five of them invisible to both dynamic arms, and
+the cheapest static instrument in the tree outperformed the designed one.
+What survives of Task 7's justification is its *other* purpose — proving
+semantic equivalence where bytes differ — which is what Tasks 9–12 need.
+
+Files: `scripts/probe_enum.py`, `scripts/probe_enum.lua`,
+`tests/test_probe_enum.py`. CLI:
+`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_enum.py [FILE PROTO_PATH]`.
+
+### 5.1 The population: 13 leaves, not 21 shapes
+
+The amendment says "the 13 compound-`if` refusal protos"; the ledger's
+`structure:` family is **21 shapes**. Both are right, about different things.
+The ledger copies a refusing descendant's reason **verbatim** up to its
+ancestors, so `snr_story_main.lua:main` — 10 instructions — is recorded as
+`structure: pc 131: if targets out of range`. Re-running `build_sir` on each
+of the 21 protos **alone** splits them **13 leaves / 8 ancestors**, and the
+leaf set agrees exactly with the one `corpus/observation/classes.json` already
+publishes as `refusal_origin == "own"` (two independent derivations, same 13).
+The 8 ancestors are collateral and clear when the leaves do; they are not
+driven here.
+
+Leaves: `snr_common.lua` `main_71` `main_74_13` `main_76_2` `main_76_8`
+`main_81`; `snr_fragment_main.lua:main_1`; `snr_graphic.lua` `main` `main_4`;
+`snr_mainmenu.lua:main_7`; `snr_memory.lua:main_4`; `snr_music.lua:main_3`;
+`snr_s4_10_s.lua:main_58`; `snr_story_main.lua:main_1`.
+
+### 5.2 What the instrument does
+
+For a chosen proto it takes that proto's **branch channels** — the access
+paths its own `EQ`/`LT`/`LE`/`TEST` conditions read, from
+`observation_classes.channels`, the same dataflow Task 4 published — and
+enumerates the **full product** of their value domains. Each point of the
+product is an *assignment*; each assignment is installed into the L1.75 stub
+environment and both sides (original bytecode, our shipped artifact) are run
+under it and compared byte-for-byte.
+
+`EnumVerdict` has four kinds. Three are the brief's: `identical`,
+`divergent(assignment, first-diff)`, `budget-exceeded(space_size)` — over
+budget refuses and states the size, and **nothing is run** (`n_assignments ==
+0`), never a silent sample. The fourth, `never-reached`, exists because of a
+measurement this milestone kept making: `probe_keyseq.py` stubs the very gates
+that select two of the six confirmed defects, and five authored sequences gave
+byte-identical traces across three versions of one file. An arm that never
+fired is not evidence of agreement, so a run whose target was never entered
+says so and never says `identical`.
+
+**How reach is established on both sides.** The obvious test — a `debug` call
+hook keyed on the target's `(linedefined, lastlinedefined)` — works only on
+the original: every one of these 13 protos ships as fallback output, whose
+proto tree is deliberately reshaped into `__pld_F` factories, so no line- or
+path-keyed correspondence exists on our side. What both sides share is the
+**name** the function is published under. So the probe has a `discover` mode
+that runs the **original** (where `linedefined` survives stripping and does
+name the ledger's proto tree), walks the globals the chunk defined, and
+reports the access paths at which a function with the target's line span is
+published; both sides are then driven with that path and each records its own
+`I|<path>` event. A side that does not publish the name reports `ENTRYFAIL`,
+which is deliberately **not** in the comparable-marker set. Ambiguity is
+refused rather than guessed: if two protos in the file share a line span,
+`discover_entries` raises.
+
+**Values drive, indices are published.** A branch constant may be a string out
+of the constant pool, i.e. game text. `classes.json` renders every string as
+the literal `"str"` (that is how it stays ASCII), which makes it unusable as a
+source of the value that takes the `== "..."` arm. So `channels_of` reads the
+real constants — held as `bytes`, passed to the probe as hex — while every
+ASCII surface (`Assignment.name`, the CLI, this report) names a value by its
+**index** in the channel's domain (`v0`, `v1`, …). The one change to Task 4's
+generator is a parallel `rec["raw"]` set alongside the existing `rec["cmp"]`;
+`corpus/observation/classes.json` regenerates **byte-identical**, verified by
+`cmp` this session, and its published figures reproduce (`110/113`
+choice-branch drivable, `1940/1944` corpus-wide).
+
+### 5.3 Result over the 13 leaves
+
+`identical 8, divergent 2, budget-exceeded 1, never-reached 2`; 5.5 s wall for
+the whole population, CLI exit 0 (both divergences pinned).
+
+| file:proto | channels | space | `classes.json` | run | verdict |
+|---|---|---|---|---|---|
+| `snr_common.lua:main_71` | 2 | 4 | 4 | 4 | identical (CAP) |
+| `snr_common.lua:main_74_13` | 2 | 4 | 4 | 4 | identical (CAP) |
+| `snr_common.lua:main_76_2` | 4 | 24 | 24 | 24 | identical (CAP, OK) |
+| `snr_common.lua:main_76_8` | 2 | 4 | 4 | 4 | identical (CAP) |
+| `snr_common.lua:main_81` | 1 | 2 | 2 | 2 | **divergent** (OK) |
+| `snr_fragment_main.lua:main_1` | 4 | 16 | 16 | 0 | **never-reached** |
+| `snr_graphic.lua:main` | 1 | 2 | 2 | 2 | identical (OK) |
+| `snr_graphic.lua:main_4` | 3 | 8 | 8 | 8 | identical (CAP, OK) |
+| `snr_mainmenu.lua:main_7` | 6 | 128 | 128 | 128 | **divergent** (CAP, OK) |
+| `snr_memory.lua:main_4` | 2 | 4 | 4 | 4 | identical (CAP, OK) |
+| `snr_music.lua:main_3` | 1 | 2 | 2 | 2 | identical (CAP) |
+| `snr_s4_10_s.lua:main_58` | 7 | **23616** | **1152** | 0 | **budget-exceeded** |
+| `snr_story_main.lua:main_1` | 4 | 16 | 16 | 0 | **never-reached** |
+
+Total assignments actually run: **186**, each on both sides, so 372 driven
+runs. `CAP` in the status column means that assignment hit the 3000-event
+budget — the same frozen budget the L1.75 gate uses, so both sides truncate at
+the same point in the observable behaviour; it is recorded in the verdict so a
+truncated run can never be read as a completed one.
+
+**The one number that did not reproduce.** `snr_s4_10_s.lua:main_58`'s input
+space is **23616** here against the **1152** `classes.json` publishes. Neither
+is wrong: `classes.json`'s `domain` is `len(cmp) + 1` over `const_lit`
+renderings, which collapse every string to `"str"`; this instrument needs the
+distinct strings, because supplying `"a"` does not take the `== "b"` arm. So
+Task 4's "110 of 113 Class-1 candidates fit 4096" is a statement about the
+**coarse** space and does not transfer to the enumerable one. This row is the
+measured example; re-derive before quoting either figure as "the" input space.
+The other twelve leaves agree exactly between the two.
+
+**The two never-reached rows** (`snr_fragment_main.lua:main_1`,
+`snr_story_main.lua:main_1`) are protos the chunk does not publish under any
+name the discovery walk reaches — consistent with the static scan in
+`observation_classes._defs_and_calls`, which finds no global or method
+definition for either. They have 16-point spaces that could be enumerated the
+moment a caller-driven entry exists; that is M7 work, and reporting them as
+`identical` would have been the exact failure this verdict exists to prevent.
+
+### 5.4 The two divergences: one already-pinned class, one new instance
+
+Both are the **`getobjname` naming artifact of the fallback's `__pld_R` box
+model**, already pinned for `snr_mainmenu.lua` in `probe_global_state.py` and
+`probe_behaviour.py` since M3. `ldebug.c`'s `kname()` names an operand only
+when the producing instruction is a `GETTABLE`/`GETGLOBAL` with a **string**
+constant key; the fallback routes every register through `__pld_R[<number>]`,
+so `kname` says `field '?'`. Only the noun in an error **message** differs —
+both sides fail at the same instruction with the same error kind.
+
+`snr_common.lua:main_81` (`keyWait`) is a **new instance**, and why it is new
+is the point of the instrument. Original bytecode, 1-based pcs (matching
+`pyluadec.lift` and `luac -l -l`):
+
+```
+ 3 GETGLOBAL R3 "pressButton"   4 LOADK R4 "CIRCLE"   5 CALL R3 2 2
+ 6 EQ 1 R3 K(true)              7 JMP -> 9
+12 EQ 0 R3 K(true)             13 JMP -> 16
+14 EQ 1 R1 K(0)                15 JMP -> 26        (RETURN)
+16 DIV R3 R0 K(<number>)
+```
+
+Under the L1.75 gate's single frozen stub policy `pressButton` returns
+`false`, so the run reaches pc 14, finds `R1 == 0` and returns at pc 15 — the
+`DIV` at pc 16 is never executed and that gate's trace for `snr_common.lua`
+contains no `R|keyWait|` line at all (asserted by
+`test_the_enumeration_reaches_states_the_l1_75_gate_cannot`). The
+`pressButton()=v0` assignment supplies `true` and reaches it. `R0` is the
+parameter and the probe calls every function with no arguments, so `R0` is
+`nil`: the original says "arithmetic on a nil value" (a bare register, and
+`locvars` are stripped, so `kname` finds no name at all) and the fallback says
+"field '?'".
+
+Both pins should **converge** when Task 11 makes these protos certify `L3` and
+stop shipping through the box model. Adjudication is two-directional
+(`scripts/probe_common.py::adjudicate_pins`, the same function the L1.5 and
+L1.75 gates use), so convergence reports `gone` and forces the pins to be
+deleted rather than left passing silently.
+
+### 5.5 Fault injection: the instrument can fail, and it names the assignment
+
+Two committed injections, both synthetic (`tests/test_probe_enum.py`), both
+against the **decompiled** side of a fixture whose original is real `luac`
+output:
+
+1. `test_an_injected_arm_swap_is_divergent_and_names_the_assignment` — the two
+   arms of one `if` are swapped. Verdict `divergent`; the named assignment is
+   re-driven on its own and its traces must differ, and the recomputed
+   first-diff must equal the one the verdict carried.
+2. `test_a_swap_on_only_one_arm_is_still_named` — the sharper form: only the
+   `== 1` arm is wrong, so **exactly one** of the two assignments exposes it.
+   The verdict must name that one (`sys.flagA=v0`, the compared constant) and
+   its first-diff must be `engine.TrueArm` against `engine.Wrong`. Naming the
+   other assignment would be a verdict that does not reproduce.
+
+Non-vacuity for the agreeing direction is separate and explicit:
+`test_every_arm_of_every_branch_is_actually_taken` requires the 4 assignments
+of the two-flag fixture to produce **4 distinct traces** and, between them, all
+four of `engine.A0/A1/B0/B1` — an enumeration that agreed because every point
+took the same path would prove nothing.
+
+### 5.6 Guards proven load-bearing
+
+* **Reach (`never-reached`)** — in-test neuter,
+  `test_the_reach_guard_is_load_bearing`: with `discover_entries` made to fall
+  back on "we called *something*", the unpublished-helper fixture flips from
+  `never-reached` to `identical`. Restored by `monkeypatch`.
+* **Ambiguous line span** — out-of-tree neuter: `if len(twins) != 1:` →
+  `if False:`. `test_an_ambiguous_line_span_is_refused_rather_than_guessed`
+  goes red with `Failed: DID NOT RAISE ProbeError`; restored, green.
+* **`ENTRYFAIL` is not a comparable value** — out-of-tree neuter: adding
+  `b"ENTRYFAIL|"` to `_MARKERS`.
+  `test_an_entry_that_does_not_resolve_is_not_a_comparable_value` goes red;
+  restored, green. (It fails with an `IndexError` out of `_header` rather than
+  a clean message — the marker check is the only thing that keeps a
+  probe-side failure out of the comparison path, and nothing downstream is a
+  second line of defence. That is recorded, not fixed: a second check there
+  would be a guard with no reaching shape.)
+
+### 5.7 One implementation of the stub driver, not a fourth copy
+
+`probe_keyseq.lua` was written by copying `probe_behaviour.lua`; measured this
+session with `difflib.SequenceMatcher`, **257 lines were identical** in blocks
+of 4 or more. M5 recorded that as debt and Task 7's brief forbade a fourth
+copy. The serialiser, the recorder, the frozen stub-return policy, the proxy
+metatable, the determinism overrides and the environment shadow table now live
+in `scripts/probe_common.lua` as closure factories with optional hooks
+(`taint` for L2's comparison metamethods, `on_read`/`on_call`/`track_segs` for
+this task's assignment injection), and **all three** probes consume them.
+`scripts/probe_enum.lua` was written against the shared factories from the
+start.
+
+The evidence that the extraction changed nothing is the standing gates
+themselves: the L1.75 corpus gate (229 files, both sides, byte-identical
+traces) and the L2 checkpoint gate pass unchanged. `probe_global_state.lua`
+already used `probe_common.lua` and was not touched.
+`test_l2_keyseq.py::test_the_semantically_shared_parts_of_the_two_probes_are_identical`
+— which pinned five of those regions as *text* and policed the duplication —
+is replaced by
+`test_the_semantically_shared_parts_of_the_probes_are_one_implementation`,
+which asserts the strictly stronger property: the bodies exist once, both
+probes obtain them, and neither re-declares them.
+
+### 5.8 Cost
+
+Standalone: the CLI over all 13 leaves is **5.5 s** wall;
+`pytest tests/test_probe_enum.py` with the corpus is **5.94 s / 28 tests**, of
+which **5.38 s** is the one full-population gate (3.3 s of that is the first
+`decompile_file` of `snr_common.lua`) and **0.09 s** the bounded
+single-proto demonstration on `snr_music.lua:main_3`.
+
+In the suite, alternating A/B, two rounds, both corpus variables set: without
+**52.40 s / 53.74 s**, with **55.05 s / 55.97 s** — a delta of **2.2–2.7 s**,
+smaller than the standalone figure because the corpus files this gate
+decompiles are decompiled by other tests in the same process and
+`structured._CERT_CACHE` is process-level. The `without` arm's own spread is
+**1.34 s**, so this delta is only marginally above host noise; treat the 5.9 s
+standalone figure as the safer bound, per §4.8's rule. Suite goes **959 →
+987** tests.
+Bare, with neither corpus variable set: **868 passed, 119 skipped in 9.38 s**;
+23 of the 28 new tests run there. This is M6 formal-verification instrument
+cost — it is the instrument the amendment asked for, and it is a standing gate
+over the population Task 11 will change.

@@ -1,0 +1,733 @@
+"""M6 task 7: enumerated differential driving of ONE proto (the instrument).
+
+The Lua side is `scripts/probe_enum.lua`; that file is the source of truth for
+the stub environment, the spec-file grammar, the trace format and the frozen
+budget constants. This module measures the enumeration space, encodes each
+assignment, runs both sides, and adjudicates.
+
+## What this instrument is and is not for
+
+**Not defect hunting.** M6 measured that: six defects were confirmed in the
+predecessor's shipped output and all six were found by the *static* arm, five
+of them invisible to both dynamic arms; and the cheapest static instrument in
+the tree (`scripts/loss_sweep.py`, 3.5s over all 1944 pairs) found everything
+the graded fingerprint found plus two the fingerprint and an aggregate count
+had each hidden. Task 7 was re-scoped on that evidence.
+
+**For proving semantic equivalence where bytes differ.** When Tasks 9-12
+change how a proto is reconstructed, the L3 certification gate answers "does
+the recompiled proto match field-for-field". When it does not -- because the
+change is a *representation* change -- there is currently no instrument that
+says "and yet the two behave the same on every path this proto's own branches
+can select". This is that instrument.
+
+## The three verdicts the brief demands, and a fourth the corpus demands
+
+`identical` / `divergent(assignment, first-diff)` / `budget-exceeded(size)` are
+the brief's. **No silent sampling**: over budget is a refusal that states the
+size, never a sample. If sampling is ever added it must be its own verdict
+value, because "we tried a few thousand of 2^30" and "we tried all 12" are not the same
+claim and a reader cannot tell them apart from a single `identical`.
+
+`never-reached` is the fourth. It exists because of a measurement, not a
+preference: this milestone repeatedly found probe arms that agreed because
+they never fired -- `probe_keyseq.py` and `tests/test_keyseq_checkpoints.py`
+stub the very gates that select two of the six confirmed defects, and five
+authored key sequences gave byte-identical traces across three versions of one
+file. **An arm that never fired is not evidence of agreement.** So a run whose
+target proto was never entered reports that, and never reports `identical`.
+
+## How "the target was entered" is established on BOTH sides
+
+The naive reach test -- a `debug` call hook keyed on the target's
+`(linedefined, lastlinedefined)` -- works only on the original: our artifact's
+line numbers are the emitter's, and for every proto in this task's population
+the artifact is fallback output, whose proto tree is deliberately reshaped
+into `__pld_F` factories, so there is no line- or path-keyed correspondence to
+compare against.
+
+What both sides do share is the NAME the function is published under. So
+`discover_entry` runs the probe in `discover` mode against the ORIGINAL
+bytecode (where `linedefined`/`lastlinedefined` survive stripping and do name
+the ledger's proto tree -- CLAUDE.md records 1715 of 1944 protos with nonzero
+`linedefined`), walks the globals the chunk defined, and reports the ACCESS
+PATHS at which a function with the target's line span is published. Both sides
+are then driven with that path, and each side records its own `I|<path>` event
+when the call actually happens. Reach is thus proven by an event both sides
+emit, and a side that fails to publish the name at all reports `ENTRYFAIL`,
+which is not a comparable value.
+
+The residual assumption, stated rather than hidden: the two sides' functions
+at the same access path are assumed to correspond. Nothing here proves it --
+that is what the certification gate proves for `L3` protos and what this
+instrument exists to substitute for where it cannot.
+
+## Assignments carry values, reports carry indices
+
+A branch constant may be a string out of the constant pool, i.e. Japanese game
+text. The enumeration needs the real value (that is the whole point: `x ==
+"foo"` has a true arm only if something supplies `"foo"`), so `Channel.values`
+holds `bytes` and the spec file passes them as hex. Every ASCII surface --
+`Assignment.name`, the CLI, the report -- names a value by its INDEX in the
+channel's domain (`v0`, `v1`, ...), never by the value. `Channel.text` is the
+access path, which `scripts/observation_classes.py` already measured to be
+identifier-only corpus-wide (`non_identifier_names == 0`) and hex-escapes
+otherwise.
+"""
+from __future__ import annotations
+
+import itertools
+import os
+import subprocess
+import sys
+import tempfile
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.observation_classes import (  # noqa: E402
+    BUDGET, channels, domain_size, path_text,
+)
+from scripts.probe_common import adjudicate_pins  # noqa: E402
+
+PROBE = ROOT / "scripts" / "probe_enum.lua"
+
+# Markers a probe result may start with and still be COMPARED. `ENTRYFAIL|`
+# and `SPECFAIL|` are deliberately absent for the L1.5 probe's reason: they
+# produce the same string on both sides, so treating one as a value would
+# report agreement for a run that never happened.
+_MARKERS = (b"ENUM1|", b"LOADFAIL|")
+_DISCOVER_MARKER = b"ENUMD1|"
+
+VERDICTS = ("identical", "divergent", "budget-exceeded", "never-reached")
+
+
+class ProbeError(RuntimeError):
+    """The probe did not produce a usable result. Never silently turned into a
+    comparable value."""
+
+
+# --------------------------------------------------------------------------
+# Channels and their value domains
+# --------------------------------------------------------------------------
+
+# Candidate "some other value" for a channel, tried in order; the first that
+# is not one of the channel's own compared constants is used. It is what makes
+# the domain `|constants| + 1` rather than `|constants|`: the arm where NONE of
+# the equality tests hold. `False` leads because it is also falsy, so for a
+# channel that is only truth-tested the two-element domain is exactly
+# {falsy, truthy}.
+_OTHER_CANDIDATES: tuple[object, ...] = (False, True, b"__pld_other", 0.0)
+
+
+@dataclass(frozen=True)
+class Channel:
+    """One access path a proto's branches read, with the ordered value domain
+    the enumeration walks.
+
+    `path` is `observation_classes.channels`' segment tuple; `text` its ASCII
+    rendering; `values` the real Lua values (bytes / float / bool / None).
+    """
+    path: tuple
+    text: str
+    values: tuple
+
+    def value_name(self, i: int) -> str:
+        """`v0`, `v1`, ... -- the only way a value is ever named in ASCII."""
+        return f"v{i}"
+
+
+@dataclass(frozen=True)
+class Assignment:
+    """One point of the enumerated product: an index into each channel's
+    domain, in channel order."""
+    indices: tuple[int, ...]
+    channels: tuple[Channel, ...]
+
+    @property
+    def name(self) -> str:
+        """`pressButton()=v0,systemSave.libFlag=v1` -- indices, never values.
+        This is what a `divergent` verdict names, so it has to be both stable
+        and free of corpus text."""
+        return ",".join(f"{c.text}={c.value_name(i)}"
+                        for c, i in zip(self.channels, self.indices))
+
+    def values(self) -> tuple:
+        return tuple(c.values[i] for c, i in zip(self.channels, self.indices))
+
+
+def _canon_value(canon) -> object:
+    """`observation_classes.channels`' `canon` tuple back to a Lua value."""
+    kind = canon[0]
+    if kind == "nil":
+        return None
+    if kind == "b":
+        return canon[1]
+    if kind == "n":
+        return float(canon[1])
+    return canon[1]           # ("s", bytes)
+
+
+def _sort_key(canon) -> tuple:
+    """Deterministic order over a channel's raw constants. Kind first so the
+    ordering never depends on comparing a `bytes` with a `float`."""
+    kind = canon[0]
+    if kind == "nil":
+        return (0, 0.0, b"")
+    if kind == "b":
+        return (1, float(canon[1]), b"")
+    if kind == "n":
+        return (2, float(canon[1]), b"")
+    return (3, 0.0, canon[1])
+
+
+def channels_of(proto) -> tuple[Channel, ...]:
+    """The proto's branch channels, in `path_text` order, each with its
+    enumerated domain.
+
+    **Where this can disagree with `classes.json`'s `input_space`, and why.**
+    That file's `domain` is `len(rec["cmp"]) + 1`, and `cmp` holds
+    `const_lit` renderings, which collapse every string to `"str"` and every
+    non-integer number to `"num"`. Two distinct string constants compared
+    against one channel are one element there and two here. The enumeration
+    has to use the finer set -- a run that supplies `"a"` does not take the
+    `== "b"` arm -- so this function's product is `>=` the published
+    `input_space`, and `exhaust` compares ITS OWN size against the budget.
+    """
+    ch, _unresolved = channels(proto)
+    out = []
+    for path in sorted(ch, key=path_text):
+        rec = ch[path]
+        raw = sorted(rec["raw"], key=_sort_key)
+        vals = [_canon_value(c) for c in raw]
+        if vals:
+            for cand in _OTHER_CANDIDATES:
+                if not any(_same(cand, v) for v in vals):
+                    vals.append(cand)
+                    break
+            else:                                      # pragma: no cover
+                raise AssertionError(
+                    f"no distinct 'other' value for channel {path_text(path)}")
+        else:
+            # No constant comparison: a plain truth test (or a comparison
+            # against another register, whose domain is unknown). Two
+            # elements, falsy and truthy -- the same floor `domain_size`
+            # publishes, and `register_comparisons` is where that floor is
+            # visible as a floor.
+            vals = [False, True]
+        out.append(Channel(path=path, text=path_text(path),
+                           values=tuple(vals)))
+    return tuple(out)
+
+
+def _same(a, b) -> bool:
+    return type(a) is type(b) and a == b
+
+
+def space_size(chans) -> int:
+    n = 1
+    for c in chans:
+        n *= len(c.values)
+    return n
+
+
+def published_space(proto) -> int:
+    """`classes.json`'s `input_space` for the same proto, recomputed. Only
+    used to report where the two disagree."""
+    ch, _ = channels(proto)
+    n = 1
+    for rec in ch.values():
+        n *= domain_size(rec)
+    return n
+
+
+def enumerate_assignments(chans):
+    """Every point of the product, in a fixed order: channel order is
+    `path_text`, value order is `_sort_key` then the `other` value last, and
+    `itertools.product` varies the LAST channel fastest. Deterministic so a
+    `divergent` verdict names a reproducible assignment."""
+    for idx in itertools.product(*[range(len(c.values)) for c in chans]):
+        yield Assignment(indices=idx, channels=tuple(chans))
+
+
+# --------------------------------------------------------------------------
+# Spec-file encoding
+# --------------------------------------------------------------------------
+
+def encode_path(path) -> str:
+    out = []
+    for kind, val in path:
+        if kind == "k":
+            out.append("k" + val.hex())
+        elif kind == "i":
+            out.append(f"i{val}")
+        elif kind == "d":
+            out.append("d")
+        else:
+            out.append("c")
+    return "/".join(out)
+
+
+def encode_value(v) -> str:
+    if v is None:
+        return "x"
+    if v is True or v is False:
+        return "b1" if v else "b0"
+    if isinstance(v, bytes):
+        return "s" + v.hex()
+    return "n%.17g" % float(v)
+
+
+def spec_lines(mode: str, *, entry: str | None = None,
+               assignment: Assignment | None = None,
+               lines: tuple[int, int] | None = None) -> bytes:
+    out = [f"M {mode}"]
+    if lines is not None:
+        out.append(f"D {lines[0]} {lines[1]}")
+    if entry:
+        out.append(f"E {entry}")
+    if assignment is not None:
+        for c, i in zip(assignment.channels, assignment.indices):
+            out.append(f"A {encode_path(c.path)} {encode_value(c.values[i])}")
+    return ("\n".join(out) + "\n").encode("ascii")
+
+
+# --------------------------------------------------------------------------
+# Running one side
+# --------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class Trace:
+    """One side's observation of one assignment.
+
+    `raw` is the whole stdout, bytes -- the trace embeds string constants
+    straight from the corpus and nothing here decodes them. `body` is what the
+    comparison uses; today it is `raw`, and it is a separate field so a future
+    footer (a coverage badge, say) can be excluded from the comparison without
+    the comparison silently changing meaning.
+    """
+    raw: bytes
+    status: str
+    n_events: int
+    entered: bool
+
+    @property
+    def body(self) -> bytes:
+        return self.raw
+
+
+def _header(raw: bytes) -> tuple[str, int]:
+    line = raw.split(b"\n", 1)[0]
+    parts = line.split(b"|")
+    if parts[0] == b"LOADFAIL":
+        return "LOADFAIL", -1
+    return parts[1].decode("ascii"), int(parts[2])
+
+
+@lru_cache(maxsize=None)
+def _decompiled(path_str: str) -> bytes:
+    from pyluadec.pipeline import decompile_file
+    return decompile_file(Path(path_str)).source
+
+
+def _payload(file: Path, side: str) -> tuple[bytes, bool]:
+    if side == "original":
+        return file.read_bytes(), False
+    if side == "decompiled":
+        return _decompiled(str(file)), True
+    raise ValueError(f"unknown side {side!r}")
+
+
+def _run(payload: bytes, is_source: bool, spec: bytes, *,
+         timeout: float = 180.0) -> bytes:
+    from pyluadec import oracle
+    with tempfile.TemporaryDirectory() as td:
+        f = Path(td) / ("t.lua" if is_source else "t.luac")
+        f.write_bytes(payload)
+        sp = Path(td) / "spec"
+        sp.write_bytes(spec)
+        # stdin=DEVNULL: a chunk that calls io.read() would otherwise block on
+        # whatever the caller's stdin happens to be, and a probe that hangs is
+        # an instrument that never reports.
+        r = subprocess.run([str(oracle.lua_sz4()), str(PROBE), str(f), str(sp)],
+                           capture_output=True, stdin=subprocess.DEVNULL,
+                           timeout=timeout, cwd=td)
+    if r.returncode != 0:
+        raise ProbeError(
+            f"probe exited {r.returncode}; "
+            f"stderr={r.stderr.decode('utf-8', 'replace')!r}; "
+            f"stdout={r.stdout[:400].decode('utf-8', 'replace')!r}")
+    return r.stdout
+
+
+def drive(file, proto_path: str, assignments, *, side: str = "original",
+          entry: str | None = None) -> Trace:
+    """Run ONE side of ONE assignment and return its trace.
+
+    `assignments` is an `Assignment` (the enumerated point) or `None` for the
+    unassigned run. `entry` is the encoded access path to call; `None` means
+    the chunk body alone is the observation, which is what `proto_path ==
+    "main"` needs.
+
+    `proto_path` is carried for the caller's bookkeeping and to resolve the
+    default entry; the probe itself is told a NAME, never a path.
+    """
+    file = Path(file)
+    if entry is None and proto_path != "main":
+        entry = _entry_for(file, proto_path)
+    payload, is_source = _payload(file, side)
+    raw = _run(payload, is_source, spec_lines("drive", entry=entry,
+                                              assignment=assignments))
+    if not raw.startswith(_MARKERS):
+        raise ProbeError(
+            f"probe produced an unrecognisable result for {file.name}:"
+            f"{proto_path} on the {side} side; "
+            f"stdout={raw[:400].decode('utf-8', 'replace')!r}")
+    status, nev = _header(raw)
+    marker = b"I|" + (path_text_of(entry).encode("ascii") if entry else b"")
+    entered = entry is None or any(
+        line == marker for line in raw.split(b"\n"))
+    return Trace(raw=raw, status=status, n_events=nev, entered=entered)
+
+
+def path_text_of(encoded: str) -> str:
+    """The `I|` event's rendering of an encoded access path -- the same
+    function `probe_enum.lua::path_text` implements, so the driver can
+    recognise its own entry event."""
+    out = []
+    for i, tok in enumerate(encoded.split("/")):
+        kind = tok[0]
+        if kind == "k":
+            v = bytes.fromhex(tok[1:])
+            ok = all(0x20 <= b <= 0x7e and b not in (0x2e, 0x2f) for b in v)
+            out.append(("." if i else "")
+                       + (v.decode("ascii") if ok else "0x" + v.hex()))
+        elif kind == "i":
+            out.append(f"[{tok[1:]}]")
+        elif kind == "d":
+            out.append("[*]")
+        else:
+            out.append("()")
+    return "".join(out)
+
+
+# --------------------------------------------------------------------------
+# Entry discovery
+# --------------------------------------------------------------------------
+
+def _proto_at(file: Path, proto_path: str):
+    from pyluadec.ingest import load_file
+    from pyluadec.pipeline import walk_proto_paths
+    protos: dict = {}
+    walk_proto_paths("main", load_file(file), protos)
+    return protos, protos[proto_path]
+
+
+@lru_cache(maxsize=None)
+def discover_entries(file_str: str, proto_path: str) -> tuple[str, ...]:
+    """Encoded access paths at which the ORIGINAL chunk publishes a function
+    whose line span is the target proto's, sorted.
+
+    Empty when the proto is not published under any name the walk reaches --
+    a nested helper closure, or one only stored in a table deeper than
+    `DISCOVER_DEPTH`. That is a `never-reached` verdict, not a failure.
+
+    Raises when the line span is not unique within the file: two protos with
+    the same `(linedefined, lastlinedefined)` would make the discovered name
+    ambiguous, and an ambiguous reach claim is worse than none.
+    """
+    file = Path(file_str)
+    protos, target = _proto_at(file, proto_path)
+    span = (target.linedefined, target.lastlinedefined)
+    twins = [p for p, q in protos.items()
+             if (q.linedefined, q.lastlinedefined) == span]
+    if len(twins) != 1:
+        raise ProbeError(
+            f"{file.name}:{proto_path} has line span {span} shared with "
+            f"{len(twins) - 1} other proto(s) ({sorted(twins)}); entry "
+            f"discovery would be ambiguous")
+    raw = _run(file.read_bytes(), False, spec_lines("discover", lines=span))
+    if not raw.startswith(_DISCOVER_MARKER):
+        raise ProbeError(
+            f"discovery produced an unrecognisable result for {file.name}:"
+            f"{proto_path}; stdout={raw[:400].decode('utf-8', 'replace')!r}")
+    out = []
+    for line in raw.split(b"\n")[1:]:
+        if line.startswith(b"E|"):
+            out.append(line[2:].split(b"|")[1].decode("ascii"))
+    return tuple(sorted(out))
+
+
+def _entry_for(file: Path, proto_path: str) -> str | None:
+    hits = discover_entries(str(file), proto_path)
+    return hits[0] if hits else None
+
+
+# --------------------------------------------------------------------------
+# The verdict
+# --------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class EnumVerdict:
+    """`kind` is one of `VERDICTS`.
+
+    * `identical`       -- every assignment in the FULL product produced
+                           byte-equal traces on both sides, and the target was
+                           entered on every one of them. `n_assignments` is
+                           how many were actually run, and it equals
+                           `space_size`; the two fields are separate so that a
+                           future sampling verdict cannot be mistaken for this
+                           one by a reader who only looks at one of them.
+    * `divergent`       -- `assignment` is the first (in enumeration order)
+                           whose traces differ; `first_diff` is
+                           `(line number, original line, decompiled line)` as
+                           raw bytes.
+    * `budget-exceeded` -- `space_size` exceeds `BUDGET`; NOTHING was run.
+    * `never-reached`   -- the target proto could not be entered; `detail`
+                           says why. Never conflated with `identical`.
+    """
+    kind: str
+    file: str
+    proto_path: str
+    space_size: int
+    n_assignments: int = 0
+    n_channels: int = 0
+    entry: str | None = None
+    assignment: Assignment | None = None
+    first_diff: tuple[int, bytes, bytes] | None = None
+    detail: str = ""
+    statuses: tuple[str, ...] = ()
+
+    def __post_init__(self):
+        assert self.kind in VERDICTS, self.kind
+
+
+def first_difference(a: bytes, b: bytes) -> tuple[int, bytes, bytes]:
+    """`(line number, original line, decompiled line)`, raw bytes -- the same
+    type the trace is in, for the reason `probe_behaviour.first_difference`
+    records: decoding first would make an evidence pin blind to two different
+    undecodable byte runs that decode to the same replacement text."""
+    la, lb = a.split(b"\n"), b.split(b"\n")
+    for i in range(max(len(la), len(lb))):
+        x = la[i] if i < len(la) else b"<end of trace>"
+        y = lb[i] if i < len(lb) else b"<end of trace>"
+        if x != y:
+            return (i + 1, x, y)
+    return (0, b"", b"")
+
+
+def exhaust(file, proto_path: str, *, jobs: int = 8,
+            budget: int = BUDGET) -> EnumVerdict:
+    """Drive both sides over the WHOLE enumerated product and adjudicate.
+
+    `budget` is a parameter only so a test can prove the refusal path with a
+    small space instead of constructing a 4097-point one; every production
+    caller takes the default, which is
+    `scripts/observation_classes.py::BUDGET` -- the single place the figure
+    lives.
+    """
+    file = Path(file)
+    _protos, proto = _proto_at(file, proto_path)
+    chans = channels_of(proto)
+    size = space_size(chans)
+    common = dict(file=file.name, proto_path=proto_path, space_size=size,
+                  n_channels=len(chans))
+    if size > budget:
+        return EnumVerdict(kind="budget-exceeded", **common)
+
+    entry = None
+    if proto_path != "main":
+        hits = discover_entries(str(file), proto_path)
+        if not hits:
+            return EnumVerdict(
+                kind="never-reached", detail="no published name reaches the "
+                "proto's line span", **common)
+        entry = hits[0]
+    common["entry"] = entry
+
+    todo = list(enumerate_assignments(chans))
+
+    def one(a: Assignment):
+        return (a,
+                drive(file, proto_path, a, side="original", entry=entry),
+                drive(file, proto_path, a, side="decompiled", entry=entry))
+
+    statuses: set[str] = set()
+    n_entered = 0
+    with ThreadPoolExecutor(max_workers=jobs) as ex:
+        for a, t0, t1 in ex.map(one, todo):
+            statuses.add(t0.status)
+            statuses.add(t1.status)
+            if t0.body != t1.body:
+                return EnumVerdict(kind="divergent", assignment=a,
+                                   first_diff=first_difference(t0.body, t1.body),
+                                   n_assignments=len(todo),
+                                   statuses=tuple(sorted(statuses)), **common)
+            if t0.entered and t1.entered:
+                n_entered += 1
+    if n_entered == 0:
+        return EnumVerdict(
+            kind="never-reached", n_assignments=len(todo),
+            statuses=tuple(sorted(statuses)),
+            detail="the entry was named but never called on any assignment",
+            **common)
+    if n_entered != len(todo):
+        return EnumVerdict(
+            kind="never-reached", n_assignments=len(todo),
+            statuses=tuple(sorted(statuses)),
+            detail=f"the target was entered on {n_entered} of {len(todo)} "
+                   f"assignments; agreement on the rest is not evidence "
+                   f"about this proto",
+            **common)
+    return EnumVerdict(kind="identical", n_assignments=len(todo),
+                       statuses=tuple(sorted(statuses)), **common)
+
+
+# --------------------------------------------------------------------------
+# Pinned divergences
+# --------------------------------------------------------------------------
+
+# The compound-`if` leaf protos whose two sides do NOT agree, pinned as
+# `(assignment, original line, decompiled line)` so that a changed message, a
+# different assignment, a converged pair or a vanished proto all fail
+# adjudication. Same vocabulary and same `adjudicate_pins` rule as the L1.5 and
+# L1.75 gates -- one function, so the CLI and the gate cannot drift apart on
+# what "pass" means.
+#
+# BOTH pins are the SAME already-documented class: the `getobjname` naming
+# artifact of the fallback's `__pld_R` box model, pinned for `snr_mainmenu.lua`
+# in `probe_global_state.py` and `probe_behaviour.py` since M3. `ldebug.c`'s
+# `kname()` names an operand only when the instruction that produced it is a
+# `GETTABLE`/`GETGLOBAL` with a STRING constant key; the fallback state machine
+# routes every register through `__pld_R[<number>]`, so the key is a NUMBER
+# constant and `kname` says `field '?'`. Only the noun in an error MESSAGE
+# differs; the two sides fail at the same instruction with the same error kind.
+# Both should CONVERGE when Task 11 makes these protos certify `L3` and stop
+# shipping through the box model -- at which point adjudication reports `gone`
+# and the pins must be deleted, not left to pass silently.
+#
+# `snr_common.lua:main_81` (`keyWait`) is a NEW instance of that class, and the
+# reason it is new is the whole point of this instrument: the L1.75 gate drives
+# one fixed stub policy, under which `stub_result("pressButton")` is `false`,
+# and `keyWait` then returns at `JMP -> 26` without ever reaching the `DIV` --
+# so that gate cannot see it. Instruction-level evidence, from the original
+# bytecode (1-based pcs, as `pyluadec.lift` and `luac -l -l` both number them):
+#   pc 3-5   `GETGLOBAL R3 "pressButton"; LOADK R4 "CIRCLE"; CALL R3 2 2`
+#   pc 6-7   `EQ 1 R3 K(true); JMP -> 9`
+#   pc 16    `DIV R3 R0 K(<number>)` -- R0 is the parameter, and the probe
+#            calls every function with no arguments, so R0 is nil.
+# The original's `DIV` operand is a bare register with no `locvars` (the corpus
+# is stripped), so `kname` finds nothing and Lua says "arithmetic on a nil
+# value"; the fallback's operand came from `__pld_R[0]`, so `kname` says
+# "field '?'". `pressButton()=v0` is the assignment that supplies `true` and
+# reaches pc 16 at all.
+EXPECTED_DIVERGENCE: dict[str, tuple[str, bytes, bytes]] = {
+    "snr_common.lua:main_81": (
+        "pressButton()=v0",
+        b"R|keyWait|attempt to perform arithmetic on a nil value",
+        b"R|keyWait|attempt to perform arithmetic on field '?' (a nil value)"),
+    "snr_mainmenu.lua:main_7": (
+        "gameSave.myCard[140].hold=v0,gameSave.startMenuState=v3,"
+        "pressButton()=v0,systemSave.libFlag=v1,systemSave.musicFlag=v0,"
+        "systemSave.novelFlag=v0",
+        b"R|main|attempt to perform arithmetic on field 'library' (a nil value)",
+        b"R|main|attempt to perform arithmetic on field '?' (a nil value)"),
+}
+
+
+def evidence(v: EnumVerdict) -> tuple[str, bytes, bytes]:
+    """The pinned form of a `divergent` verdict."""
+    assert v.kind == "divergent", v.kind
+    return (v.assignment.name, v.first_diff[1], v.first_diff[2])
+
+
+# --------------------------------------------------------------------------
+# The population, and the CLI
+# --------------------------------------------------------------------------
+
+def compound_if_leaves(ledger_rows) -> list[tuple[str, str]]:
+    """The protos this task's demonstration runs over: the `structure:`
+    refusals whose refusal is their OWN, not inherited from a descendant.
+
+    Measured 2026-08-14 over `corpus/ledger.jsonl`: the `structure:` family is
+    **21 shapes**, of which **13 are leaves** and 8 are ancestors carrying a
+    descendant's reason verbatim (the ledger copies the reason up, so
+    `snr_story_main.lua:main`, 10 instructions, is recorded as refusing at
+    "pc 131"). The leaf/ancestor split is decided here the same way
+    `observation_classes.refusal_origin` decides it -- by re-running
+    `build_sir` on the proto alone -- and the two agree on all 21.
+    """
+    from pyluadec.ingest import load_file
+    from pyluadec.lift.lift import lift_proto
+    from pyluadec.pipeline import walk_proto_paths
+    from pyluadec.sir.build import build_sir, StructureError
+
+    corpus = Path(os.environ["PYLUADEC_CORPUS_DIR"])
+    trees: dict[str, dict] = {}
+    out = []
+    for row in ledger_rows:
+        reason = row.get("refusal_reason") or ""
+        if not reason.startswith("structure:"):
+            continue
+        for occ in row["occurrences"]:
+            f, path = occ["file"], occ["proto_path"]
+            if f not in trees:
+                protos: dict = {}
+                walk_proto_paths("main", load_file(corpus / f), protos)
+                trees[f] = protos
+            try:
+                build_sir(lift_proto(trees[f][path]))
+            except StructureError:
+                out.append((f, path))
+    return sorted(set(out))
+
+
+def _read_ledger() -> list[dict]:
+    import json
+    with open(ROOT / "corpus" / "ledger.jsonl", "rb") as fh:
+        return [json.loads(line) for line in fh if line.strip()]
+
+
+def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if len(argv) == 2:
+        population = [(argv[0], argv[1])]
+    else:
+        population = compound_if_leaves(_read_ledger())
+    corpus = Path(os.environ["PYLUADEC_CORPUS_DIR"])
+    counts: dict[str, int] = {k: 0 for k in VERDICTS}
+    divergent: dict[str, tuple] = {}
+    for f, path in population:
+        v = exhaust(corpus / f, path)
+        counts[v.kind] += 1
+        extra = ""
+        if v.kind == "divergent":
+            divergent[f"{f}:{path}"] = evidence(v)
+            extra = f"  assignment={v.assignment.name}  line {v.first_diff[0]}"
+        elif v.kind == "never-reached":
+            extra = f"  ({v.detail})"
+        elif v.kind == "budget-exceeded":
+            extra = "  (nothing run)"
+        print(f"{f}:{path:12} {v.kind:16} channels={v.n_channels} "
+              f"space={v.space_size} run={v.n_assignments} "
+              f"statuses={','.join(v.statuses) or '-'}{extra}")
+    unexpected, moved, gone = adjudicate_pins(divergent, EXPECTED_DIVERGENCE)
+    print("enum: " + ", ".join(f"{k} {counts[k]}" for k in VERDICTS)
+          + f"; {len(divergent) - len(unexpected)} pinned divergence(s)"
+          + f"; budget={BUDGET}")
+    if unexpected:
+        print(f"UNEXPECTED divergence(s): {unexpected}")
+    if moved:
+        print(f"pinned evidence moved: {moved}")
+    if gone:
+        print(f"pinned divergence(s) converged or vanished: {gone}")
+    return 1 if (unexpected or moved or gone) else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

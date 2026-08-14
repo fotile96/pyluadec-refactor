@@ -643,8 +643,31 @@ def channels(proto):
     # the dataflow below; the block-local pass it replaced saw 20).
     unresolved = [0]
 
+    def canon(c):
+        """A hashable, ASCII-free-of-corpus-text identity for a comparison
+        constant, keeping the VALUE that `const_lit` throws away.
+
+        `const_lit` collapses every string to `"str"` and every non-integer
+        number to `"num"`, which is what keeps `corpus/observation/classes.json`
+        free of corpus text -- and it is also what makes that file unusable as
+        the source of an ACTUAL value to drive a branch with. `scripts/probe_enum.py`
+        needs the real constant to construct the assignment that takes the
+        `==` arm; it holds these as `bytes` in memory and never writes one
+        into an artifact (it publishes an INDEX into this set instead).
+
+        `rec["cmp"]` is untouched, so `chan_out`, `domain_size` and therefore
+        `classes.json` are byte-for-byte what they were.
+        """
+        if c is None:
+            return ("nil",)
+        if c is True or c is False:
+            return ("b", c)
+        if isinstance(c, LuaNumber):
+            return ("n", c.value)
+        return ("s", c)
+
     def slot(p):
-        return out.setdefault(p, {"cmp": set(), "test": 0})
+        return out.setdefault(p, {"cmp": set(), "test": 0, "raw": set()})
 
     def transfer(start, state, record):
         prov: dict[int, tuple] = dict(state[0])
@@ -707,7 +730,9 @@ def channels(proto):
                     if x[0] == "R" and x[1] in pre_prov:
                         if y[0] == "K":
                             if record:
-                                slot(pre_prov[x[1]])["cmp"].add(const_lit(y[1]))
+                                rc = slot(pre_prov[x[1]])
+                                rc["cmp"].add(const_lit(y[1]))
+                                rc["raw"].add(canon(y[1]))
                             hit = True
                         elif record:
                             slot(pre_prov[x[1]])

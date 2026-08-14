@@ -117,7 +117,7 @@ local target, spec = ...
 -- Shared helpers live next to this script; found from arg[0] rather than
 -- through package.path, so the probe stays runnable as a bare
 -- `lua scripts/probe_keyseq.lua <target> <spec>` from any cwd.
-local strip_location
+local C
 local selfdir = ""
 do
   local a = rawget(G, "arg")
@@ -131,80 +131,16 @@ do
   end
   local chunk = assert(loadfile(selfdir .. "probe_common.lua"),
                        "probe_common.lua not found next to " .. argv0)
-  strip_location = chunk().strip_location
+  C = chunk()
 end
 
 -- --------------------------------------------------------------- serialising
--- Stable identities for tables and functions. `tostring(t)` leaks a heap
--- address, which differs between any two processes and would make the trace
--- non-deterministic; first-sight ordinals are a function of the observed
--- behaviour alone.
-local ids, nid = {}, 0
-local function idof(v)
-  local n = ids[v]
-  if not n then
-    nid = nid + 1
-    n = nid
-    ids[v] = n
-  end
-  return n
-end
-
--- One event is one line, so a byte that would break that (or the "|" field
--- separator) is escaped. Strings from this corpus are Japanese game text; they
--- are passed through byte-for-byte, never decoded or normalised. (An earlier
--- version of this comment said they are "frequently not UTF-8". CLAUDE.md
--- records that as measured-FALSE: 49063 string constants, 17411 non-ASCII,
--- **0** non-UTF-8. The reason nothing here decodes is the red line itself, not
--- an encoding fact.)
-local function esc(s)
-  if not (sfind(s, "\\", 1, true) or sfind(s, "\n", 1, true)
-          or sfind(s, "\r", 1, true) or sfind(s, "|", 1, true)) then
-    return s
-  end
-  local out = {}
-  for i = 1, #s do
-    local b = sbyte(s, i)
-    if b == 92 then out[i] = "\\\\"
-    elseif b == 10 then out[i] = "\\n"
-    elseif b == 13 then out[i] = "\\r"
-    elseif b == 124 then out[i] = "\\p"
-    else out[i] = schar(b) end
-  end
-  return tconcat(out)
-end
-
-local pname = {}   -- stub proxy -> its dotted name
-local to_s
-
-function to_s(v)
-  local t = type(v)
-  if t == "nil" then return "nil" end
-  if t == "boolean" then return v and "true" or "false" end
-  if t == "number" then return sformat("%.17g", v) end
-  if t == "string" then return "\"" .. esc(v) .. "\"" end
-  if t == "table" then
-    local n = pname[v]
-    if n then return "@" .. n end
-    return "<table#" .. idof(v) .. ">"
-  end
-  if t == "function" then return "<function#" .. idof(v) .. ">" end
-  return "<" .. t .. ">"
-end
-
--- Table keys appear inside dotted names, where a quoted string would be noise.
-local function keystr(k)
-  if type(k) == "string" then return esc(k) end
-  return to_s(k)
-end
-
--- Concatenation result for the proxy's __concat: readable, address-free.
-local function cstr(v)
-  local t = type(v)
-  if t == "string" then return v end
-  if t == "number" then return sformat("%.17g", v) end
-  return to_s(v)
-end
+-- `esc`, `to_s`, `keystr`, `cstr` and the first-sight identity ordinals live
+-- in `probe_common.lua` (`M.serialiser`), shared with the L1.5, L1.75 and
+-- enumeration probes.
+local S = C.serialiser()
+local esc, to_s, keystr, cstr = S.esc, S.to_s, S.keystr, S.cstr
+local pname = S.pname
 
 local function die(kind, msg)
   iowrite(kind .. "|" .. esc(msg) .. "\n")
@@ -292,8 +228,6 @@ do
 end
 
 -- ------------------------------------------------------------------ recording
-local ev, nev = {}, 0
-local stopped = nil   -- nil | "CAP" | "INSN"
 -- Taint is a SET, not an event stream: it is a property of the run, and a
 -- `type()` inside a hot loop would otherwise consume the whole event budget
 -- and change what the gate compares. Deduplicated on "<kind>|<name>", emitted
@@ -306,39 +240,33 @@ local cov_protos, n_cov_protos = {}, 0
 local n_lines = 0
 local tsource = nil
 
-local function flush_and_exit()
-  local out = {"KEYSEQ1|" .. (stopped or "OK") .. "|" .. nev .. "|" .. ntaint}
-  local n = 1
-  for i = 1, nev do n = n + 1 out[n] = ev[i] end
-  local tk, ntk = {}, 0
-  for k in pairs(taint) do ntk = ntk + 1 tk[ntk] = k end
-  tsort(tk)
-  for i = 1, ntk do n = n + 1 out[n] = "T|" .. tk[i] end
-  if want_cov then
-    local ls, nls = {}, 0
-    for l in pairs(cov_ours) do nls = nls + 1 ls[nls] = l end
-    tsort(ls)
-    for i = 1, nls do ls[i] = "" .. ls[i] end
-    n = n + 1
-    out[n] = "COV|" .. tconcat(ls, ",")
-    n = n + 1
-    out[n] = "COVF|" .. n_cov_protos
-  end
-  iowrite(tconcat(out, "\n"), "\n")
-  osexit(0)
-end
-
-local function append(s)
-  nev = nev + 1
-  ev[nev] = s
-  if nev >= MAX_EVENTS and not stopped then stopped = "CAP" end
-end
-
-local function record(s)
-  if stopped then flush_and_exit() end
-  append(s)
-  if stopped == "CAP" then error("__PLD_CAP__", 0) end
-end
+-- The recorder (`append`, `record`, `flush_and_exit`) lives in
+-- `probe_common.lua`; only this gate's own header and footers are here.
+local R = C.recorder{
+  max_events = MAX_EVENTS,
+  osexit = osexit,
+  render = function(r)
+    local out = {"KEYSEQ1|" .. (r.stopped or "OK") .. "|" .. r.nev .. "|" .. ntaint}
+    local n = 1
+    for i = 1, r.nev do n = n + 1 out[n] = r.ev[i] end
+    local tk, ntk = {}, 0
+    for k in pairs(taint) do ntk = ntk + 1 tk[ntk] = k end
+    tsort(tk)
+    for i = 1, ntk do n = n + 1 out[n] = "T|" .. tk[i] end
+    if want_cov then
+      local ls, nls = {}, 0
+      for l in pairs(cov_ours) do nls = nls + 1 ls[nls] = l end
+      tsort(ls)
+      for i = 1, nls do ls[i] = "" .. ls[i] end
+      n = n + 1
+      out[n] = "COV|" .. tconcat(ls, ",")
+      n = n + 1
+      out[n] = "COVF|" .. n_cov_protos
+    end
+    return tconcat(out, "\n")
+  end,
+}
+local append, record, flush_and_exit = R.append, R.record, R.flush_and_exit
 
 -- Never raises and never counts against the event budget: taint must not be
 -- able to truncate a run, or a tainted run would be short in a way that could
@@ -351,155 +279,25 @@ local function mark(kind, name)
   end
 end
 
-local function errtext(e)
-  if type(e) == "string" then
-    if sfind(e, "__PLD_CAP__", 1, true) then return "CAP" end
-    if sfind(e, "__PLD_INSN__", 1, true) then return "INSN" end
-    if sfind(e, "__PLD_OSEXIT__", 1, true) then return "OSEXIT" end
-    return esc(strip_location(e) or e)
-  end
-  return to_s(e)
-end
+local function errtext(e) return C.errtext(S, e) end
 
--- --------------------------------------------------------- stub-return policy
--- FROZEN, byte-identical to `probe_behaviour.lua`'s (pinned by
--- `test_frozen_constants_agree_with_the_l1_75_probe`). `pressButton` is still
--- listed even though the driver below intercepts the global before a proxy is
--- ever built for it: a target that reaches the name some other way (a field
--- called `pressButtonA`, say) must still get the L1.75 answer.
-local function stub_result(name)
-  if sfind(name, "pressButton", 1, true) then return false end
-  if sfind(name, "Is", 1, true) then return false end
-  if sfind(name, "Count", 1, true) then return 0 end
-  if sfind(name, "Index", 1, true) then return 0 end
-  if sfind(name, "Num", 1, true) then return 0 end
-  if sfind(name, "Time", 1, true) then return 0 end
-  if sfind(name, "Name", 1, true) then return "stub" end
-  if sfind(name, "Scene", 1, true) then return "stub" end
-  return nil
-end
-
--- -------------------------------------------------------------- stub proxies
-local proxies = {}
-local proxy_mt = {}
-
-local function get_proxy(name)
-  local p = proxies[name]
-  if p == nil then
-    p = setmetatable({}, proxy_mt)
-    proxies[name] = p
-    pname[p] = name
-  end
-  return p
-end
-
-local function zero() return 0 end
-
--- Writes land in a shadow table, never on the proxy itself: Lua 5.1 fires
--- __newindex only while rawget(t, k) is nil, so writing through would make
--- only the FIRST write to each field observable. Same shape, same known cost
--- (`pairs`/`next`/`rawget` report a stub proxy as empty) as
--- `probe_behaviour.lua`; documented there in full.
-local pfields = setmetatable({}, {__mode = "k"})
-
-proxy_mt.__index = function(self, k)
-  local f = pfields[self]
-  local v = f and f[k]
-  if v ~= nil then return v end
-  return get_proxy(pname[self] .. "." .. keystr(k))
-end
-proxy_mt.__newindex = function(self, k, v)
-  record("S|" .. pname[self] .. "." .. keystr(k) .. "|" .. to_s(v))
-  local f = pfields[self]
-  if not f then f = {} pfields[self] = f end
-  f[k] = v
-end
-proxy_mt.__call = function(self, ...)
-  local n = select("#", ...)
-  local parts = {}
-  for i = 1, n do parts[i] = to_s((select(i, ...))) end
-  local name = pname[self]
-  record("C|" .. name .. "|" .. n .. "|" .. tconcat(parts, ","))
-  return stub_result(name)
-end
-proxy_mt.__add = zero
-proxy_mt.__sub = zero
-proxy_mt.__mul = zero
-proxy_mt.__div = zero
-proxy_mt.__mod = zero
-proxy_mt.__pow = zero
-proxy_mt.__unm = zero
-proxy_mt.__concat = function(a, b) return cstr(a) .. cstr(b) end
-
--- The three comparison metamethods are the PROVABLE half of the taint
--- analysis. In Lua 5.1 `OP_LT`, `OP_LE` and `OP_EQ` do not produce a value:
--- each is followed by a `JMP` that the comparison's result selects (lvm.c's
--- `DOJUMP` arm; a `local b = x < y` compiles to LT, JMP, LOADBOOL, LOADBOOL).
--- So a comparison metamethod firing on a stub proxy IS a stub value deciding
--- a branch -- not an approximation of one.
---
--- `__lt`/`__le` keep `probe_behaviour.lua`'s `false`. `__eq` is NEW here and
--- semantically a no-op: lvm.c consults `__eq` only after `rawequal` has
--- already failed, and returning `false` there is exactly what happens with no
--- metamethod at all. It exists so the EQ case can be observed rather than
--- assumed absent.
-proxy_mt.__lt = function(a, b)
-  mark("cmp:lt", pname[a] or pname[b] or "?")
-  return false
-end
-proxy_mt.__le = function(a, b)
-  mark("cmp:le", pname[a] or pname[b] or "?")
-  return false
-end
-proxy_mt.__eq = function(a, b)
-  mark("cmp:eq", pname[a] or pname[b] or "?")
-  return false
-end
+-- ----------------------------------------------- stub-return policy, proxies
+-- Both from `probe_common.lua`. The stub-return policy is FROZEN and shared
+-- byte-for-byte with the L1.75 gate (pinned by
+-- `test_frozen_constants_agree_with_the_l1_75_probe`); `pressButton` is still
+-- listed there even though the driver below intercepts the global before a
+-- proxy is ever built for it, because a target that reaches the name some
+-- other way (a field called `pressButtonA`, say) must still get the L1.75
+-- answer. `taint = mark` is what adds this gate's three comparison
+-- metamethods; see `M.proxies`.
+local P = C.proxies{S = S, record = record, taint = mark}
+local get_proxy = P.get
 
 -- ------------------------------------------------- determinism overrides on _G
--- Identical to `probe_behaviour.lua`'s; see that file for why each one is a
--- source of run-to-run variation and why they are covered synthetically.
-G.os.exit = function() error("__PLD_OSEXIT__", 0) end
-G.os.time = function() return 0 end
-G.os.clock = function() return 0 end
-G.os.date = function() return "1970-01-01" end
-G.os.getenv = function() return nil end
-G.os.tmpname = function() return "/tmp/pld_probe_tmp" end
-G.collectgarbage = function() return 0 end
-do
-  local seed = 0
-  G.math.random = function(m, n)
-    seed = (seed * 1103515245 + 12345) % 2147483648
-    local r = seed / 2147483648
-    if m == nil then return r end
-    if n == nil then n = m m = 1 end
-    return m + (r * (n - m + 1) - (r * (n - m + 1)) % 1)
-  end
-end
-G.tostring = function(v)
-  local t = type(v)
-  if t == "table" then
-    local n = pname[v]
-    if n then return "@" .. n end
-    return "table: #" .. idof(v)
-  end
-  if t == "function" or t == "userdata" or t == "thread" then
-    return t .. ": #" .. idof(v)
-  end
-  return tostring(v)
-end
-G.print = function(...)
-  local n = select("#", ...)
-  local parts = {}
-  for i = 1, n do parts[i] = cstr((select(i, ...))) end
-  record("P|" .. esc(tconcat(parts, "\t")))
-end
-G.io.write = function(...)
-  local n = select("#", ...)
-  local parts = {}
-  for i = 1, n do parts[i] = cstr((select(i, ...))) end
-  record("W|" .. esc(tconcat(parts, "")))
-end
+-- os.exit/time/clock/date/getenv/tmpname, collectgarbage, math.random,
+-- tostring, print and io.write; bodies and the reasoning in
+-- `probe_common.lua::install_determinism`.
+C.install_determinism(G, S, record)
 
 -- ------------------------------------------------------------- the driver
 -- Resolved by the environment BEFORE `_G`, so the target sees these rather
@@ -565,29 +363,15 @@ local DRIVER = {
 }
 
 -- ------------------------------------------------------------- environment
--- Same shadow-table shape as `probe_behaviour.lua`'s `envfields`; see there.
-local envfields = {}
-local env = {}
-setmetatable(env, {
-  __index = function(_, k)
-    local v = envfields[k]
-    if v ~= nil then return v end
-    local d = DRIVER[k]
-    if d ~= nil then return d end
-    local base = G[k]
-    if base ~= nil then return base end
-    return get_proxy(keystr(k))
-  end,
-  __newindex = function(_, k, v)
-    record("G|" .. keystr(k) .. "|" .. to_s(v))
-    envfields[k] = v
-  end,
-})
+-- Shadow-table environment (`envfields`), from `probe_common.lua::stub_env`;
+-- `driver` is consulted between the chunk's own globals and `_G`.
+local env, envfields = C.stub_env{G = G, S = S, record = record,
+                                  get_proxy = get_proxy, driver = DRIVER}
 
 -- ------------------------------------------------------------------ run it
 local f, loaderr = loadfile(target)
 if not f then
-  iowrite("LOADFAIL|" .. esc(strip_location(loaderr) or tostring(loaderr)) .. "\n")
+  iowrite("LOADFAIL|" .. esc(C.strip_location(loaderr) or tostring(loaderr)) .. "\n")
   osexit(0)
 end
 setfenv(f, env)
@@ -639,10 +423,10 @@ if want_cov then
       end
       return
     end
-    if stopped then flush_and_exit() end
+    if R.stopped then flush_and_exit() end
     n_lines = n_lines + 1
     if n_lines >= LINE_BACKSTOP then
-      stopped = "INSN"
+      R.stopped = "INSN"
       error("__PLD_INSN__", 0)
     end
     local s = cov_seen[ln]
@@ -659,10 +443,10 @@ else
     -- See probe_behaviour.lua's flush_and_exit comment: a previous raise was
     -- swallowed by a pcall inside the TARGET, and re-raising would be
     -- swallowed again every HOOK_STEP instructions forever.
-    if stopped then flush_and_exit() end
+    if R.stopped then flush_and_exit() end
     hook_calls = hook_calls + 1
     if hook_calls * HOOK_STEP >= INSN_BACKSTOP then
-      stopped = "INSN"
+      R.stopped = "INSN"
       error("__PLD_INSN__", 0)
     end
   end
@@ -672,7 +456,7 @@ end
 local ok, err = pcall(f)
 if not ok then append("X|<chunk>|" .. errtext(err)) end
 
-if not stopped then
+if not R.stopped then
   if entry then
     -- One named entry point, dotted: `SystemOption.OptionMain`. This is the
     -- predecessor's playbook shape (DEBUG_KEY_SEQUENCE_HARNESS.md drives one
@@ -698,7 +482,7 @@ if not stopped then
           (v == nil and "nil" or type(v)) .. ", not a function")
     end
     append("I|" .. esc(entry))
-    if not stopped then
+    if not R.stopped then
       local okf, errf = pcall(v)
       if okf then
         append("R|" .. esc(entry) .. "|ok")
@@ -718,14 +502,14 @@ if not stopped then
     for i = 1, n do
       local k = names[i]
       append("I|" .. keystr(k))
-      if stopped then break end
+      if R.stopped then break end
       local okf, errf = pcall(envfields[k])
       if okf then
         append("R|" .. keystr(k) .. "|ok")
       else
         append("R|" .. keystr(k) .. "|" .. errtext(errf))
       end
-      if stopped then break end
+      if R.stopped then break end
     end
   end
 end
