@@ -275,3 +275,60 @@ def test_m6_exit_l3_no_regression(ledger_rows):
 - Spec coverage: §0 both directions → T5/6 (them←us) + T9/10/11/12 (us←them); §2 Track 1.0 → T3/4, 1.1 arms 1–3 → T5, arm 4 → T7, arm 5 → T8, arm 6 → T2 census; Track 2 → T9/10; Track 3 → T11/12; §3 exit → T13; §4 Task-1 mandate → T1; §6 risks → T4 step 3 (both pre-measurements), T9 step 1 (rate first), T7 verdict types (no silent sampling).
 - Type consistency: `Footprint` (T3) consumed by T4/T7; `load_pred_proto` (T2) by T5/T9; `classes.json` (T4) by T7/T13; pin vocabulary (`real-bug`/`suspect`/`probe-artifact`) shared T6/T7/T8; `adjudicate_pins` signature verified against `scripts/probe_common.py` this session.
 - Numbers: all carry provenance (2026-08-13 at `0957364`) and are marked re-derive.
+
+---
+
+## AMENDED 2026-08-14 — Tasks 7 and 8 re-scoped, by the project owner's decision
+
+**What changed the scope: measurement, not opinion.** Tasks 5, 6 and the two inserted
+out-of-plan tasks produced evidence the plan did not have when it was written.
+
+**The evidence.**
+
+1. **Six defects were confirmed in the predecessor's shipped output, four previously
+   unknown — and all six were found by the *static* arm.** Five of the six are invisible
+   to both dynamic arms: for `snr_mainmenu:main_7` the behaviour arm returned `agree`
+   over an 18-event run, and `snr_common.lua`'s behaviour row is silent
+   (`truncated:1/79` — its original-side run invoked 1 of the 79 function-valued globals
+   it defines before the 3000-event cap, and all 78 uninvoked function-valued globals
+   corpus-wide are in that one file).
+2. **The cheapest static instrument outperformed the designed one.** The four per-proto
+   loss sweeps (`scripts/loss_sweep.py`, one walk per proto, 3.5s over all 1944 pairs)
+   found everything the graded fingerprint found **plus** a defect the fingerprint's
+   `cfg_reachable` scored **1.0** on, and **plus** a defect that Task 6's own aggregate
+   test-op count had hidden (`snr_common:main_76_2`'s `EQ +7 / LT +2` against
+   `TEST −1 / TESTSET −2` nets a *gain* on the five-opcode total).
+3. **Task 7's first justification is therefore spent.** It was to serve two ends —
+   hunting predecessor defects, and proving semantic equivalence where bytes differ.
+   The first is better served by the sweeps.
+4. **Task 8's premise did not survive Task 4.** The owner's framing treats
+   non-termination as Class 2's *distinguishing* difficulty; measured, **127 of 162
+   candidates (78%) poll the key every iteration, including 113/113 `choice-branch`**,
+   and the option channel bottoms out in corpus-defined poll loops inside
+   `snr_common.lua` rather than in engine primitives. The two classes are not
+   independent, and the termination problem is not confined to the 11 protos labelled
+   `ui-keyloop`.
+
+**Task 7 — re-scoped to a feasibility demonstration.** Build `probe_enum` and prove it
+works on **the 13 compound-`if` refusal protos** (the population Task 11 will fix), not
+over the whole Class-1 candidate set. Deliverables unchanged in kind: the instrument,
+its fault-injection proof, and `EnumVerdict`'s `budget-exceeded` honesty. What is
+dropped is the corpus-wide run, which becomes an M7 item. Task 4 measured the budget
+question already settled — **1940/1944 protos and 110/113 Class-1 candidates fit 4096
+combinations, median 4** — so feasibility is about the instrument, not the arithmetic.
+
+**Task 8 — re-scoped to a design note.** `docs/reports/m6-uiloop-design.md` only; no
+`scripts/probe_uiloop.py` prototype. The note must record Task 4's two pre-measurements
+(loop-body cut correspondence **18/19**, sole failure `snr_music:main_3`; and the
+78% per-iteration overlap), state what a per-iteration transition-comparison prototype
+would need, and say plainly which of its assumptions are measured and which are not.
+The prototype moves to M7 with that note as its starting point.
+
+**Weight moves to Tasks 9–12**, the half that improves the decompiler itself and is
+already verified by the existing L3 certification gate.
+
+**Exit criteria (plan §3) are amended accordingly:** Task 7's clause becomes
+"exhaustive over the 13 compound-`if` protos, with `budget-exceeded` rows explicit and
+no silent sampling"; Task 8's becomes "design note delivered with its assumptions
+labelled measured or unmeasured". Task 13 records this amendment in the spec decision
+log alongside the 0.997 drop.
