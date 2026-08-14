@@ -471,23 +471,42 @@ def _ledger_rows():
     return probe_enum._read_ledger()
 
 
-def test_the_compound_if_population_is_thirteen_leaves_of_twentyone_shapes(
+def test_the_compound_if_population_moved_from_twentyone_shapes_to_one(
         corpus_dir):
-    """The number the amendment carried ("the 13 compound-`if` refusal
-    protos") is the LEAF count, and the ledger's `structure:` family is 21
-    shapes: the ledger copies a descendant's refusal reason up to its
-    ancestors verbatim, so `snr_story_main.lua:main` (10 instructions) is
-    recorded as refusing at "pc 131". Re-measured 2026-08-14: 21 shapes, 13
-    leaves, 8 ancestors -- and the leaf set agrees exactly with the one
-    `corpus/observation/classes.json` publishes as `refusal_origin == "own"`.
+    """Task 7 measured this family as 21 ledger shapes / 13 leaves; task 11
+    closed it down to **1 shape / 1 leaf**, and this test is where that
+    movement is adjudicated rather than assumed.
+
+    Re-measured 2026-08-14 after the condition-tree recognizer landed. The one
+    survivor is `snr_common.lua:main_71`, whose refusal
+    (`else-join out of range` at pc 286) is NOT a condition-representation
+    defect: the two tests at 284/286 target 297 and 298, which resolve to
+    neither a true exit, a false exit, nor an internal split point, so
+    `_match_cond_chain` declines them -- correctly, they are a nested `if`
+    with an `else`. What actually refuses is a `break` at pc 295 targeting
+    410, the exit of a `while true` (header 279, closing JMP 409) that
+    `_match_loop` does not recognize; structuring the same `if` WITH
+    `break_target=410` succeeds.
+
+    The other 20 left this family by two different routes and the split is
+    asserted, because "no longer `structure:`" is not "certified": **7** reach
+    `L3` and **13** move to `mismatch:`, i.e. they print now but do not
+    recompile field-identical. Those 13 are a pre-existing reconstruction
+    defect the structure refusal had been masking (`write_reg`'s `declared`
+    gate materialising staged temps as `local` re-assignments -- see
+    `tests/test_sir_longtail2.py::
+    test_while_header_refusal_is_a_reconstructor_scope_defect_not_a_while_defect`
+    for the same mechanism diagnosed on another shape).
     """
     import json
     rows = _ledger_rows()
     shapes = [r for r in rows
               if (r.get("refusal_reason") or "").startswith("structure:")]
-    assert len(shapes) == 21
+    assert len(shapes) == 1
+    assert shapes[0]["refusal_reason"] == "structure: pc 286: else-join out of range"
     leaves = probe_enum.compound_if_leaves(rows)
-    assert len(leaves) == 13
+    assert leaves == [("snr_common.lua", "main_71")]
+    # The derivation and `classes.json` still agree, on the smaller set.
     classes = json.loads(
         (probe_enum.ROOT / "corpus" / "observation" / "classes.json")
         .read_text())
@@ -496,6 +515,17 @@ def test_the_compound_if_population_is_thirteen_leaves_of_twentyone_shapes(
         if (r["mechanical"]["refusal_reason"] or "").startswith("structure:")
         and r["mechanical"]["refusal_origin"] == "own")
     assert leaves == published
+    # Where the other 20 went, by ledger row rather than by narration.
+    by_key = {(o["file"], o["proto_path"]): r
+              for r in rows for o in r["occurrences"]}
+    verdicts = {}
+    for key in probe_enum.M6_TASK11_POPULATION:
+        r = by_key[key]
+        verdicts[key] = r["level"] if r["level"] == "L3" \
+            else (r["refusal_reason"] or "").split(":")[0]
+    assert sorted(verdicts.values()).count("L3") == 6
+    assert sorted(verdicts.values()).count("mismatch") == 6
+    assert sorted(verdicts.values()).count("structure") == 1
 
 
 def test_the_smallest_leaf_refusal_is_identical_over_its_whole_space(
@@ -529,10 +559,18 @@ def test_the_full_leaf_population_verdicts_are_pinned(corpus_dir):
     The counts are asserted as an exact partition rather than as floors: this
     is a fixed 13-element population, so a floor would be a number that could
     only move by someone editing it.
+
+    **Re-measured after task 11 (2026-08-14, 6.73s wall): every one of these
+    numbers is unchanged** -- same partition, same two pinned divergences
+    byte-for-byte, same 182/106. That is the semantic evidence for a task that
+    rebuilt the region tree of twelve of these thirteen protos: what changed
+    is how they are represented and printed, not what they do. The population
+    is now the frozen `probe_enum.M6_TASK11_POPULATION` rather than the live
+    ledger derivation, which has shrunk to one row -- see that constant for
+    why the frozen list is the right driver here.
     """
     from scripts.probe_common import adjudicate_pins
-    rows = probe_enum._read_ledger()
-    population = probe_enum.compound_if_leaves(rows)
+    population = probe_enum.M6_TASK11_POPULATION
     assert len(population) == 13
     counts = {k: 0 for k in probe_enum.VERDICTS}
     divergent = {}

@@ -5,14 +5,17 @@ The pc-claim audit (all_claimed == fn pcs) is asserted at every build_sir exit.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from pyluadec.cfg import build_cfg, dominates, immediate_dominators
-from pyluadec.lift.lift import LirFunction
+from pyluadec.lift.lift import LirFunction, LirInstr
 from pyluadec.lift.opcodes import Op
 
-from .regions import (Break, CondValue, EndIter, GenericFor, If, NumericFor,
-                      Region, RegionOverlap, Repeat, Return, Seq, Straight,
-                      VAlt, VTail, While, WhileTrue, all_claimed,
-                      value_claimed, _own_enditers, _tail_enditers)
+from .regions import (Break, CondOp, CondTest, CondValue, EndIter, GenericFor,
+                      If, NumericFor, Region, RegionOverlap, Repeat, Return,
+                      Seq, Straight, VAlt, VTail, While, WhileTrue,
+                      all_claimed, cond_claimed, value_claimed, _own_enditers,
+                      _tail_enditers)
 
 _COMPARE = frozenset({Op.EQ, Op.LT, Op.LE, Op.TEST})
 # TESTSET is still NOT an if-condition -- it ASSIGNS on the branch it takes, so
@@ -1240,6 +1243,65 @@ def _match_else_break(fn, cfg, idoms, pc2blk, sites, memo, li, pc: int,
 def _structure_if(fn, cfg, idoms, pc2blk, pc: int, hi: int, break_target: int | None = None,
                   continue_target: int | None = None,
                   thread_target: int | None = None, sites=None, memo=None):
+    """`if` dispatch: the incumbent ONE-compare reading first, an `and`/`or`
+    condition TREE only if that reading refuses (M6 task 11).
+
+    ## Why the order is this way round, and why it is not a preference
+
+    `a and b` with no else branch is LITERALLY the same bytecode as
+    `if a then if b then ... end end` -- both conjuncts' false-exits are
+    patched to the same join either way -- so on that shape the two readings
+    are both correct and the choice is free. On a shape where they differ, the
+    interval arithmetic alone cannot tell them apart: `if a then x = 1 if b
+    then f() end end` presents exactly the same two tests with the same two
+    targets as `if a and b then` does, and differs only in that the
+    instructions BETWEEN the tests are a statement rather than operand
+    staging -- a distinction `sir.build` has no register model to make (it is
+    `Reconstructor._stage_run` that makes it, one layer down, and only after
+    the region tree is already fixed).
+
+    So a chain-first dispatch would have to guess on exactly the shapes where
+    guessing is wrong, and the guess would be paid for in the ledger: a proto
+    that certifies today under the nested reading would move to `reconstruct:`
+    and fall back. Trying the chain only after the incumbent has raised
+    `StructureError` makes that impossible by construction -- every input the
+    incumbent accepts is structured exactly as before, byte for byte, and the
+    chain can only convert a REFUSAL into an acceptance. The same argument,
+    and the same shape of it, as `_match_else_break`'s and as the two jpc
+    rewrites in `_structure_if_single`.
+
+    The cost is that a compound condition whose incumbent misreading happens
+    to structure successfully is not reached here. That is not hypothetical --
+    it is precisely the no-else `a and b` case above, which structures as
+    nested `if`s and certifies, and which this dispatch therefore leaves
+    alone. Measured 2026-08-14: `if a and b then f() end` still builds two
+    `If` regions, not one `CondOp`.
+
+    **The ordering is proven load-bearing, on the corpus** (2026-08-14):
+    inverting it -- try `_match_cond_chain` first, fall back to the one-compare
+    reading -- regenerates `corpus/ledger.jsonl` at `L3` **1432**/1478 and
+    structured **1898**/1944, against **1437**/**1903** with the order as
+    written. Five protos that certify today would be downgraded by a
+    chain-first dispatch, which is the concrete form of the argument above.
+    """
+    try:
+        return _structure_if_single(fn, cfg, idoms, pc2blk, pc, hi,
+                                    break_target=break_target,
+                                    continue_target=continue_target,
+                                    thread_target=thread_target,
+                                    sites=sites, memo=memo)
+    except StructureError:
+        chain = _match_cond_chain(fn, cfg, idoms, pc2blk, pc, hi,
+                                  break_target, continue_target,
+                                  thread_target, sites, memo)
+        if chain is None:
+            raise
+        return chain
+
+
+def _structure_if_single(fn, cfg, idoms, pc2blk, pc: int, hi: int, break_target: int | None = None,
+                         continue_target: int | None = None,
+                         thread_target: int | None = None, sites=None, memo=None):
     """pc is a compare instruction; the next pc is its JMP. Returns (If region, next pc).
 
     ## `thread_target`: the same jpc threading, one construct over (M5 task 4)
@@ -1335,6 +1397,30 @@ def _structure_if(fn, cfg, idoms, pc2blk, pc: int, hi: int, break_target: int | 
         if eb is not None:
             return eb
         raise StructureError(f"pc {pc}: if targets out of range")
+    return _finish_if(fn, cfg, idoms, pc2blk, pc, li, frozenset({pc, jmp_pc}),
+                      then_lo, jt, raw_jt, hi, negated=(li.ri.a == 0),
+                      break_target=break_target,
+                      continue_target=continue_target,
+                      thread_target=thread_target, sites=sites, memo=memo)
+
+
+def _finish_if(fn, cfg, idoms, pc2blk, pc: int, cond, cond_base: frozenset[int],
+               then_lo: int, jt: int, raw_jt: int, hi: int, *, negated: bool,
+               break_target, continue_target, thread_target, sites, memo):
+    """Everything an `if` needs once its CONDITION is settled: splitting
+    [then_lo, hi) into a then-body, an optional else-body, and a join.
+
+    Extracted at M6 task 11 so the condition-tree recognizer
+    (`_match_cond_chain`) reuses it verbatim rather than growing a second copy
+    that could drift. `cond` is whatever goes in `If.cond` -- a single
+    `LirInstr` from `_structure_if_single`, a `CondNode` from the chain --
+    and `cond_base` is the set of pcs the condition itself occupies, to which
+    this function adds the then-body's trailing else-skip when there is one.
+    `raw_jt` is the PRE-rewrite target of the condition's false exit (what a
+    jump threaded onto it literally carries in the bytecode); see
+    `_structure_if_single`'s docstring for why that, and not the rewritten
+    `jt`, is what the then-body's own pending jumps end up with.
+    """
     # Peek (do not recurse yet) at whether the then-body ends by jumping over an
     # else block, so the trailing JMP can be excluded from the then-body range
     # before we structure it -- recursing over [then_lo, jt) first and only
@@ -1408,20 +1494,20 @@ def _structure_if(fn, cfg, idoms, pc2blk, pc: int, hi: int, break_target: int | 
             # expired: the loop printer landed in task 2 and this task moves
             # the ledger by design. Removed; `snr_common.lua:main_24_1` (the
             # measured single corpus instance) is accepted as a result.
-            cond_pcs = frozenset({pc, jmp_pc})
+            cond_pcs = cond_base
         else:
             join = cand
             if not (jt <= join <= hi):
                 raise StructureError(f"pc {pc}: else-join out of range")
             # the trailing JMP of the then-body is claimed by the If, not the then-body
             then_hi = then_last
-            cond_pcs = frozenset({pc, jmp_pc, then_last})
+            cond_pcs = cond_base | {then_last}
             # The then-body is terminated by THIS else-skip, so it is this
             # else-skip that `luaK_jump` concatenates the body's still-pending
             # jumps onto -- and they carry its raw target, not the rewritten one.
             then_thread = raw_cand
     else:
-        cond_pcs = frozenset({pc, jmp_pc})
+        cond_pcs = cond_base
     # The interval arithmetic above only proves the pc ranges are gap-free and
     # non-overlapping -- it says nothing about whether either range is actually
     # reachable *only* through this condition. Verify single-entry via the
@@ -1458,8 +1544,285 @@ def _structure_if(fn, cfg, idoms, pc2blk, pc: int, hi: int, break_target: int | 
                                                     if join == hi else None),
                                      sites=sites, memo=memo) if jt < join \
             else Seq((), frozenset())
-    return (If(cond=li, negated=(li.ri.a == 0), then_body=then_body,
+    return (If(cond=cond, negated=negated, then_body=then_body,
                else_body=else_body, join_pc=join, claimed_pcs=cond_pcs), join)
+
+
+# --------------------------------------------------------------------------
+# and/or condition trees (M6 task 11)
+#
+# `lcode.c` compiles a boolean expression into a chain of test+JMP pairs plus
+# the operand code each test needs, with two lists of pending jumps: the
+# truelist and the falselist. `luaK_infix`/`luaK_posfix` (lcode.c:684-736)
+# wire them:
+#
+#   `X and Y`  -- `luaK_goiftrue(X)` puts X's own jump on the FALSElist and
+#                 patches X's truelist to here (the start of Y's code); the
+#                 result's falselist is X's ∪ Y's, its truelist is Y's.
+#   `X or Y`   -- `luaK_goiffalse(X)` puts X's own jump on the TRUElist and
+#                 patches X's falselist to here (the start of Y's code); the
+#                 result's truelist is X's ∪ Y's, its falselist is Y's.
+#
+# `lparser.c:ifstat` then runs `cond()` = `luaK_goiftrue` over the whole
+# expression, so the FINAL test's jump is always a false exit, the falselist
+# is patched to the else block (or the join), and the truelist is patched to
+# the start of the then-block.
+#
+# Reading that backwards is what `_parse_cond` does. The information the
+# instruction stream does NOT carry is which list each jump landed on --
+# `EQ A=1` is `x == y` compiled for an `or` and `x ~= y` compiled for an
+# `and`, identically encoded -- and it is recovered from the jump's TARGET:
+# a jump to a member of the true-target set is a truelist jump, one to the
+# false target is a falselist jump, and one to a pc INSIDE the chain is the
+# "patched to here" boundary between the two operands of an `and`/`or`, which
+# is what makes grouping (`(a or b) and c` vs `a or (b and c)`) recoverable.
+#
+# Nothing here guesses: every candidate that does not resolve to exactly one
+# reading is discarded, and the caller re-raises the incumbent refusal.
+
+
+@dataclass(frozen=True)
+class _Span:
+    """One test of a candidate condition chain, with the operand code that
+    precedes it INSIDE the chain (empty for the first: the first operand's
+    code was staged by the preceding sibling `Straight`, exactly as for a
+    single-test `if`)."""
+    start: int                       # first pc of this span (staging or test)
+    staging: tuple[LirInstr, ...]
+    test: LirInstr
+    jmp_pc: int
+    target: int
+
+
+def _scan_chain_spans(fn, pc: int, hi: int) -> list[_Span]:
+    """The maximal run of `<operand code> <compare> JMP` groups starting at
+    `pc`. Purely syntactic -- no target is interpreted here; `_parse_cond`
+    decides which prefix of this run (if any) is a condition.
+
+    Staging is accepted only as plain fall-through instructions: anything with
+    a second successor (another compare, a `TESTSET` value chain), any JMP,
+    any `RETURN`/`TAILCALL`, and any `FORPREP` ends the scan. So a candidate
+    chain can never straddle a jump the parse would then have to explain.
+    """
+    spans: list[_Span] = []
+    start = pc
+    staging: tuple[LirInstr, ...] = ()
+    p = pc
+    while True:
+        li = fn.instrs.get(p)
+        if li is None or li.ri.op not in _COMPARE:
+            break
+        jli = fn.instrs.get(p + 1)
+        if jli is None or jli.ri.op is not Op.JMP or len(jli.successors) != 1:
+            break
+        spans.append(_Span(start=start, staging=staging, test=li,
+                           jmp_pc=p + 1, target=jli.successors[0]))
+        q = p + 2
+        run: list[LirInstr] = []
+        while q < hi:
+            nli = fn.instrs.get(q)
+            if nli is None or nli.ri.op in _COMPARE:
+                break
+            if nli.ri.op in (Op.JMP, Op.RETURN, Op.TAILCALL, Op.FORPREP):
+                break
+            if len(nli.successors) != 1 \
+                    or nli.successors[0] != q + 1 + len(nli.consumed):
+                break
+            run.append(nli)
+            q += 1 + len(nli.consumed)
+        if q >= hi or q not in fn.instrs or fn.instrs[q].ri.op not in _COMPARE:
+            break
+        start = p + 2
+        staging = tuple(run)
+        p = q
+    return spans
+
+
+def _parse_cond(spans: list[_Span], i: int, j: int,
+                tset: frozenset[int], fset: frozenset[int], memo: dict):
+    """`spans[i:j]` as a condition subtree whose truelist targets are `tset`
+    and whose falselist targets are `fset`, or None if it is not one.
+
+    Left-recursive on the FIRST span, which is what makes the result unique
+    rather than merely consistent:
+
+      * jump ∈ fset -- the leaf was compiled by `luaK_goiftrue`, i.e. it is
+        an `and`'s left operand, and the rest of the chain is the right one.
+      * jump ∈ tset -- `luaK_goiffalse`, i.e. an `or`'s left operand.
+      * jump lands on `spans[m].start` for some m > i+1 -- the "patched to
+        here" boundary. `spans[i:m]` is a GROUP with its own list patched to
+        that boundary, and the two possible readings (the group is an `or`'s
+        left operand, so its FALSElist went there; or an `and`'s, so its
+        TRUElist did) are both tried and exactly one must parse. `m > i+1` is
+        required because a jump to `spans[i+1].start` is a jump to where the
+        chain falls through anyway -- luac never emits one, and admitting it
+        would make the split ambiguous with the two cases above.
+
+    `tset` and `fset` are disjoint at every call (the top-level check refuses
+    a chain whose false target is also a true target), so the first two arms
+    cannot both fire.
+    """
+    key = (i, j, tset, fset)
+    if key in memo:
+        return memo[key]
+    memo[key] = None                 # cycles are impossible, but be explicit
+    out = _parse_cond_impl(spans, i, j, tset, fset, memo)
+    memo[key] = out
+    return out
+
+
+def _parse_cond_impl(spans, i, j, tset, fset, memo):
+    g = spans[i].target
+    if j - i == 1:
+        if g in fset:
+            return CondTest(staging=spans[i].staging, test=spans[i].test,
+                            jmp_pc=spans[i].jmp_pc, jump_is_true_exit=False)
+        if g in tset:
+            return CondTest(staging=spans[i].staging, test=spans[i].test,
+                            jmp_pc=spans[i].jmp_pc, jump_is_true_exit=True)
+        return None
+    if g in fset or g in tset:
+        left = CondTest(staging=spans[i].staging, test=spans[i].test,
+                        jmp_pc=spans[i].jmp_pc, jump_is_true_exit=(g in tset))
+        right = _parse_cond(spans, i + 1, j, tset, fset, memo)
+        if right is None:
+            return None
+        return CondOp(op=("or" if g in tset else "and"), left=left, right=right)
+    # `_scan_chain_spans` builds `start` strictly increasing (span k+1 starts at
+    # span k's JMP pc plus one), so this lookup is single-valued by
+    # construction -- written as a dict rather than as a filtered list with a
+    # `len(...) == 1` check, which could never fail and would therefore be a
+    # guard that only looked like one.
+    m = {spans[x].start: x for x in range(i + 2, j)}.get(g)
+    if m is None:
+        return None
+    rest = _parse_cond(spans, m, j, tset, fset, memo)
+    if rest is None:
+        return None
+    boundary = frozenset({g})
+    as_or = _parse_cond(spans, i, m, tset, boundary, memo)
+    as_and = _parse_cond(spans, i, m, boundary, fset, memo)
+    if (as_or is None) == (as_and is None):
+        return None                  # neither reading, or an ambiguous pair
+    if as_or is not None:
+        return CondOp(op="or", left=as_or, right=rest)
+    return CondOp(op="and", left=as_and, right=rest)
+
+
+def _match_cond_chain(fn, cfg, idoms, pc2blk, pc: int, hi: int,
+                      break_target, continue_target, thread_target,
+                      sites, memo):
+    """`if <a and/or b ...> then ... [else ...] end`. Returns `(If, join)` or
+    None; never raises.
+
+    Only consulted once the one-compare reading in `_structure_if_single` has
+    already refused -- see `_structure_if`'s docstring for why that ordering
+    is load-bearing rather than a preference.
+
+    Candidate chain lengths are tried LONGEST first. Shorter prefixes are
+    genuinely different conditions (`a and b` where the chain runs `a`, `b`,
+    `c` means the `c` test belongs to a nested `if`), and the longest one that
+    both parses and structures is the only one that can leave no unexplained
+    jump behind: a shorter prefix leaves the remaining tests inside the
+    then-body, where `_structure_range` has to make sense of them on their own.
+
+    **That ordering is measured INERT, and is recorded as defensive rather
+    than claimed load-bearing** (2026-08-14, MEMORY.md's "guards must be
+    proven load-bearing"): replacing it with `range(2, len(spans) + 1)`
+    (shortest-first) leaves `corpus/ledger.jsonl` at the same `L3` 1437/1478 /
+    structured 1903/1944 and every fixture in `tests/test_sir_condtree.py` and
+    `tests/test_sir_longtail2.py` green. The reason it cannot be observed is
+    that a short prefix which parses usually goes on to FAIL in `_finish_if`
+    -- the leftover tests do not structure as a then-body -- and the loop then
+    falls through to the longer candidate anyway. Kept because relying on that
+    self-correction is relying on an accident, but no fixture in this tree
+    distinguishes the two.
+
+    ## The two refusals here that ARE proven load-bearing
+
+    `raw_jt in tset` and `_parse_cond_impl`'s `(as_or is None) == (as_and is
+    None)` are both pinned by `tests/test_sir_condtree.py::
+    test_an_ambiguous_group_split_is_refused_rather_than_guessed`, whose
+    fixture is `if a and b or c then f() else g() end` with `b`'s JMP
+    retargeted to the group boundary (pc 7). Neuter/restore, measured
+    2026-08-14, both directions:
+
+      * with `raw_jt in tset` disabled, the k=2 candidate is accepted and
+        publishes `CondOp("or", a, b)` -- a condition that silently drops the
+        third test out of the `if`;
+      * with the ambiguity check disabled, the k=3 candidate is accepted and
+        publishes `CondOp("or", CondOp("and", a, b), c)` from a chain that
+        equally supports `CondOp("and", a, CondOp("or", b, c))`, i.e. a guess;
+      * with both restored, `_match_cond_chain` returns None and the caller
+        re-raises the incumbent refusal.
+
+    luac cannot emit either input (both need a JMP whose target is its own
+    fall-through), which is exactly why the fixture is hand-built.
+    """
+    spans = _scan_chain_spans(fn, pc, hi)
+    if len(spans) < 2:
+        return None
+    for k in range(len(spans), 1, -1):
+        end = spans[k - 1].jmp_pc + 1        # the then-block's first pc
+        if not (pc < end <= hi):
+            continue
+        raw_jt = spans[k - 1].target
+        # The truelist's destination. `luaK_patchtohere` leaves it on `fs->jpc`
+        # and `dischargejpc` flushes it to the then-block's first emission --
+        # unless that emission is itself a JMP (`break`, `return` threaded, an
+        # else-skip over an empty then-block), in which case `luaK_jump`
+        # concatenates the list onto that JMP and every member ends up with
+        # ITS target instead. Both readings are admitted; one hop is all
+        # `luaK_jump` can add, because the JMP it concatenates onto is itself
+        # patched exactly once.
+        tset = {end}
+        eli = fn.instrs.get(end)
+        if eli is not None and eli.ri.op is Op.JMP and len(eli.successors) == 1:
+            tset.add(eli.successors[0])
+        if raw_jt in tset:
+            continue                          # ambiguous: refuse, never guess
+        node = _parse_cond(spans, 0, k, frozenset(tset), frozenset({raw_jt}), {})
+        if node is None:
+            continue
+        jt = raw_jt
+        if thread_target is not None and raw_jt == thread_target:
+            jt = hi                           # same rewrites as the one-compare
+        elif continue_target is not None and raw_jt == continue_target:
+            jt = hi                           # reading; see _structure_if_single
+        if not (end <= jt <= hi):
+            continue
+        try:
+            # Single-entry over the chain's own interior, not just over the
+            # branch bodies: an operand run that some OTHER jump can land in
+            # is not this condition's operand run, whatever the pc arithmetic
+            # says. The bodies are checked by `_finish_if` as usual.
+            #
+            # **Defensive, not proven load-bearing** (measured 2026-08-14).
+            # Deleting this call leaves the whole suite green, and the
+            # adversarial input it exists for -- `if z then k() end if h(1) and
+            # h(2) then f() else g() end` with the first `if`'s false-exit
+            # retargeted into the chain's second operand run -- is still
+            # refused without it, by `_finish_if`'s own `_verify_single_entry`
+            # over the then-body. That is not a coincidence: a jump into the
+            # chain from BEFORE it creates a path from the function entry that
+            # bypasses `pc` entirely, so the then-body stops being dominated
+            # by the condition block at the same moment the chain interior
+            # does. A jump into the chain from AFTER it is a back edge, which
+            # does not break dominance at all and which neither check refuses.
+            # Kept because the region this claims really is a separate range
+            # from the bodies and the invariant is stated for it too, and
+            # because M6 task 11's brief asks for it explicitly -- but
+            # recorded here as unproven rather than asserted as a guard.
+            _verify_single_entry(cfg, idoms, pc2blk, pc, pc + 1, end)
+            return _finish_if(fn, cfg, idoms, pc2blk, pc, node,
+                              cond_claimed(node), end, jt, raw_jt, hi,
+                              negated=False, break_target=break_target,
+                              continue_target=continue_target,
+                              thread_target=thread_target, sites=sites,
+                              memo=memo)
+        except (StructureError, RegionOverlap):
+            continue
+    return None
 
 
 def _match_generic_for(fn, pc: int, hi: int):

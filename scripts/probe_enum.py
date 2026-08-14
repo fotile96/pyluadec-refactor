@@ -764,13 +764,20 @@ def compound_if_leaves(ledger_rows) -> list[tuple[str, str]]:
     """The protos this task's demonstration runs over: the `structure:`
     refusals whose refusal is their OWN, not inherited from a descendant.
 
-    Measured 2026-08-14 over `corpus/ledger.jsonl`: the `structure:` family is
-    **21 shapes**, of which **13 are leaves** and 8 are ancestors carrying a
-    descendant's reason verbatim (the ledger copies the reason up, so
-    `snr_story_main.lua:main`, 10 instructions, is recorded as refusing at
-    "pc 131"). The leaf/ancestor split is decided here the same way
-    `observation_classes.refusal_origin` decides it -- by re-running
-    `build_sir` on the proto alone -- and the two agree on all 21.
+    Measured at task 7 (2026-08-14) over `corpus/ledger.jsonl`: the
+    `structure:` family was **21 shapes**, of which **13 were leaves** and 8
+    ancestors carrying a descendant's reason verbatim (the ledger copies the
+    reason up, so `snr_story_main.lua:main`, 10 instructions, was recorded as
+    refusing at "pc 131"). The leaf/ancestor split is decided here the same
+    way `observation_classes.refusal_origin` decides it -- by re-running
+    `build_sir` on the proto alone -- and the two agreed on all 21.
+
+    **Re-measured after task 11 (2026-08-14): 1 shape, 1 leaf**
+    (`snr_common.lua:main_71`). The condition-tree recognizer closed the other
+    20; 7 of them reached `L3` and 13 moved to the `mismatch:` family, which
+    this function does not select. The task-7 population is preserved verbatim
+    as `M6_TASK11_POPULATION` and that -- not this derivation -- is what the
+    CLI and the standing gate now drive, for the reason given there.
     """
     from pyluadec.ingest import load_file
     from pyluadec.lift.lift import lift_proto
@@ -797,6 +804,35 @@ def compound_if_leaves(ledger_rows) -> list[tuple[str, str]]:
     return sorted(set(out))
 
 
+#: The population `compound_if_leaves` returned when this instrument was
+#: built (task 7, 2026-08-14), frozen as a literal because task 11 then CLOSED
+#: most of it: the derivation above now returns one row
+#: (`snr_common.lua:main_71`), so a ledger-derived population would silently
+#: stop exercising the twelve protos whose region trees task 11 changed --
+#: which is exactly when running them matters most.
+#:
+#: This list is therefore a REGRESSION population, not a defect census. It is
+#: correct for it to go stale relative to `compound_if_leaves`; what it must
+#: not do is shrink. `tests/test_probe_enum.py` asserts both halves: that
+#: every member is still adjudicated with the verdict task 7 measured, and
+#: that the live derivation has moved to 1.
+M6_TASK11_POPULATION: tuple[tuple[str, str], ...] = (
+    ("snr_common.lua", "main_71"),
+    ("snr_common.lua", "main_74_13"),
+    ("snr_common.lua", "main_76_2"),
+    ("snr_common.lua", "main_76_8"),
+    ("snr_common.lua", "main_81"),
+    ("snr_fragment_main.lua", "main_1"),
+    ("snr_graphic.lua", "main"),
+    ("snr_graphic.lua", "main_4"),
+    ("snr_mainmenu.lua", "main_7"),
+    ("snr_memory.lua", "main_4"),
+    ("snr_music.lua", "main_3"),
+    ("snr_s4_10_s.lua", "main_58"),
+    ("snr_story_main.lua", "main_1"),
+)
+
+
 def _read_ledger() -> list[dict]:
     import json
     with open(ROOT / "corpus" / "ledger.jsonl", "rb") as fh:
@@ -808,7 +844,7 @@ def main(argv: list[str] | None = None) -> int:
     if len(argv) == 2:
         population = [(argv[0], argv[1])]
     else:
-        population = compound_if_leaves(_read_ledger())
+        population = list(M6_TASK11_POPULATION)
     corpus = Path(os.environ["PYLUADEC_CORPUS_DIR"])
     counts: dict[str, int] = {k: 0 for k in VERDICTS}
     divergent: dict[str, tuple] = {}

@@ -2306,14 +2306,28 @@ The 48 non-`L3` unique protos / 48 non-`L3` occurrences split by
 `refusal_reason` on the committed ledger: **`structure` 21, `mismatch` 22,
 `reconstruct` 5, `compile` 0**. Two named defects account for most of it:
 
-- **13 compound-`if` refusals — ONE defect.** `and`/`or` conditions with an
-  else arm need a condition tree in `sir/regions.py::If`; today `_structure_if`
-  cannot represent them and refuses. Start from
-  `tests/test_sir_longtail2.py::COMPOUND_CONDITION_EXEMPLAR`, a committed
-  26-instruction runnable repro, rather than from a 124 KB corpus file. One of
-  `tests/test_semantic_regressions.py`'s five named cases
-  (`test_if_and_elseif_conjunctions_preserved`) is pinned at `L1` by exactly
-  this and is the signal for when it closes.
+- **13 compound-`if` refusals — ONE defect. CLOSED by M6 task 11
+  (2026-08-14).** `and`/`or` conditions with an else arm needed a condition
+  tree in `sir/regions.py::If`; `regions.CondTest`/`CondOp` and
+  `sir/build.py::_match_cond_chain` are it, and
+  `tests/test_semantic_regressions.py::test_if_and_elseif_conjunctions_preserved`
+  — the signal this entry named — moved `L1` -> `L3` by measurement.
+
+  Measured outcome, stated as a partial rather than a clean sweep: the
+  `structure:` family went **21 ledger shapes -> 1**, of which **7 reached
+  `L3`** and **13 moved to `mismatch:`** (they print now and fail comparison,
+  on a pre-existing `write_reg` `declared`-gate defect the structure refusal
+  had been masking — see item 5). The survivor, `snr_common.lua:main_71`, is
+  not a condition defect at all: its `break` at pc 295 targets the exit of a
+  `while true` that `_match_loop` does not recognize. Corpus after:
+  `L3` **1437/1478 unique, 1903/1944 occurrences**; **217 files fully
+  structured, 5 hybrid, 7 whole-file fallback**; quality **0.971947**;
+  `ratchet_diff.py` vs `0957364` = 7 upgrades, 0 downgrades.
+
+  Still open, and named: `while <a and b> do` (`_match_while_header` requires
+  the header to be one basic block) and `repeat ... until a or b`, both pinned
+  by `tests/test_sir_condtree.py::WHILE_HEADER_GAP`. No corpus proto needs
+  either.
 - **4 root reconstruction defects that hybrid emission UNMASKED.** Their
   certification previously died on a descendant's refusal before any comparison
   ran, so their faithfulness had never been compared at all. One is

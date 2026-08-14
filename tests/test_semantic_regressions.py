@@ -225,45 +225,35 @@ def test_counter_closure_and_dispatch_mix():
 
 
 def test_if_and_elseif_conjunctions_preserved():
-    """KNOWN GAP: ships fallback (`L1`), not `L3`.
+    """CLOSED by M6 task 11 (2026-08-14): `L3`, structured, was `L1`/fallback.
 
-    `f`'s body -- `if p0 < p1 and v4 == -1 then ... elseif 3 < p0 and v4 == 1
-    then ... end` -- is refused by `build_sir` with
-    `StructureError: pc 4: if targets out of range` at the second condition's
-    `AND`, still, after M5 task 4.
-
-    **The M4-era diagnosis recorded here was wrong and is corrected in
-    place** (re-measured 2026-08-12 by dumping `f`'s lifted stream). It read:
-    "the inner if's AND-chain false-exit is threaded (`luaK_jump`'s `jpc`
-    pending-list concatenation) onto the ENCLOSING elseif chain's else-skip",
-    and predicted that M5 task 4's threading work would flip this case. It
-    did not, because there is no threading here at all. `f` compiles to
+    This is the signal the M6 agenda named for the compound-`if` defect, and
+    it flipped by measurement -- the assertions below were changed only after
+    `certify_proto` was observed returning `L3` for both protos on an
+    unmodified test body. `f`'s body is
+    `if p0 < p1 and v4 == -1 then ... elseif 3 < p0 and v4 == 1 then ... end`
+    and compiles to
 
         2 LT   ->(3,4)    3 JMP -> 8      <- first conjunct's false-exit
         4 EQ   ->(5,6)    5 JMP -> 8      <- second conjunct's false-exit
         6 LOADK x=1       7 JMP -> 13     <- the else-skip
         8 LT   ...        (the elseif)
 
-    Both conjuncts' false-exits are patched DIRECTLY to pc 8, the elseif's
-    own test -- `luaK_patchtohere(flist)` at the head of the else branch, not
-    a pending-list concatenation onto JMP@7. JMP@5's target (8) is past the
-    end of the then-body (which ends at 7, the else-skip), and no rewrite can
-    make it mean "end of the then-body", because it does not: falling through
-    to 7 would SKIP the elseif entirely.
+    Both conjuncts' false-exits are patched DIRECTLY to pc 8 by
+    `luaK_patchtohere(flist)` at the head of the else branch -- there is no
+    jpc threading here at all, which is why M5 task 4's threading work did not
+    move it (a correction the pre-M6 version of this docstring already
+    carried, itself replacing a wrong M4-era diagnosis).
 
-    The real cause is that `sir.regions.If` carries exactly ONE compare
-    instruction. `a and b` is therefore read as nested `if`s, which is the
-    same bytecode when the `if` has no else branch (why `if a and b then X
-    end` certifies today) and a DIFFERENT one when it does. `or` has no
-    nested-`if` reading at all. Closing this needs a condition TREE in the
-    region/expression/printer layers; see the M5 task-4 report's residual and
-    `tests/test_sir_longtail2.py::KNOWN_REFUSALS`, whose two-line synthetic
-    exemplars (`if a and b then f() else g() end`, `if a or b then f() end`)
-    are this same shape.
+    What closed it: `sir.regions.If` can now hold a condition TREE, and
+    `sir.build._match_cond_chain` reads the two tests as one `and` -- both
+    jumps to 8 are the falselist, 8 is the else block, so `(p0 < p1) and
+    (v4 == -1)` is the only reading consistent with the targets. `or` never
+    had a nested-`if` reading at all; it has one arm of the same tree now.
 
-    `main` (the wrapper chunk) falls back too, since `print_chunk` inlines
-    `f`'s body at its `CLOSURE` site, so one unstructurable descendant takes
-    the whole ancestor chain with it.
+    `main` (the wrapper chunk) followed automatically: `print_chunk` inlines
+    `f`'s body at its `CLOSURE` site, so the ancestor was only ever held back
+    by this descendant.
     """
     src = """
         local function f(p0, p1, v4)
@@ -278,6 +268,9 @@ def test_if_and_elseif_conjunctions_preserved():
         print(f(2, 5, -1), f(2, 5, 0), f(4, 5, 1), f(4, 5, 0))
     """
     out = _run(src, "1\t0\t2\t0\n")
-    assert out.certs["main"].level == "L1"       # measured; see docstring
-    assert out.certs["main_0"].level == "L1"     # f() itself: build_sir refuses
-    assert b"__pld_pc" in out.source             # artifact: fallback chunk
+    assert out.certs["main"].level == "L3"       # measured 2026-08-14; was L1
+    assert out.certs["main_0"].level == "L3"     # f() itself; was L1
+    assert b"__pld_pc" not in out.source         # artifact: structured chunk
+    # The conjunctions really are printed as conjunctions, not re-nested.
+    assert b"if p0 < p1 and " in out.source.replace(b"l1_0", b"p0").replace(
+        b"l1_1", b"p1").replace(b"l1_2", b"v4")

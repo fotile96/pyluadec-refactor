@@ -76,10 +76,11 @@ The printer's *third* register decode -- a `CLOSURE`'s captured `ps.b` -- is
 covered by neither disjunct in the sense of "this row backs this touch": it
 is measured (round-1, 2026-08-12) to pass **exclusively** via the first
 disjunct (Arm 1 already reconciled the same register earlier in the
-function), 907/907 times on the corpus, 0 via the frame. See "What it does
-NOT assert" for why this decode cannot be reconciled by an effects-subset
-gate at all, and is stated there as an exclusion rather than claimed as
-coverage.
+function), 907/907 times on the corpus when first measured and 942/942 after
+M6 task 11 widened the printable set, 0 via the frame either time. See "What
+it does NOT assert" for why this decode cannot be reconciled by an
+effects-subset gate at all, and is stated there as an exclusion rather than
+claimed as coverage.
 
 Neither arm re-transcribes `lvm.c`. There is no fourth copy of the operand
 model in this file: the reconstructor's real accessors are the only source of
@@ -115,8 +116,9 @@ imports the thing it is checking.
   violation.
 - **Protos the structured path never reaches.** The corpus arm drives
   `emit.lua.print_chunk` once per file; a chunk that refuses part-way leaves
-  its remaining descendants unprinted. Measured: 213/229 chunks print, 1821
-  of the corpus's 1944 proto occurrences are entered. Re-running each proto
+  its remaining descendants unprinted. Measured 2026-08-14 (M6 task 11):
+  227/229 chunks print and 1872 proto bodies are entered, up from 213 and
+  1821 at M4 task 9. Re-running each proto
   as its own root would raise that but costs 3.4s against a 2.0s whole-corpus
   pass, which the suite budget does not have.
 - **`JMP` and `CLOSE`.** Neither is reconstructible by the structured path at
@@ -414,9 +416,17 @@ def instrumented(rec: _Recorder):
         with rec.pcs_frame(self.fn, (li.ri.pc,), self.depth, "dispatch"):
             return saved["_dispatch"](self, li)
 
-    def condition_expr(self, cond):
+    def condition_expr(self, cond, **kw):
+        # `**kw` carries M6 task 11's `jump_is_true_exit`, which selects the
+        # POLARITY of the returned expression and touches no register, so the
+        # attribution frame is unchanged: a condition-tree leaf is still one
+        # `cond.ri.pc` frame, exactly like the single-test `If` this wrapper
+        # was written for. The leaf's own operand staging is dispatched
+        # instruction by instruction through `_stage_run` -> `_run_isolated`
+        # -> `_dispatch`, so it keeps its own per-pc frames rather than
+        # riding this one.
         with rec.pcs_frame(self.fn, (cond.ri.pc,), self.depth, "condition"):
-            return saved["condition_expr"](self, cond)
+            return saved["condition_expr"](self, cond, **kw)
 
     def _tested_value(self, node, staging, target):
         with rec.pcs_frame(self.fn, (node.test.ri.pc,), self.depth, "tested-value"):
@@ -675,10 +685,12 @@ def test_the_corpus_arm_actually_walked_the_corpus(corpus_scan):
     """Collapse guard: floors well below the measured values.
 
     Measured M4 task 9: 229 files, 213 chunks printed, 1821 proto bodies
-    entered, 423336 accessor touches, 12118 printed names. The floors sit far
-    below those so they fail on a collapse (an exception swallowed, a corpus
-    that stopped loading, a shim that stopped being installed) rather than on
-    ordinary drift.
+    entered, 423336 accessor touches, 12118 printed names. Re-measured after
+    M6 task 11 (2026-08-14): 229 / 227 / 1872 / 458548 / 15422 -- every one of
+    them up, because the condition-tree recognizer put nine more files through
+    the structured printer. The floors sit far below both sets so they fail on
+    a collapse (an exception swallowed, a corpus that stopped loading, a shim
+    that stopped being installed) rather than on ordinary drift.
     """
     rec = corpus_scan["rec"]
     assert corpus_scan["files"] == 229, corpus_scan["files"]
@@ -722,22 +734,26 @@ def test_the_printer_arm_is_not_carried_entirely_by_arm_one(corpus_scan):
     `NumericFor` `A+3` / `GenericFor` `A+3+i` decodes would be unchecked by
     anything. Measured: 31 printed names on this corpus reach text without any
     reconstructor accessor having touched them first -- `by_kind` breaks down
-    as `{NumericFor: 28, GenericFor: 3}` exactly, pinned below.
+    as `{NumericFor: 36, GenericFor: 7}` exactly, pinned below.
 
-    The counts moved in M5 task 4, from `{NumericFor: 19, GenericFor: 2}`: the
-    jpc-threading and dead-code work in `sir/build.py` made more protos
-    structure, so more `for` headers reach the printer at all. It is a
-    POPULATION figure, not a floor -- when it moves, re-measure and say why,
-    do not widen it into an inequality.
+    The counts moved in M5 task 4, from `{NumericFor: 19, GenericFor: 2}` to
+    `{NumericFor: 28, GenericFor: 3}`, and again in M6 task 11 to the current
+    figure: both times because work in `sir/build.py` made more protos
+    structure, so more `for` headers reach the printer at all. (Task 11's
+    condition-tree recognizer closed 20 of the 21 `structure:` refusals; the
+    printable-file count below moved with it.) It is a POPULATION figure, not
+    a floor -- when it moves, re-measure and say why, do not widen it into an
+    inequality.
 
     Two corpus-wide file counts moved alongside it and are easy to conflate
     into one number, but they are NOT the same quantity, re-measured
     separately 2026-08-12 (fix round 1): the PRINTABLE count
     (`print_chunk(root) is not None` over all 229 files -- the whole tree
     structures and reconstructs, whether or not it recompiles field-identical)
-    is **218**; the SHIPPED/CERTIFIED count (ledger `level == "L3"` at the
-    file root, `scripts/quality_score.py`'s `structured` row -- what actually
-    ships structured source) is **215**. 212 was the certified count
+    is **227** (was 218 before M6 task 11); the SHIPPED/CERTIFIED count
+    (ledger `level == "L3"` at the file root, `scripts/quality_score.py`'s
+    `structured` row -- what actually ships structured source) is **222** (was
+    215). 212 was the certified count
     specifically at M4 close (`docs/runbooks/structured-pipeline.md`: "92 at
     M3 close, 212 at M4 close"); a printable-but-uncertified proto still ships
     fallback for its whole chunk, so the two counts are two different
@@ -755,7 +771,7 @@ def test_the_printer_arm_is_not_carried_entirely_by_arm_one(corpus_scan):
     assert rec.printed_via_frame > 0, rec.printed_via_frame
     assert rec.printed_via_arm1 > 0, rec.printed_via_arm1
     assert rec.printed_via_arm1 + rec.printed_via_frame == rec.printed
-    assert rec.printed_via_frame_by_kind == {"NumericFor": 28, "GenericFor": 3}, (
+    assert rec.printed_via_frame_by_kind == {"NumericFor": 36, "GenericFor": 7}, (
         rec.printed_via_frame_by_kind)
 
 
@@ -766,17 +782,18 @@ def test_closures_captured_upvalue_is_covered_by_arm_one_only(corpus_scan):
     decodes] covered by Arm 2" -- did not reproduce for the `CLOSURE`
     capture decode (`emit/lua.py:287`'s `name_for(ps.b, self.depth)`).
     Measured: of the 912 corpus calls to `name_for` under a `CLOSURE` frame,
-    all 912 pass via Arm 1 (the register was already reconciled against its
+    all 942 pass via Arm 1 (the register was already reconciled against its
     own definition site earlier in the enclosing function) and 0 via the
-    frame's covered set. (907 before M5 task 4's jpc-threading fix, which put
-    five more protos through the structured printer -- a population figure,
-    re-measured 2026-08-12, not a floor.) Pinned here rather than left as prose so a future
+    frame's covered set. (907 before M5 task 4's jpc-threading fix, 912 after
+    it, 942 after M6 task 11's condition trees put nine more files through the
+    structured printer -- a population figure, re-measured 2026-08-14, not a
+    floor.) Pinned here rather than left as prose so a future
     change that routes some of these through the frame disjunct instead (or
     stops reconciling them via Arm 1 at all) is caught, not re-asserted by
     hand next time someone reads the docstring.
     """
     rec = corpus_scan["rec"]
-    assert rec.printed_via_arm1_by_kind.get("CLOSURE", 0) == 912, (
+    assert rec.printed_via_arm1_by_kind.get("CLOSURE", 0) == 942, (
         rec.printed_via_arm1_by_kind.get("CLOSURE"))
     assert "CLOSURE" not in rec.printed_via_frame_by_kind, (
         rec.printed_via_frame_by_kind)

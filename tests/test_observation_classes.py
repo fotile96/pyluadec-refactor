@@ -344,11 +344,30 @@ def test_classes_json_is_a_reproducible_fixed_point(corpus_dir, tmp_path, monkey
 
     observed = {(r["file"], r["proto_path"]): r["observed"]
                 for r in committed["candidates"] if "observed" in r}
+    live = {(r["file"], r["proto_path"]) for r in fresh["candidates"]}
     for r in fresh["candidates"]:
         obs = observed.get((r["file"], r["proto_path"]))
         if obs is not None:
             r["observed"] = obs
     fresh["summary"]["n_observed_records"] = len(observed)
+    # An observation whose proto has LEFT the candidate set is an orphan, not a
+    # loss: the generator moves it to `orphan_observations` rather than
+    # dropping it. Five appeared at M6 task 11 -- `snr_common.lua:main_74_13`,
+    # `main_76_8`, `main_81`, `snr_fragment_main.lua:main_1` and
+    # `snr_story_main.lua:main_1`, all of which certified `L3` and so are no
+    # longer non-`L3` candidates. Reconstructed here for the same reason the
+    # `observed` records are: this test's claim is that the generator computes
+    # NOTHING from an observation, so every observation-derived field has to be
+    # re-inserted by hand and still reproduce the committed bytes.
+    orphans = sorted(
+        (dict(committed_orphan) for committed_orphan in
+         committed.get("orphan_observations", [])),
+        key=lambda o: (o["file"], o["proto_path"]))
+    if orphans:
+        fresh["orphan_observations"] = orphans
+        fresh["summary"]["n_orphan_observations"] = len(orphans)
+    assert {(o["file"], o["proto_path"]) for o in orphans}.isdisjoint(live), \
+        "an orphan is an observation whose proto is no longer a candidate"
     assert json.dumps(fresh, indent=1, ensure_ascii=True) + "\n" \
         == CLASSES.read_text()
 
@@ -499,7 +518,9 @@ def test_leaf_refusal_rule_agrees_with_an_independent_stubbing_experiment(corpus
         if row["level"] != "L3" and k in protos:
             non_l3[k] = (row, protos[k])
 
-    assert len(non_l3) == 48, len(non_l3)
+    # 48 before M6 task 11 closed 20 of the 21 `structure:` shapes (7 to `L3`,
+    # 13 to `mismatch:`); re-measured 2026-08-14.
+    assert len(non_l3) == 41, len(non_l3)
     checked = 0
     for (f, path), (row, p) in sorted(non_l3.items()):
         kind = row["refusal_reason"].split(":", 1)[0]
@@ -524,4 +545,6 @@ def test_leaf_refusal_rule_agrees_with_an_independent_stubbing_experiment(corpus
                 assert survived == row["refusal_reason"], (f, path)
         else:
             assert survived is None, (f, path, survived)
-    assert checked == 26, checked
+    # 26 before M6 task 11: 21 `structure:` + 5 `reconstruct:`. The
+    # condition-tree recognizer left 1 + 5; re-measured 2026-08-14.
+    assert checked == 6, checked

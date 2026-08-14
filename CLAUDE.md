@@ -364,6 +364,18 @@ Phase 5 已完成（12 个任务）。**能力边界、认证门不变式、归�
 - **`express/freereg.py`**（task 11）：`_stack_discipline` 从 `names.py` 拆出。
 - **`refusal_reason` 带上了 `Mismatch.path`**（task 12，M5 agenda 8）：非 root 的失配现在记成 `mismatch: <字段> at <路径>`。实测语料上 22 条 `mismatch` 里 20 条在 `root`、2 条不在（两个 hybrid root），台账因此动了 2 行，ratchet 0 降级。
 
+## Phase 6（M6：跨语料）进行中——已落地的部分
+
+M6 尚未收口，本节只记**已经改变了当前实测值**的任务，别把它当里程碑总结。权威仍是 `docs/runbooks/structured-pipeline.md`（能力边界、`Condition trees` 一节）。
+
+### task 11：compound `if` 条件树（2026-08-14）
+
+- `sir/regions.py` 新增 `CondTest` / `CondOp` / `CondNode` / `cond_claimed`，`If.cond` 类型放宽为 `LirInstr | CondNode`（单测试的 `if` 一个字节都没变，所以这次改动**没有动任何既有台账行**）。识别器是 `sir/build.py::_match_cond_chain` + `_parse_cond`，重建是 `express/reconstruct.py::cond_tree_expr`，极性折进 `condition_expr(..., jump_is_true_exit=)`，打印是 `emit/lua.py::Printer.condition` 的新分支（纯折叠，`_PREC` 决定括号，没有后处理）。
+- **派发顺序是被测量证明过的，不是偏好**：`_structure_if` 先试原有的单比较读法，只有它抛 `StructureError` 才试链。反过来（链优先）重跑全语料是 `L3` 1432/1478，正着是 **1437/1478**——五个 proto 会被降级。
+- **收口值（实测 2026-08-14）**：`L3` **1437/1478 唯一（97.2%）、1903/1944 处出现（97.9%）**（M5 收口 96.8% / 97.5%）；产物 **217 全结构化 / 5 hybrid / 7 整文件 fallback**（M5 收口 216/6/7）；质量分 **0.971947**（M5 收口 0.968833）。`scripts/ratchet_diff.py` 对 `0957364`：**7 升级、0 降级**。
+- **`structure:` 家族从 21 个台账形状降到 1 个**（`snr_common.lua:main_71`，而且它不是条件缺陷，是 `_match_loop` 认不出那个 `while true` 导致 pc 295 的 `break` 没被认出来）。20 个里 7 个直接到 `L3`，13 个落进 `mismatch:`——那 13 个是**本来就被结构拒绝挡住的重建缺陷**（`write_reg` 的 `declared` 闸门把暂存临时量物化成 `local` 再赋值），不是新引入的。
+- **仍是缺口**：`while <a and b> do`（`_match_while_header` 要求 header 是单个基本块）、`repeat ... until a or b`。两者都由 `tests/test_sir_condtree.py::WHILE_HEADER_GAP` 钉住，语料上没有 proto 需要它们。
+
 ### 本里程碑反复出现、值得带进 M6 的那个缺陷
 
 **「散文断言了没人量过的行为」**——task 8 花了四轮、task 9 花了四轮，每一轮的修复里都新长出一个同形的实例；task 11 的版本是一个**正确的发现外挂了一个没量过的最高级**（「唯一一个动台账的屏障」，实测是三个动）。写任何行为性句子之前先量它，包括没有测试断言的那些。最高级词（唯一 / 总是 / 从不 / 全部 / 完整）每出现一次都要么有一次测量，要么改写。

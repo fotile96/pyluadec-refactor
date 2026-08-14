@@ -21,7 +21,7 @@ from pyluadec.lift import lift_proto
 from pyluadec.oracle import compile_source, run_bytes
 from pyluadec.sir import build as build_mod
 from pyluadec.sir.build import StructureError, build_sir
-from pyluadec.sir.regions import If, While, all_claimed
+from pyluadec.sir.regions import CondOp, If, While, all_claimed
 from pyluadec.structure.structured import certify_proto
 
 
@@ -424,33 +424,16 @@ KNOWN_REFUSALS = [
     # with `_structure_if`, and no corpus proto is refused for this reason.
     (b"if a then while true do if b then break end f() end else h() end",
      "unrecognized transfer JMP"),
-    # Compound `if` conditions -- THE residual after M5 task 4. All 13
-    # remaining unique `build_sir` structure refusals (11 `if targets out of
-    # range` + 2 `else-join out of range`) are this one defect, re-measured
-    # 2026-08-12 (round 1). (Of the 75 unique protos below `L3` overall, 57
-    # are leaf defects and 18 are poisoned ancestors by SOME descendant's
-    # cause, not all of it this one -- see docs/runbooks/structured-pipeline.md's
-    # capability-boundary table for that broader, non-defect-specific cut; no
-    # single cut of the poisoned-ancestor set attaches cleanly to just this
-    # defect, so none is quoted here.)
-    #
-    # `sir.regions.If` carries ONE compare instruction, so `a and b` is read
-    # as nested `if`s. That is the SAME bytecode when the `if` has no else
-    # branch (which is why `if a and b then f() end` certifies today) and a
-    # DIFFERENT one when it does: with an else, both conjuncts' false-exits
-    # are patched by `luaK_patchtohere` straight to the else block, whereas
-    # the nested reading would send the inner one to the end of the outer
-    # then-block, skipping the else. `or` has no nested-`if` reading at all --
-    # its truelist is patched to the START of the then-block
-    # (`luaK_goiffalse`, lcode.c:196-208), so the first compare's jump goes
-    # FORWARD over the second condition.
-    #
-    # Closing it needs a condition TREE in `regions.If`, a matching
-    # `and`/`or` reconstruction, and a printer arm -- the acyclic analogue of
-    # what M4 task 4 built for the VALUE idiom (`CondValue`).
-    (b"if a and b then f() else g() end", "if targets out of range"),
-    (b"if a or b then f() end", "if targets out of range"),
 ]
+# CLOSED by M6 task 11 (2026-08-14). The two compound-`if` entries this list
+# carried through M5 -- `if a and b then f() else g() end` and
+# `if a or b then f() end` -- both certify now that `sir.regions.If` can hold
+# a condition TREE, and have moved to `tests/test_sir_condtree.py::CERTIFYING`
+# as positive assertions. On the corpus the `structure:` family went from 21
+# unique protos to 1 (`snr_common.lua:main_71`, whose residual is a loop
+# recognition failure, not a condition one -- see that file's module
+# docstring). Do not re-add them here: a KNOWN_REFUSALS entry for a shape that
+# no longer refuses would assert the opposite of what is true.
 
 # The smallest corpus instance, `snr_common.lua:main_81` (26 instrs), was
 # reverse-engineered to its source on 2026-08-12 and the source below
@@ -477,9 +460,20 @@ end
 
 
 def test_compound_condition_exemplar_reproduces_the_corpus_shape():
-    """Pins the reverse-engineering, not just the refusal: the jump structure
-    below is `snr_common.lua:main_81`'s, and it still refuses at the second
-    conjunct.
+    """Pins the reverse-engineering, and -- since M6 task 11 -- the fix.
+
+    The four `successors` assertions are the reverse-engineering itself and are
+    unchanged: they are what makes this a 26-instruction repro of
+    `snr_common.lua:main_81` rather than an arbitrary compound condition. The
+    refusal that used to follow them (`pc 14: if targets out of range`) is
+    gone; `snr_common.lua:main_81` itself moved `L1` -> `L3` in the same
+    regeneration (measured 2026-08-14, `scripts/ratchet_diff.py` vs `0957364`:
+    7 upgrades, 0 downgrades).
+
+    What the recognizer makes of it, printed: the condition is one `CondOp`
+    tree, `(A and B) or C`, with `B`'s jump read as a TRUE exit (target 26,
+    the `break`'s own target, which the truelist was concatenated onto by
+    `luaK_jump`) and `A`'s and `C`'s read as false exits (targets 16 and 21).
     """
     fn = lift_proto(load_bytes(compile_source(COMPOUND_CONDITION_EXEMPLAR,
                                               strip=True)))
@@ -488,9 +482,18 @@ def test_compound_condition_exemplar_reproduces_the_corpus_shape():
     assert fn.instrs[15].successors == (26,)    # the AND's jump, on the breaklist
     assert fn.instrs[19].successors == (26,)    # the `break`
     assert fn.instrs[20].successors == (24,)    # the dead else-skip after it
-    with pytest.raises(StructureError) as e:
-        build_sir(fn)
-    assert "pc 14: if targets out of range" in str(e.value)
+    region = build_sir(fn)
+    assert all_claimed(region) == set(fn.instrs)
+    trees = [i.cond for i in _find(region, If) if isinstance(i.cond, CondOp)]
+    assert len(trees) == 1, trees
+    top = trees[0]
+    assert top.op == "or" and top.left.op == "and"
+    assert (top.left.left.test.ri.pc, top.left.left.jump_is_true_exit) == (12, False)
+    assert (top.left.right.test.ri.pc, top.left.right.jump_is_true_exit) == (14, True)
+    assert (top.right.test.ri.pc, top.right.jump_is_true_exit) == (17, False)
+    # ...and the whole chunk certifies, which is the point of the exemplar.
+    proto = load_bytes(compile_source(COMPOUND_CONDITION_EXEMPLAR, strip=True))
+    assert certify_proto(proto, is_chunk_root=True).level == "L3"
 
 
 def test_while_header_refusal_is_a_reconstructor_scope_defect_not_a_while_defect():

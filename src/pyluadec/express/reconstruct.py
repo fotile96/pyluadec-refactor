@@ -40,7 +40,8 @@ from dataclasses import dataclass
 from pyluadec.ingest.proto import LuaNumber
 from pyluadec.lift.lift import LirFunction, LirInstr
 from pyluadec.lift.opcodes import ArgMode, Fmt, OP_SPECS, Op, indexk, isk
-from pyluadec.sir.regions import CondValue, VAlt, VNode, VTail
+from pyluadec.sir.regions import (CondNode, CondTest, CondValue, VAlt, VNode,
+                                  VTail)
 
 from .expr import (BinExpr, CallExpr, ClosureExpr, ConstExpr, Expr, GlobalExpr,
                    IndexExpr, LocalExpr, MultiSpill, TableExpr, UnExpr, UpvalExpr,
@@ -543,7 +544,34 @@ class Reconstructor:
             return indexk(ri.b) > self._max_const_index_before(ri.pc)
         return False
 
-    def condition_expr(self, cond: LirInstr) -> Expr:
+    def cond_tree_expr(self, node: CondNode) -> Expr:
+        """A `sir.regions` condition TREE as one boolean Expr (M6 task 11).
+
+        Walked left-to-right, which is PROGRAM order -- `sir.build` builds
+        every `CondOp` with its lower pcs on the left -- and that is
+        load-bearing, not tidiness: reading a staged temp POPS it out of
+        `self.env`, so evaluating the right operand first would hand it the
+        left operand's staged expression. Same reason `_value_expr` spells out
+        the same requirement for `CondValue`.
+
+        A leaf's `staging` goes through `_stage_run`, i.e. through
+        `_refuse_statements`: operand code that reconstructs to a STATEMENT
+        cannot be carried by an `and`/`or` expression, and printing only the
+        expression would drop it silently. That guard is also what keeps the
+        chain recognizer honest about the one thing pc arithmetic cannot
+        decide -- whether the instructions between two tests are operand code
+        or a statement (see `sir.build._structure_if`).
+        """
+        if isinstance(node, CondTest):
+            self._stage_run(node.staging)
+            return self.condition_expr(
+                node.test, jump_is_true_exit=node.jump_is_true_exit)
+        left = self.cond_tree_expr(node.left)
+        right = self.cond_tree_expr(node.right)
+        return BinExpr(node.op, left, right)
+
+    def condition_expr(self, cond: LirInstr, *,
+                       jump_is_true_exit: bool = False) -> Expr:
         """A comparison/`TEST` instruction as the boolean expression that is
         true exactly when control **falls through** past the JMP following it.
 
@@ -564,6 +592,18 @@ class Reconstructor:
         `not` is built as a real `UnExpr` rather than formatted as text so the
         expression printer adds exactly the parentheses precedence requires
         (`not (a + b)`, never `not a + b`).
+
+        `jump_is_true_exit` (M6 task 11, default `False` = every pre-existing
+        caller, whose reading is unchanged) inverts the whole thing. It says
+        the JMP after this instruction is on the TRUElist rather than the
+        falselist -- `lcode.c:luaK_goiffalse`, the mode an `or`'s left operand
+        is compiled in, which does NOT `invertjump` the comparison the way
+        `luaK_goiftrue` does. The source-level operand is then the JUMP
+        condition, i.e. the negation of the fall-through one. Folded into the
+        A/C field reading rather than wrapped in a second `UnExpr`, so
+        `x == y` under an `or` prints as `x == y` and not as
+        `not (not (x == y))` -- which compiles identically (two `invertjump`s
+        cancel) but is nobody's source.
         """
         ri = cond.ri
         if ri.op in _CMP_SYM:
@@ -572,10 +612,12 @@ class Reconstructor:
             if self._reads_as_gt(ri):
                 lhs, rhs, sym = rhs, lhs, _GT_SYM[ri.op]
             base = BinExpr(sym, lhs, rhs)
-            return base if ri.a == 0 else UnExpr("not", base)
+            return base if (ri.a == 1) == jump_is_true_exit \
+                else UnExpr("not", base)
         if ri.op is Op.TEST:
             operand = self.cond_operand(ri.a)
-            return operand if ri.c == 0 else UnExpr("not", operand)
+            return operand if (ri.c == 1) == jump_is_true_exit \
+                else UnExpr("not", operand)
         raise ReconstructError(f"pc {ri.pc}: {ri.op.name} is not a condition")
 
     # ---- the and/or VALUE idiom (sir.regions.CondValue) --------------------

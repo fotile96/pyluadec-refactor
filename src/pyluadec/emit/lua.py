@@ -70,9 +70,9 @@ from pyluadec.express.reconstruct import (Assign, AssignTarget, ExprStmt,
 from pyluadec.ingest.proto import Proto
 from pyluadec.lift import LUA_KEYWORDS, Op
 from pyluadec.lift.lift import LirFunction, LirInstr, lift_proto
-from pyluadec.sir import (Break, CondValue, EndIter, GenericFor, If,
-                          NumericFor, Region, Repeat, Return, Seq, Straight,
-                          While, WhileTrue)
+from pyluadec.sir import (Break, CondOp, CondTest, CondValue, EndIter,
+                          GenericFor, If, NumericFor, Region, Repeat, Return,
+                          Seq, Straight, While, WhileTrue)
 from pyluadec.sir.build import StructureError, build_sir
 # `emit` importing from `structure` is an emit -> structure dependency, and
 # `structure.structured` itself imports FROM `emit.lua` (`print_chunk_or_raise`,
@@ -590,10 +590,10 @@ class Printer:
         vals = ", ".join(self.expr(e, indent=indent) for e in s.exprs)
         return f"local {names} = {vals}"
 
-    def condition(self, cond: LirInstr, indent: int = 0) -> str:
-        """Render a comparison/TEST instruction as the boolean expression that
-        is true exactly when control **falls through** past the JMP that
-        follows it.
+    def condition(self, cond, indent: int = 0) -> str:
+        """Render a comparison/TEST instruction -- or a whole `and`/`or`
+        condition TREE -- as the boolean expression that is true exactly when
+        control **falls through** past the JMP that follows it.
 
         Three callers, all wanting exactly that expression:
           - `If`: the fallthrough is the `then_body`, so this IS the `if`
@@ -639,8 +639,20 @@ class Printer:
         single source of truth both region kinds carry. (`If.negated` has
         always been informational in this printer; `Repeat.negated` is defined
         the same way so the two cannot drift apart.)
+
+        A `CondNode` (M6 task 11, `If` only) delegates to
+        `Reconstructor.cond_tree_expr` instead, and stays a fold for the same
+        reason the single-instruction case is: the whole `and`/`or` structure
+        lives in the Expr tree, and every parenthesis comes from `_PREC`
+        (`or` 1, `and` 2, both left-associative), never from this method
+        deciding anything. `a and b or c` therefore prints bare, `a and (b or
+        c)` gets exactly one pair, and no constant/closure/`...` node can
+        acquire a spurious pair the way one left of `^` does -- `_SIMPLE_PREC`
+        is 9, above both.
         """
         try:
+            if isinstance(cond, (CondTest, CondOp)):
+                return self.expr(self.recon.cond_tree_expr(cond), indent=indent)
             return self.expr(self.recon.condition_expr(cond), indent=indent)
         except ReconstructError as exc:
             # Region-level refusal, as before: a region whose condition slot
