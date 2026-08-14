@@ -412,7 +412,31 @@ The brief's cut is against the predecessor because that is the only other
 *source* available. Task 8 compares against **our** reconstruction, and there
 the answer is sharper:
 
-| file | original (headers / poll / protos) | our shipped artifact |
+> **CORRECTED 2026-08-14 by M6 task 8 (`docs/reports/m6-uiloop-design.md`
+> §6). Two claims in this subsection were wrong; both were re-measured and the
+> subsection's conclusion is unaffected.**
+>
+> 1. **The first column is labelled "headers" and its numbers are BACK
+>    EDGES** — the same header/latch conflation §3.1 and §5.4 of this report
+>    correct at length, surviving in this hand-built table. Re-measured, both
+>    ways: `snr_music.lua` **3 headers / 4 back edges** (ours 13 / 203),
+>    `snr_memory.lua` **8 / 12** (ours 12 / 320), `snr_mainmenu.lua`
+>    **20 / 40** (ours 57 / 1210); `snr_lib.lua` is 2 either way. The poll and
+>    proto columns are correct as published.
+> 2. **"`pressButton` is never called through a `GETGLOBAL`-loaded register at
+>    all" is FALSE.** The `GETGLOBAL pressButton` sites survive the fallback
+>    **exactly** — 6→6 in `snr_music.lua`, 8→8 in `snr_memory.lua`, 36→36 in
+>    `snr_mainmenu.lua`, 3→3 in `snr_lib.lua`. What breaks is register
+>    *adjacency*: the loaded value is spilled into the numerically-keyed
+>    `__pld_R` box and reloaded before the `CALL`, so a tracker keyed on
+>    `GETGLOBAL`-to-`CALL` register provenance loses it while a tracker
+>    following constant-numeric table keys would not. The call site is
+>    displaced, not erased.
+>
+> The table and prose below are left as originally published so the correction
+> is auditable rather than silent.
+
+| file | original (**back edges** / poll / protos) | our shipped artifact |
 |---|---|---|
 | `snr_lib.lua` (ships structured, root `L3`) | 2 / 1 / 3 | **2 / 1 / 3 — identical** |
 | `snr_music.lua` (whole-file fallback) | 4 / 1 / 5 | 203 / **0** / 14 |
@@ -797,6 +821,12 @@ Round 0's table, plus what round 1 overturned.
 | **`[P]` citing `snr_crd_103` in a `snr_crd_104` paragraph** | **mine** | wrong file | **1** |
 | **the Step-1 footprint join** | **mine** | **never done**, and never acknowledged | **1** |
 | **"a regeneration never drops an observation"** | **mine** | it did, silently: 64 → 1, exit 0 | **1** |
+| **§5.6's first column, labelled "headers"** | **mine** | **back edges**; headers are 2 / **3** / **8** / **20** (ours 2 / **13** / **12** / **57**) | **T8** |
+| **§5.6 "`pressButton` is never called through a `GETGLOBAL`-loaded register at all"** | **mine** | **false** — those sites survive the fallback exactly (6→6, 8→8, 36→36, 3→3); register *adjacency* is what breaks, via `__pld_R` | **T8** |
+
+Rows marked **T8** were found by M6 task 8 on 2026-08-14 and are corrected
+inline at §5.6; see `docs/reports/m6-uiloop-design.md` §6. Neither changes
+§5.6's or §5.7's conclusion.
 
 Figures from earlier tasks that **did** reproduce this session: 229 files /
 1944 protos; 48 non-`L3` rows splitting `structure` 21 / `mismatch` 22 /

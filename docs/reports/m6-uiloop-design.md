@@ -22,8 +22,16 @@ future prototype would need. §4 labels every assumption. §5 is the
 recommendation, weighed against the alternative.
 
 **Red line.** This note carries opcodes, pcs, block numbers, register numbers
-and ASCII identifiers only. No corpus string constant appears in it, decoded or
-otherwise.
+and **ASCII identifiers only — no game text**. Identifiers such as
+`pressButton`, `systemSave` and `comDlgSelectItem` are constant-pool strings
+and they do appear here; what does not appear is any string constant that is
+not an ASCII identifier. (An earlier revision said "no corpus string constant
+appears in it", which contradicted its own contents.)
+
+**pc convention.** Every pc in this note is **1-based**, matching
+`pyluadec.lift` (`lift.py:42` decodes `p.code[pc - 1]` at `pc`) and
+`luac_sz4 -l -l`. Verified against the listing this session; §6 records a
+review finding that did not reproduce on exactly this point.
 
 ---
 
@@ -33,7 +41,14 @@ Every figure below was recomputed this session, independently of the report
 that first published it wherever that was practical (the dominance test, the
 poll-loop cut, the enumerated budget census and the `main_7` divergence census
 were re-implemented from scratch against `pyluadec.cfg` rather than read out of
-the committed JSON). §6 lists the two that did **not** reproduce.
+the committed JSON). §6 lists the **five** that did **not** reproduce — two of
+them this note's own round-0 errors, corrected in place at §3.3 and §3.5.
+
+**Round 1 rewrote §1.1 (three confound controls), §3.3 (the write-site
+accounting), §3.5 (the behaviour-verdict attribution) and §6, and added §5.3.**
+Where an earlier revision said something else, §6 says so rather than the
+sentence quietly changing — the convention `docs/reports/m6-observation.md`
+established.
 
 ---
 
@@ -91,6 +106,46 @@ class:
 An instrument that never heard of the classes and looked at every pair puts
 **9 of the 11** Class-2 protos on its list and **2 of 113** Class-1 protos. The
 concentration is not an artifact of where humans looked.
+
+**The discovery-order objection is closed too.** `scripts/loss_sweep.py` never
+reads `corpus/observation/classes.json` — it imports `cross_corpus.json_safe`,
+`probe_common.adjudicate_pins` and `pyluadec` modules, and its per-proto counts
+come from `verify/semantic_score.py::collect_proto_signatures`. **Five of its
+eight `LOSS_KINDS` are `ProtoSignature` fields that already existed at
+`b666a1c` ("M5 task 3"), before any M6 defect was known** — `global_reads`,
+`global_writes`, `call_targets`, `call_shapes`, `return_arity` — and
+`test_ops` is derived from `opcode_counts`, also present there. **Two are
+not**: `n_natural_loops` and `n_back_edges` were added during M6, by which time
+defect #1 was known. Measured this session, that does not affect the result:
+**exactly one of the 25 flagged rows is flagged by the two loop kinds alone**,
+and it is `snr_common:main_75`, a **`choice-branch`** proto. Dropping the two
+M6-added kinds leaves `ui-keyloop` at **9/11** and takes `choice-branch` from
+2/113 to **1/113** — the enrichment strengthens.
+
+**And the size confound, which is the one this note was thinnest on.**
+Class-2 protos are 4.5x larger (§1.2), and the sweep's flag rate rises with
+size. Measured over all 1944 protos this session:
+
+| instruction count | protos | flagged | rate |
+|---|---|---|---|
+| < 50 | 1089 | 0 | **0.0%** |
+| 50–199 | 591 | 4 | 0.7% |
+| 200–499 | 170 | 16 | **9.4%** |
+| >= 500 | 94 | 5 | 5.3% |
+
+**Nine of the eleven `ui-keyloop` protos are >= 200 instructions** (the two
+below are `snr_common:main_81` at 26 and `main_76_2` at 174). Size-matched at
+that threshold the enrichment survives intact:
+
+```
+>= 200 instructions: 264 protos, 21 flagged = 8.0% baseline
+  ui-keyloop      8 / 9   = 88.9%
+  neither         5 / 14  = 35.7%
+  choice-branch   1 / 21  =  4.8%
+```
+
+**8 of 9 against 1 of 21, at equal size, against an 8.0% baseline.** Being big
+is not what makes a Class-2 proto get flagged.
 
 ### 1.2 Structural difficulty, for both decompilers
 
@@ -173,8 +228,10 @@ snr_story_main:main_3                 3/ 3/1/ 92/ 50               3/ 3/1/ 91/ 5
 ```
 
 (`snr_mainmenu:main_7`'s body/call columns are the **sum over all four** poll
-loops here; the report's table gives one loop's, which is why 612/235 appears
-against its 158/55. The call totals agree at 235 = 235 either way.)
+loops here; the report's table gives a single loop's, which is why 612/235
+appears against its 158/55. Both readings agree between the sides — the report
+has 55 = 55 for one loop, this table has 235 = 235 for the union — so the row
+is a `match` either way.)
 
 **The published result is 18 of 19 with one structural failure, and that
 number needs its criterion stated to be honest.** Task 4 §5.1 defines
@@ -327,43 +384,88 @@ Task 4 §5.7 pushed a prototype toward mission 2 with a purpose-built
 reconstruction. Measured, mission 2's window is empty in both directions: above
 the line the proof is already stronger, below it there is nothing to compare.
 
+**A tension this note has to name rather than leave implicit.** `probe_enum` is
+a **mission-2 instrument and only that** — `probe_enum._payload` accepts
+`"original"` and `"decompiled"` and nothing else — and §5.2 item 3 nevertheless
+recommends its targeted-entry half over the 11 if a dynamic arm is built at
+all. The two are consistent only under the conditional §5.2 states: mission 2
+has no window **today**, when 1 of 11 certifies and 10 ship a fallback that is
+exact by construction. It acquires one the moment **Tasks 9–12 change
+reconstruction** — a representation change that is wrong on one arm of one
+branch is precisely what neither the certification gate (which would simply
+refuse) nor a single stub policy would surface as a *behavioural* difference on
+a proto that still certifies. So §5.2 item 3 is a recommendation about a future
+state, not about the current one, and it is deliberately gated on that.
+§5.3 records the same conditional for the predecessor arm, which
+`probe_enum` does not have.
+
 ### 3.3 What "state" is — the design's load-bearing failure
 
 The brief proposes "the footprint's read/write keys at the poll site". Measured
-over the 11 Class-2 protos, joined from `corpus/observation/footprints.json`:
+over the 11 Class-2 protos:
 
-| proto | write sites | attributed | unattributed | dynamic | call sites | unattributed calls |
+**`Footprint.write_sites` counts `SETTABLE` and nothing else.** `n_write += 1`
+appears only in the `SETTABLE` arm, and the accounting identity
+`write_sites == attributed + unattributed + dynamic + nonstring_key` holds
+corpus-wide (**1667 = 256 + 945 + 66 + 400**, checked this session).
+`SETGLOBAL` writes land in `global_writes`, a **fully named** channel;
+`SETUPVAL` is excluded from the footprint entirely, and its module docstring
+says so under "Deliberate exclusions" — all 1944 protos are debug-stripped, so
+`Proto.upvalues` is empty and an upvalue write carries no name. So a
+`write_sites` column is **not** "the write sites this proto makes", and §2.3's
+own warning about the footprint's field names applies to it. Counted by opcode
+this session, and cross-checked against `footprints.json`
+(`SETTABLE == write_sites` and `SETLIST == setlist_sites` on all 11):
+
+| proto | `SETTABLE` | of which attributed | `SETGLOBAL` | `SETUPVAL` | call sites | unattributed calls |
 |---|---|---|---|---|---|---|
-| `snr_common:main_29` | 1 | 0 | 0 | 1 | 63 | 4 |
-| `snr_common:main_71` | 35 | 0 | 34 | 1 | 42 | 0 |
-| `snr_common:main_74_13` | 24 | 0 | 4 | 20 | 42 | 16 |
-| `snr_common:main_76_2` | 1 | 0 | 1 | 0 | 16 | 0 |
+| `snr_common:main_29` | 1 | 0 | 0 | 0 | 63 | 4 |
+| `snr_common:main_71` | 35 | 0 | 0 | 0 | 42 | 0 |
+| `snr_common:main_74_13` | 24 | 0 | 0 | 0 | 42 | 16 |
+| `snr_common:main_76_2` | 1 | 0 | 0 | 0 | 16 | 0 |
 | `snr_common:main_81` | 0 | 0 | 0 | 0 | 3 | 0 |
-| `snr_graphic:main_4` | 0 | 0 | 0 | 0 | 63 | 5 |
-| `snr_lib:main_1` | 10 | 2 | 8 | 0 | 26 | 0 |
-| `snr_mainmenu:main_7` | **0** | 0 | 0 | 0 | **271** | 32 |
-| `snr_memory:main_4` | 0 | 0 | 0 | 0 | 42 | 5 |
-| `snr_music:main_3` | 13 | 0 | 0 | 13 | 23 | 3 |
-| `snr_story_main:main_3` | 1 | 1 | 0 | 0 | 78 | 2 |
-| **total** | **85** | **3** | 47 | 35 | **669** | **67** |
+| `snr_graphic:main_4` | 0 | 0 | 0 | **34** | 63 | 5 |
+| `snr_lib:main_1` | 10 | 2 | 1 | 0 | 26 | 0 |
+| `snr_mainmenu:main_7` | 0 | 0 | **2** | 0 | **271** | 32 |
+| `snr_memory:main_4` | 0 | 0 | 3 | **27** | 42 | 5 |
+| `snr_music:main_3` | 13 | 0 | 0 | **16** | 23 | 3 |
+| `snr_story_main:main_3` | 1 | 1 | 9 | 0 | 78 | 2 |
+| **total** | **85** | **3** | **15** | **77** | **669** | **67** |
 
 `attributed` means a constant string key on a depth-1 global base — the only
-form the footprint can name. **The footprint can name 3 of the 85 write sites
-these eleven protos make: 3.5%.** And `snr_mainmenu:main_7` — the proto with
-the four exit-less poll loops, the four deleted progress gates and the worst
-Class-2 shape in the corpus — makes **zero** write sites and **271** call
-sites, 32 of them unattributed. Its state does not live in the script at all;
-it lives in the engine, behind calls.
+form the `SETTABLE` census can name. So the honest figure is:
+
+> **The eleven protos make 177 write sites — 85 `SETTABLE`, 15 `SETGLOBAL`,
+> 77 `SETUPVAL`. Eighteen of them are nameable (3 attributed `SETTABLE` + all
+> 15 `SETGLOBAL`): 10.2%.**
+
+Three-and-a-half percent was the wrong figure, arrived at by reading a
+`SETTABLE`-only counter as a write census. **Ten percent does not rescue the
+design, and the corrected breakdown makes the objection sharper rather than
+weaker**: the **77 invisible `SETUPVAL` sites are concentrated in exactly the
+three protos whose loop exit depends on accumulated state** —
+`snr_graphic:main_4` (34), `snr_memory:main_4` (27), `snr_music:main_3` (16),
+the last being §1.3's `TFORLOOP`-over-a-flag-table exit. The part of the state
+a Class-2 transition comparison most needs is the part the footprint is
+structurally unable to name, because the corpus is stripped.
+
+And `snr_mainmenu:main_7` — the proto with the four exit-less poll loops, the
+four deleted progress gates and the worst Class-2 shape in the corpus — makes
+**2** write sites (both `SETGLOBAL`, 1 distinct name) against **271** call
+sites, 32 of them unattributed. Its state does not live in the script; it lives
+in the engine, behind calls. (An earlier revision said "zero write sites",
+which was the same `SETTABLE`-only reading.)
 
 This is not a gap to be closed by more dataflow. It is the corpus telling us
-that a UI screen's state is the engine's, and the bytecode cannot see it.
+that a UI screen's state is the engine's and its locals', and a stripped
+bytecode cannot name either.
 
 Three definitions of "state" are therefore on the table, and only one is
 buildable today:
 
 | definition | available? | what it costs |
 |---|---|---|
-| footprint read/write keys at the poll site | **no** — 3 of 85 write sites nameable | — |
+| footprint read/write keys at the poll site | **no** — 18 of 177 write sites nameable, and the 77 unnameable `SETUPVAL` sites are where the loop-carried state is | — |
 | the whole stub-environment shadow table | **yes** — `scripts/probe_common.lua` already serialises it | but this collapses "which keys matter" into "diff everything", which is what `probe_behaviour` already does per chunk; the per-iteration cut buys only the granularity, not a state abstraction |
 | the channel assignment as input, the event trace as effects, no explicit `state'` | **yes** | this is `probe_enum` with a one-iteration budget, not a new instrument |
 
@@ -414,25 +516,55 @@ this population:
 - **Measured this session: all 11 are name-reachable, with exactly one
   published name each.** `discover_entries` against the original resolves every
   one — **three** under a global name, **two** under a `<table>/<method>` path,
-  **six** as the chunk's own `main` — and none is ambiguous. Unlike Task 7's 13
-  leaves, where 2 came back `never-reached`, reach is **not** a blocker for
-  Class 2.
+  and **six** under a global *named* `main` (none of these six is the chunk
+  root; they are `main_4`, `main_1`, `main_7`, `main_4`, `main_3`, `main_3`,
+  each bound to the global `main` by its chunk's own `CLOSURE`/`SETGLOBAL`
+  pair). None is ambiguous. Unlike Task 7's 13 leaves, where 2 came back
+  `never-reached`, reach is **not** a blocker for Class 2.
 - **Key reach on the `R|<name>|` completion event, not the `I|` intent
   event.** The round-1 hole is live here rather than hypothetical: measured
   this session, **5 of the 7 files holding the 11 Class-2 protos truncate at
   the 3000-event cap** (`snr_common`, `snr_graphic`, `snr_lib`, `snr_memory`,
-  `snr_music` all at 3001 events; `snr_mainmenu` completes in **18**,
-  `snr_story_main` in **11**). Corpus-wide the probe reproduces **132 `CAP` /
-  97 `OK` / 398196 events**, with the `CAP` files carrying **99.48%** of all
-  events and the 97 `OK` files a **median of 10**. An `I|`-keyed reach test on
-  a file that is one event from the cap returns `identical` for a run in which
-  the target executed nothing.
+  `snr_music` all at 3001 events; `snr_mainmenu` terminates after **18** events
+  and `snr_story_main` after **11**). Corpus-wide the probe reproduces
+  **132 `CAP` / 97 `OK` / 398196 events**, with the `CAP` files carrying
+  **99.48%** of all events and the 97 `OK` files a **median of 10**. An
+  `I|`-keyed reach test on a file that is one event from the cap returns
+  `identical` for a run in which the target executed nothing.
 
-**And the same measurement is the strongest single argument in §5.**
-`snr_mainmenu.lua` — the file whose `main_7` has four deleted progress gates,
-the milestone's defect #3 — completes the standing behaviour gate in **18
-events** and the gate says `agree`. A dynamic arm that reports agreement after
-18 events on a 2182-instruction screen is not evidence about that screen.
+**And the sharpest single argument in §5 comes out of that same 18-event run —
+on a named instrument, with the verdict that instrument actually gives.** Two
+instruments have to be kept apart here, because an earlier revision of this
+note conflated them:
+
+- **The L1.75 gate** (`scripts/probe_behaviour.py` /
+  `tests/test_behaviour_probe.py`, original vs **our artifact**) does **not**
+  say `agree` on `snr_mainmenu.lua`. It is one of only **two pinned
+  divergences in the whole corpus**
+  (`probe_behaviour.EXPECTED_DIVERGENCE["snr_mainmenu.lua"]`), pinned on the
+  `__pld_R` `getobjname` naming artifact.
+- **The predecessor arm** (`scripts/cross_corpus.py --arm behaviour`, original
+  vs **predecessor** — the arm the plan amendment quoted) is the one that
+  agrees. Run this session:
+  `cross_corpus.py --arm behaviour --file snr_mainmenu.lua` returns
+  **`1/1 agree, 0 divergent (0 pinned); reach complete=1`**.
+
+**What that agreeing run actually does, read off the trace rather than
+inferred.** 18 events: `G|main`, `I|main`, **15** stub calls, then
+`R|main|attempt to perform arithmetic on field 'library' (a nil value)`. The
+chunk's `CLOSURE`/`SETGLOBAL` pair binds the global `main` to subproto index 7,
+so the entry **is** `main_7` and the target **is** entered — its own first four
+calls, at pcs 3, 6, 9 and 11, are the trace's first four `C|` events. At
+pcs 12–13 it calls a helper through an **upvalue** (`GETUPVAL R0; CALL R0` —
+precisely the call-graph gap Task 4 §3.4 named as the reason
+`protos_reaching_poll` is a floor), that helper contributes the remaining 11
+stub calls and then raises. **Execution never reaches the first of the four
+poll sites, at pc 26** — it dies 13 pcs into a 2182-instruction screen.
+
+A dynamic arm that reports `agree` on a run which errored out before entering
+the screen's first poll loop is not evidence about that screen. That is the
+argument, and it is stronger than the one the earlier revision made, because
+the run does not merely stop early — it stops before the thing under test.
 
 ---
 
@@ -442,7 +574,7 @@ The project's dominant defect is prose asserting behaviour nobody ran, and a
 design note is pure prose. Every assumption this note or the design it
 describes rests on is listed, with its status.
 
-**Measured this session (11):**
+**Measured this session (15):**
 
 1. The class census and the 78% per-iteration overlap. — 162 → 113/11/38;
    127/162 split 113/11/3.
@@ -453,19 +585,50 @@ describes rests on is listed, with its status.
    scratch.
 4. That 2 of the 19 ship structured text (`snr_lib:main_1`,
    `snr_fragment_main:main_3`) and 17 ship fallback; 9 `L3` / 10 `L1`.
-5. The five-of-six defect concentration in `ui-keyloop`, and its control: the
-   exhaustive loss sweep flags 9 of 11 `ui-keyloop` against 2 of 113
-   `choice-branch`.
+5. The five-of-six defect concentration in `ui-keyloop`, and its **three
+   controls**: the exhaustive loss sweep flags 9 of 11 `ui-keyloop` against
+   2 of 113 `choice-branch`; the size-matched split at >= 200 instructions
+   (8/9 vs 1/21 against an 8.0% baseline over 264 protos, with the full
+   size-bucket table); and the `LOSS_KINDS` provenance (5 of 8 are
+   `ProtoSignature` fields present at `b666a1c`, the two M6-added loop kinds
+   flag exactly one row on their own and it is `choice-branch`).
 6. The Class-2 structural profile (median 461 instructions, 10 of 11 leaf
    refusals, 1 of 11 `L3`).
 7. That exit-less poll loops are 4 of 14, all in one proto.
-8. That "state" as the footprint's keys is unavailable — 3 of 85 write sites
-   attributed, `main_7` at 0 writes / 271 calls.
+8. That "state" as the footprint's keys is unavailable — **18 of 177 write
+   sites nameable**, counted by opcode (`SETTABLE` 85 / 3 attributed,
+   `SETGLOBAL` 15, `SETUPVAL` 77) and cross-checked against
+   `footprints.json`'s own accounting identity; `main_7` at 2 writes / 271
+   calls.
 9. That our fallback side has no loop to cut but does keep the `GETGLOBAL`
-   sites (6/6, 8/8, 36/36, 3/3), spilled through `__pld_R`.
+   sites (6/6, 8/8, 36/36, 3/3), spilled through `__pld_R`. The disassembly
+   window's pcs were confirmed against `luac_sz4 -l -l` on our own emitted
+   source.
 10. Reach: 11 of 11 name-resolvable, one entry each; 5 of 7 holding files
-    truncate at the cap; corpus 132 `CAP` / 97 `OK` / 398196 events.
+    truncate at the cap; corpus 132 `CAP` / 97 `OK` / 398196 events, `CAP`
+    share 99.48%, `OK` median 10.
 11. Cost: 385 drives/s warm, 694 assignments over the 11, so ~3.6 s.
+12. **The L2 harness figures for `snr_music.lua`** under
+    `probe_keyseq.probe_raw` with spec `entry=main;tail=` (no key ever
+    pressed): original `CAP` / **3001 events / 2502 polls** over 417 distinct
+    frames; predecessor source `OK` / **94 events / 6 polls** on **one** frame.
+    Cited in §2.1 and previously absent from this accounting.
+13. **`snr_common.lua`'s L1.75 truncation**: `PROBE1|CAP|3001`, **79**
+    function-valued globals published, **1** invoked (`I|autoSystemSave` ->
+    `R|autoSystemSave|CAP`), `keyWait` never invoked. Cited in §3.5 and §5.1
+    and previously absent from this accounting.
+14. **The two behaviour verdicts kept apart in §3.5**:
+    `snr_mainmenu.lua` is one of `probe_behaviour.EXPECTED_DIVERGENCE`'s two
+    pinned rows, while `cross_corpus.py --arm behaviour --file
+    snr_mainmenu.lua` returns `1/1 agree, 0 divergent; reach complete=1`; and
+    the 18-event trace's own composition (`G|`, `I|`, **15** `C|`, `R|` with an
+    arithmetic-on-nil error), with the global `main` resolving to subproto
+    index 7 and the first four `C|` events matching `main_7`'s own calls at
+    pcs 3/6/9/11.
+15. **The two historical checkpoint specs do not reach their gates** (§5.3):
+    `OPTION_CLAMP_SPEC` gives `OK|376|0` / 129 polls and `CONFIG_GATE_SPEC`
+    gives `OK|202|0` / 37 polls, **byte-identical between the original and the
+    predecessor** on both.
 
 **Unmeasured (8) — each of these is a claim this note makes or the design would
 rest on, and none of them was run:**
@@ -494,9 +657,10 @@ rest on, and none of them was run:**
    applies in full.
 7. **That per-iteration transition equivalence would imply whole-loop
    equivalence.** It does under a bisimulation argument *if* the state
-   abstraction is complete — and §3.3 measured that it is not (3 of 85 write
-   sites nameable). So the design's central claim to "sidestep termination"
-   has no proof, and this note does not supply one.
+   abstraction is complete — and §3.3 measured that it is not (18 of 177 write
+   sites nameable, with the loop-carried `SETUPVAL` half entirely unnameable).
+   So the design's central claim to "sidestep termination" has no proof, and
+   this note does not supply one.
 8. **That the two `probe_enum` divergences on this population are exactly the
    `__pld_R` `getobjname` naming artifact and nothing else.** That
    adjudication is Task 7's and was not re-derived here; this note reproduced
@@ -507,7 +671,7 @@ rest on, and none of them was run:**
 ## 5. Recommendation: do not build the Class-2 dynamic prototype
 
 **Recommendation: do not build `scripts/probe_uiloop.py` as designed.** Build
-the two cheaper things in §5.2 instead. The prototype was already cut from this
+the three cheaper things in §5.2 instead. The prototype was already cut from this
 task by the amendment; this section says it should stay cut in M7 as well, and
 why, weighed against the evidence for the other side.
 
@@ -543,16 +707,23 @@ a 12% chance of seeing that one.
    load-bearing**. A Class-2 transition prototype is enumeration *plus* a
    harder state model — it inherits the half that did not pay and adds cost to
    the half that did.
-4. **The state model is measurably unavailable** (§3.3): 3 of 85 write sites
-   nameable, and the worst proto has none. Without it the design's claim to
-   sidestep termination does not go through (§4, unmeasured #7).
+4. **The state model is measurably unavailable** (§3.3): **18 of 177 write
+   sites nameable (10.2%)**, and the 77 unnameable `SETUPVAL` sites sit in
+   exactly the three protos whose loop exit depends on accumulated state.
+   Without a complete state abstraction the design's claim to sidestep
+   termination does not go through (§4, unmeasured #7).
 5. **The iteration bound is wrong on 3 of 11 targets** by the dominance
    measurement (§2.2, §3.4), and fixing it needs loop structure the fallback
    side does not have.
-6. **The dynamic arm's blindness on this exact population is measured**, not
-   inferred: `snr_mainmenu.lua` completes the behaviour gate in 18 events and
-   reports `agree` while carrying four deleted progress gates; `snr_common.lua`
-   spends its whole 3000-event budget inside 1 of 79 function-valued globals.
+6. **The dynamic arms' blindness on this exact population is measured**, not
+   inferred (§3.5): on the predecessor arm
+   (`cross_corpus.py --arm behaviour --file snr_mainmenu.lua`) the verdict is
+   **`1/1 agree`** for a run that raises after 18 events, **13 pcs into
+   `main_7` and before its first poll site at pc 26** — while that proto
+   carries four deleted progress gates. And `snr_common.lua` spends its whole
+   3000-event budget inside **1 of 79** function-valued globals
+   (`PROBE1|CAP|3001`, one `I|autoSystemSave`), so `keyWait` is never invoked
+   at all.
 
 Cost is deliberately **not** on this list. At 385 drives/s the whole thing runs
 in seconds. The objection is yield.
@@ -583,11 +754,70 @@ in seconds. The objection is yield.
    because that is the only stated scenario in which enumeration becomes
    load-bearing.
 
+### 5.3 The brief's Step 3, and where it went
+
+The original brief's Step 3 asked for an **L2 lower bound on the predecessor
+side**: run `probe_keyseq.evaluate` with the 5 driveable files' authored
+sequences, predecessor text as the candidate, and land the result in the
+divergence ledger either way. The 2026-08-14 amendment's "design note only"
+governs and Step 3 is not delivered here. It is recorded rather than dropped
+silently, with the one measurement this note has that bears on it:
+
+**The module's own authored specs do not reach the arms the two historical
+checkpoints select, and that reproduced this session.** Driving
+`snr_common.lua`'s original bytecode and the predecessor's source through
+`tests/test_keyseq_checkpoints.OPTION_CLAMP_SPEC` and `CONFIG_GATE_SPEC`
+returns **byte-identical traces on both sides**:
+
+```
+OPTION_CLAMP_SPEC   original OK|376|0 polls=129   predecessor OK|376|0 polls=129   identical
+CONFIG_GATE_SPEC    original OK|202|0 polls=37    predecessor OK|202|0 polls=37    identical
+```
+
+So Step 3 run with the existing sequences would return `agree` on the very file
+that carries confirmed defect #2, and that `agree` would mean nothing. If M7
+picks Step 3 up, **the sequences are the deliverable, not the harness run**:
+the harness exists and the authored specs are the part measured not to reach.
+
+This is also the predecessor-side conditional §3.2 refers to.
+`probe_enum` cannot serve it — its `_payload` has two sides, `original` and
+`decompiled`, and Task 7 recorded the predecessor arm as deliberately dropped.
+A predecessor-side dynamic arm is `probe_keyseq`'s or `cross_corpus.py`'s, and
+both already exist.
+
 ---
 
-## 6. Numbers that did not reproduce
+## 6. Numbers and claims that did not reproduce
 
-Two, both from Task 4 §5.6, and neither changes a conclusion.
+Five: two of my own from round 0, two from Task 4 §5.6, and one from the round-1
+review. None changes a conclusion; two of the five made a conclusion sharper.
+
+**Mine, round 0 — both were real defects and both are corrected in place.**
+
+0a. **"The footprint can name 3 of the 85 write sites these eleven protos make:
+    3.5%", and "`main_7` … makes zero write sites"** (§3.3). `write_sites`
+    counts `SETTABLE` only; `SETGLOBAL` lands in a **fully named** channel and
+    `SETUPVAL` is excluded from the footprint entirely. Counted by opcode this
+    session: **`SETTABLE` 85 (3 attributed) + `SETGLOBAL` 15 + `SETUPVAL` 77 =
+    177 write sites, 18 nameable = 10.2%**, and `main_7` makes **2**
+    `SETGLOBAL` writes. The table's cells were right; the label was wrong, and
+    it was labelled *measured*, which is worse than a wrong number. The
+    conclusion strengthens — the 77 invisible `SETUPVAL` sites are concentrated
+    in the three protos whose loop exit depends on accumulated state.
+
+0b. **"`snr_mainmenu.lua` completes the standing behaviour gate in 18 events
+    and the gate says `agree`"** (§3.5, §5.1 item 6). Two instruments were
+    conflated. On the **standing L1.75 gate** (`probe_behaviour.py`, original
+    vs our artifact) `snr_mainmenu.lua` is one of only **two pinned divergences
+    corpus-wide** — it does not say `agree`. The verdict I wanted is on the
+    **predecessor arm**: `cross_corpus.py --arm behaviour --file
+    snr_mainmenu.lua` returns `1/1 agree, 0 divergent; reach complete=1`. And
+    "completes" was wrong too: the run **raises** after 18 events. §3.5 now
+    names the right instrument and says what the trace does. The argument
+    strengthens — the run dies at pc 13, before `main_7`'s first poll site at
+    pc 26.
+
+**Task 4 §5.6 — both now carry an inline correction in that report.**
 
 1. **§5.6's table is labelled "headers" and its numbers are back edges.**
    Measured this session on the four files it names, computing both:
@@ -613,12 +843,38 @@ Two, both from Task 4 §5.6, and neither changes a conclusion.
    report's conclusion — that the poll-loop cut finds nothing on our fallback
    side — reproduces; its stated mechanism understates what is recoverable.
 
+**From the round-1 review — a pc-convention finding, in the falsified
+direction.**
+
+3. **"The `GETGLOBAL` in `snr_music.lua`'s fallback is at pc 35 0-based; you
+   print 36–42."** The site is the same one; the convention claim does not
+   hold. **This project is 1-based**: `lift.py:42` decodes `p.code[pc - 1]` at
+   `pc`, and `luac_sz4 -l -l` on our own emitted source numbers that exact
+   instruction **36**, verified this session:
+
+   ```
+   35  [341]  JMP        14      ; to 50
+   36  [342]  GETGLOBAL  4 -10   ; pressButton
+   37  [342]  SETTABLE   0 -1 4
+   ```
+
+   The milestone's own standing warning is that `luac -l -l` and
+   `pyluadec.lift` are 1-based and that a 0-based reading already cost one
+   brief its pcs. §3.1's numbers stand; what they were missing is the explicit
+   **label**, which the header now carries.
+
 Two figures came out **different but not contradictory**, and are recorded so a
 later reader does not mistake either for a regression:
 
-- **`probe_enum` throughput 385 drives/s** here against Task 7's **338**. Same
-  measurement (256 warm drives on `snr_mainmenu:main_7`), a faster run on the
-  same host.
+- **`probe_enum` throughput 385 drives/s** here against Task 7's **338** and
+  the round-1 review's **420**. Same measurement (256 warm drives on
+  `snr_mainmenu:main_7`), host noise; nothing in §5 turns on it.
+- **The loss sweep's size-bucket rates.** The review reported "5.6–9.0% above
+  200"; measured here the two buckets above 200 are **9.4%** (200–499) and
+  **5.3%** (>= 500), so the range is 5.3–9.4% under my boundaries. Bucket
+  edges differ; **the size-matched result the buckets exist to support —
+  `ui-keyloop` 8/9, `choice-branch` 1/21, baseline 8.0% over 264 protos —
+  reproduced exactly.**
 - **The CLI's `distinct=` column is over the ADJUDICATED prefix**, the report's
   table over the whole product. `main_7` prints `run=53 distinct=12` and the
   report's table says `14 / 128`. Both are right; the suite pins the latter
@@ -639,13 +895,15 @@ six defects; the behaviour probe's 132 `CAP` / 97 `OK` / 398196 events.
 
 ## 7. Suite cost
 
-**Zero.** This task adds one document under `docs/reports/` and nothing else —
-no `scripts/` file, no test, no fixture, no data. Verified by running the full
-suite with both corpus variables set before and after:
-**996 passed in 54.11 s** before, **996 passed** after, against the ~120 s
-earmark. `corpus/ledger.jsonl`, `corpus/observation/*.json` and
-`corpus/golden/` were not written to; every measurement in this note was taken
-read-only or in a scratch directory outside the tree.
+**Zero.** This task adds one document under `docs/reports/` and edits one more
+(`m6-observation.md` §5.6 and §10, the two corrections in §6) — no `scripts/`
+file, no test, no fixture, no data. Verified by running the full suite with
+both corpus variables set: **996 passed in 54.11 s** before round 0,
+**996 passed in 52.97 s** after it, and **996 passed in 56.41 / 56.53 s** after
+round 1, against the ~120 s earmark. `corpus/ledger.jsonl`,
+`corpus/observation/*.json`, `corpus/golden/` and `vendor/` were not written
+to; every measurement in this note was taken read-only or in a scratch
+directory outside the tree.
 
 ---
 
@@ -653,16 +911,29 @@ read-only or in a scratch directory outside the tree.
 
 1. **The class boundary is a triage prior, not an instrument selector** (§1).
    Class 2 is 6.8% of the candidates, 83% of the confirmed defects, and 82%
-   flagged by an unbiased static sweep. Use it to rank work; do not use it to
-   justify a second instrument family.
+   flagged by an unbiased static sweep — and the enrichment survives all three
+   controls: discovery order, `LOSS_KINDS` provenance, and **size** (8/9 vs
+   1/21 at >= 200 instructions, against an 8.0% baseline). Use it to rank work;
+   do not use it to justify a second instrument family.
 2. **Termination is shared, and total non-termination is one proto** (§1.3,
    §2.2). `snr_mainmenu:main_7` is the only proto with exit-less poll loops.
 3. **The recommendation is: convert the 11, extend the static sweep, and if a
-   dynamic arm is built at all build only the targeted-entry half** (§5.2).
+   dynamic arm is built at all build only the targeted-entry half** (§5.2) —
+   with the conditional §3.2 states, because `probe_enum` is a mission-2
+   instrument and mission 2 has no window until Tasks 9–12 change
+   reconstruction.
 4. **Both pre-measurements, with their criteria stated** (§2): the cut is
    15/19 literally, 18/19 after adjudication, 1 structural failure that is a
    confirmed defect; and 127/162 which is 118/127 under dominance.
 5. **Eight unmeasured assumptions are named** (§4). Any M7 task that builds on
    this note should close the ones it depends on before, not after.
-6. **Two corrections to `docs/reports/m6-observation.md` §5.6** (§6): a
-   headers/back-edges mislabel and an over-stated mechanism sentence.
+6. **Four corrections applied, two of them to `m6-observation.md` §5.6** (§6):
+   the headers/back-edges mislabel and the over-stated `__pld_R` mechanism
+   sentence, both now carrying an inline correction in that report and a row
+   in its §10; plus two of this note's own round-0 errors — a `SETTABLE`-only
+   counter read as a write census, and a behaviour verdict attributed to the
+   wrong instrument.
+7. **The brief's Step 3 is undelivered and its blocker is measured** (§5.3):
+   the two authored checkpoint specs give byte-identical traces on both sides,
+   so an L2 lower bound run with them would agree vacuously. The sequences are
+   the deliverable, not the harness run.
