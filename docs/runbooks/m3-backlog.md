@@ -2799,6 +2799,21 @@ plus three M6 additions:
   `find_spec("pytest_randomly")` is `None` (re-checked 2026-08-14), so every
   A/B this project has ever run compared two identical collection orders.
   Decide it on whether order-independence is worth a dependency.
+- **`task-N-report.md` citations in tracked source (M6 final review, item 17,
+  routed here).** `.superpowers/` is gitignored, so a claim whose only evidence
+  is a task report is not reproducible from a clone. `src/pyluadec/oracle.py`'s
+  two were fixed in that round (both measurements inlined with the command that
+  produces them). **About 15 more remain**, in `express/reconstruct.py`,
+  `emit/lua.py`, `structure/structured.py` and eight test modules — grep
+  `task-.*-report\.md` outside `docs/superpowers/`. Each needs its own
+  judgement (inline the measurement, re-derive it, or delete the claim), which
+  is why it is an agenda item and not a line edit.
+- **`corpus/pred_repairs/*.lua` are mode 644 where upstream is 755** (M6 final
+  review, first-pass minor list). Deliberately left: in this repository they
+  are committed data with a stated provenance, consumed by nothing, and run as
+  `./build/lua_sz4 <file>`; the upstream bit is an artifact of the
+  predecessor's environment and the README claims no mode parity. Recorded so
+  the decision is visible rather than silently ignored.
 - **`corpus/observation/classes.json`'s two consumer traps**, documented at
   the M6 wrap but not fixed, because fixing either moves a committed artifact:
   (a) `loop_polls_per_iteration` means "a poll site lies **somewhere** in a
