@@ -1387,3 +1387,159 @@ instrument cost: it is the pin gate for the cross-corpus scan.
   the PSP engine's C side, which neither corpus can see — the same limit M4's
   effect-lattice calibration recorded for the 56 engine-owned globals the corpus
   reads but never writes.
+
+## 4. The four loss sweeps, promoted to a standing gate (task X3, out of plan)
+
+§3.7 ran four sweeps over all 1944 proto pairs by hand, and one of them — the
+reachable back edge — found defect (6) on a proto whose `cfg_reachable`
+component measures exactly **1.0**. This section is those sweeps turned into a
+committed, pinned check: `scripts/loss_sweep.py` plus `tests/test_loss_sweep.py`
+(13 tests, 6 of which need no corpus).
+
+### 4.1 Where they live, and why beside rather than inside
+
+`scripts/loss_sweep.py`, a sibling of `cross_corpus.py` rather than a fourth
+arm of it. Three reasons, all recorded in that module's own docstring: the
+scanner's `ArmResult`/`PRED_PINS` are keyed **per file** with one evidence pair
+each (and `_fingerprint_one`'s own comment records what that costs — three of
+`snr_common.lua`'s flagged paths hide behind `main_76_2`), while the sweeps are
+per-**proto** and naming the proto is the point; the sweeps' value is precisely
+that they are *not* the queue criterion, so routing them through `first_cut`
+would file them under a triage vocabulary built for a graded metric; and
+`--arm all` is deliberately a job while this is cheap enough to be a suite
+gate. It reuses `probe_common.adjudicate_pins`, `cross_corpus.json_safe`,
+`cross_corpus.VERDICTS`, `verify.semantic_score.collect_proto_signatures`
+(so the two instruments cannot disagree about what a global read is),
+`predcorpus.load_pred_proto` with `strip=not carries_debug(original)`, and
+`cfg.blocks`/`cfg.dom`.
+
+### 4.2 The four sweeps as re-measured 2026-08-14
+
+| sweep | field(s) | protos hit | §3.7 said |
+|---|---|---:|---:|
+| 1 | `global_reads` | **1** | 1 |
+| 2 | `n_natural_loops`, `n_back_edges` | **4** | 3 |
+| 3 | `test_ops` | **24** | 23 |
+| 4 | `global_writes`, `call_targets`, `call_shapes`, `return_arity` | **0** | 0 |
+
+25 distinct protos over 11 files, all pinned. Two figures did not reproduce and
+in both cases the difference is a *definition* the sweep is now explicit about:
+
+* **Back edges: 4, not 3.** The fourth is `snr_mainmenu.lua:main_7` — defect
+  (3), which §3.7 caught on the global-read sweep instead. Its 16 loop headers
+  are unchanged and four of them lose exactly one latch each (O253, O791,
+  O1326, O1871, four latches → three).
+* **Test ops: 24 under a per-opcode reading, 23 under §3.7's aggregate.** The
+  extra proto is `snr_common.lua:main_76_2` — **defect (2)** — whose
+  predecessor gains 7 `EQ` and 2 `LT` while losing 1 `TEST` and 2 `TESTSET`, so
+  the five-opcode total goes 27 → 33 and the aggregate reading never sees it.
+  The gate counts per opcode for that reason.
+
+### 4.3 A loop is a header; a latch is a back edge
+
+Both numbers are emitted under the names `corpus/observation/classes.json`
+already uses, and the distinction is load-bearing, not bookkeeping:
+
+* `n_natural_loops` fires on **2** protos and both are defects —
+  `snr_music.lua:main_3` (2 → 1) and `snr_common.lua:main_75` (1 → 0), each "a
+  loop became straight-line code". No benign instance.
+* `n_back_edges` fires on **4**: those two, plus defect (3), plus one benign.
+
+Both are computed over **reachable blocks only** (`immediate_dominators`' key
+set), so an unreachable latch — the dead escape jump that `snr_novel.lua`'s and
+`snr_s7_10_f.lua`'s pins walk — is not counted at all.
+
+### 4.4 The one benign back-edge loss, explained
+
+`snr_s5_10_s.lua:main_46`, `equivalent-transform`. Measured this session:
+
+| | headers | latches |
+|---|---|---|
+| original | O4, O48 | O4 ← {O818}; O48 ← {O80, O91, O101, O102} |
+| predecessor | P4, P48 | P4 ← {P796}; P48 ← {P98, P99} |
+
+`n_natural_loops` 2 = 2; `n_back_edges` 5 → 3. **One loop with fewer latches** —
+the same shape M6 task 4 was corrected on. The mechanism is the one §3.6
+already walked: the original's `if`/`elseif` chain gives each arm its own jump
+back to the shared header, the predecessor's sequential `if`s let an arm fall
+through the remaining equality tests to a shared latch; `EQ` 49 → 48 and `JMP`
+93 → 89 are that re-phrasing, and `preds` of the header still partition the
+original's. No path into the header is lost. It is explained, not merely
+pinned.
+
+### 4.5 Two things the sweeps settled that §3.12 left open
+
+* **`snr_common.lua:main_71` is not a seventh defect.** It loses 2 `EQ` and 2
+  `TESTSET`. The `EQ` pair is *dead*: O336 `EQ A=0 R19 K[true]` is followed by
+  O337 `JMP -> 338` while its not-taken path also lands on 338, and
+  O341/O342 `JMP -> 343` is the same shape — two `if`s whose arms converge on
+  the next pc. The `pressButton` calls they tested (O335 LEFT, O340 RIGHT)
+  survive, `call_targets` 42 = 42. `TESTSET` O327 is `LOADK`-of-a-number
+  preceded; `TESTSET` O309 is decomposed into P342 `TEST` + P346 `MOVE`, which
+  is what `TESTSET` means.
+* **Three of §3.12's four unwalked `snr_common.lua` residual paths** —
+  `main_55`, `main_76_7`, `main_77_24` — are now walked *for these fields*
+  (`main_28` too), each losing only statically-decided `TESTSET`s at named pcs.
+  That is not a full end-to-end walk of those protos; it is a walk of every
+  site the sweeps flag.
+
+### 4.6 The recurring benign mechanism, measured rather than assumed
+
+Nineteen of the 25 rows are `equivalent-transform`, and most are the same
+thing: a `TEST`/`TESTSET` whose tested register was written by the immediately
+preceding instruction with a compile-time-fixed truth value. Census over every
+such site in the 17 protos that lose one: **39** are `LOADK`-preceded and every
+one of the 39 loads a `LuaNumber` — never a boolean or `nil` constant, which
+`luac` emits as `LOADBOOL`/`LOADNIL` — and every Lua number is truthy, **0
+included**. The other fixed-truth producers that occur are `OP_LEN` and the
+arithmetic ops (a number, or they raise) and `OP_CONCAT` (a string, or it
+raises); a register that is an operand of `OP_LT`/`OP_LE` is fixed the same way
+because `lvm.c::luaV_lessthan` admits two numbers or two strings and raises
+otherwise.
+
+Pin notes quote **1-based** pcs (`O<n>` original, `P<n>` predecessor), matching
+`pyluadec.lift` and `luac -l -l`. §3's notes quote 0-based pcs from
+`semantic_score._Ins`, so the same instruction is one greater here.
+
+### 4.7 Non-vacuity: the gate can fail, and it names the proto
+
+Injection rather than a table edit, so the whole pipeline is exercised. The
+predecessor corpus was copied to a temp dir (neither corpus was modified) and
+one loop in `snr_crd_10.lua` was turned into an `if` (`while v2 < 1 do` →
+`if v2 < 1 then`, with the `break` inside it replaced so the chunk still
+compiles). Against that copy:
+
+```
+26 proto(s) lost something over 1944 proto pair(s); 25 pinned
+  sweep 2: 5 proto(s) [n_natural_loops, n_back_edges]
+  snr_crd_10.lua:main_2              n_natural_loops-1 n_back_edges-1
+  UNPINNED loss(es): ['snr_crd_10.lua:main_2']
+```
+
+`scripts/loss_sweep.py` exits **1**; `pytest tests/test_loss_sweep.py` reports
+`3 failed, 10 passed`, with
+`test_no_proto_loses_something_unpinned` failing on
+`assert ['snr_crd_10.lua:main_2'] == []`. Against the real corpus, both are
+green again (`13 passed`, CLI exit 0).
+
+### 4.8 Cost
+
+`scripts/loss_sweep.py` standalone: **3.43 s** wall for all 229 files / 1944
+pairs. Breakdown measured in one process on this host: ingest of the original
+side 0.06 s, compile+ingest of the predecessor side 0.63 s cold and 0.04 s once
+`oracle.compile_source`'s memo is warm, `collect_proto_signatures` over 3888
+protos 1.16 s, `lift_proto` + `build_cfg` + `immediate_dominators` over the same
+3888 protos 1.52 s. A `ThreadPoolExecutor(8)` came in at 3.09 s against 3.4 s
+serial — a 9 % return for a thread pool in a suite gate, so `sweep()` is serial.
+
+In the suite the module measures **3.50 s / 3.58 s standalone** and the whole
+suite goes 946 → 959 tests. Alternating A/B, two rounds, both corpus variables
+set: without it **47.36 s / 47.62 s**, with it **51.39 s / 51.10 s** — a
+**3.5–4.0 s** delta that agrees with the standalone figure, so unlike §2.8's and
+§3.11's batch A/Bs this one is resolvable against host noise (the `without`
+arm's own spread is 0.26 s). Bare, with neither corpus variable set:
+**845 passed, 114 skipped in 7.88 s**; 6 of the 13 new tests run there. This is
+M6 formal-verification instrument cost: it is the
+standing gate for the four corpus-wide loss sweeps, and it is the second
+instrument (after the `PRED_PINS` gate) that turns an adjudication into
+something that fails on regression.
