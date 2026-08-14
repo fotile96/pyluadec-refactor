@@ -811,11 +811,20 @@ def compound_if_leaves(ledger_rows) -> list[tuple[str, str]]:
 #: stop exercising the twelve protos whose region trees task 11 changed --
 #: which is exactly when running them matters most.
 #:
-#: This list is therefore a REGRESSION population, not a defect census. It is
-#: correct for it to go stale relative to `compound_if_leaves`; what it must
-#: not do is shrink. `tests/test_probe_enum.py` asserts both halves: that
-#: every member is still adjudicated with the verdict task 7 measured, and
-#: that the live derivation has moved to 1.
+#: This list is therefore a PROSPECTIVE population, not a defect census and
+#: not evidence about task 11. Six of the eight files holding these protos
+#: ship byte-identical artifacts across task 11 (measured 2026-08-14: still
+#: whole-file fallback or an unchanged hybrid), and the two that changed hold
+#: exactly the two rows `exhaust` reports as `never-reached` -- so the
+#: verdicts here could not have moved, and their not moving proves nothing.
+#: What it buys is the future: when one of these files stops shipping
+#: fallback, this is the instrument that starts driving its new artifact, and
+#: a ledger-derived population (now one row) would not include it.
+#:
+#: It is correct for this list to go stale relative to `compound_if_leaves`;
+#: what it must not do is shrink. `tests/test_probe_enum.py` asserts both
+#: halves: that every member is still adjudicated with the verdict task 7
+#: measured, and that the live derivation has moved to 1.
 M6_TASK11_POPULATION: tuple[tuple[str, str], ...] = (
     ("snr_common.lua", "main_71"),
     ("snr_common.lua", "main_74_13"),

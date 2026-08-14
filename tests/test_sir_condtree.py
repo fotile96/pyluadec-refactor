@@ -168,7 +168,7 @@ def test_and_with_else_builds_a_cond_tree_not_nested_ifs():
             cond.right.test.ri.pc, cond.right.jmp_pc} <= ifs[0].claimed_pcs
 
 
-def test_or_precedence_is_printed_without_spurious_parentheses():
+def test_mixed_precedence_is_printed_without_spurious_parentheses():
     """`a and b or c` and `a or b and c` are printed at the precedence the
     `_PREC` table already encodes (`and` 2, `or` 1, both left-associative), so
     neither needs parentheses. `a and (b or c)` does, and gets them."""
@@ -178,6 +178,28 @@ def test_or_precedence_is_printed_without_spurious_parentheses():
         b"if a or b and c then f() else g() end")
     assert "if a and (b or c) then" in _source(
         b"if a and (b or c) then f() else g() end")
+
+
+def test_same_operator_chains_are_printed_flat():
+    """The case the test above does NOT cover, and which round 1 of this
+    task's review found regressed: `_parse_cond` builds RIGHT-leaning trees,
+    so a same-operator chain hit `_PREC`'s left-associative rule and printed
+    `a and (b and c)`.
+
+    Measured 2026-08-14 on the corpus: 26 condition trees over 12 protos in 8
+    files, containing 37 nested `CondOp` joins of which **25** share their
+    parent's operator -- i.e. two thirds of every join this task produces
+    would have carried a spurious pair. The fix is `emit/lua.py::_ASSOCIATIVE`
+    and its oracle-equivalence proof is
+    `tests/test_emit_readability.py::
+    test_associative_and_or_chains_compile_identically`.
+    """
+    assert "if a and b and c then" in _source(
+        b"if a and b and c then f() else g() end")
+    assert "if a and b and c and d then" in _source(
+        b"if a and b and c and d then f() else g() end")
+    assert "if a or b or c then" in _source(
+        b"if a or b or c then f() else g() end")
 
 
 def test_polarity_is_read_from_the_jump_sense_not_from_a_second_copy():

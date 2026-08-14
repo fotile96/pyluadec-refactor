@@ -375,6 +375,9 @@ M6 尚未收口，本节只记**已经改变了当前实测值**的任务，别�
 - **收口值（实测 2026-08-14）**：`L3` **1437/1478 唯一（97.2%）、1903/1944 处出现（97.9%）**（M5 收口 96.8% / 97.5%）；产物 **217 全结构化 / 5 hybrid / 7 整文件 fallback**（M5 收口 216/6/7）；质量分 **0.971947**（M5 收口 0.968833）。`scripts/ratchet_diff.py` 对 `0957364`：**7 升级、0 降级**。
 - **`structure:` 家族从 21 个台账形状降到 1 个**（`snr_common.lua:main_71`，而且它不是条件缺陷，是 `_match_loop` 认不出那个 `while true` 导致 pc 295 的 `break` 没被认出来）。20 个里 7 个直接到 `L3`，13 个落进 `mismatch:`——那 13 个是**本来就被结构拒绝挡住的重建缺陷**（`write_reg` 的 `declared` 闸门把暂存临时量物化成 `local` 再赋值），不是新引入的。
 - **仍是缺口**：`while <a and b> do`（`_match_while_header` 要求 header 是单个基本块）、`repeat ... until a or b`。两者都由 `tests/test_sir_condtree.py::WHILE_HEADER_GAP` 钉住，语料上没有 proto 需要它们。
+- **那 13 个 `mismatch:` 的量级差一个数量级，别当成一类**（fix round 1 更正）：`snr_common.lua:main_76_2` 是「多占几个槽 + 多几条 `MOVE`」，`snr_graphic.lua:main` 是 `code` 385 → 650、`maxstacksize` 20 → 24、**语义直接错**（四个表构造器塌成一个别名）。同一个 `write_reg` `declared` 闸门家族，后果完全不同。共同点只有一条、且是实测的：**13 个 proto 的首个 opcode 分歧全部落在 `cond_claimed(...)` 之外（13/13）**——这才是「本来就有、只是被结构拒绝挡住」的证据。
+- **打印层顺带修了一处 output surface 回归**（fix round 1）：`_parse_cond` 建的是右倾树，而 `_PREC` 把 `and`/`or` 当左结合，于是 `a and b and c` 被打成 `a and (b and c)`。新增 `emit/lua.py::_ASSOCIATIVE`，凭据是 6 对源码经真 `luac_sz4` 编译后**字节相同**（`tests/test_emit_readability.py`）。台账逐字节不变；**当前产物 0 字节变化**——25 处同操作符嵌套全在仍发 fallback 的 proto 里。
+- **前身语料的结构参照率（Task 9 Step 1 的顺带测量）**：修好之后是 **12/13（92.3%）**，唯一失败是 `snr_common.lua:main_76_2` 的 `pc 63: unrecognized transfer JMP`。修好之前测得的 6/13（46.2%）是**被本任务的缺陷污染的数**（7 个失败里 6 个正是 compound `if`），别再引用。
 
 ### 本里程碑反复出现、值得带进 M6 的那个缺陷
 

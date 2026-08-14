@@ -562,12 +562,26 @@ def test_the_full_leaf_population_verdicts_are_pinned(corpus_dir):
 
     **Re-measured after task 11 (2026-08-14, 6.73s wall): every one of these
     numbers is unchanged** -- same partition, same two pinned divergences
-    byte-for-byte, same 182/106. That is the semantic evidence for a task that
-    rebuilt the region tree of twelve of these thirteen protos: what changed
-    is how they are represented and printed, not what they do. The population
-    is now the frozen `probe_enum.M6_TASK11_POPULATION` rather than the live
-    ledger derivation, which has shrunk to one row -- see that constant for
-    why the frozen list is the right driver here.
+    byte-for-byte, same 182/106.
+
+    **That is NOT semantic evidence for task 11, and an earlier version of
+    this docstring wrongly said it was** (fix round 1). `drive` takes the
+    decompiled side from `pipeline.decompile_file(...).source`, i.e. the
+    SHIPPED artifact. Measured across `5961ea2` -> `76a09e8`, of the 8 files
+    holding these 13 protos **6 are byte-identical** (still whole-file
+    fallback or an unchanged hybrid; `structure/fallback.py` was untouched),
+    so 11 of the 13 rows could not have moved; the 2 files that did change
+    (`snr_story_main.lua`, `snr_fragment_main.lua`) hold exactly the 2 rows
+    this instrument reports as `never-reached`, i.e. the ones it never drives.
+    So every row here is either input-unchanged or undriven, and "unchanged"
+    was the only possible outcome.
+
+    What actually evidences those protos is the certification gate -- 7 of the
+    13 at `L3`, bytecode identity field by field, which is strictly stronger
+    than any trace comparison. This suite keeps running the frozen population
+    for a PROSPECTIVE reason: when one of these files stops shipping fallback,
+    this is the instrument that will start driving its new artifact, and a
+    ledger-derived population (now one row) would not include it.
     """
     from scripts.probe_common import adjudicate_pins
     population = probe_enum.M6_TASK11_POPULATION

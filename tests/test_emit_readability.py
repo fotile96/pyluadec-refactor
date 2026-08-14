@@ -201,7 +201,90 @@ def test_dot_sugar_fixtures_certify_l3():
 
 
 # --------------------------------------------------------------------------
-# 3. unary minus
+# 3. associative and/or chains (M6 task 11 fix round 1)
+# --------------------------------------------------------------------------
+
+AND_OR_PAIRS = [
+    (b"if a and b and c then f() else g() end",
+     b"if a and (b and c) then f() else g() end"),
+    (b"if a or b or c then f() else g() end",
+     b"if a or (b or c) then f() else g() end"),
+    (b"if a and b and c and d then f() else g() end",
+     b"if a and (b and (c and d)) then f() else g() end"),
+    (b"x = a and b and c", b"x = a and (b and c)"),
+    (b"x = a or b or c", b"x = a or (b or c)"),
+    (b"if a and b and c then f() end",
+     b"if a and (b and c) then f() end"),
+]
+
+
+@pytest.mark.parametrize("flat,nested", AND_OR_PAIRS,
+                         ids=[f.decode() for f, _ in AND_OR_PAIRS])
+def test_associative_and_or_chains_compile_identically(flat, nested):
+    """Oracle equivalence for the `_ASSOCIATIVE` entry in `emit/lua.py`.
+
+    `lparser.c`'s `'(' expr ')'` arm calls `luaK_dischargevars`, which leaves
+    an expression's true/false jump LISTS intact -- so a parenthesised
+    short-circuit operand is not closed off the way a parenthesised arithmetic
+    sub-expression is, and regrouping an `and`/`or` chain emits the same code.
+    Asserted mechanically here in both statement (`if`) and value (`x = ...`)
+    position rather than argued from the source alone.
+    """
+    assert compile_source(flat, strip=True) == compile_source(nested, strip=True)
+
+
+def test_associative_and_or_chains_are_flat():
+    """`sir.build._parse_cond` builds RIGHT-leaning condition trees, and
+    `_PREC` treats `and`/`or` as left-associative, so without the
+    `_ASSOCIATIVE` rule every multi-operand condition printed as
+    `a and (b and c)`. Measured 2026-08-14 before the fix; this pins the
+    flattened form."""
+    assert printed(b"if a and b and c then f() else g() end").startswith(
+        "if a and b and c then")
+    assert printed(b"if a and b and c and d then f() else g() end").startswith(
+        "if a and b and c and d then")
+    assert printed(b"if a or b or c then f() else g() end").startswith(
+        "if a or b or c then")
+
+
+def test_flattening_stops_where_the_operators_differ():
+    """The rule is narrow: it drops the right operand's parentheses only when
+    the operator is the SAME. A mixed chain still gets exactly the parentheses
+    precedence requires, and a non-associative operator is untouched."""
+    assert printed(b"if a and (b or c) then f() else g() end").startswith(
+        "if a and (b or c) then")
+    assert printed(b"if (a or b) and c then f() else g() end").startswith(
+        "if (a or b) and c then")
+    # `or` binds loosest, so a right-nested `and` never needed parentheses.
+    assert printed(b"if a or (b and c) then f() else g() end").startswith(
+        "if a or b and c then")
+    # Arithmetic is unaffected: `-` is left-associative and NOT in the set.
+    assert printed(b"local w = a - (b - c) print(w)").startswith(
+        "local l0_0 = a - (b - c)")
+    assert printed(b"local w = (a - b) - c print(w)").startswith(
+        "local l0_0 = a - b - c")
+
+
+#: The four `if`-position pairs above. The two `x = a and b and c` value-form
+#: pairs are deliberately absent: they refuse for an unrelated, PRE-EXISTING
+#: reason (`reconstruct: register 0 is read again after its staged value was
+#: consumed`, measured 2026-08-14 and unchanged by this fix), so requiring
+#: `L3` of them would be asserting something this task did not do. Their
+#: oracle-equivalence half above still runs, which is the half that licenses
+#: the printer change in value position.
+AND_OR_CERTIFYING = [f for f, _ in AND_OR_PAIRS if f.startswith(b"if ")]
+
+
+@pytest.mark.parametrize("flat", AND_OR_CERTIFYING,
+                         ids=[f.decode() for f in AND_OR_CERTIFYING])
+def test_associative_chain_fixtures_certify_l3(flat):
+    proto = load_bytes(compile_source(flat, strip=True))
+    cert = certify_proto(proto, is_chunk_root=True)
+    assert cert.level == "L3", cert.reason
+
+
+# --------------------------------------------------------------------------
+# 4. unary minus
 # --------------------------------------------------------------------------
 
 NEG_SRC = (b"local x = -1 "
@@ -289,7 +372,7 @@ def test_negative_numeral_fixtures_certify_l3():
 
 
 # --------------------------------------------------------------------------
-# 4. indentation (output surface v2)
+# 5. indentation (output surface v2)
 # --------------------------------------------------------------------------
 
 INDENT_SRC = (b"local f = function(a) "
@@ -353,7 +436,7 @@ def test_indentation_fixtures_certify_l3():
 
 
 # --------------------------------------------------------------------------
-# 5. presentation-layer string decode
+# 6. presentation-layer string decode
 # --------------------------------------------------------------------------
 #
 # The one place in this project where a bytecode-derived byte string is

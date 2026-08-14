@@ -2328,6 +2328,17 @@ The 48 non-`L3` unique protos / 48 non-`L3` occurrences split by
   the header to be one basic block) and `repeat ... until a or b`, both pinned
   by `tests/test_sir_condtree.py::WHILE_HEADER_GAP`. No corpus proto needs
   either.
+
+  Two things from the task's fix round worth carrying forward. **The 13
+  `mismatch:` arrivals are not one magnitude**: `snr_common.lua:main_76_2` is
+  extra slots and extra `MOVE`s, while `snr_graphic.lua:main` is `code`
+  385 -> 650 and *semantically wrong* output (four table constructors aliased
+  into one). What they share, measured 13/13, is that the first opcode
+  divergence lies outside every `cond_claimed(...)` set -- so they belong to
+  item 5's reconstruction residual, not here. And **the predecessor
+  structure-reference rate for these protos is 12/13 (92.3%)** after the fix,
+  not the 6/13 measured before it; the pre-fix number was confounded by this
+  very defect and should not be quoted.
 - **4 root reconstruction defects that hybrid emission UNMASKED.** Their
   certification previously died on a descendant's refusal before any comparison
   ran, so their faithfulness had never been compared at all. One is

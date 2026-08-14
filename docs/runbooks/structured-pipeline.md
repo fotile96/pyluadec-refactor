@@ -1899,6 +1899,31 @@ is fixed). Trying the chain first would therefore guess on exactly the shapes
 where guessing is wrong. Measured 2026-08-14: inverting the order regenerates
 the ledger at `L3` 1432/1478 instead of 1437/1478 -- five protos downgraded.
 
+### The predecessor's structure reference, as a by-product
+
+M6 Task 9's Step 1 asks how often `build_sir` accepts the PREDECESSOR
+project's corresponding proto (its decompiled Lua source, recompiled with the
+oracle and lifted). Loaded with
+`predcorpus.load_pred_proto(pred_dir, name, strip=not carries_debug(original))`
+-- the `strip=` argument is load-bearing; the default would manufacture an
+`upvalues`-length mismatch on all 260 `nups > 0` protos.
+
+Over the 13 compound-`if` leaves, measured 2026-08-14:
+
+| tree | rate | failures |
+| --- | --- | --- |
+| `5961ea2` (before this task) | 6/13 (46.2%) | 6 × `if targets out of range`, 1 × `unrecognized transfer JMP` |
+| `76a09e8` (after) | **12/13 (92.3%)** | 1 × `unrecognized transfer JMP` (`snr_common.lua:main_76_2` pc 63) |
+
+The pre-task figure is **confounded**: six of its seven failures are the very
+compound-`if` defect this section closes, so 46.2% measured the recognizer,
+not the predecessor. **92.3% is the figure to reason from** — and the decision
+it feeds (whether an LLM meta-reconstruction pass over the predecessor's
+structure is worth commissioning) should also weigh that 8 of these 13 protos
+are `ui-keyloop` shapes, five of which are among the six predecessor defects
+this milestone confirmed. A high mechanical acceptance rate on the
+predecessor's output is not the same thing as its structure being right.
+
 ### What it does not cover
 
 `while <a and b> do` is a NAMED gap, pinned by
@@ -2175,13 +2200,35 @@ functions -> 1).
    4 `mismatch: code at root/<n>`** (an ancestor whose own fields match and
    whose named descendant's do not).
 
-   Sampled at `snr_common.lua:main_76_2` (174 instructions, the smallest of
-   the 13 new arrivals), the mechanism is the one point 3 already names and
-   NOT anything to do with conditions: the first divergence is at pc 43,
-   inside a plain `if/else`, where `Reconstructor.write_reg`'s
+   **None of the 13 fails inside a condition tree.** Measured 2026-08-14 for
+   all thirteen: the first *opcode* divergence between the original and the
+   recompile lies outside every `cond_claimed(...)` pc set, 13 times out of 13.
+   So the arrivals are a pre-existing reconstruction defect that the structure
+   refusal had been masking, not damage done by the new recognizer.
+
+   `snr_common.lua:main_76_2` (174 instructions, the smallest **leaf** among
+   them -- `snr_story_main.lua:main` at 10 instructions is the smallest of the
+   13 outright, but its mismatch is a descendant's) is the exemplar for the
+   *stack-inflation* form: the first opcode divergence is at pc 43, inside a
+   plain `if/else`, where `Reconstructor.write_reg`'s
    `reg not in self.declared` gate materialises a staged temp as a `local`
    re-assignment (`local l1_3 = systemSave` ... `l1_3 = systemSave`) and the
-   recompile grows extra slots. The structure refusal had been masking it.
+   recompile grows extra slots and `MOVE`s.
+
+   **That is one form of the family, not the whole of it, and the magnitude
+   varies by an order of magnitude** (fix round 1 correction -- an earlier
+   version of this paragraph said `maxstacksize` and `code` were "the two
+   faces of the same thing", which is true of `main_76_2` and false of the
+   worst case). `snr_graphic.lua:main` is the other end: root `code` **385 ->
+   650**, `maxstacksize` **20 -> 24**, first opcode divergence at **pc 1**
+   (`NEWTABLE 0 0 8` vs `NEWTABLE 0 0 15`), and the printed source is
+   **semantically wrong** rather than merely fat -- line 1 declares
+   `local l0_1 = {...15 entries...}`, line 2 *reassigns* `l0_1 = {...7
+   entries...}`, and line 17's `local l0_0 = {layerName = l0_1, layerNumber =
+   l0_1, ...}` therefore points every field at the last table written. Four
+   distinct constructors collapse into one alias. Same gate *family*, but the
+   consequence is lost semantics, not stack inflation. Certification refuses
+   it, which is the whole point of the gate.
 
    The paragraph below is the M5-close analysis of the same bucket. This was the
    dominant gap until M4 task 13 (283 protos, of which 253 differed from the

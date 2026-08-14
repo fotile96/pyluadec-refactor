@@ -1270,6 +1270,15 @@ def _structure_if(fn, cfg, idoms, pc2blk, pc: int, hi: int, break_target: int | 
     and the same shape of it, as `_match_else_break`'s and as the two jpc
     rewrites in `_structure_if_single`.
 
+    The word "impossible" above is about THIS seam and is not a proto-level
+    claim (fix round 1, 2026-08-14). `_match_while`, `_match_repeat`,
+    `_match_while_true`, `_match_else_break` and `_structure_range` all catch
+    `StructureError` and try alternatives, so a refusal that used to STEER an
+    enclosing matcher away from a candidate can now be an acceptance that
+    steers it differently. What rules that out on this corpus is the
+    measurement -- `scripts/ratchet_diff.py` vs `0957364`, 7 upgrades and 0
+    downgrades -- not the construction.
+
     The cost is that a compound condition whose incumbent misreading happens
     to structure successfully is not reached here. That is not hypothetical --
     it is precisely the no-else `a and b` case above, which structures as
@@ -1658,9 +1667,20 @@ def _parse_cond(spans: list[_Span], i: int, j: int,
         chain falls through anyway -- luac never emits one, and admitting it
         would make the split ambiguous with the two cases above.
 
-    `tset` and `fset` are disjoint at every call (the top-level check refuses
-    a chain whose false target is also a true target), so the first two arms
-    cannot both fire.
+    `tset` and `fset` are disjoint **at the top-level call**, and only there:
+    `_match_cond_chain` refuses a chain whose false target is also a true
+    target. The recursive calls substitute `boundary = {spans[m].start}` for
+    one side and nothing re-checks it against the other, so a hand-built input
+    could in principle reach an arm with overlapping sets (fix round 1,
+    2026-08-14 -- the previous wording claimed disjointness "at every call",
+    which is not what the code establishes). If that happened the two arms
+    would disagree about which reading wins: the `j - i == 1` leaf tests
+    `fset` first, while the `j - i > 1` arm tests `g in fset or g in tset` and
+    then resolves the tie towards `tset`. It is not guarded here because the
+    consequence is bounded by the same thing everything else in this module is
+    bounded by -- a wrong tree prints wrong source, fails `compare_protos`,
+    and falls back. luac cannot produce it: a boundary pc equal to a true or
+    false target would be a jump to its own fall-through.
     """
     key = (i, j, tset, fset)
     if key in memo:
