@@ -15,8 +15,17 @@
 > - **Written at**: master `3669950` + one committed sibling spec
 >   (`a947141`, the glm-5.3 proposal), 2026-08-15.
 > - **Sibling proposal**: `2026-08-15-m7-semantic-warranty-merge-design-glm53.md`.
->   This spec **adopts** two of its calls and **rejects** three, each with the
->   reason stated inline (§2, §5, §11). Divergences are flagged `[vs glm]`.
+>   This spec **adopts three** of its calls (the Wm reorder §2, the repair
+>   ordering §5, the honesty-notes clause §11) and **rejects four** (the
+>   single ladder with file-level W0 §2, the accepted two-style surface §3,
+>   the `snr_common` hard gate §5, the ≤ 10 floor §8), each with the reason
+>   stated inline. Divergences are flagged `[vs glm]`. (An earlier revision
+>   of this header said "two / three" — miscounted against this spec's own
+>   markers, caught by the glm-5.3 cross-review, 2026-08-15.)
+> - **Cross-review**: the glm-5.3 session reviewed this spec against the tree
+>   on 2026-08-15; its one Important (the panel's constants blindness) is
+>   verified and fixed in §2.1, its scope flag on §4 is honored, and the
+>   shared blind spot it named is recorded in §2.1's blindness list.
 > - **Numbers**: every figure below was re-verified against `corpus/ledger.jsonl`
 >   at `3669950` on 2026-08-15 unless a date says otherwise. House rule stands:
 >   a stated number is a hypothesis about a tree — re-derive at task start.
@@ -112,12 +121,35 @@ instruments and here promoted from file-aggregates to per-proto verdicts:
   `n_back_edges`; `test_ops` (per-opcode: EQ/LT/LE/TEST/TESTSET); the
   fourth group (`global_writes`, `call_targets`, `call_shapes`,
   `return_arity`);
-- the fingerprint arm's per-proto comparisons from `cross_corpus.py`.
+- the fingerprint arm's per-proto comparisons from `cross_corpus.py`;
+- **`constant_values` — a fifth family, new work** (added 2026-08-15 after
+  the glm-5.3 cross-review verified its absence: the fingerprint is
+  "opcode/block counts only — no constants" (`cross_corpus.py:765`) and
+  none of the eight `LOSS_KINDS` compares constant *values*). Per proto,
+  the multiset of constants actually referenced by load-class operands
+  (`LOADK`, `GETGLOBAL`/`SETGLOBAL` names, RK-encoded operands) compared
+  **by value, not by pool index** — pool reordering is the known-benign
+  bulk of the 3903 mismatches and must not flag. Bytes stay `bytes`; the
+  comparison and any diagnostic use opcode/pc/count only, never constant
+  content (the red line applies in full). This family exists because a
+  corrupted game-text constant would otherwise pass the panel, be
+  *faithfully preserved* by re-certification (T3-of-pred certifies the
+  wrong constant), and ship graded — for a translation downstream, the
+  single worst silent failure this design could have.
 
-Cost basis: the four sweeps measured **3.31 s** corpus-wide at the M6 wrap.
-The panel is a pure function of two ingested trees; it lives beside the
-existing sweeps, is corpus-gated in the suite the way `test_loss_sweep.py`
-already is, and its runtime is attributed to the formal-verification earmark.
+Cost basis: the four sweeps measured **3.31 s** corpus-wide at the M6 wrap;
+the fifth family is the same shape of pure function over already-ingested
+trees. The panel lives beside the existing sweeps, is corpus-gated in the
+suite the way `test_loss_sweep.py` already is, and its runtime is attributed
+to the formal-verification earmark.
+
+**Documented blindness list** (required in the panel module's docstring,
+per the honesty-notes clause): whatever the families do not measure —
+including, named now: instruction *order* within equal counts, control-flow
+*shape* beyond loop/test counts, and **cross-proto behavioural integration**
+(both this spec's grading and the sibling's are per-proto; no factor grades
+whether protos interact correctly — a blind spot shared by both designs and
+recorded here so the warranty inherits it explicitly).
 
 ## 3. Approach A: re-decompile the predecessor side, don't transcribe it
 
@@ -142,8 +174,9 @@ the milestone measures the full-population recert rate over all 1944 pred
 protos** — that number sizes the `*-verbatim` residue and is a go/no-go
 gate on this section: if the rate comes back so low that the merged corpus
 would be mostly verbatim pred text (< 70% of pred-side occurrences
-recertifying), the mechanism is reported to the human partner before any
-merge work proceeds, not silently absorbed.
+recertifying — a policy line chosen now, not a measured one; it exists to
+force the report, not to encode a prediction), the mechanism is reported to
+the human partner before any merge work proceeds, not silently absorbed.
 
 Gains over transcription `[vs glm]`: their spec lists "heterogeneous merged
 surface (two text styles in one corpus)" as an accepted risk; this mechanism
@@ -167,13 +200,20 @@ Fix: extend the same reversible-UTF-8 presentation judgment to
 `structure/fallback.py::str_lit` (strict decode → re-encode must reproduce
 the original bytes → non-pure-ASCII prints as-is; anything else keeps the
 decimal escape). **This is the second scope revision of the bytes red
-line**, same shape as the 2026-08-12 revision recorded in CLAUDE.md:
-presentation layer only, both spellings compile to the same constant, the
-certification verdict is unchanged — and that invariance is machine-checked
-by certification itself plus the fallback path's existing differential
-tests. The revision must be recorded in CLAUDE.md's red-line section and in
-the overall spec's decision table when implemented; `ingest`/`lift`/`verify`
-still never decode.
+line, and it reverses a written prohibition** — CLAUDE.md's current text
+says the 2026-08-12 carve-out "只落在 `emit/`" and "不得扩大这个口子".
+Mechanically it is the same safe shape (presentation layer only, both
+spellings compile to the same constant, invariance machine-checked by
+certification plus the fallback path's existing differential tests), but a
+standing prohibition is not overturned by a task implementer as routine
+work. Therefore: **this revision is a standalone partner-approval gate**.
+The *requirement* originated from the human partner (2026-08-15, this
+session: game-text calls must be readable); the *specific textual
+amendment* to CLAUDE.md's red-line section and the overall spec's §2
+decision table must still be presented to and approved by the partner at
+implementation time, as its own decision row — not folded silently into a
+readability task. `ingest`/`lift`/`verify` still never decode.
+`[Flagged by the glm-5.3 cross-review; honored as stated.]`
 
 Acceptance is measured, not asserted: the merged corpus reports the fraction
 of non-ASCII string constants presented as raw UTF-8 (expected ≈ 100% —
@@ -228,8 +268,10 @@ reported, not gated.
 
 Pure function of the warranty record; per file:
 
-1. Grade both sides: ours `(min T, E=id, unpinned=0 by construction)`;
-   pred side `(min T after re-certification, min panel verdict, unpinned
+1. Grade both sides: ours `(min T, E=id)` — its zero-unpinned status is
+   what the probes and suite gates enforce on a green tree, not a
+   construction; a red gate blocks the generator like everything else.
+   Pred side: `(min T after re-certification, min panel verdict, unpinned
    count)`.
 2. **Eligibility**: `panel-unpinned > 0` disqualifies a side. A side with
    no grade (e.g. pred text that fails even to compile) is ineligible.
