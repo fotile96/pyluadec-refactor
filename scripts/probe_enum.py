@@ -10,7 +10,7 @@ assignment, runs both sides, and adjudicates.
 **Not defect hunting.** M6 measured that: six defects were confirmed in the
 predecessor's shipped output and all six were found by the *static* arm, five
 of them invisible to both dynamic arms; and the cheapest static instrument in
-the tree (`scripts/loss_sweep.py`, 3.5s over all 1944 pairs) found everything
+the tree (`scripts/loss_sweep.py`, 3.31s over all 1944 pairs) found everything
 the graded fingerprint found plus two the fingerprint and an aggregate count
 had each hidden. Task 7 was re-scoped on that evidence.
 
@@ -225,7 +225,22 @@ def _sort_key(canon) -> tuple:
 
 def channels_of(proto) -> tuple[Channel, ...]:
     """The proto's branch channels, in `path_text` order, each with its
-    enumerated domain.
+    enumerated domain. `channels_and_floors(proto)[0]`."""
+    return channels_and_floors(proto)[0]
+
+
+def channels_and_floors(proto) -> tuple[tuple[Channel, ...], int]:
+    """`(channels, register_comparisons)`.
+
+    The second element is `observation_classes.channels`' `n_unresolved`: the
+    number of comparisons whose other side is a REGISTER, not a constant, so
+    the channel's domain is not the compared set but the two-element
+    `{falsy, truthy}` FLOOR. `classes.json` publishes it per record as
+    `register_comparisons` precisely so a floor-based space is visible to a
+    reader; this instrument used to discard it (`ch, _unresolved = ...`), so
+    an `identical` verdict resting entirely on floors was indistinguishable
+    from one over a fully enumerated domain. It is carried onto `EnumVerdict`
+    instead -- see that class's `identical` bullet.
 
     **Where this can disagree with `classes.json`'s `input_space`, and why.**
     That file's `domain` is `len(rec["cmp"]) + 1`, and `cmp` holds
@@ -236,7 +251,7 @@ def channels_of(proto) -> tuple[Channel, ...]:
     `== "b"` arm -- so this function's product is `>=` the published
     `input_space`, and `exhaust` compares ITS OWN size against the budget.
     """
-    ch, _unresolved = channels(proto)
+    ch, unresolved = channels(proto)
     out = []
     for path in sorted(ch, key=path_text):
         rec = ch[path]
@@ -259,7 +274,7 @@ def channels_of(proto) -> tuple[Channel, ...]:
             vals = [False, True]
         out.append(Channel(path=path, text=path_text(path),
                            values=tuple(vals)))
-    return tuple(out)
+    return tuple(out), unresolved
 
 
 def _same(a, b) -> bool:
@@ -551,6 +566,28 @@ class EnumVerdict:
                            be mistaken for this one by a reader who only looks
                            at one of them.
 
+    **What the product does NOT range over, stated here because this is where
+    "the FULL product" is asserted.** The enumeration's channels come from
+    `observation_classes.channels`, which only sees branch inputs reachable as
+    a named access path off the stub environment. Three classes of branch
+    contribute NO channel at all, so an `identical` verdict is silent about
+    them (the limitation is also recorded at `observation_classes.py`'s
+    `channels` and in `probe_enum.lua`'s SCOPE block):
+
+      1. **Branches on a PARAMETER.** `drive` calls the discovered entry with
+         no arguments, so a parameter is always nil and the arm selected by
+         any other value is never taken. Constructed witness, measured
+         2026-08-14: `function f(x) if x == 1 then engine.A() else
+         engine.B() end end` against a copy differing ONLY on the `x == 1`
+         arm returns `identical` over `space_size == 1`.
+      2. **Access paths deeper than `observation_classes.MAX_PATH_DEPTH`**
+         (8): the walk stops, so the read is not a channel.
+      3. **Register-vs-register comparisons**: neither side is a constant, so
+         there is no domain to enumerate. These become the two-element
+         `{falsy, truthy}` FLOOR and are counted in
+         `n_register_comparisons` -- a nonzero value there means part of this
+         verdict's product is a floor, not the compared set.
+
     `n_assignments` is the number of assignments whose comparison was
     ADJUDICATED, which on the `divergent` path is the 1-based index of the
     first differing one and NOT `len(todo)`: `exhaust` returns as soon as it
@@ -574,6 +611,7 @@ class EnumVerdict:
     space_size: int
     n_assignments: int = 0
     n_channels: int = 0
+    n_register_comparisons: int = 0
     entry: str | None = None
     entries: tuple[str, ...] = ()
     distinct_traces: int = 0
@@ -612,10 +650,10 @@ def exhaust(file, proto_path: str, *, jobs: int = 8,
     """
     file = Path(file)
     _protos, proto = _proto_at(file, proto_path)
-    chans = channels_of(proto)
+    chans, floors = channels_and_floors(proto)
     size = space_size(chans)
     common = dict(file=file.name, proto_path=proto_path, space_size=size,
-                  n_channels=len(chans))
+                  n_channels=len(chans), n_register_comparisons=floors)
     if size > budget:
         return EnumVerdict(kind="budget-exceeded", **common)
 
@@ -772,6 +810,73 @@ def evidence(v: EnumVerdict) -> tuple[str, bytes, bytes]:
 
 
 # --------------------------------------------------------------------------
+# Pinned REFUSALS
+# --------------------------------------------------------------------------
+
+#: The two verdicts that are refusals: the instrument declines to make a claim
+#: about the proto. `budget-exceeded` ran nothing; `never-reached` ran nothing
+#: that entered the target. Neither is evidence of agreement.
+REFUSALS = ("budget-exceeded", "never-reached")
+
+# The population rows the instrument REFUSES, adjudicated exactly like the
+# divergences above and with the same `adjudicate_pins` rule, so a row that
+# starts refusing, stops refusing, or refuses for a different reason all fail.
+#
+# This exists because the exit contract used to be
+# `return 1 if (unexpected or moved or gone) else 0` over the divergences
+# ALONE, so a silently-growing refused set sat behind a green exit code. The
+# full-population run printed `budget-exceeded 1, never-reached 2` and exited
+# 0 -- one proto never driven, two never entered, green. CLAUDE.md's
+# out-of-suite criterion points at this instrument as the exemplar of "自带上
+# 界并在越界时拒绝 ... 非零退出", and until this table existed that property
+# was true of the report and false of the exit code. M7 agenda 8 is the
+# corpus-wide extension of this instrument, which is exactly where a growing
+# refused set would hide.
+#
+# Re-derived from the instrument 2026-08-14 (`uv run python
+# scripts/probe_enum.py`), never by hand. `space`/`channels` come from
+# `channels_of`, NOT from `classes.json`'s `input_space`: for
+# `snr_s4_10_s.lua:main_58` the published figure is 1152 and the enumerable
+# space is 23616, a 20x difference, because `classes.json` collapses every
+# string constant to `"str"` (see `channels_and_floors`).
+EXPECTED_REFUSALS: dict[str, tuple[str, str]] = {
+    "snr_fragment_main.lua:main_1": (
+        "never-reached", "no published name reaches the proto's line span"),
+    "snr_s4_10_s.lua:main_58": (
+        "budget-exceeded", "space=23616 channels=7"),
+    "snr_story_main.lua:main_1": (
+        "never-reached", "no published name reaches the proto's line span"),
+}
+
+
+def refusal_evidence(v: EnumVerdict) -> tuple[str, str]:
+    """The pinned form of a refusal verdict: `(kind, why)`.
+
+    `why` is the instrument's own `detail` for `never-reached` (a fixed
+    English sentence, or the `entered on N of M` count) and the measured space
+    for `budget-exceeded`. Both are free of corpus text, like every other
+    ASCII surface in this module.
+    """
+    assert v.kind in REFUSALS, v.kind
+    if v.kind == "budget-exceeded":
+        return (v.kind, f"space={v.space_size} channels={v.n_channels}")
+    return (v.kind, v.detail)
+
+
+def pins_for(table: dict, population) -> dict:
+    """`table` restricted to the rows `population` actually drove.
+
+    Single-proto CLI mode used to adjudicate a one-row population against the
+    WHOLE pin table, so every per-proto debugging run except
+    `snr_common.lua main_81` reported the other pins as `gone` and exited 1 --
+    the documented per-proto command was unusable in a script. A pin says
+    nothing about a run that did not include its proto.
+    """
+    keys = {f"{f}:{p}" for f, p in population}
+    return {k: v for k, v in table.items() if k in keys}
+
+
+# --------------------------------------------------------------------------
 # The population, and the CLI
 # --------------------------------------------------------------------------
 
@@ -872,6 +977,7 @@ def main(argv: list[str] | None = None) -> int:
     corpus = Path(os.environ["PYLUADEC_CORPUS_DIR"])
     counts: dict[str, int] = {k: 0 for k in VERDICTS}
     divergent: dict[str, tuple] = {}
+    refused: dict[str, tuple] = {}
     for f, path in population:
         v = exhaust(corpus / f, path)
         counts[v.kind] += 1
@@ -880,16 +986,25 @@ def main(argv: list[str] | None = None) -> int:
             divergent[f"{f}:{path}"] = evidence(v)
             extra = f"  assignment={v.assignment.name}  line {v.first_diff[0]}"
         elif v.kind == "never-reached":
+            refused[f"{f}:{path}"] = refusal_evidence(v)
             extra = f"  ({v.detail})"
         elif v.kind == "budget-exceeded":
+            refused[f"{f}:{path}"] = refusal_evidence(v)
             extra = "  (nothing run)"
         print(f"{f}:{path:12} {v.kind:16} channels={v.n_channels} "
+              f"floors={v.n_register_comparisons} "
               f"space={v.space_size} run={v.n_assignments} "
               f"distinct={v.distinct_traces} "
               f"statuses={','.join(v.statuses) or '-'}{extra}")
-    unexpected, moved, gone = adjudicate_pins(divergent, EXPECTED_DIVERGENCE)
+    # Both tables are restricted to the rows this run actually drove, so
+    # single-proto mode adjudicates only its own pins (item 24).
+    unexpected, moved, gone = adjudicate_pins(
+        divergent, pins_for(EXPECTED_DIVERGENCE, population))
+    r_new, r_moved, r_gone = adjudicate_pins(
+        refused, pins_for(EXPECTED_REFUSALS, population))
     print("enum: " + ", ".join(f"{k} {counts[k]}" for k in VERDICTS)
           + f"; {len(divergent) - len(unexpected)} pinned divergence(s)"
+          + f"; {len(refused) - len(r_new)} pinned refusal(s)"
           + f"; budget={BUDGET}")
     if unexpected:
         print(f"UNEXPECTED divergence(s): {unexpected}")
@@ -897,7 +1012,18 @@ def main(argv: list[str] | None = None) -> int:
         print(f"pinned evidence moved: {moved}")
     if gone:
         print(f"pinned divergence(s) converged or vanished: {gone}")
-    return 1 if (unexpected or moved or gone) else 0
+    # A refusal is the instrument declining to make a claim, so the refused
+    # set is part of the exit contract, not commentary: a NEW refusal means a
+    # proto stopped being driven, a MOVED one means it refuses for a different
+    # reason, and a GONE one means a pin can no longer fail.
+    if r_new:
+        print(f"UNEXPECTED refusal(s) -- proto(s) no longer driven: {r_new}")
+    if r_moved:
+        print(f"pinned refusal(s) changed reason: {r_moved}")
+    if r_gone:
+        print(f"pinned refusal(s) no longer refused -- delete the pin: {r_gone}")
+    return 1 if (unexpected or moved or gone
+                 or r_new or r_moved or r_gone) else 0
 
 
 if __name__ == "__main__":

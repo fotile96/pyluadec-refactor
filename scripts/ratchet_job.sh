@@ -12,14 +12,28 @@
 # DEFAULT_LIMIT = 3 of tests/test_generated_semantic_cases.py's CASE_COUNT = 24
 # differential-execution cases (~0.3s); the full 24 costs UNDER 3 SECONDS.
 # That is deliberately an order of magnitude and not a range: 13 runs across
-# this task measured 2.21-2.54s on macOS arm64, and two successive attempts to
-# quote a tight range were falsified by the next routine run. What the choice
-# rests on is that the marginal 21 cases cost ~2s, against ~7s of headroom in
-# the 45s suite ceiling with an L2 harness still to land -- so the ported fuzz
-# harness runs in full HERE, on the ratchet, and one eighth of it per commit.
+# M5 task 8 measured 2.21-2.54s on macOS arm64, and two successive attempts to
+# quote a tight range were falsified by the next routine run. The placement
+# argument was originally written against a 45s suite ceiling with ~7s of
+# headroom; that premise is retired (the ceiling is now the ~120s EARMARK
+# described in CLAUDE.md, and the suite measured 57.90s at the M6 wrap). What
+# survives the premise change is the rule the earmark itself states: budget
+# goes to the formal-verification instruments, and a whole-corpus / full-fuzz
+# sweep is a JOB, not a suite member. So the ported fuzz harness runs in full
+# HERE, on the ratchet, and one eighth of it per commit.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 : "${PYLUADEC_CORPUS_DIR:?set PYLUADEC_CORPUS_DIR to the 229-file corpus}"
+# M6's own gates -- the loss sweeps, the cross-corpus scan and the parity
+# census -- are all keyed on the PREDECESSOR corpus, and conftest.py skips
+# them (it does not fail) when it is unset. Without this line the documented
+# milestone gate printed RATCHET JOB PASSED while 32 tests skipped, including
+# the whole-corpus loss sweep that found defect 6 and the pin-rot gate
+# `test_every_pin_still_diverges_with_the_recorded_evidence`. Measured on this
+# tree (2026-08-14): with PYLUADEC_PRED_CORPUS_DIR unset, `uv run pytest -q`
+# reports `1054 passed, 32 skipped` -- 22 in test_cross_corpus.py, 8 in
+# test_loss_sweep.py, 2 in test_predcorpus.py -- and still exits 0.
+: "${PYLUADEC_PRED_CORPUS_DIR:?set it to the predecessor corpus of 229 decompiled .lua sources -- 32 M6 gate tests skip SILENTLY without it}"
 
 # 0957364 = "Merge phase5-m5-longtail", the last merged milestone tip and the
 # M6 branch's fork point. Override with any ref that has a corpus/ledger.jsonl

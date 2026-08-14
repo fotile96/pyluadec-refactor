@@ -447,7 +447,25 @@ def test_the_probe_uses_the_shared_driver_and_does_not_copy_it():
         assert copied not in b, copied
 
 
-@pytest.mark.parametrize("name", ["probe_enum.lua", "probe_common.lua"])
+#: EVERY Lua probe in `scripts/`, not a hand-picked subset. Through M6 this
+#: parametrisation named only `probe_enum.lua` and `probe_common.lua`, so
+#: `probe_behaviour.lua`, `probe_global_state.lua` and `probe_keyseq.lua` were
+#: unguarded (all three comply; the point is that nothing enforced it).
+#: Derived, not listed: a `.lua` file added to `scripts/` is covered the day it
+#: lands, and `test_the_probe_inventory_is_not_empty` below keeps the glob from
+#: silently matching nothing.
+_LUA_PROBES = sorted(p.name for p in (probe_enum.PROBE.parent).glob("probe_*.lua"))
+
+
+def test_the_lua_probe_inventory_is_what_is_guarded():
+    """The parametrisation above is a glob, so it can only fail open by
+    matching nothing. Measured 2026-08-14: five files."""
+    assert _LUA_PROBES == ["probe_behaviour.lua", "probe_common.lua",
+                           "probe_enum.lua", "probe_global_state.lua",
+                           "probe_keyseq.lua"]
+
+
+@pytest.mark.parametrize("name", _LUA_PROBES)
 def test_no_lua_patterns_in_the_probe(name):
     """Repo-wide rule: plain `string.find(..., true)` and byte indexing only.
 
@@ -588,8 +606,10 @@ def test_the_full_leaf_population_verdicts_are_pinned(corpus_dir):
     So every row here is either input-unchanged or undriven, and "unchanged"
     was the only possible outcome.
 
-    What actually evidences those protos is the certification gate -- 7 of the
-    13 at `L3`, bytecode identity field by field, which is strictly stronger
+    What actually evidences those protos is the certification gate -- 6 of the
+    13 at `L3` (the machine-asserted count 65 lines above; an earlier version
+    of this sentence said 7, conflating it with the correct "7 of the 21
+    shapes" nearby), bytecode identity field by field, which is strictly stronger
     than any trace comparison. This suite keeps running the frozen population
     for a PROSPECTIVE reason: when one of these files stops shipping fallback,
     this is the instrument that will start driving its new artifact, and a
@@ -600,13 +620,16 @@ def test_the_full_leaf_population_verdicts_are_pinned(corpus_dir):
     assert len(population) == 13
     counts = {k: 0 for k in probe_enum.VERDICTS}
     divergent = {}
+    refused = {}
     total_space = total_adjudicated = 0
     for f, path in population:
         v = exhaust(corpus_dir / f, path)
         counts[v.kind] += 1
         total_adjudicated += v.n_assignments
-        if v.kind not in ("budget-exceeded", "never-reached"):
+        if v.kind not in probe_enum.REFUSALS:
             total_space += v.space_size
+        else:
+            refused[f"{f}:{path}"] = probe_enum.refusal_evidence(v)
         if v.kind == "divergent":
             divergent[f"{f}:{path}"] = probe_enum.evidence(v)
         if v.kind == "identical":
@@ -616,6 +639,13 @@ def test_the_full_leaf_population_verdicts_are_pinned(corpus_dir):
     assert counts == {"identical": 9, "divergent": 1,
                       "budget-exceeded": 1, "never-reached": 2}, counts
     assert adjudicate_pins(divergent, probe_enum.EXPECTED_DIVERGENCE) \
+        == ([], [], [])
+    # The refusals are pinned the same way and by the same rule (item 20):
+    # the three rows the instrument declines to make a claim about are named,
+    # so a fourth appearing -- or one of these three quietly starting to be
+    # driven -- fails here and in the CLI's exit code, instead of sitting
+    # behind `identical 9`.
+    assert adjudicate_pins(refused, probe_enum.EXPECTED_REFUSALS) \
         == ([], [], [])
     # The enumerated product over the ten drivable rows is 182 assignments;
     # 181 of them are ADJUDICATED, because `exhaust` stops at the first
@@ -646,6 +676,100 @@ def test_the_one_over_budget_leaf_is_refused_with_its_size(corpus_dir):
     v = exhaust(corpus_dir / "snr_s4_10_s.lua", "main_58")
     assert v.kind == "budget-exceeded"
     assert (v.space_size, v.n_assignments) == (23616, 0)
+
+
+def test_a_register_vs_register_comparison_is_reported_as_a_floor(tmp_path):
+    """SYNTHETIC (final-review item 21). `channels_of` used to drop
+    `observation_classes.channels`' second return value, so an `identical`
+    verdict resting on a `{falsy, truthy}` FLOOR could not be told apart from
+    one over a fully enumerated domain.
+
+    `sys.a == sys.b` compares two registers: neither side is a constant, so
+    each path gets the two-element floor and `register_comparisons` counts 1.
+    `classes.json` publishes that count per record; this asserts the driving
+    instrument carries it too."""
+    f = _compiled(tmp_path, b"""
+function main()
+  if sys.a == sys.b then engine.A() else engine.B() end
+end
+""")
+    _protos, proto = probe_enum._proto_at(f, "main_0")
+    chans, floors = probe_enum.channels_and_floors(proto)
+    assert [(c.text, len(c.values)) for c in chans] == [("sys.a", 2), ("sys.b", 2)]
+    assert space_size(chans) == 4
+    assert floors == 1
+    assert probe_enum.channels_of(proto) == chans      # the wrapper is a projection
+    v = exhaust(f, "main_0")
+    assert v.kind == "identical"
+    assert v.n_register_comparisons == 1
+
+
+def test_a_branch_on_a_parameter_produces_no_channel_at_all(tmp_path):
+    """SYNTHETIC (final-review item 22). The first of the three classes the
+    `identical` docstring now names: `drive` calls the discovered entry with
+    NO ARGUMENTS, so a parameter is always nil and the `x == 1` arm is never
+    taken. Both sides differ only on that arm, and the verdict is still
+    `identical` over a one-point space -- which is exactly why the limitation
+    has to be stated where the verdict is defined."""
+    a = _compiled(tmp_path, b"""
+function main(x) if x == 1 then engine.A() else engine.B() end end
+""", "a.luac")
+    _protos, proto = probe_enum._proto_at(a, "main_0")
+    assert probe_enum.channels_of(proto) == ()
+    v = exhaust(a, "main_0")
+    assert v.kind == "identical"
+    assert (v.space_size, v.n_assignments) == (1, 1)
+
+
+def test_the_refused_set_is_part_of_the_exit_contract(corpus_dir, capsys):
+    """Final-review item 20, adjudicated strict. `budget-exceeded` and
+    `never-reached` are refusals -- the instrument declining to make a claim --
+    and until this pin table existed they contributed nothing to the exit
+    code: the full-population run printed `budget-exceeded 1, never-reached 2`
+    and exited 0.
+
+    Driven on the one row that costs nothing to evaluate (`main_58` is over
+    budget, so `exhaust` returns before launching a single subprocess). All
+    three `adjudicate_pins` directions are exercised against the live
+    instrument, not against a stub.
+    """
+    row = ("snr_s4_10_s.lua", "main_58")
+    saved = dict(probe_enum.EXPECTED_REFUSALS)
+    try:
+        assert probe_enum.main(list(row)) == 0
+        # GREW: the row refuses and is not pinned.
+        probe_enum.EXPECTED_REFUSALS.pop("snr_s4_10_s.lua:main_58")
+        assert probe_enum.main(list(row)) == 1
+        assert "UNEXPECTED refusal(s)" in capsys.readouterr().out
+        # MOVED: still refused, but for a different measured reason.
+        probe_enum.EXPECTED_REFUSALS["snr_s4_10_s.lua:main_58"] = (
+            "budget-exceeded", "space=1152 channels=7")
+        assert probe_enum.main(list(row)) == 1
+        assert "changed reason" in capsys.readouterr().out
+    finally:
+        probe_enum.EXPECTED_REFUSALS.clear()
+        probe_enum.EXPECTED_REFUSALS.update(saved)
+
+
+def test_single_proto_mode_adjudicates_only_the_pins_it_ran(corpus_dir):
+    """Final-review item 24. A pin says nothing about a run that did not
+    include its proto. Single-proto mode used to adjudicate its one-row
+    population against the WHOLE table, so every per-proto debugging run
+    except `snr_common.lua main_81` reported the other pins as `gone` and
+    exited 1.
+
+    `pins_for` is asserted directly (free) and then the CLI is run on the one
+    zero-cost row, which must exit 0 while two other refusals stay pinned."""
+    assert probe_enum.pins_for(
+        probe_enum.EXPECTED_REFUSALS, [("snr_s4_10_s.lua", "main_58")]) \
+        == {"snr_s4_10_s.lua:main_58": ("budget-exceeded",
+                                        "space=23616 channels=7")}
+    assert probe_enum.pins_for(
+        probe_enum.EXPECTED_DIVERGENCE, [("snr_s4_10_s.lua", "main_58")]) == {}
+    assert probe_enum.pins_for(
+        probe_enum.EXPECTED_REFUSALS, probe_enum.M6_TASK11_POPULATION) \
+        == probe_enum.EXPECTED_REFUSALS
+    assert probe_enum.main(["snr_s4_10_s.lua", "main_58"]) == 0
 
 
 def test_the_targeted_entry_reaches_what_the_l1_75_gate_truncates(corpus_dir):

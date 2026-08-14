@@ -364,9 +364,13 @@ def test_invocation_gap_catches_what_the_old_aggregate_thresholds_cannot():
 
 
 def test_probe_result_is_never_silently_decoded():
-    """The trace embeds corpus string constants verbatim, and the corpus is
-    Japanese game text that is frequently not UTF-8. The comparison unit is
-    bytes; nothing in the gate path decodes them."""
+    """The trace embeds corpus string constants verbatim, and the reason for
+    keeping them as bytes is the engineering red line, not the encoding:
+    CLAUDE.md records the corpus as measured 0 non-UTF-8 out of 49063 string
+    constants, so "frequently not UTF-8" (what this docstring used to say) is
+    false of the corpus. The synthetic input below is Shift-JIS and IS
+    undecodable, which is why this test can falsify a decode at all. The
+    comparison unit is bytes; nothing in the gate path decodes them."""
     from scripts.probe_behaviour import digest, probe_raw
     raw = b'function main() sink("\x93\xfa\x96{\x8c\xea") end'
     t = probe_raw(raw, is_source=True)
@@ -419,14 +423,15 @@ def test_corpus_behaviour_matches(behaviour_traces, tmp_path):
 
     Re-measured 2026-08-14 (M6 task 12): 228/229 byte-identical, 1 pinned
     (was 227/2 -- snr_mainmenu.lua converged). Pins are exact
-    (original, decompiled) first-differing-line pairs compared two-
-    directionally, so a changed message, a converged pair or a vanished file
-    all fail -- see EXPECTED_DIVERGENCE for the instruction-level evidence
-    behind each.
+    (original, decompiled) WHOLE-TRACE DIGEST pairs compared two-
+    directionally, so any changed byte on either side, a converged pair or a
+    vanished file all fail -- see EXPECTED_DIVERGENCE for the
+    instruction-level evidence behind each, and `pin_evidence` for the
+    measured reason the key is no longer the first differing line pair.
     """
-    from scripts.probe_behaviour import dump_mismatch, first_difference
+    from scripts.probe_behaviour import dump_mismatch, pin_evidence
     assert len(behaviour_traces) == 229
-    divergent = {n: first_difference(o, d)[1:]
+    divergent = {n: pin_evidence(o, d)
                  for n, (o, d) in behaviour_traces.items() if o != d}
     unexpected, moved, gone = adjudicate_pins(divergent, EXPECTED_DIVERGENCE)
     for n in unexpected + moved:
@@ -604,6 +609,38 @@ def test_injected_forloop_bound_is_caught(corpus_dir, decompiled):
         b"\nif (__pld_s > 0 and __pld_i < __pld_R[3]) or "
         b"(__pld_s <= 0 and __pld_i >= __pld_R[3]) then\n")
     assert mutated != orig
+
+
+def test_the_pin_key_does_not_absorb_an_unrelated_change(corpus_dir, decompiled):
+    """The pin key must be the whole compared evidence, not a projection of it.
+
+    Through M6 the key was `first_difference(o, d)[1:]`. Measured on this tree
+    (2026-08-14, final-review item 8): replacing `= 68` with `= 168` in
+    `snr_novel.lua`'s DECOMPILED source -- 3 sites, in a scratch copy; the
+    corpus is never written -- moves the trace but leaves the first differing
+    line pair byte-for-byte unchanged, so the old key adjudicated the mutated
+    run as the existing pin and the gate stayed green. Both halves are
+    asserted here, so this cannot rot into "the digests differ" without also
+    proving the old key would not have.
+    """
+    from scripts.probe_behaviour import (EXPECTED_DIVERGENCE, first_difference,
+                                         pin_evidence, probe_raw)
+    f = corpus_dir / "snr_novel.lua"
+    src = decompiled(f).source
+    assert src.count(b"= 68") == 3
+    o = probe_raw(f.read_bytes(), is_source=False)
+    d = probe_raw(src, is_source=True)
+    m = probe_raw(src.replace(b"= 68", b"= 168"), is_source=True)
+    assert m != d
+    # The old key: unchanged by the injection, so `adjudicate_pins` saw a
+    # matching pin and reported nothing.
+    assert first_difference(o, m)[1:] == first_difference(o, d)[1:]
+    # The key in force: the clean run matches the pin, the injected run does
+    # not, and `moved` is what fires.
+    assert pin_evidence(o, d) == EXPECTED_DIVERGENCE["snr_novel.lua"]
+    assert pin_evidence(o, m) != EXPECTED_DIVERGENCE["snr_novel.lua"]
+    assert adjudicate_pins({"snr_novel.lua": pin_evidence(o, m)},
+                           EXPECTED_DIVERGENCE) == ([], ["snr_novel.lua"], [])
 
 
 def test_probe_is_deterministic_across_separate_processes(corpus_dir, decompiled):

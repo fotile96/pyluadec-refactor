@@ -161,6 +161,45 @@ def test_observed_records_have_the_reviewed_shape(doc):
         assert isinstance(obs["note"], str) and len(obs["note"]) > 20
 
 
+#: SHA-256 over the canonical JSON of every `observed` block (with its owning
+#: `(file, proto_path)`) plus `orphan_observations`. Re-derive with:
+#:
+#:   uv run python -c "import json,hashlib; d=json.load(open('corpus/observation/classes.json')); \
+#:   obs=[{'file':r['file'],'proto_path':r['proto_path'],'observed':r['observed']} \
+#:   for r in d['candidates'] if 'observed' in r]; \
+#:   print(hashlib.sha256(json.dumps({'observed':obs,'orphans':d.get('orphan_observations',[])}, \
+#:   sort_keys=True,ensure_ascii=True).encode('ascii')).hexdigest())"
+_OBSERVED_DIGEST = "b02cd79fc8a55d10c7aaea694a9e4c07164f3534712859ba25500173dc0285ac"
+
+
+def test_the_observed_half_is_pinned_by_digest():
+    """Completes the fixed point. `test_classes_json_is_a_reproducible_fixed_
+    point` regenerates the MECHANICAL half and then re-inserts the committed
+    `observed` blocks by hand -- it has to, because nothing generates them --
+    so an edit INSIDE an observed block passes it silently (M6 final review,
+    item 19).
+
+    There is no generator to check them against, so the check is a digest:
+    changing a reviewer's note, a `class_agrees` verdict, or the orphan list
+    now requires changing this literal in the same commit, which puts the edit
+    in the diff as a deliberate act instead of a byte nobody adjudicated.
+    Measured 2026-08-14: 57 observed blocks, 7 orphans.
+    """
+    import hashlib
+    doc = json.loads(CLASSES.read_text())
+    obs = [{"file": r["file"], "proto_path": r["proto_path"],
+            "observed": r["observed"]}
+           for r in doc["candidates"] if "observed" in r]
+    orphans = doc.get("orphan_observations", [])
+    assert (len(obs), len(orphans)) == (57, 7)
+    blob = json.dumps({"observed": obs, "orphans": orphans},
+                      sort_keys=True, ensure_ascii=True)
+    assert hashlib.sha256(blob.encode("ascii")).hexdigest() == _OBSERVED_DIGEST, (
+        "the hand-authored observed half of classes.json changed. If that was "
+        "intended, re-derive _OBSERVED_DIGEST with the command above and say "
+        "in the commit message what was reviewed.")
+
+
 def test_a_loop_is_a_header_not_a_back_edge(doc):
     """`n_natural_loops` counts loop HEADERS; `n_back_edges` counts back
     edges, and the two differ on real records (a `while` whose tail luac wrote

@@ -82,8 +82,12 @@ def probe_raw(payload: bytes, *, is_source: bool, timeout: float = 120.0) -> byt
 
 def digest(trace: bytes) -> str:
     """The comparison unit. A full trace has a median of 33,068 B and the
-    corpus total is 13,606,371 B (measured 2026-08-12, both sides), which is
-    not something to hold 458 of in memory or to print into a test failure;
+    corpus total is 13,606,371 B **per side** -- re-measured 2026-08-14, the
+    two sides come to the same total and the same median, because 228 of the
+    229 pairs are byte-identical and the 229th differs only in line order
+    (1711 B each). ("both sides" here used to be ambiguous between "per side"
+    and "the two together"; the two together are 27,212,742 B.) Either way it
+    is not something to hold 458 of in memory or to print into a test failure;
     the trace itself is only materialised when two digests differ."""
     return hashlib.sha256(trace).hexdigest()
 
@@ -154,20 +158,46 @@ def dump_mismatch(name: str, orig: bytes, dec: bytes, where: Path) -> Path:
     return where
 
 
+def pin_evidence(orig: bytes, dec: bytes) -> tuple[str, str]:
+    """The pin key for a divergent file: the digests of **both whole traces**.
+
+    This is the evidence that was actually compared. Pins used to be keyed on
+    `first_difference(orig, dec)[1:]` -- the first differing line pair -- and
+    that key demonstrably absorbs an unrelated defect, measured on this tree
+    (2026-08-14, M6 final review item 8): replacing `= 68` with `= 168` in
+    `snr_novel.lua`'s decompiled source (3 sites; a scratch copy, never the
+    corpus) moves the trace -- digest `ee55f849...` -> `f2807433...` -- while
+    leaving the FIRST differing line pair byte-for-byte unchanged, so
+    `adjudicate_pins` reported the existing pin as matched and the gate stayed
+    green. A digest pair cannot do that: any byte that moves in either trace
+    invalidates the pin, exactly as `cross_corpus.PRED_PINS` carries the full
+    compared evidence rather than a projection of it.
+
+    Digests, not the traces themselves: a trace has a median of 33,068 B (the
+    corpus original side totals 13,606,371 B, measured 2026-08-12), and a pin
+    literal must not carry corpus-derived bytes into a committed source file.
+    The instruction-level *reason* for each pin lives in prose above
+    `EXPECTED_DIVERGENCE`, in pcs and opcodes only.
+
+    Derived from the instrument, never by hand: re-derive with
+    `pin_evidence(*_reprobe(corpus, name))`.
+    """
+    return (digest(orig), digest(dec))
+
+
 def first_difference(orig: bytes, dec: bytes) -> tuple[int, bytes, bytes]:
     """`(line number, original line, decompiled line)` for the first differing
     trace line, as raw bytes -- the same type the trace itself is in.
 
-    Pins (`EXPECTED_DIVERGENCE` below) are matched against this return value,
-    so it has to stay bytes: decoding first (as an earlier version of this
-    function did, with errors="replace") would make a pin adjudication-proof
-    against a class of bug where the divergent bytes move but happen to decode
-    to the same replacement text -- e.g. two different undecodable byte runs
-    that both become U+FFFD. Both pins currently in EXPECTED_DIVERGENCE are
-    pure ASCII, so this was never observed, but pinning bytes costs nothing and
-    closes the gap on principle. Decode only at the point of display (see
-    `dump_mismatch`, which writes the full raw traces to files, and the CLI's
-    print statements, which never print this tuple's contents directly)."""
+    DISPLAY ONLY as of the M6 final review: `pin_evidence` above, not this, is
+    what `EXPECTED_DIVERGENCE` is matched against. Still bytes rather than
+    text, for the same reason it always was -- decoding first (as an earlier
+    version of this function did, with errors="replace") collapses two
+    different undecodable byte runs onto the same replacement text, and a
+    human reading a mismatch dump should see what the trace holds. Decode only
+    at the point of display (see `dump_mismatch`, which writes the full raw
+    traces to files, and the CLI's print statements, which never print this
+    tuple's contents directly)."""
     a = orig.split(b"\n")
     b = dec.split(b"\n")
     for i in range(max(len(a), len(b))):
@@ -179,8 +209,10 @@ def first_difference(orig: bytes, dec: bytes) -> tuple[int, bytes, bytes]:
 
 
 # The corpus files whose original and decompiled behaviour traces do NOT agree,
-# pinned as the exact (original, decompiled) FIRST DIFFERING LINE, so that a
-# changed message, a converged pair or a vanished file all fail the gate.
+# pinned as `pin_evidence(original, decompiled)` -- the SHA-256 of each whole
+# trace -- so that any changed byte on either side, a converged pair or a
+# vanished file all fail the gate. (Through M6 this was the first differing
+# LINE pair; see `pin_evidence` for the measured reason that key was too weak.)
 # Re-measured 2026-08-14 (M6 task 12) over all 229 files: 228 agree
 # byte-for-byte, this 1 does not, and it was adjudicated to a known, documented
 # cause rather than to a decompiler defect.
@@ -222,10 +254,12 @@ def first_difference(orig: bytes, dec: bytes) -> tuple[int, bytes, bytes]:
 #   `NEWTABLE ... 0 0` and the 29 inserts grow the node array by rehash
 #   instead. Different node array, different `next()` order. This is backlog
 #   item 5 (table internal layout), now with runtime evidence.
-EXPECTED_DIVERGENCE: dict[str, tuple[bytes, bytes]] = {
+#   Both traces are 1711 B and the first difference is at line 15 (measured
+#   2026-08-14); the digests below are what the gate compares.
+EXPECTED_DIVERGENCE: dict[str, tuple[str, str]] = {
     "snr_novel.lua": (
-        b'C|comLayerLoadFalse|2|58,"novel/novel_3_ad.gim"',
-        b'C|comLayerLoadFalse|2|64,"novel/novel_3_cb.gim"'),
+        "c775a17abfde34516d15cd004bc5cbcbf077aa6cf57268d6585ea1c8f7f3938e",
+        "ee55f8495596f1514c4124a9fcc6eaf6038557ca0304dd1d8e6c20df76aeddd4"),
 }
 
 
@@ -249,20 +283,37 @@ def main(argv: list[str] | None = None) -> int:
     corpus = Path(os.environ["PYLUADEC_CORPUS_DIR"])
     scratch = ROOT / "build" / "behaviour-mismatch"
     total = events = 0
-    divergent: dict[str, tuple[bytes, bytes]] = {}
+    divergent: dict[str, tuple[str, str]] = {}
+    # The non-vacuity checks the standing gate makes and the CLI used not to:
+    # `test_corpus_reach_is_not_vacuous` (no LOADFAIL, no INSN, every side
+    # records something) and
+    # `test_invocation_loop_covers_every_recorded_function_global`
+    # (`invocation_gap`). Without them a collapse of the probe's own
+    # invocation loop -- the failure `invocation_gap` exists to catch -- would
+    # print a green "229/229 identical" here while the suite was red.
+    statuses: dict[str, int] = {}
+    silent: list[str] = []
+    gaps: dict[str, tuple[list[bytes], list[bytes]]] = {}
     for name, orig, dec in run_corpus(corpus):
         total += 1
-        events += header(orig)[1]
+        st, n = header(orig)
+        statuses[st] = statuses.get(st, 0) + 1
+        events += n
+        if n <= 0 or header(dec)[1] <= 0:
+            silent.append(name)
+        go, gd = invocation_gap(orig), invocation_gap(dec)
+        if go or gd:
+            gaps[name] = (go, gd)
         if orig == dec:
             continue
-        _, a, b = first_difference(orig, dec)
-        divergent[name] = (a, b)
+        divergent[name] = pin_evidence(orig, dec)
         if name not in EXPECTED_DIVERGENCE:
             dump_mismatch(name, orig, dec, scratch)
     # The CLI knows about the pins, so a clean run prints a clean line and
     # returns 0. (The L1.5 CLI did not, and printed a red 225/229 while its
     # own test suite was green -- fixed in the same change as this file.)
     unexpected, moved, gone = adjudicate_pins(divergent, EXPECTED_DIVERGENCE)
+    bad_status = {k: v for k, v in statuses.items() if k in ("LOADFAIL", "INSN")}
     print(f"behaviour: {total - len(divergent)}/{total} identical, "
           f"{len(divergent) - len(unexpected)} pinned divergence(s), "
           f"{events} recorded events on the original side"
@@ -274,7 +325,15 @@ def main(argv: list[str] | None = None) -> int:
             dump_mismatch(n, *_reprobe(corpus, n), scratch)
     if gone:
         print(f"pinned divergence(s) converged or vanished: {gone}")
-    return 1 if (unexpected or moved or gone) else 0
+    if bad_status:
+        print(f"probe-side statuses that must not occur: {bad_status}")
+    if silent:
+        print(f"file(s) that recorded no events on one side: {silent[:10]}")
+    if gaps:
+        print("function global(s) recorded but never invoked: "
+              f"{sorted(gaps)[:10]}")
+    return 1 if (unexpected or moved or gone or bad_status or silent or gaps) \
+        else 0
 
 
 def _reprobe(corpus: Path, name: str) -> tuple[bytes, bytes]:

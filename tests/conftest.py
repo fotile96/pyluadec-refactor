@@ -291,12 +291,17 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config) -> None:
     **After M6 task 2** the two env vars are independent and this hook
     prints a separate banner for each that is missing (both may fire in one
     run). With `PYLUADEC_CORPUS_DIR` set and `PYLUADEC_PRED_CORPUS_DIR`
-    unset, only `test_predcorpus.py`'s 2 tests skip (`869 passed, 2
-    skipped`, measured 2026-08-13); with both set, the whole suite runs
-    (`871 passed`, measured 2026-08-13, ~37-38s, comfortably inside the 45s
-    ceiling). With `PYLUADEC_CORPUS_DIR` unset the bare-run figure above
-    already includes those same 2 tests among its 77 skips, since
-    `test_predcorpus.py`'s tests request `corpus_dir` before
+    unset, **32 tests skip across three modules** — re-measured 2026-08-14 at
+    the M6 final review, `1054 passed, 32 skipped`, split
+    `test_cross_corpus.py` **22**, `test_loss_sweep.py` **8**,
+    `test_predcorpus.py` **2**. This docstring said "only
+    `test_predcorpus.py`'s 2 tests skip (`869 passed, 2 skipped`)" until that
+    review; the "only" was false by 15x and it mattered, because the missing
+    30 include M6's whole-corpus loss sweep and the cross-corpus pin-rot gate.
+    `scripts/ratchet_job.sh` now REQUIRES the variable for exactly this
+    reason. With `PYLUADEC_CORPUS_DIR` unset the bare-run figure above
+    already includes all of those among its skips, since the
+    predecessor-corpus tests request `corpus_dir` before
     `pred_corpus_dir` and so skip for the primary reason first.
 
     Among the corpus-gated tests are the M2 exit gate
@@ -326,8 +331,12 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config) -> None:
     if pred_missing:
         terminalreporter.write_sep("=", "PYLUADEC_PRED_CORPUS_DIR not set", red=True, bold=True)
         terminalreporter.write_line(
-            "Predecessor-corpus-gated tests were skipped, not run -- "
-            "including the cross-corpus parity census (test_predcorpus.py). "
+            "Predecessor-corpus-gated tests were skipped, not run -- 32 of "
+            "them, measured 2026-08-14: the whole-corpus LOSS SWEEPS "
+            "(test_loss_sweep.py, 8 -- the instrument that found M6's sixth "
+            "defect), the CROSS-CORPUS scan and its pin-rot gate "
+            "(test_cross_corpus.py, 22), and the parity census "
+            "(test_predcorpus.py, 2). Those are M6's own gates. "
             "A green result above does NOT mean those passed. Set "
             "PYLUADEC_PRED_CORPUS_DIR to the predecessor's 229-file decompiled-"
             "source directory (conventionally the sibling Zndnovel/lua_scripts "
@@ -341,14 +350,27 @@ def compile_lua(tmp_path):
     the compiled output.
 
     `luac` may be either a name relative to `build/` (e.g. "luac_sz4") or a
-    full Path to a luac binary. Skips the test (rather than raising a bare
-    FileNotFoundError) if `build/` or the requested luac binary is missing --
-    run ./scripts/build_native.sh first.
+    full Path to a luac binary.
+
+    **NO BUILD AT ALL -> skip; a PARTIAL build -> fail.** This used to skip on
+    any missing binary, so a `build/` holding `luac_sz4` but not `luac_sz8`
+    silently removed the entire sz8 arm from a green run (M6 final review,
+    item 19). Corpus availability is an environment fact and skipping for it
+    is deliberate; a half-built tree is a *code* artifact problem and must be
+    loud. `build/luac_sz4` is the discriminator because every oracle path in
+    the suite already requires it (`oracle.build_dir()` raises without it), so
+    its presence means a build was attempted.
     """
     def _compile(luac, src: str) -> Path:
         luac_path = luac if isinstance(luac, Path) else BUILD / luac
-        if not BUILD.is_dir() or not luac_path.is_file():
-            pytest.skip(f"{luac_path} not found; run ./scripts/build_native.sh")
+        if not BUILD.is_dir() or not (BUILD / "luac_sz4").is_file():
+            pytest.skip(f"{BUILD} has no build; run ./scripts/build_native.sh")
+        if not luac_path.is_file():
+            pytest.fail(
+                f"{luac_path} is missing from an otherwise-built {BUILD}. "
+                "This is a partial build, not a missing environment: "
+                "./scripts/build_native.sh produces every variant, and "
+                "skipping here would drop this arm from a green run.")
         s = tmp_path / "t.lua"
         o = tmp_path / "t.out"
         s.write_text(src, encoding="utf-8")

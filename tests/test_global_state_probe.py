@@ -135,25 +135,35 @@ def test_target_chunk_cannot_blind_the_probe(clobber):
 
 def test_corpus_global_state_matches(corpus_dir, decompiled):
     """Original bytecode and decompiled output must produce identical global state."""
+    from scripts.probe_common import adjudicate_pins
     from scripts.probe_global_state import probe, payload_of
-    bad = []
-    pinned_seen = {}
+    divergent = {}
     nonempty = 0
     files = sorted(corpus_dir.glob("*.lua"))
     for f in files:
         orig = probe(f.read_bytes(), is_source=False)
         dec = probe(decompiled(f).source, is_source=True)
-        if f.name in EXPECTED_ERROR_NAME_DIVERGENCE:
-            pinned_seen[f.name] = (orig, dec)
-        elif orig != dec:
-            bad.append((f.name, orig[:200], dec[:200]))
+        if orig != dec:
+            divergent[f.name] = (orig, dec)
         if orig.startswith("OK|") and payload_of(orig):
             nonempty += 1
     assert len(files) == 229
-    assert bad == [], f"{len(bad)} files diverge: {bad[:3]}"
-    assert pinned_seen == EXPECTED_ERROR_NAME_DIVERGENCE, (
-        "the pinned getobjname-name divergences moved; re-derive the pin "
-        "(if a pair now agrees, delete its entry -- do not add entries)")
+    # `adjudicate_pins`, not a second hand-rolled implementation of it. This
+    # test used to build `bad` / `pinned_seen` itself and compare the latter to
+    # the table -- equivalent today, but it is the SAME rule the CLI applies
+    # and `probe_common`'s whole reason for existing is that the two must not
+    # be able to drift (M6 final review, item 19).
+    unexpected, moved, gone = adjudicate_pins(
+        divergent, EXPECTED_ERROR_NAME_DIVERGENCE)
+    assert unexpected == [], (
+        f"{len(unexpected)} file(s) diverge and are not pinned: "
+        f"{[(n, divergent[n][0][:200], divergent[n][1][:200]) for n in unexpected[:3]]}")
+    assert moved == [], (
+        f"pinned getobjname-name divergence(s) {moved} no longer match their "
+        "recorded evidence; re-derive the pin")
+    assert gone == [], (
+        f"pinned divergence(s) {gone} converged or vanished -- delete the "
+        "entry, do not leave a pin that can no longer fail")
     # Non-vacuity: the gate must not be passing because both sides produce
     # nothing. A bare marker with an empty payload does NOT count, and a
     # probe-side failure can no longer produce a comparable value at all

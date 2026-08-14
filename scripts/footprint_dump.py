@@ -211,6 +211,13 @@ def main() -> int:
 
     doc = {"version": VERSION, "summary": summary, "files": out_files}
     dest = ROOT / "corpus" / "observation" / "footprints.json"
+    # `--out PATH` writes elsewhere, so a fixed-point check does not have to
+    # dirty the tracked artifact to run (M6 final review, item 19: both
+    # generators wrote only to the tracked path, so "verify by regenerating"
+    # meant `git checkout` afterwards, and a forgotten checkout ships a
+    # regenerated file as if it were reviewed). Default is unchanged.
+    if "--out" in sys.argv:
+        dest = Path(sys.argv[sys.argv.index("--out") + 1])
     dest.parent.mkdir(parents=True, exist_ok=True)
     # indent=1 so every set element and counter is its own line: a footprint
     # diff should read like a ledger diff, not like one 2.1 MB line. Measured
