@@ -57,8 +57,10 @@ def probe(payload: bytes, *, is_source: bool, timeout: float = 30.0) -> str:
         # search for known ASCII markers. It is not a bytecode-derived string
         # kept on the Python side (that constraint is about Proto string
         # constants, not this probe's own output format), so decoding it for
-        # comparison is safe. errors="replace" is deliberate: a corpus file's
-        # Japanese string constants are not guaranteed UTF-8, and if such a byte
+        # comparison is safe. errors="replace" is deliberate: nothing
+        # guarantees a Lua string constant is UTF-8 in general (this corpus
+        # measures 0 non-UTF-8 out of 49063 -- see CLAUDE.md -- so the guard is
+        # DEFENSIVE here, not observed), and if such a byte
         # sequence ever leaked into a table key's tostring() output, replacing
         # the undecodable bytes still yields a *stable* (deterministic) string
         # that two runs of the same input decode identically -- which is all

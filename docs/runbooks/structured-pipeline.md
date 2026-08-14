@@ -47,8 +47,10 @@ verified against the tree; convert any you touch.
    block; never trust the paste, including this sentence's claim about it.
 2. **Read off a committed artifact or a standing test.** The L3 rates come
    from `corpus/ledger.jsonl` (`uv run python scripts/ledger_dashboard.py`).
-   The 225/229 global-state figure comes from
-   `tests/test_global_state_probe.py` / `scripts/probe_global_state.py`. The
+   The 228/229 global-state figure comes from
+   `tests/test_global_state_probe.py` / `scripts/probe_global_state.py`
+   (it was 225/229 with 4 pins until M6 task 12 converged three of them;
+   re-run 2026-08-14). The
    effects–emitter counts (214192/214192, 6981 open rows, 7448 grid rows) live in
    `tests/test_effects_emitter_consistency.py`'s `corpus_scan` fixture, but
    the test asserts only floors — to see the exact numbers you have to print
@@ -385,6 +387,21 @@ byte-identical across each commit:
 | unary `-` separator | always (`- x`) | only against a leading `-` (`- -x`), where `--` would start a comment |
 | indentation | 2 spaces, **function bodies not indented at all** | 4 spaces uniformly, function bodies included |
 | non-ASCII string constant | decimal escapes always (`"\227\128\144…"`) | raw UTF-8 when the bytes decode and re-encode identically, decimal escapes otherwise |
+| same-operator `and`/`or` chain | `a and (b and c)` | `a and b and c` (`emit/lua.py::_ASSOCIATIVE`; **added M6 task 11 fix round 1**, not M5 task 7) |
+
+The last row was missing from this table until the M6 final review found it —
+it is a real seventh surface change and it had no entry here, in CLAUDE.md or
+in `CHANGELOG.md`. Two things about it, both measured 2026-08-14:
+
+- **On this corpus it is inert.** Neutering `_ASSOCIATIVE` to `frozenset()`
+  and regenerating all 229 chunks changes **0 files**
+  (`sha256(decompile_file(f).source)` identical for every one).
+- **It is not unfalsifiable.** The same neuter fails
+  `tests/test_emit_readability.py::test_associative_and_or_chains_are_flat` on
+  synthetic input, and its byte-equivalence is proven against the real `luac`
+  by `test_associative_and_or_chains_compile_identically` (6 pairs). So its
+  evidence is *synthetic*, which is legitimate and is now labelled at the
+  constant, exactly as this milestone labels its other narrow rules.
 
 Two consequences worth knowing before reading a v2 file:
 
@@ -545,9 +562,13 @@ byte-exact by construction — so the semantic evidence for the boundary comes
 from running the code: the two standing probes
 (`scripts/probe_global_state.py` L1.5, `scripts/probe_behaviour.py` L1.75) over
 all 229 files, plus the differential-execution arm in
-`tests/test_hybrid_chunk.py`. Both probes are unchanged by hybrid emission:
-225/229 and 227/229 identical with the same 4 and 2 pinned divergences
-(measured 2026-08-12, after the change).
+`tests/test_hybrid_chunk.py`. Both probes were unchanged by M5 task 6's hybrid
+emission: 225/229 and 227/229 identical with the same 4 and 2 pinned
+divergences (measured 2026-08-12, after that change — a dated snapshot, kept
+because the claim it supports is about that change). **M6 task 12's
+classification work then moved both**, in the direction the pins are supposed
+to move: 228/229 and 228/229 with 1 pin each, four pins deleted as `gone`
+(re-measured live 2026-08-14).
 
 **How far the probes actually reach into the substituted code — measured, and
 smaller than round 1 of this task claimed.** Injecting an unconditional
@@ -1600,7 +1621,7 @@ the original instruction stream actually did.
 ### Run the suite
 
 ```bash
-PYLUADEC_CORPUS_DIR=<corpus> PYLUADEC_PRED_CORPUS_DIR=<pred> uv run pytest   # 1077 tests; 55.07-55.61s over three runs on macOS 15.2 / Apple M4 (2026-08-14, M6 wrap; drifts upward within a session). Ceiling is a ~120s EARMARK for formal-verification instruments, not a general relaxation -- see CLAUDE.md. Without PYLUADEC_PRED_CORPUS_DIR the predecessor-corpus arms skip.
+PYLUADEC_CORPUS_DIR=<corpus> PYLUADEC_PRED_CORPUS_DIR=<pred> uv run pytest   # 1087 tests; 52.73s and 56.83s in two runs on macOS 15.2 / Apple M4 (2026-08-14, M6 final-review fix round; the M6 wrap measured 1077 tests at 55.07-55.61s over three runs, and the same tree measured 57.90s just before this round -- the suite drifts upward within a session and has 1-2s of run-to-run spread, so do not compare single runs across sessions). Ceiling is a ~120s EARMARK for formal-verification instruments, not a general relaxation -- see CLAUDE.md. Without PYLUADEC_PRED_CORPUS_DIR 32 tests SKIP (test_cross_corpus.py 22, test_loss_sweep.py 8, test_predcorpus.py 2) and the run still exits 0 -- which is why scripts/ratchet_job.sh now requires the variable.
                                                         # Ordering is UNMEASURED, not "not a factor": no randomiser is installed, so `-p no:randomly` is a no-op and no M5 A/B ever varied the order. See m3-backlog.md, M6 agenda 6.
 PYLUADEC_CORPUS_DIR=<corpus> uv run pytest tests/test_effects_emitter_consistency.py -v
 ```
@@ -1905,8 +1926,11 @@ differing only in whether the instructions BETWEEN the tests are operand
 staging or a statement, which `sir.build` has no register model to decide
 (`Reconstructor._stage_run` decides it, one layer down, after the region tree
 is fixed). Trying the chain first would therefore guess on exactly the shapes
-where guessing is wrong. Measured 2026-08-14: inverting the order regenerates
-the ledger at `L3` 1432/1478 instead of 1437/1478 -- five protos downgraded.
+where guessing is wrong. Re-measured 2026-08-14 at the M6 final review, on
+this tree: inverting the order regenerates the ledger at `L3` **1433**/1478
+unique / **1899**/1944 occurrences instead of **1438**/1478 / **1904**/1944 --
+five protos downgraded. (The anchors here read 1432 vs 1437, task 11's totals;
+the delta of five is the load-bearing part and it reproduces exactly.)
 
 ### The predecessor's structure reference, as a by-product
 
@@ -2009,11 +2033,15 @@ live local everywhere" on the strength of one `function() ... end` near the
 end of the chunk. A capture proves only that the slot held a live local **at
 the `CLOSURE`'s pc**.
 
-`snr_graphic.lua:main` is the measured worst case: four `CLOSURE`s at pcs
-356–372 capture registers 0–13, which made every definition of registers 0–13
+`snr_graphic.lua:main` is the measured worst case: **five** `CLOSURE`s at pcs
+356, 358, 359, 366 and 372 capture registers 0–13, which made every definition
+of registers 0–13
 across the whole 385-instruction chunk a named local — including the eight
-nested table constructors in slot 1 at pcs 2–45, and hence defect 1's aliasing
-on top.
+nested table constructors in slot 1 at pcs **2, 19, 28, 39, 41, 43, 45, 47**,
+and hence defect 1's aliasing
+on top. (Re-measured 2026-08-14: this said "four `CLOSURE`s" and "pcs 2–45";
+there are five `CLOSURE`s, referencing five distinct subprotos, and the last
+constructor is at 47.)
 
 The refinement is per definition and is the weakest one that keeps the
 capture's own guarantee: a definition is a captured local iff it is the **last
@@ -2051,12 +2079,23 @@ the 40** certify — `snr_graphic:main_2`, `snr_memory:main_2`,
 So `_same_block` is a real third mechanism but not the dominant one.
 
 `snr_common:main_71` (`structure: pc 286: else-join out of range`) is out of
-this family altogether — see the capability-boundary section. **Its stated
-mechanism is task 11's finding, not re-derived here**; what round 1 of task 12
-did check is the jump structure it rests on (pc 295 is a `JMP` whose only
-successor is 410, pc 409 is a `JMP` back to 279, so 279/410 really are a loop
-header and its exit). The `_match_loop`/`break_target=410` half is carried
-from task 11 and is unverified at this commit.
+this family altogether — see the capability-boundary section, which states the
+same mechanism as **measured**. Round 1 of task 12 checked the jump structure
+it rests on (pc 295 is a `JMP` whose only successor is 410, pc 409 is a `JMP`
+back to 279, so 279/410 really are a loop header and its exit) and then wrote
+that "the `_match_loop`/`break_target=410` half is carried from task 11 and is
+unverified at this commit" — which contradicted the other passage and is the
+sentence the M6 final review flagged. **Re-run 2026-08-14, all three in one
+call, ~30s:**
+
+```
+_structure_if(284, break_target=410)  -> OK tuple
+_structure_if(284, break_target=None) -> StructureError: pc 286: else-join out of range
+_match_loop(279)                      -> None
+```
+
+So the capability-boundary passage is the correct one and this half is
+verified, not carried.
 
 ### The `reconstruct: register N is read again` family — a fourth mechanism
 
@@ -2097,9 +2136,12 @@ Five ledger rows, and they are **not** five defects. Measured 2026-08-14:
   statement-level conditional assignment — `regions.CondValue` covers only the
   `TESTSET`-based `and`/`or` idiom, and there is no `TESTSET` here.
 
-That leaves **31** of the 40 unattributed (40 − 6 `_same_block` − 3 clamp),
-plus the 9 purely inherited `... at root/N` rows that will follow whatever
-their descendants do.
+That leaves **31** of the 40 unattributed (40 − 6 `_same_block` − 3 clamp).
+The 31 is a row count and **already includes** the purely inherited
+`... at root/N` rows that will follow whatever their descendants do —
+`m3-backlog.md` §1 states the split as 21 own + 10 inherited = 31. (This
+sentence used to end "plus the 9 purely inherited …", which added them a
+second time; corrected at the M6 final review.)
 
 ### `snr_music.lua:main` — the M5 diagnosis was right, and is now closed
 
@@ -2504,13 +2546,19 @@ functions -> 1).
    1 is never `declared` and the header's `GETUPVAL` stages cleanly. Pinned
    by `tests/test_sir_longtail2.py::test_while_header_refusal_is_a_
    reconstructor_scope_defect_not_a_while_defect`.
-3. **1472 → 1437: 35 unique protos print but do not certify.** Was 22 at M5
+3. **1472 → 1438: 34 unique protos print but do not certify.** Was 22 at M5
    close; M6 task 11 moved 13 protos INTO this bucket out of point 1, which
    is an advance in diagnosis rather than a regression — they used to refuse
-   before printing and now print and fail comparison. Re-measured 2026-08-14
-   by `refusal_reason`: **17 `mismatch: maxstacksize`, 14 `mismatch: code`,
-   4 `mismatch: code at root/<n>`** (an ancestor whose own fields match and
-   whose named descendant's do not).
+   before printing and now print and fail comparison. Re-derived straight off
+   the committed ledger 2026-08-14 (M6 final review; this read "1472 → 1437:
+   35" with a breakdown of 17/14/4, which was the post-task-11 state):
+   **14 `mismatch: code`, 11 `mismatch: maxstacksize`, and 9
+   `mismatch: <field> at root/<n>`** — 3 `maxstacksize at root/2`, 1 each of
+   `maxstacksize at root/18`, `code at root/3`, `code at root/7`,
+   `code at root/48`, `code at root/58`, `code at root/59` — the last group
+   being ancestors whose own fields match and whose named descendant's do not.
+   The whole non-`L3` set is 34 `mismatch` + 5 `reconstruct` + 1 `structure`
+   = 40 rows.
 
    **None of the 13 fails inside a condition tree.** Measured 2026-08-14 for
    all thirteen: the first *opcode* divergence between the original and the
@@ -2531,16 +2579,31 @@ functions -> 1).
    varies by an order of magnitude** (fix round 1 correction -- an earlier
    version of this paragraph said `maxstacksize` and `code` were "the two
    faces of the same thing", which is true of `main_76_2` and false of the
-   worst case). `snr_graphic.lua:main` is the other end: root `code` **385 ->
-   650**, `maxstacksize` **20 -> 24**, first opcode divergence at **pc 1**
-   (`NEWTABLE 0 0 8` vs `NEWTABLE 0 0 15`), and the printed source is
-   **semantically wrong** rather than merely fat -- line 1 declares
-   `local l0_1 = {...15 entries...}`, line 2 *reassigns* `l0_1 = {...7
+   worst case).
+
+   **`snr_graphic.lua:main` was the other end, and task 12 CLOSED it. This
+   paragraph described it in the present tense until the M6 final review;
+   what follows is the historical description, then the measurement.** As of
+   M5 close its root printed `code` **385 -> 650**, `maxstacksize` **20 ->
+   24**, first opcode divergence at **pc 1** (`NEWTABLE 0 0 8` vs `NEWTABLE 0
+   0 15`), and the printed source was **semantically wrong** rather than
+   merely fat -- line 1 declared
+   `local l0_1 = {...15 entries...}`, line 2 *reassigned* `l0_1 = {...7
    entries...}`, and line 17's `local l0_0 = {layerName = l0_1, layerNumber =
-   l0_1, ...}` therefore points every field at the last table written. Four
-   distinct constructors collapse into one alias. Same gate *family*, but the
-   consequence is lost semantics, not stack inflation. Certification refuses
-   it, which is the whole point of the gate.
+   l0_1, ...}` therefore pointed every field at the last table written. Eight
+   distinct constructors collapsed into one alias (eight, not four -- the
+   count agrees with this file's two other statements of it; measured
+   2026-08-14, `NEWTABLE` into register 1 at pcs **2, 19, 28, 39, 41, 43, 45,
+   47**).
+
+   **Measured 2026-08-14 on this tree**: `certify_proto(main,
+   is_chunk_root=True)` gives `L1` with `reason = "mismatch: maxstacksize at
+   root/2"` -- the ROOT itself now matches (`code` 385, `maxstacksize` 20,
+   both equal), and the surviving mismatches are all in descendants
+   (`root/2` `maxstacksize` + `code`, `root/3` `maxstacksize` + `code`,
+   `root/4` `code`). The aliasing form of the family is gone here; the stack-
+   inflation form is what is left. Certification refuses it either way, which
+   is the whole point of the gate.
 
    The paragraph below is the M5-close analysis of the same bucket. This was the
    dominant gap until M4 task 13 (283 protos, of which 253 differed from the
@@ -2775,16 +2838,20 @@ committed tests, so "known" here means recorded and fenced, not tolerated.
    moves there is a pure `NEWTABLE`; two folded items straddling an effectful
    statement are needed to make it visible.
 
-2. **Two of M4 task 5's five ported semantic-regression cases ship
-   fallback**, and are pinned to `L1` so they fail loudly when fixed:
-   `test_if_and_elseif_conjunctions_preserved` (refused,
-   `structure: pc 4: if targets out of range` — the nested-AND-in-an-elseif
-   -chain family, the same 17-proto corpus cluster) and
+2. **One of M4 task 5's five ported semantic-regression cases still ships
+   fallback**, pinned to `L1` so it fails loudly when fixed:
    `test_counter_closure_and_dispatch_mix` (prints, then differs on
-   `maxstacksize` 18 vs 20 and 13 vs 15 constants — clusters B/D). Both
-   docstrings in `tests/test_semantic_regressions.py` carry the full
-   diagnosis. Both run their fallback artifact and check its stdout, so the
+   `maxstacksize` 18 vs 20 and 13 vs 15 constants — clusters B/D). Its
+   docstring in `tests/test_semantic_regressions.py` carries the full
+   diagnosis, and it runs its fallback artifact and checks its stdout, so the
    *semantics* are regression-tested regardless of the level.
+
+   **This item said TWO until the M6 final review.** The other was
+   `test_if_and_elseif_conjunctions_preserved`, and **M6 task 11 moved it
+   `L1` -> `L3`, structured** — the test itself, `m3-backlog.md`'s M6 agenda
+   entry and `tests/test_m6_exit.py` all say so; only this paragraph still
+   pinned it to `L1` with a `structure: pc 4: if targets out of range` that
+   the condition-tree recognizer no longer produces.
 
 3. **`run_corpus.py`'s forced-`L0` path** used to keep whatever
    `confessions` the entry already had, which for an individually-`L3` proto
@@ -3131,11 +3198,15 @@ basis. Kept here as a worked example of a
 planning-stage number that survived into three documents and a module
 docstring without ever being measured.
 
-The other standing limits are the two probes. The **global-state probe**
-(L1.5) reaches 225/229 files with 4 pinned divergences; read its reach table
+The other standing limits are the two probes. Both numbers below were
+re-measured live at the M6 final review (2026-08-14) and both had moved: M6
+task 12's hybrid emission converged three L1.5 pins and one L1.75 pin. The
+**global-state probe** (L1.5) reaches **228/229** files with **1** pinned
+divergence (was 225/4); read its reach table
 before treating it as strong evidence, because for 222 of 229 files the entire
 compared payload is `string:main=<function>`. The **behaviour probe** (L1.75,
-M4 task 10) deepens that to 227/229 over 398196 recorded events — but its
+M4 task 10) deepens that to **228/229** (was 227/229) over 398196 recorded events — the
+event total did NOT move — but its
 reach is bimodal, not a uniform deepening: the 3000-event cap truncates 132 of
 229 files, which contribute 99.5% of the events, while the other 97 contribute
 a median of **10** events each. Both are documented in
@@ -3519,10 +3590,17 @@ whole-chunk drive with `tail=CROSS`, and it does not diverge — but only
 because it caps inside `autoSystemSave` before reaching `cBrStr`. Change that
 tail key to `CIRCLE` and the same drive diverges at trace line 276
 (`R|cBrStr|bad argument #1 to 'len'` vs `to '?'`). That is the `getobjname`
-naming artifact of the fallback's `__pld_R` box model, **already pinned as an
-exact byte pair by the L1.75 gate** (`probe_behaviour.EXPECTED_DIVERGENCE`,
-for `snr_mainmenu`), so it is owned, two-directionally asserted, and would
-fail there if it changed or converged. L2 deliberately does not pin
+naming artifact of the fallback's `__pld_R` box model — the already-documented
+class. **Corrected at the M6 final review (2026-08-14): this sentence used to
+say the divergence was "already pinned as an exact byte pair by the L1.75
+gate (`probe_behaviour.EXPECTED_DIVERGENCE`, for `snr_mainmenu`)", and that
+entry was deleted two commits later** (`741bf1a`, M6 task 12) because
+`snr_mainmenu.lua`'s pair CONVERGED — the same task removed three more of the
+class from `probe_global_state.py`. A reader was being pointed at a table that
+no longer contains it. What is live: the class is pinned two-directionally as
+`probe_enum.EXPECTED_DIVERGENCE["snr_common.lua:main_81"]`, on a different
+proto of this same file. *This* `cBrStr` pair is pinned nowhere, and saying so
+is the point — L2 deliberately does not pin
 divergences of its own: a pin is an exemption, and this gate refuses on
 divergence rather than excusing it. `snr_common` refuses anyway, on
 `taint-static`.

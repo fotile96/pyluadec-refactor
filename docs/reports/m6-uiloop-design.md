@@ -21,6 +21,48 @@ does. §2 records the two pre-measurements. §3 gives the concrete design a
 future prototype would need. §4 labels every assumption. §5 is the
 recommendation, weighed against the alternative.
 
+> ## Population notice — added at the M6 final review, 2026-08-14
+>
+> **Every per-class figure in this note is against the candidate population as
+> it stood at `72a3704` (M6 task 8): 162 candidates, `113 choice-branch /
+> 11 ui-keyloop / 38 neither`.** Tasks 11 and 12 moved it twice, and the moves
+> are **not rescales — protos left the population**. Measured off the
+> committed `corpus/observation/classes.json` at each commit:
+>
+> | commit | n | `choice-branch` | `ui-keyloop` | `neither` |
+> |---|---|---|---|---|
+> | `474a071` (task 4, what this note used) | 162 | 113 | **11** | **38** |
+> | `76a09e8` (task 11) | 162 | 113 | **9** | **40** |
+> | `741bf1a` (task 12) | **156** | 113 | 9 | **34** |
+>
+> The two that left `ui-keyloop` between task 4 and task 11 are
+> `snr_common.lua:main_74_13` and `snr_common.lua:main_81` (they left the
+> candidate set outright; no record changed class). The six that left between
+> task 11 and task 12 were all `neither`: `snr_common.lua:main_74`,
+> `snr_common.lua:main_76`, `snr_graphic.lua:main`, `snr_mainmenu.lua:main`,
+> `snr_mainmenu.lua:main_2`, `snr_memory.lua:main`.
+>
+> **The load-bearing figures were re-derived on the current 156 and they hold
+> or strengthen:**
+>
+> - **All five `ui-keyloop` defect carriers are still `ui-keyloop`**, so §1.1's
+>   concentration is now **5 of 9 (56%)** against **1 of the other 147 (0.7%)**
+>   — stronger than the 5-of-11 it reports.
+> - The per-iteration overlap (§1, §2.1) is **125 of 156 (80%)**, split
+>   `choice-branch` **113/113**, `ui-keyloop` **9/9**, `neither` **3/34** —
+>   the premise-falsifying claim is unchanged.
+> - §1.1's loss-sweep control re-runs to `ui-keyloop` **8/9 (89%)**,
+>   `neither` **6/34 (18%)**, `choice-branch` **2/113 (1.8%)**, 9 flagged
+>   protos outside the candidate set — same ordering, same conclusion.
+> - §1.2's size profile holds: `ui-keyloop` median **461** instructions
+>   against `choice-branch` **102** and `neither` **111**; **7 of the 9** are
+>   `L1`.
+>
+> Everything else below still quotes the 162-era denominators. **M7 must
+> re-derive before using this note as a seed** — the numbers are labelled, not
+> corrected in place, because a wholesale renumber would silently convert
+> measured figures into arithmetic.
+
 **Red line.** This note carries opcodes, pcs, block numbers, register numbers
 and **ASCII identifiers only — no game text**. Identifiers such as
 `pressButton`, `systemSave` and `comDlgSelectItem` are constant-pool strings

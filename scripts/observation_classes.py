@@ -151,7 +151,9 @@ the corpus, reached by a caller, and themselves reaching a poll):
 `comStorySceneEnd` = `main_55`, `SystemConfig.confirm` = `main_76_7`,
 `SystemConfig.ConfigMain` = `main_76_2`, `ObjectCard.cardModeSelect` =
 `main_77_24`. Only the first is a global name a list edit could add, and
-measured 2026-08-13 **no candidate of the 162 calls it**, so adding it would
+re-measured 2026-08-14 **no candidate calls it** -- 0 of the 156 published
+candidates has it in `call_targets`, and 0 of the 162 when that was the
+population -- so adding it would
 change nothing; the other three are reached as `self.<method>()` and need the
 call graph rather than this list. Recorded rather than patched.
 
@@ -175,13 +177,19 @@ because that is how this file stays free of corpus text. So a channel compared
 against N different scene names is ONE element here and N (+1) to anything
 that has to SUPPLY a value -- `x == "a"` does not take the `== "b"` arm.
 
-Re-derived 2026-08-14 against `scripts/probe_enum.py::channels_of`, which
-keeps the distinct constants (as `bytes`, never published):
+Re-derived against `scripts/probe_enum.py::channels_of`, which
+keeps the distinct constants (as `bytes`, never published). **Every line below
+was re-run 2026-08-14 at the M6 final review against the CURRENT 156-candidate
+population; the block previously carried the 162-candidate denominators under
+this same "re-derived" heading**, which is the defect the review names:
 
-  * corpus-wide **1944 protos: 26 differ**; within budget **1940 -> 1936**.
-  * candidates **162: 23 differ**; within budget **159 -> 155**.
-  * by class: **`choice-branch` 110/113 -> 106/113**; `ui-keyloop` 11/11 and
-    `neither` 38/38 unchanged.
+  * corpus-wide **1944 protos: 26 differ**; within budget **1940 -> 1936**
+    (unchanged).
+  * candidates **156: 23 differ**; within budget **153 -> 149**
+    (was written 162 / 23 / 159 -> 155).
+  * by class: **`choice-branch` 110/113 -> 106/113** (unchanged);
+    `ui-keyloop` **9/9** and `neither` **34/34** unchanged (was written
+    11/11 and 38/38 -- those are not rescales, the population lost protos).
   * worst ratios: `snr_s7_10_f.lua:main_53` 4 -> 118 (**29.5x**),
     `snr_s2_10_s.lua:main_60` 240 -> 5280 (22.0x),
     `snr_s3_10_s.lua:main_59` 3456 -> 72576 (21.0x),
@@ -196,7 +204,8 @@ now records both: `rec["cmp"]` (renderings, what this file publishes) and
 The provenance pass is a forward DATAFLOW, not the block-local pass
 `lift/footprint.py` uses -- see `channels`' docstring for the measurement that
 forced the difference (block-locality was wrong on 110 of 162 records, always
-downward, worst ratio 36x). It also tracks paths of ARBITRARY depth
+downward, worst ratio 36x -- a dated 2026-08-13 snapshot over the
+then-162-candidate population, not re-derived on today's 156). It also tracks paths of ARBITRARY depth
 (`gameSave.myCard.[9].hold`) and call results, neither of which the footprint
 needs.
 
@@ -575,8 +584,11 @@ def poll_loops(proto):
     "4 poll loops" with a 9-block innermost body, against the original's 1.
     Grouped by header it is **one** loop, header block 5, four back edges
     (60/68/188/274), union body 78 blocks. The same conflation made the
-    published `n_natural_loops` a back-edge count on 14 of 162 records
-    (`snr_mainmenu.lua:main_7`: 32 back edges over 16 headers), which is why
+    published `n_natural_loops` a back-edge count on **12 of the 156**
+    published records (re-measured 2026-08-14 straight off
+    `corpus/observation/classes.json`; it said 14 of 162, the pre-task-12
+    population), e.g.
+    `snr_mainmenu.lua:main_7`: 32 back edges over 16 headers -- which is why
     both numbers are now emitted under their own names.
 
     `cfg/dom.py` roots the tree at `idom[entry] == entry`, so the dominance
@@ -661,7 +673,9 @@ def channels(proto):
     block TERMINATOR, so the second comparison of `if x == a then ... elseif
     x == b then` is always in a different block from the definition of `x`.
 
-    Measured over the 162 candidates, 2026-08-13: the block-local form differs
+    Measured over the **then**-162 candidates, 2026-08-13 -- a dated snapshot,
+    not re-derived on the current 156 (re-deriving it means re-implementing
+    the discarded block-local pass): the block-local form differs
     from this one on **110 of 162** records, always downward, worst ratio
     **36x** (`snr_s4_10_s.lua:main_58`), and it put one record on the wrong
     side of the budget (`snr_crd_89.lua:main_9`, 4096 -> 4608). Concrete
@@ -1044,6 +1058,13 @@ def main() -> int:
         return 1
 
     dest = ROOT / "corpus" / "observation" / "classes.json"
+    # `--out PATH` writes elsewhere, so a fixed-point check does not have to
+    # dirty the tracked artifact to run (M6 final review, item 19: both
+    # generators wrote only to the tracked path, so "verify by regenerating"
+    # meant `git checkout` afterwards, and a forgotten checkout ships a
+    # regenerated file as if it were reviewed). Default is unchanged.
+    if "--out" in sys.argv:
+        dest = Path(sys.argv[sys.argv.index("--out") + 1])
     keep_observed = "--fresh" not in sys.argv
     if not keep_observed and dest.exists() and "--force" not in sys.argv:
         prev = json.loads(dest.read_text())
@@ -1237,8 +1258,10 @@ def main() -> int:
                     "dominant_global_events": caps[key][1] if key in caps else None,
                 },
                 # Headers, not back edges -- see `poll_loops`. Both are
-                # published because the two differ on 14 of 162 records and
-                # the earlier field name meant the wrong one.
+                # published because the two differ on **12 of the 156**
+                # published records (re-measured 2026-08-14; it said 14 of 162,
+                # the pre-task-12 population) and the earlier field name meant
+                # the wrong one.
                 "n_natural_loops": n_hdr,
                 "n_back_edges": n_back,
                 "poll_loops": [{"header_block": h,

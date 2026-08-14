@@ -119,8 +119,19 @@ _RIGHT_ASSOC = frozenset({"..", "^"})
 # governed by the ordinary `prec < parent_prec` rule (`a and (b or c)` keeps
 # its parentheses, `a or b and c` never had any). Added at M6 task 11 fix
 # round 1: `sir.build._parse_cond` builds right-leaning trees, so without this
-# every multi-operand condition printed as `a and (b and c)` -- the same class
-# of output-surface regression M5 task 7 closed for `(-1)`.
+# a multi-operand condition prints as `a and (b and c)` -- the same class of
+# output-surface regression M5 task 7 closed for `(-1)`.
+#
+# **EVIDENCE SYNTHETIC, measured 0 of 229 corpus files** (2026-08-14, M6 final
+# review item 13), labelled the way this milestone's other narrow rules are.
+# Neutering this to `frozenset()` and regenerating all 229 chunks changes
+# nothing: `sha256(decompile_file(f).source)` is identical for every file.
+# The neuter is not inert -- `tests/test_emit_readability.py::
+# test_associative_and_or_chains_are_flat` fails under it, on synthetic input.
+# So the rule is real and falsifiable, and this corpus simply contains no
+# `if a and b and c`-shaped condition that reaches the structured printer.
+# This is an OUTPUT-SURFACE change; it is row 7 of the versioned table in
+# `docs/runbooks/structured-pipeline.md` ("What changed in v2").
 _ASSOCIATIVE = frozenset({"and", "or"})
 # Precedence demanded of the base of a call/index/method-call position
 # (`X(...)`, `X[...]`, `X:m(...)`) -- higher than any real operator's own

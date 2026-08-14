@@ -68,7 +68,7 @@ cmake --build cmake-build-debug --target lua luac lua51_proto_extractor
 
 `post_process/` 工具链（stage1 重命名 → translation_ir → stage2 锚点 → stage3 overlay → luac 重编译）用**行锚定正则**匹配 emitter 的确切输出风格：`v\d+` 命名、每行一条语句、顶层无缩进、`name = function(...)` 形式（而非 `function name(...)`）、双引号字符串。`rename_semantic_locals.py` 还用 `load_from_source` 做改名前后 proto 结构等价校验。Zndnovel 侧已冻结在 stage3 产物上，重构**不必**字节级复刻旧输出；但若要重新打通全链路，要么保持这个文本表面，要么显式版本化并改造 post_process 的匹配层。
 
-**已选定"显式版本化"这条路，产出即 output surface v2（M5 task 7）。** 那条链路其实**早就不兼容**了——我们的合成局部名是 `l<depth>_<reg>`，两个里程碑前就打断了 `v\d+` 锚点。v2 相对 v1 的五处变化（`elseif`、点语法、`-1`、统一 4 空格缩进含函数体、可逆 UTF-8 原样输出）逐条列在 `docs/runbooks/structured-pipeline.md`「Output surface v2」表里，v1 的怪癖一律不保留。每一处都以 `corpus/ledger.jsonl` **逐次提交字节不变**为证据：这就是"呈现层变更"的定义，动了台账的改动即属于走错了范围。
+**已选定"显式版本化"这条路，产出即 output surface v2（M5 task 7）。** 那条链路其实**早就不兼容**了——我们的合成局部名是 `l<depth>_<reg>`，两个里程碑前就打断了 `v\d+` 锚点。v2 相对 v1 的五处变化（`elseif`、点语法、`-1`、统一 4 空格缩进含函数体、可逆 UTF-8 原样输出）逐条列在 `docs/runbooks/structured-pipeline.md`「Output surface v2」表里，v1 的怪癖一律不保留。**M6 task 11 fix round 1 又加了第六项（表里第 7 行）**：同算符的 `and`/`or` 链平铺（`a and b and c` 而非 `a and (b and c)`，`emit/lua.py::_ASSOCIATIVE`）。它在本语料上**惰性**——中和后重生成 229 个 chunk，0 个文件变（2026-08-14 实测），证据全是合成的，已按本里程碑其它窄规则的写法在常量处标注。每一处都以 `corpus/ledger.jsonl` **逐次提交字节不变**为证据：这就是"呈现层变更"的定义，动了台账的改动即属于走错了范围。
 
 ## 工程红线（跨阶段，改代码前必读）
 
@@ -183,7 +183,7 @@ M3–M4 的旧说法「产物为结构化 ⟺ root proto 认证 `L3`」是**替�
 
 ### 新增常用命令
 
-- 全局状态探针（L1.5 门）：`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_global_state.py`。M4 task 10 起 CLI 认识那 4 条已钉住的发散（钉子已从测试挪到 `scripts/probe_global_state.py`，两个 CLI 与两个门共用 `scripts/probe_common.py::adjudicate_pins`），干净跑法打印 `225/229 identical, 4 pinned divergence(s)` 并返回 0；权威判定仍在 `tests/test_global_state_probe.py`。
+- 全局状态探针（L1.5 门）：`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_global_state.py`。M4 task 10 起 CLI 认识那 4 条已钉住的发散（钉子已从测试挪到 `scripts/probe_global_state.py`，两个 CLI 与两个门共用 `scripts/probe_common.py::adjudicate_pins`），干净跑法打印 `228/229 identical, 1 pinned divergence(s)` 并返回 0（M6 task 12 让其中三条钉子**收敛**，因此被删除——`adjudicate_pins` 把收敛的钉子报成 `gone` 并让门失败，删除是被强制的不是选的；2026-08-14 实跑复核）；权威判定仍在 `tests/test_global_state_probe.py`。
 - **L2 差分执行门（M5 task 9 新增）**：`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_keyseq.py`。
   原始字节码与产出源码在同一 stub 环境、同一**按键序列**下跑，**七个**条件全过才授 `L2`：
   trace 在**探针观测到的范围内**逐字节相同、序列确实被轮询、无运行期 taint 标记、**静态回退
@@ -232,7 +232,7 @@ M3–M4 的旧说法「产物为结构化 ⟺ root proto 认证 `L3`」是**替�
   任何 reach）。132 个撞上限的文件里 101 个是 `vms` 主导、26 个 `wait` 主导、
   5 个 `pressButton` 主导。设计、语法、taint 的「可证/保守/仍看不见」三分、覆盖率口径与
   两处 backstop 见 `docs/runbooks/structured-pipeline.md`「The L2 gate」。
-- 行为探针（L1.75 门，M4 task 10 新增）：`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_behaviour.py`。在打桩环境下**实际调用**每个 chunk 定义的全局函数并比对事件轨迹，干净跑法打印 `227/229 identical, 2 pinned divergence(s), 398196 recorded events`。设计、能力边界、两条钉子的指令级证据见 `docs/runbooks/m3-backlog.md`「Behaviour probe (L1.75)」节。
+- 行为探针（L1.75 门，M4 task 10 新增）：`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_behaviour.py`。在打桩环境下**实际调用**每个 chunk 定义的全局函数并比对事件轨迹，干净跑法打印 `behaviour: 228/229 identical, 1 pinned divergence(s), 398196 recorded events on the original side`（2026-08-14 实跑：M6 task 12 让 `snr_mainmenu.lua` 收敛，钉子从 2 降到 1；事件总数 398196 未变）。**钉子的键是两条完整轨迹的 SHA-256**（M6 收口评审改，此前是「首个差异行」，实测那个键能吸收一处无关缺陷——见 `scripts/probe_behaviour.py::pin_evidence`）。设计、能力边界、钉子的指令级证据见 `docs/runbooks/m3-backlog.md`「Behaviour probe (L1.75)」节。
 - 效应表-发射器一致性门：`uv run pytest tests/test_effects_emitter_consistency.py`（语料臂 + 合成操作数网格，无需语料也能跑合成臂）。
 - **Ratchet 门（M5 task 8）**：`PYLUADEC_CORPUS_DIR=... ./scripts/ratchet_job.sh [BASELINE_REF]`——全套件 + 台账 baseline diff + 24 例全量差分执行扫描，**实测 57.9–58.2s（2026-08-14，M6 收口树，1077 个用例，两次）**，`BASELINE_REF` 默认 **`0957364`**（M5 合并点 = 上一个里程碑合并点；M6 task 13 把默认值从 `eb08890` 前移，那行注释本来就写着「最近一个已合并的里程碑」）。只要 diff：`git show <ref>:corpus/ledger.jsonl > /tmp/base.jsonl && uv run python scripts/ratchet_diff.py /tmp/base.jsonl corpus/ledger.jsonl`。
 - 单文件结构化反编译 / 看认证结果 / 调试某个未认证函数：命令见 `structured-pipeline.md`「Common operations」节。
@@ -296,7 +296,7 @@ Phase 4 已完成。**能力边界与残差普查的权威仍是 `docs/runbooks/
 ### 新增门（都在默认套件里）
 
 - `tests/test_m4_exit.py`：出口比例 + `refusal_reason` 词表与耦合。
-- `tests/test_behaviour_probe.py`（L1.75 行为探针）：**229 文件、227 字节一致、2 条钉住的发散、398196 个事件**。**读它的 reach 分裂再决定信多少**：3000 事件上限截断了 132/229 个文件，这 132 个贡献了 99.5% 的事件，另外 97 个中位数只有 **10** 个事件。
+- `tests/test_behaviour_probe.py`（L1.75 行为探针）：**229 文件、228 字节一致、1 条钉住的发散、398196 个事件**（M4 收口时是 227/2；M6 task 12 让 `snr_mainmenu.lua` 收敛，2026-08-14 实跑复核）。**读它的 reach 分裂再决定信多少**：3000 事件上限截断了 132/229 个文件，这 132 个贡献了 99.5% 的事件，另外 97 个中位数只有 **10** 个事件。
 - `tests/test_effects_reconstructor_consistency.py`：把 `lift/effects.py` 与**结构化**路径对账（`reconstruct.py` → `emit/lua.py` 是 `lvm.c` 的第三份独立手抄）。0 违规，靠插桩而不是第四份手抄。它自己的 docstring 记了**它不断言什么**。
 - `tests/test_effects_modes.py`：档位标定的普查与钉子，含「`STRICT` 是唯一被 `src/` 选用的档位」这条静态检查。
 
@@ -341,9 +341,12 @@ Phase 5 已完成（12 个任务）。**能力边界、认证门不变式、归�
   **"放不下"必须是测量，不是预测（2026-08-14 收紧，起因见下）。** 申请 out-of-suite 的检查还要交代三件事，否则"这个会很慢"就成了万能借口：
   1. **实测耗时 + 当时的输入规模**（"在 N=13 的叶子集上 5.38s"），不是估计值；
   2. **成本的增长量纲**——写明成本随哪个量增长。**如果那个量是数据驱动的，它就可能在没人改代码的情况下爆掉**；
-  3. **自带上界并在越界时拒绝**，采用 `probe_enum` 的 `budget-exceeded` 形态：显式报出空间大小、非零退出、**绝不静默采样也绝不无界运行**。若日后要加采样，必须是一个**独立的判决值**，不能混进"跑过了"。
+  3. **自带上界并在越界时拒绝**，采用 `probe_enum` 的 `budget-exceeded` 形态：显式报出空间大小、**拒绝集被钉住且进入退出码**、**绝不静默采样也绝不无界运行**。若日后要加采样，必须是一个**独立的判决值**，不能混进"跑过了"。
+     **这条第三点在写下时（2026-08-14）对它自己指的那个样例是假的，M6 收口评审补上了实现**：当时 `scripts/probe_enum.py::main` 的退出码只看发散（`return 1 if (unexpected or moved or gone) else 0`），`budget-exceeded` 与 `never-reached` 一个字都不贡献——全量跑法打印 `budget-exceeded 1, never-reached 2` 然后 exit 0。现在 `EXPECTED_REFUSALS` 用与发散**同一个** `adjudicate_pins` 规则钉住这两类拒绝，多一条 / 少一条 / 换个理由都非零退出并点名那个 proto。实跑（2026-08-14）：
+     `uv run python scripts/probe_enum.py` → `enum: identical 9, divergent 1, budget-exceeded 1, never-reached 2; 1 pinned divergence(s); 3 pinned refusal(s); budget=4096`，exit 0；把 `snr_s4_10_s.lua:main_58` 从钉子表里删掉再跑同一行 → `UNEXPECTED refusal(s) -- proto(s) no longer driven: ['snr_s4_10_s.lua:main_58']`，exit 1。单 proto 调试跑法只对**它实际跑过的**那些 proto 判钉子（`pins_for`），所以 `uv run python scripts/probe_enum.py snr_s4_10_s.lua main_58` 也 exit 0——此前它会把整张钉子表判成 `gone` 而恒返回 1。
 
-  **收紧的起因，作为本条的样例记下来**：M6 task 7 实测 `snr_s4_10_s:main_58` 的**可枚举空间是 23616，而 `corpus/observation/classes.json` 发布的是 1152**——差 20 倍。原因是 `classes.json` **把所有字符串常量塌成 `"str"`**，而那个值恰恰决定走哪条 `== "..."` 分支。连带结论：**task 4 的「110/113 能塞进 4096」是对粗粒度空间说的，不能用来给真正的枚举做规模估算**，要用 `probe_enum.channels_of` 重新推导。教训一般化：**用一个为别的用途构造的投影去给自己的成本做预算，会在你不知情时错一个数量级。**这个区间是本机**同一会话内向上漂移**（仓库里已记为 thermal），不是最后两轮加的 7 个用例造成的——那 7 个用例合计 **0.16s**（`--durations` 实测）。`./scripts/ratchet_job.sh` exit 0。
+  **收紧的起因，作为本条的样例记下来**：M6 task 7 实测 `snr_s4_10_s:main_58` 的**可枚举空间是 23616，而 `corpus/observation/classes.json` 发布的是 1152**——差 20 倍。原因是 `classes.json` **把所有字符串常量塌成 `"str"`**，而那个值恰恰决定走哪条 `== "..."` 分支。连带结论：**task 4 的「110/113 能塞进 4096」是对粗粒度空间说的，不能用来给真正的枚举做规模估算**，要用 `probe_enum.channels_of` 重新推导。教训一般化：**用一个为别的用途构造的投影去给自己的成本做预算，会在你不知情时错一个数量级。**
+  （原先这里还接着一句"这个区间是本机同一会话内向上漂移……`ratchet_job.sh` exit 0"——那是 M6 收口时对**套件耗时区间**的说明，被误接在这段 `input_space` 文字后面，"这个区间"在此没有先行词。已移到下面 Phase 6「收口数字」的测试那一行。）
   **测试顺序从来没有被真正变动过**（2026-08-13 实测）：本仓库**没有装任何随机化插件**——`pytest --trace-config` 里唯一的第三方插件是 `pytest-timeout 2.4.0`，`find_spec("pytest_randomly")` 是 `None`，而 `-p no:randomly` 关掉的是一个不存在的插件，pytest 对此**静默当成 no-op**（`uv run pytest -p no:randomly --co -q` → 867 collected，exit 0）。所以 M5 task 11 的 5 对、task 12 的 5 对、以及审查者在另一台主机上的 10 次，两臂跑的都是**同一个 collection order**：task 11 断言有差别、task 12 「证伪」了它，两边都没检查这个旋钮是否接上。**唯一站得住的结论**：本套件有 1–2 秒的 run-to-run 抖动（42.25–43.39s 与 42.57–43.09s 是同一种配置的两组样本；另一台主机 39.36–41.13s），**跨会话的单次对比分不出任何东西**——本里程碑那些争议时间数正出于此。顺序到底影响不影响，**目前是未测量的**。
 - 出口门 `tests/test_m5_exit.py`：四条地板（唯一 `L3` **≥0.94**、occurrence `L3` ≥0.96、结构化 reach ≥0.85、质量分 ≥0.96），全部**刻意低于实测值**，理由写在该文件 docstring 里。唯一 `L3` 那条在最终修复轮从 0.96 放宽到 **0.94（= M4 出口）**：0.96 只剩 12 行（0.75pp）余量，正落在该文件自己描述的 churn 范围内——那是绊线不是地板，而绊线的标准修法就是改阈值。逐行单调性本来就由 `scripts/ratchet_diff.py` 逐行守着（更细的仪器），这条地板只负责粗粒度的「M5 不得低于 M4 收口」。代价已写明：41 行降级至少要付 41 个 occurrence，所以在这两个数下 **occurrence `L3` 才是紧的那条，唯一 `L3` 无法单独触发**（`tests/test_m5_exit.py::FORCED_COUPLING`，并且该耦合被断言为算术强制而非偶然）。
 
@@ -374,7 +377,7 @@ Phase 6 已完成。计划 13 个任务，实际执行 11 个（**T9/T10 取消�
 
 1. `snr_music.lua:main_3` —— 轮询循环整个消失，音乐鉴赏进去就弹回主菜单，不可用。
 2. `snr_common.lua:main_76_2` —— 一个无条件 `break` 让回想模式误开存档界面；一个空 `else` 卡住帧。**两条都逐字对应前作自己 debug playbook 里的历史检查点。**
-3. `snr_mainmenu.lua:main_7` —— `systemSave`/`novelFlag`/`musicFlag` 三道 gate 被删，两条互斥分支同时执行。
+3. `snr_mainmenu.lua:main_7` —— **四处** gate site 被删（每处各读 `systemSave`/`novelFlag`/`musicFlag` 三个 flag 一次；三个 flag、四处 site，此前这里写成"三道 gate"是把 flag 数当成了 site 数），两条互斥分支同时执行。1-based gate 头在 pc **207 / 745 / 1280 / 1825**，实测计数 `systemSave` 24→16、`novelFlag` 12→8、`musicFlag` 8→4（2026-08-14 复核）。
 4. `snr_graphic.lua:main_4` —— 一个 `== 6` / `== 4` 比较被丢掉，出现两次。
 5. `snr_memory.lua:main_4` —— 同一个缺陷、同一个形状，同样出现两次。
 6. `snr_common.lua:main_75` —— 一个重试 `while` 变成了 `if`。
@@ -387,7 +390,9 @@ Phase 6 已完成。计划 13 个任务，实际执行 11 个（**T9/T10 取消�
 - **产物**：229 个文件里 **217 全结构化 / 8 hybrid / 4 整文件 fallback**（M5 收口 216/6/7）。逐 occurrence **1763/1944（90.7%）发结构化文本**。
 - 质量分 **0.977328**（M5 收口 0.968833）。**它不再是任何门**——见下文决策日志第一条。
 - `scripts/ratchet_diff.py` 对 M5 合并基线 `0957364`：**8 升级、0 降级**。
-- 测试：**1077 passed，55.07–55.61s**（macOS 15.2 / Apple M4 arm64 / Darwin 24.2.0，本会话三次实测），对约 120s 的定向拨款。`./scripts/ratchet_job.sh` 三道门 exit 0，端到端 **57.9–58.2s**。
+- 测试：M6 任务收口时 **1077 passed，55.07–55.61s**（macOS 15.2 / Apple M4 arm64 / Darwin 24.2.0，那次会话三次实测）。**收口评审修复轮后：1087 passed，两次实测 52.73s 与 56.83s**（同一台机器，2026-08-14；修复轮加了 10 个用例，`--durations` 单测合计 **0.29s**，全部可归因到形式化验证仪器——`probe_enum` 的拒绝集契约与单 proto 判钉、L1.75 钉子键的注入证明、`classes.json` observed 半边的摘要钉）。同一棵树上修复前的基线是 **1077 passed，57.90s**——修复后的两次都比它低，所以这 10 个用例埋在会话内漂移里。都对约 120s 的定向拨款。
+  **这两个区间不要跨会话直接比**：本机在**同一会话内向上漂移**（仓库里已记为 thermal），且本套件有 1–2 秒的 run-to-run 抖动——这也是这一段被从上面那条 `input_space` 说明里搬回来的原因（"这个区间"在那里没有先行词）。
+  `./scripts/ratchet_job.sh` 三道门 exit 0：M6 收口时端到端 **57.9–58.2s**，修复轮后同一台机器实测 **60.05s**（`time` 实测，2026-08-14）。**它现在要求 `PYLUADEC_PRED_CORPUS_DIR`**：不设就在第 35 行直接非零退出，因为不设时 32 个 M6 门用例会静默 skip（实测 `1054 passed, 32 skipped`——`test_cross_corpus.py` 22、`test_loss_sweep.py` 8、`test_predcorpus.py` 2）。
 - 前作语料 parity 普查：**229/229 可编译、229/229 proto 树 1:1 对应、0/229 字节精确**（3903 处实质失配 / 1433 条路径 / 2989 个信号，由 `tests/test_predcorpus.py` 断言）。
 - 分歧队列：**18 行 / 16 个文件**，裁决为 **6 `real-bug` / 12 `equivalent-transform`**；`intentional-edit` 作为**路径级**裁决出现 1 处（`snr_common.lua:main_83` 的字体资源路径，行级裁决仍是 `real-bug`）；`probe-artifact` 与 `suspect` **各 0 行**。
 - Loss sweeps：1944 对 proto 里 **25 个丢了东西**，**3.31s**；按扫描 `global_reads` 1 / `n_natural_loops`+`n_back_edges` 4 / `test_ops` 24 / 第四组（`global_writes`、`call_targets`、`call_shapes`、`return_arity`）**0**。
@@ -398,7 +403,7 @@ Phase 6 已完成。计划 13 个任务，实际执行 11 个（**T9/T10 取消�
 - `src/pyluadec/lift/footprint.py` + `scripts/footprint_dump.py`（task 3）：静态交互面（全局读写、表键读写、调用、`dynamic_reads` 诚实计数），产出 `corpus/observation/footprints.json`。
 - `scripts/observation_classes.py` + `corpus/observation/classes.json`（task 4）：**156 个候选** proto（29 个叶子拒绝 + 132 个 CAP 主导，5 个两者兼是）的分类与交互面，`choice-branch` 113 / `ui-keyloop` 9 / `neither` 34。
 - `scripts/cross_corpus.py` + `tests/test_cross_corpus.py`（task 5/6）：指纹 / L1.5 / L1.75 三条臂的跨语料扫描 + `PRED_PINS`（与我方钉子**分表**，spec 明令不得复用）。全语料扫描是 job，不是套件成员。
-- `scripts/loss_sweep.py` + `tests/test_loss_sweep.py`（计划外 task X3）：四组「原始有、前作没有」的逐 proto 丢失扫描。**这是本里程碑最划算的仪器**——比被设计的分级指纹便宜，却多抓到两个缺陷。
+- `scripts/loss_sweep.py` + `tests/test_loss_sweep.py`（计划外 task X3）：四组「原始有、前作没有」的逐 proto 丢失扫描。**这是本里程碑最划算的仪器**——比被设计的分级指纹便宜，而且**把缺陷排到了 proto 粒度并点名**。（此前这里写"多抓到两个缺陷"，报告没有这么说，也不成立：6 个 `real-bug` 文件**全部**被指纹钉住，`main_75` 本来就在指纹队列里排第 9/18；报告说的"聚合掩盖掉的那一个"比的是 §3.7 自己更早的**聚合**扫描，不是指纹。）
 - `scripts/probe_enum.py` / `.lua`（task 7，已缩范围）：枚举差分驱动，在 13 个复合 `if` 叶子上做可行性演示，`EnumVerdict` 带 `budget-exceeded`（**绝不静默采样**）。
 - `tests/test_m6_exit.py`（task 13）：出口门，13 个用例，**0.15s**，不需要语料。地板见该文件 docstring。
 

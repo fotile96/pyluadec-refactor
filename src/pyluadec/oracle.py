@@ -48,12 +48,22 @@ def _oracle_binary_identity() -> tuple[str, int, int]:
     `compile_source` calls in one process). Both are exercised as regression
     tests in `tests/test_structured_certify.py` against the higher-level
     certification cache, which is why this module reuses the same
-    `(path, mtime_ns, size)` shape rather than a bare content hash: measured
-    directly (see task-1-report.md), omitting this component makes
-    `test_process_cache_does_not_survive_a_build_dir_swap` fail once
-    `compile_source` itself is memoized -- that test's fake refusing `luac`
-    would otherwise never run, because the memo would keep answering with
-    bytes compiled by the real one before the swap.
+    `(path, mtime_ns, size)` shape rather than a bare content hash: omitting
+    this component makes `test_process_cache_does_not_survive_a_build_dir_swap`
+    fail once `compile_source` itself is memoized -- that test's fake refusing
+    `luac` would otherwise never run, because the memo would keep answering
+    with bytes compiled by the real one before the swap.
+
+    That is a neuter experiment, not a citation. Reproduce it from a clone:
+    change `compile_source`'s key line to
+    `key = (hashlib.sha256(source).digest(), strip)` and run
+    `uv run pytest tests/test_structured_certify.py -k build_dir_swap`.
+    Measured 2026-08-14 on this tree -- `1 failed`, with
+    `assert after.level == "L1"` reporting `AssertionError: assert 'L3' ==
+    'L1'`; restoring the component passes it again. (This paragraph used to
+    cite `task-1-report.md`, which lives under the gitignored
+    `.superpowers/` and is not in the repository, so the evidence was not
+    reproducible from a clone.)
 
     **`(mtime_ns, size)` is a heuristic, not a content hash, and not
     collision-free** (restated here, not just at `structure.structured
@@ -79,8 +89,27 @@ def _oracle_binary_identity() -> tuple[str, int, int]:
 # `_oracle_binary_identity`). No size cap: the corpus is 229 files at up to
 # 124 KB source each, so even every distinct (source, strip, binary) triple
 # compiled once in a process's lifetime is a small number of MB of compiled
-# bytecode -- measured directly over a full corpus suite run (2461 entries,
-# ~12.5 MB total; task-1-report.md), not an oversight.
+# bytecode -- not an oversight.
+#
+# Measured, with the command that measures it, so a clone can re-derive it
+# (this used to read "2461 entries, ~12.5 MB total over a full corpus suite
+# run", citing `task-1-report.md` -- a file under the gitignored
+# `.superpowers/`, i.e. not reproducible from a clone). Over a whole-corpus
+# decompile, 2026-08-14 on this tree: **1481 entries, 6,856,280 bytes**.
+#
+#   PYLUADEC_CORPUS_DIR=... uv run python -c '
+#   import os, pathlib
+#   from pyluadec import oracle
+#   from pyluadec.pipeline import decompile_file
+#   for f in sorted(pathlib.Path(os.environ["PYLUADEC_CORPUS_DIR"]).glob("*.lua")):
+#       decompile_file(f)
+#   print("entries", len(oracle._COMPILE_MEMO))
+#   print("bytes", sum(len(v) for v in oracle._COMPILE_MEMO.values()))'
+#
+# The workload is named on purpose: a whole test-suite run compiles more
+# distinct sources than a whole-corpus decompile does (every synthetic
+# fixture), so the two figures are not interchangeable and neither is "the"
+# memo size.
 #
 # Fencing (M6 task 1 round 1 -- the dispatch asked whether this cache needs
 # the isolation `tests/conftest.py::_fence_certification_cache` gives

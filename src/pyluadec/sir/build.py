@@ -1286,12 +1286,25 @@ def _structure_if(fn, cfg, idoms, pc2blk, pc: int, hi: int, break_target: int | 
     alone. Measured 2026-08-14: `if a and b then f() end` still builds two
     `If` regions, not one `CondOp`.
 
-    **The ordering is proven load-bearing, on the corpus** (2026-08-14):
-    inverting it -- try `_match_cond_chain` first, fall back to the one-compare
-    reading -- regenerates `corpus/ledger.jsonl` at `L3` **1432**/1478 and
-    structured **1898**/1944, against **1437**/**1903** with the order as
-    written. Five protos that certify today would be downgraded by a
-    chain-first dispatch, which is the concrete form of the argument above.
+    **The ordering is proven load-bearing, on the corpus.** Re-measured at the
+    M6 final review (2026-08-14) on this tree, by inverting it -- try
+    `_match_cond_chain` first, fall back to the one-compare reading -- and
+    regenerating `corpus/ledger.jsonl`:
+
+        as written : L3 1438/1478 unique, occurrence-L3 1904/1944
+        inverted   : L3 1433/1478 unique, occurrence-L3 1899/1944
+
+    Five protos that certify today would be downgraded by a chain-first
+    dispatch, which is the concrete form of the argument above. (The anchors
+    used to read 1437/1903 and 1432/1898, the totals at task 11's tree; the
+    DELTA of 5 is what the argument rests on and it reproduces exactly.)
+
+    **"occurrence-`L3`", not "structured".** `scripts/run_corpus.py` prints
+    this number under the word `structured`, and the ledger uses
+    `occurrences[].shipped == "structured"` for a DIFFERENT quantity
+    (1763/1944 on this tree -- what the artifact actually contains, not what
+    certified). This docstring said "structured 1903/1944" and meant the
+    former. Two quantities, one word; say which.
     """
     try:
         return _structure_if_single(fn, cfg, idoms, pc2blk, pc, hi,
@@ -1749,8 +1762,11 @@ def _match_cond_chain(fn, cfg, idoms, pc2blk, pc: int, hi: int,
     **That ordering is measured INERT, and is recorded as defensive rather
     than claimed load-bearing** (2026-08-14, MEMORY.md's "guards must be
     proven load-bearing"): replacing it with `range(2, len(spans) + 1)`
-    (shortest-first) leaves `corpus/ledger.jsonl` at the same `L3` 1437/1478 /
-    structured 1903/1944 and every fixture in `tests/test_sir_condtree.py` and
+    (shortest-first) leaves `corpus/ledger.jsonl` byte-identical -- re-measured
+    at the M6 final review (2026-08-14) on this tree: `L3` 1438/1478 unique and
+    occurrence-`L3` 1904/1944 both ways, and 1763/1944 occurrences shipping
+    structured text both ways (the anchors used to read 1437/1903, task 11's
+    totals) -- and every fixture in `tests/test_sir_condtree.py` and
     `tests/test_sir_longtail2.py` green. The reason it cannot be observed is
     that a short prefix which parses usually goes on to FAIL in `_finish_if`
     -- the leftover tests do not structure as a then-body -- and the loop then

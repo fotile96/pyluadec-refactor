@@ -12,9 +12,10 @@
   the main menu); `snr_common.lua:main_76_2` (an unconditional `break` that
   opens the save screen from recollection mode, and an empty `else` that hangs
   the frame — **both verbatim the historical checkpoints in the predecessor's
-  own debug playbook**); `snr_mainmenu.lua:main_7` (a
-  `systemSave`/`novelFlag`/`musicFlag` gate deleted, so two mutually exclusive
-  arms both run); `snr_graphic.lua:main_4` and `snr_memory.lua:main_4` (a
+  own debug playbook**); `snr_mainmenu.lua:main_7` (**four** gate sites
+  deleted, each reading `systemSave`/`novelFlag`/`musicFlag` once — three
+  flags, four sites, at 1-based pcs 207/745/1280/1825 — so two mutually
+  exclusive arms both run); `snr_graphic.lua:main_4` and `snr_memory.lua:main_4` (a
   `== 6` / `== 4` comparison dropped, twice each); and
   `snr_common.lua:main_75` (a retry `while` became an `if`). Evidence is
   pc/opcode-level throughout and carries no game text.
@@ -76,6 +77,16 @@
   differential driving over 13 leaves, with `budget-exceeded` rather than
   silent sampling); `loss_sweep.py`. Full-corpus scans stay **jobs**; the suite
   keeps gated smoke subsets and fixed-point gates.
+- **One output-surface change, added in a fix round and unrecorded until the
+  M6 final review**: same-operator `and`/`or` chains print flat
+  (`a and b and c`) instead of right-nested (`a and (b and c)`) —
+  `emit/lua.py::_ASSOCIATIVE`, added at task 11 round 1. It is row 7 of the
+  versioned "Output surface v2" table in `docs/runbooks/structured-pipeline.md`
+  (previously six rows, all from M5 task 7). **Inert on this corpus**:
+  neutering it to `frozenset()` and regenerating all 229 chunks changes 0
+  files, so its evidence is synthetic — `luac_sz4` byte-equivalence over 6
+  pairs plus a printed-text assertion that the same neuter fails. Labelled as
+  such at the constant, the way this milestone's other narrow rules are.
 - **Predecessor parity, measured corpus-wide for the first time: 229/229
   compile, 229/229 proto trees match 1:1, 0/229 byte-faithful** (3903
   substantive rung-1 mismatches over 1433 paths, 2989 coarser signals). The
@@ -91,7 +102,14 @@
   in 55.07-55.61s over three runs** (macOS 15.2 / Apple M4, arm64) against the ~120s
   earmark; `./scripts/ratchet_job.sh` runs its three gates end to end in 57.9-58.2s
   and exits 0, now against the M5 merge baseline `0957364` rather than the M4
-  one it had been left pointing at.
+  one it had been left pointing at. **After the final-review fix round the same
+  host measures 1087 tests in 52.73s and 56.83s over two runs, and the job in 60.05s** (the 10 added tests
+  cost 0.29s by `--durations`; the pre-round baseline on that same tree was
+  57.90s, so they are inside the run-to-run spread). That round also made
+  `ratchet_job.sh` **require `PYLUADEC_PRED_CORPUS_DIR`** — without it 32 tests
+  skip silently (`test_cross_corpus.py` 22, `test_loss_sweep.py` 8,
+  `test_predcorpus.py` 2), i.e. the documented milestone gate was not running
+  the milestone's own gates.
 
 ## 2026-08-13 — M5: the long tail, the L2 gate, and a quality baseline
 

@@ -745,7 +745,10 @@ Output is `PROBE1|<status>|<event count>` followed by one line per event, or
 `LOADFAIL|<message>`; anything else, or a non-zero exit, raises `ProbeError`
 rather than becoming a comparable value. The comparison unit is a SHA-256 over
 the raw bytes — nothing decodes the trace, because it embeds corpus string
-constants that are frequently not UTF-8.
+constants and the engineering red line forbids decoding them. (This sentence
+used to justify that with "constants that are frequently not UTF-8"; CLAUDE.md
+records the measurement that falsifies it — 0 non-UTF-8 out of 49063. The rule
+is the reason, not the encoding.)
 
 ### Result over the full corpus (M4 task 10)
 
@@ -937,8 +940,11 @@ such — assume the same is possible of the others.
   of the test and into `scripts/probe_global_state.py` next to the CLI that has
   to honour it, and both CLIs now adjudicate through the shared
   `scripts/probe_common.py::adjudicate_pins` (unexpected / moved / gone), so a
-  clean run prints `225/229 identical, 4 pinned divergence(s)` and returns 0
-  while a converged or moved pin still returns 1.
+  clean run prints a clean line and returns 0
+  while a converged or moved pin still returns 1. (At M4 task 10 that line was
+  `225/229 identical, 4 pinned divergence(s)`; M6 task 12 converged three of
+  the four pins, and the live run at the M6 final review — 2026-08-14 — prints
+  `global-state: 228/229 identical, 1 pinned divergence(s)`.)
 - Table/function-valued **keys** still serialise via `tostring(k)` (an address,
   non-deterministic across the two probe processes). 0 occurrences today.
 - `payload_of` splits `ERR|` on the first `|`, mis-splitting a message
@@ -2287,7 +2293,7 @@ read for what is next. Per-item disposition, each linked to the heading below:
 | 3 | `next`/`pairs` iteration order | **untouched**, and it shrank with agenda 1: fallback-path occurrences 197 → **181** → M7 agenda 3 |
 | 4 | probe hardening (4 re-deferred entries + the driver duplication) | **the fifth sub-item is CLOSED** — M6 task 7 extracted the shared driver into `scripts/probe_common.lua` (504 lines) instead of making a third copy, and `probe_behaviour.lua` / `probe_keyseq.lua` / `probe_enum.lua` all load it. The four wire-format entries are **untouched** → M7 agenda 4 |
 | 5 | a `StructureError` does not name the proto that raised it | **untouched** (`structure/structured.py::_refused` still takes only the exception, re-checked 2026-08-14) → M7 agenda 5 |
-| 6 | the engineering-debt set | **the suite-headroom entry is resolved by a decision, not by work**: the 45s ceiling became a ~120s earmark for formal-verification instruments (human partner, 2026-08-13, with the 2026-08-14 tightening on what "too slow" has to be). The ordering question is **still unmeasured and still cheap to answer** — `find_spec("pytest_randomly")` is `None`, re-checked 2026-08-14. Everything else untouched → M7 agenda 6 |
+| 6 | the engineering-debt set | **the suite-headroom entry was closed by a decision AND by work** (this cell said "not by work" until the M6 final review): M6 task 1 memoized `oracle.compile_source`, the lever the item itself named, and the 45s ceiling became a ~120s earmark for formal-verification instruments (human partner, 2026-08-13, with the 2026-08-14 tightening on what "too slow" has to be). The ordering question is **still unmeasured and still cheap to answer** — `find_spec("pytest_randomly")` is `None`, re-checked 2026-08-14. Everything else untouched → M7 agenda 6 |
 | 7 | M1's Linux x86_64 verification | **still outstanding**, and still the only exit criterion in this project that has been half-satisfied since 2026-08-10 → M7 agenda 7 |
 
 Written at the M5 wrap (task 12, 2026-08-13). Same conventions as the M4 and
@@ -2361,15 +2367,21 @@ The 48 non-`L3` unique protos / 48 non-`L3` occurrences split by
   `ratchet_diff.py` vs `0957364` = 7 upgrades, 0 downgrades.
 
   Still open, and named: `while <a and b> do` (`_match_while_header` requires
-  the header to be one basic block) and `repeat ... until a or b`, both pinned
+  the header to be one basic block), `while <a or b> do`, and
+  `repeat ... until a or b` — **three** rows, all pinned
   by `tests/test_sir_condtree.py::WHILE_HEADER_GAP`. No corpus proto needs
-  either.
+  any of them.
 
   Two things from the task's fix round worth carrying forward. **The 13
   `mismatch:` arrivals are not one magnitude**: `snr_common.lua:main_76_2` is
-  extra slots and extra `MOVE`s, while `snr_graphic.lua:main` is `code`
-  385 -> 650 and *semantically wrong* output (four table constructors aliased
-  into one). What they share, measured 13/13, is that the first opcode
+  extra slots and extra `MOVE`s, while `snr_graphic.lua:main` **was**, at task
+  11, `code` 385 -> 650 and *semantically wrong* output (**eight** table
+  constructors aliased into one — four was a miscount; the `NEWTABLE`s into
+  register 1 are at pcs 2, 19, 28, 39, 41, 43, 45, 47). Task 12 then closed
+  the aliasing form: re-measured 2026-08-14, that root recompiles to `code`
+  385 == 385 and `maxstacksize` 20 == 20, and the surviving mismatches are in
+  its descendants (`root/2`, `root/3`, `root/4`).
+  What they share, measured 13/13, is that the first opcode
   divergence lies outside every `cond_claimed(...)` set -- so they belong to
   item 5's reconstruction residual, not here. And **the predecessor
   structure-reference rate for these protos is 12/13 (92.3%)** after the fix,
@@ -2417,8 +2429,12 @@ cap, the split is **101 `vms`-dominated, 26 `wait`-dominated (24 with
 `doScriptScene`), 5 `pressButton`-dominated** — measured at M5 task 9 round 1
 and independently reproduced by its scoped re-review over all 229 files; **not**
 re-derived at task 12, which re-ran the probe only far enough to confirm its
-headline (229 files, 227 identical, 2 pinned divergences, 398196 events, all
-exact).
+headline. **That headline itself moved and this sentence had not been
+updated** (M6 final review): task 12's own hybrid work converged
+`snr_mainmenu.lua`, so the live figure is **229 files, 228 identical, 1 pinned
+divergence, 398196 events** — the event total is the one thing that did not
+move. The `vms`/`wait`/`pressButton` split above is still the M5 task 9
+measurement and is still not re-derived.
 
 **(b) Soundness.** The static may-analysis that gates the grant has four
 documented gaps, each a committed test that GRANTS and should not, and the list
@@ -2716,10 +2732,13 @@ narrated".
 One survivor is not in this family at all: `snr_common.lua:main_71`
 (`structure: pc 286: else-join out of range`) is the last `structure:` row and
 is a **loop** recognizer gap — its `break` at pc 295 targets the exit of a
-`while true` that `_match_loop` does not recognize. Two more recognizer gaps
-have no corpus consumer and are pinned synthetically by
-`tests/test_sir_condtree.py::WHILE_HEADER_GAP`: `while <a and b> do` (the
-header must currently be one basic block) and `repeat ... until a or b`.
+`while true` that `_match_loop` does not recognize. **Three** more recognizer
+gaps have no corpus consumer and are pinned synthetically by
+`tests/test_sir_condtree.py::WHILE_HEADER_GAP`, which holds three rows:
+`while <a and b> do` (the header must currently be one basic block),
+`while <a or b> do`, and `repeat ... until a or b`. (`repeat ... until a and b`
+is NOT in the gap and certifies — pinned separately, as a split rather than
+smoothed over.)
 
 ## 2. Corpus-wide L2, the four taint gaps, and the truncation residue
 
@@ -2766,10 +2785,15 @@ had to work around by hand. Full text at M6 agenda 5.
 
 ## 6. Engineering debt
 
-The suite-headroom entry is **resolved by a decision rather than by work**
-(45s → a ~120s earmark for formal-verification instruments, with the
-2026-08-14 tightening on what a "too slow" claim must contain). The rest of M6
-agenda 6's list is untouched, plus three M6 additions:
+The suite-headroom entry was closed **both** by a decision and by work.
+The decision: 45s → a ~120s earmark for formal-verification instruments, with
+the 2026-08-14 tightening on what a "too slow" claim must contain. The work:
+**M6 task 1 (`feba7c2`) memoized `oracle.compile_source`** — the exact lever
+M6 agenda 6 named ("`oracle.compile_source` has no cache and every call is a
+subprocess … memoizing it collapses one of the two passes outright"). This
+paragraph said "resolved by a decision rather than by work" until the M6 final
+review, which is half the story. The rest of M6 agenda 6's list is untouched,
+plus three M6 additions:
 
 - **The ordering question is still unmeasured and still cheap.**
   `find_spec("pytest_randomly")` is `None` (re-checked 2026-08-14), so every
