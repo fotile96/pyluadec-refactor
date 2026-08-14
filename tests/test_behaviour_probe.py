@@ -451,12 +451,16 @@ def test_pinned_divergences_are_only_what_they_are_claimed_to_be(behaviour_trace
       calls with the same arguments in a different order: table iteration
       order, not a behavioural difference.
 
-    snr_mainmenu was the second claim and is gone with its pin (M6 task 12):
-    its `main` now certifies `L3`, so it no longer ships through the fallback's
-    `__pld_R` box model and both sides name the nil `field 'library'`. It is
-    asserted as a CONVERGENCE below rather than deleted outright, so that a
-    regression putting it back on the fallback path fails here too and not
-    only in the pin adjudication above.
+    snr_mainmenu was the second claim and is gone with its pin (M6 task 12).
+    It did NOT converge by certifying -- round-1 correction: its `main` is
+    `L1` (`mismatch: code at root/7`) and the file still emits `__pld_R` on
+    1974 of its 3325 lines (3220 of 4782 before task 12), 18 of them the very
+    `["library"]` lines the pin was about. What changed is whole-file fallback
+    -> HYBRID: the frames on the failing path ship structured text, so both
+    sides compose the message from a `GETTABLE` with a STRING key and name the
+    nil `field 'library'`. It is asserted as a CONVERGENCE below rather than
+    deleted outright, so that a regression putting it back on the fallback
+    path fails here too and not only in the pin adjudication above.
     """
     o, d = behaviour_traces["snr_mainmenu.lua"]
     assert o == d

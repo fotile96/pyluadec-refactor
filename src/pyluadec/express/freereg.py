@@ -264,15 +264,29 @@ def _constructor_field_target(fn: LirFunction, li: LirInstr,
     """The register this instruction reads *without consuming it*, or None.
 
     `SETTABLE`/`SETLIST` emitted by a **table constructor** read the table's
-    own slot, and that read is not a use of the value: `lparser.c`'s
-    `recfield` (`:596`) and `closelistfield`/`lastlistfield` (`:632`,
-    `luaK_setlist`) push the key and value above the table, emit the store,
-    and then restore `fs->freereg` to the slot immediately above the table.
-    The table stays on the expression stack, still unfinished, until whatever
-    the literal is an operand of takes it. So a field store must not spend the
-    one read the pop-once rule allows -- with N fields the table scored N + 1
-    reads and was graded a local, which is precisely backwards for
-    `f({x = 1})`.
+    own slot, and that read is not a use of the value. The two field forms
+    restore `freereg` in two different files, and the citations are given
+    separately because a reader who follows only the `lparser.c` one will not
+    find the `SETLIST` half at all (round-1 review: this docstring's first
+    version cited `lparser.c:596`/`:632`, which are inside `explist1` and
+    `funcargs` -- the wrong functions entirely):
+
+    * **hash field** -- `lparser.c::recfield` (`vendor/lua-5.1/src/lparser.c
+      :443`) saves `int reg = ls->fs->freereg` on entry, pushes the key and
+      value above the table, emits `luaK_codeABC(fs, OP_SETTABLE,
+      cc->t->u.s.info, rkkey, ...)`, and restores `fs->freereg = reg;` at
+      **`:460`**.
+    * **array field** -- `lparser.c::closelistfield` (`:464`) and
+      `lastlistfield` (`:475`) do NOT restore it themselves; they delegate to
+      `luaK_setlist`, and the restore is in `lcode.c` --
+      `vendor/lua-5.1/src/lcode.c:819` `luaK_setlist`, with
+      `fs->freereg = base + 1;` at **`:829`**.
+
+    Either way the table's own slot survives the store: the value stays on the
+    expression stack, still unfinished, until whatever the literal is an
+    operand of takes it. So a field store must not spend the one read the
+    pop-once rule allows -- with N fields the table scored N + 1 reads and was
+    graded a local, which is precisely backwards for `f({x = 1})`.
 
     `stack_discipline` already models the write half of exactly this
     (`SETTABLE`/`SETLIST` do `pop_ge(a + 1)`, "the table itself stays

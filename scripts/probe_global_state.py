@@ -121,13 +121,27 @@ def payload_of(result: str) -> str:
 # a non-zero exit while the test suite was green.
 #
 # Was four entries; `snr_graphic.lua`, `snr_memory.lua` and `snr_mainmenu.lua`
-# were deleted in M6 task 12 because their pairs CONVERGED, which is the one
-# way an entry is allowed to leave. Per-definition closure-capture
-# classification made the first two certify enough of themselves to ship
-# hybrid rather than whole-file fallback, and lifted `snr_mainmenu.lua`'s main
-# to `L3` outright; in all three the failing read is a real `GETGLOBAL` in our
-# output too, so `getobjname` names it identically. Measured 2026-08-14:
-# 228/229 identical, 1 pinned divergence.
+# were deleted in M6 task 12 because their pairs CONVERGED. Deleting them was
+# not a judgement call: `probe_common.adjudicate_pins` reports a converged pin
+# as `gone`, main() below returns 1 on it and the gate asserts it empty, so a
+# stale pin fails loudly until it is removed.
+#
+# All three converged by the SAME mechanism, and it is NOT certification --
+# none of the three `main`s certifies `L3` (round-1 correction; this comment
+# first claimed `snr_mainmenu.lua`'s did, and it is `L1`, `mismatch: code at
+# root/7`). What changed is that all three moved from whole-file fallback to
+# HYBRID: enough of each chunk now ships structured text that the read which
+# fails is a real `GETGLOBAL` there rather than a `__pld_R[<number>]` lookup,
+# so `getobjname` names it identically on both sides.
+#
+# They still ship plenty of box model -- "converged" is not "stopped". Lines
+# carrying `__pld_R`, measured 2026-08-14 across M6 task 12:
+#     snr_graphic.lua    1862/2411 -> 1324/1849
+#     snr_memory.lua     1225/1673 -> 1038/1469
+#     snr_mainmenu.lua   3220/4782 -> 1974/3325   (of which 18 are still the
+#                                                  `["library"]` lines this
+#                                                  file's pin was about)
+# Measured 2026-08-14: 228/229 identical, 1 pinned divergence.
 EXPECTED_ERROR_NAME_DIVERGENCE = {
     "snr_novel.lua": (
         "ERR|attempt to index global 'systemSave' (a nil value)|\n",

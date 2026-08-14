@@ -1958,12 +1958,23 @@ its value is read exactly once before the statement ends. It already knew that
 itself stays pending") but still counted their read of it, so a constructor
 with N fields scored N + 1 reads and was graded a **local**.
 
-`lparser.c` is unambiguous: `recfield` (`:596`) and `closelistfield`/
-`lastlistfield` (`:632`) push the key and value above the table, emit the
-store, and restore `fs->freereg` to the slot immediately above the table. The
-table stays on the expression stack until whatever the literal is an operand
-of takes it. `freereg._constructor_field_target` is the read half of that
-sentence.
+The sources are unambiguous, and the two field forms restore `freereg` in two
+different files — a reader given only the `lparser.c` pointer will not find the
+`SETLIST` half at all:
+
+| field form | emits | restores `freereg` |
+| --- | --- | --- |
+| hash (`{k = v}`, `{[e] = v}`) | `lparser.c::recfield`, `vendor/lua-5.1/src/lparser.c:443` | `fs->freereg = reg;` at `lparser.c:460` |
+| array (`{a, b, c}`) | `lparser.c::closelistfield` `:464` / `lastlistfield` `:475`, which delegate to `luaK_setlist` (`lcode.c:819`) | `fs->freereg = base + 1;` at **`lcode.c:829`** |
+
+Either way the table's own slot survives the store: the value stays on the
+expression stack until whatever the literal is an operand of takes it.
+`freereg._constructor_field_target` is the read half of that sentence.
+
+(Round-1 correction: this section and `freereg.py` first cited
+`lparser.c:596`/`:632`, which are inside `explist1` and `funcargs`. The
+substance was right and the pointers were wrong, which at the axiom layer is
+the difference between a fix and a coincidence.)
 
 Two faces, both one-line reproductions (`tests/test_express_aliasing.py`):
 
@@ -2034,10 +2045,95 @@ and re-certifying all 40 (a measurement only; the guard is load-bearing for
 execution-count correctness and its own docstring carries the proof): **6 of
 the 40** certify — `snr_graphic:main_2`, `snr_memory:main_2`,
 `snr_novel:main_2`, `snr_novel:main_3`, `snr_story_main:main_3` and its root.
-So `_same_block` is a real third mechanism but not the dominant one; the
-other 34 are unattributed and need their own diagnosis. `snr_common:main_71`
-(`structure: pc 286: else-join out of range`) is out of this family
-altogether — see the capability-boundary section.
+So `_same_block` is a real third mechanism but not the dominant one.
+
+`snr_common:main_71` (`structure: pc 286: else-join out of range`) is out of
+this family altogether — see the capability-boundary section. **Its stated
+mechanism is task 11's finding, not re-derived here**; what round 1 of task 12
+did check is the jump structure it rests on (pc 295 is a `JMP` whose only
+successor is 410, pc 409 is a `JMP` back to 279, so 279/410 really are a loop
+header and its exit). The `_match_loop`/`break_target=410` half is carried
+from task 11 and is unverified at this commit.
+
+### The `reconstruct: register N is read again` family — a fourth mechanism
+
+Five ledger rows, and they are **not** five defects. Measured 2026-08-14:
+
+* **Two are inherited ancestors.** `snr_common:main` carries `main_69`'s
+  message verbatim and `snr_s5_10_s:main` carries `main_42`'s;
+  `observation_classes.refusal_origin`'s `reconstruct` rule classifies both
+  `inherited`, and neither appears in `classes.json`'s candidate set.
+* **Three are own refusals** — `snr_common:main_69` (register 7),
+  `snr_s5_10_s:main_42` (register 11), `snr_s5_10_s:main_43` (register 9) —
+  and all three are the **same shape**, a clamp:
+
+  ```
+  250 SUB      R7 = R7 - R2      <- graded TEMP (its one read is the LT below)
+  251 LT       0 R7 K            <- reads R7
+  252 JMP      -> 254
+  253 LOADK    R7 = K1           <- graded LOCAL (the RK/literal barrier)
+  ...
+  257 SETTABLE R8[K] = R7        <- reads R7 AFTER THE JOIN
+  ```
+
+  (`snr_common:main_69`; `snr_s5_10_s:main_43` is `ADD` at 196 / `LE` 197 /
+  `JMP` 198 / `LOADK` 199 / read at 202+, and `main_42` is the same at
+  232/234/235. Source shape: `local v = a - b  if v < LIM then v = LIM end
+  t.k = v`.) The two verdicts are individually defensible — the `SUB` really
+  is read once before the branch, and the `LOADK` really is disqualified by
+  the RK/literal barrier — but they are **two arms of one conditional value**,
+  and at pc 257 the register holds either. The reconstructor stages the `SUB`,
+  the `LT` pops it, and the post-join read hits
+  `reconstruct.py::_read_reg`'s `_consumed` refusal.
+
+  This is the "no control-flow model" limitation that refusal's own docstring
+  names, and it is a **fourth** mechanism, not `_same_block`'s: `_same_block`
+  is one definition whose single consumer is in another block, this is two
+  definitions on two arms joining before a common consumer. None of the three
+  flips under the `_same_block` neuter above. Closing it needs a region for a
+  statement-level conditional assignment — `regions.CondValue` covers only the
+  `TESTSET`-based `and`/`or` idiom, and there is no `TESTSET` here.
+
+That leaves **31** of the 40 unattributed (40 − 6 `_same_block` − 3 clamp),
+plus the 9 purely inherited `... at root/N` rows that will follow whatever
+their descendants do.
+
+### `snr_music.lua:main` — the M5 diagnosis was right, and is now closed
+
+The task brief named it as a third instance of the constructor-aliasing
+family, from M5's adjudication. That diagnosis **survives**, and this task
+closed it. Measured 2026-08-14 by printing the chunk at BASE and at HEAD and
+recompiling both:
+
+| | BASE | HEAD | original |
+| --- | --- | --- | --- |
+| `code` length | 107 | **99** | 99 |
+| `maxstacksize` | 29 | 27 | 24 |
+| first differing pc | 2 | 1 | — |
+
+At BASE the printed source opens `local l0_1 = {…}` / `l0_1 = {…}` /
+`l0_1 = {…}` — four constructors collapsed into slot 1, exactly as M5 said. At
+HEAD they fold into one literal (`local l0_0 = {layerName = {…},
+musicTitle = {…}, …}`) and the instruction count is exactly right.
+
+What is left is a **fifth mechanism, and it is a consequence of closing the
+first**: the outer constructor's context is now held open longer, so the
+`local` for the table is emitted after three later scalar `local`s and every
+register shifts by three (24 → 27 is exactly those three slots). Instrumented
+directly — the reg-0 context opens at pc 1 in both, and closes:
+
+* at BASE while dispatching **pc 81** (`LOADBOOL` into register 1), because the
+  inner tables had been materialized into register 1 and folding them left
+  `LocalExpr(1)` items in the context's `hazard` set;
+* at HEAD while dispatching **pc 84** (the `CLOSURE` that reads register 0),
+  because the inner tables now fold as nested `TableExpr`s and `hazard` is
+  **empty**.
+
+So a fold that removes a hazard also removes the thing that used to close the
+context at the right place. It cost nothing here — the row was
+`mismatch: maxstacksize` before and after, and the ratchet shows 0 downgrades
+— but it is a real reordering hazard and it is the reason `snr_music.lua:main`
+did not certify despite its headline defect being fixed.
 
 ## Ledger fields added in M3
 
@@ -2171,6 +2267,68 @@ occurrences.
 because neither of its two fixes changes what `build_sir` accepts or what
 prints.)
 
+**The command, because rows 1 and 2 have never named one and row 2 is easy to
+get wrong** (added in task 12 round 1, after a reviewer's reasonable predicate
+produced 1240/1678 for row 2 and the figure could not be checked):
+
+```bash
+PYLUADEC_CORPUS_DIR=<corpus> uv run python - <<'PY'
+import json, os
+from pathlib import Path
+from collections import defaultdict
+from pyluadec.ingest import load_file
+from pyluadec.lift import lift_proto
+from pyluadec.pipeline import walk_proto_paths
+from pyluadec.sir.build import build_sir, StructureError
+from pyluadec.emit.lua import _print_proto_body
+from pyluadec.express.reconstruct import ReconstructError
+from pyluadec.verify.ledger import structural_hash
+
+C = Path(os.environ["PYLUADEC_CORPUS_DIR"])
+sir_ok, body_ok, occ = {}, {}, defaultdict(int)
+for f in sorted(C.glob("*.lua")):
+    tree = {}
+    walk_proto_paths("main", load_file(f), tree)
+    for path, p in tree.items():
+        h = structural_hash(p)
+        occ[h] += 1
+        try:
+            build_sir(lift_proto(p)); a = True
+        except StructureError:
+            a = False
+        try:
+            _print_proto_body(p, depth=1,
+                              upval_names=tuple(f"u{i}" for i in range(p.nups)))
+            b = True
+        except (StructureError, ReconstructError):
+            b = False
+        sir_ok[h] = sir_ok.get(h, True) and a
+        body_ok[h] = body_ok.get(h, True) and b
+rows = [json.loads(l) for l in open("corpus/ledger.jsonl")]
+l3 = {r["shash"] for r in rows if r["level"] == "L3"}
+tot = lambda d: (sum(1 for h, v in d.items() if v),
+                 sum(occ[h] for h, v in d.items() if v))
+print("row 1", tot(sir_ok))
+print("row 2", tot(body_ok))
+print("row 3", (len(l3), sum(occ[h] for h in l3)))
+PY
+```
+
+Two details are load-bearing and neither is guessable from the table:
+
+1. **The unit is the unique `structural_hash`, folded with AND over every
+   occurrence** — a shape counts only if *every* occurrence of it succeeds.
+   Counting occurrences independently and de-duplicating afterwards gives a
+   different, larger number.
+2. **Row 2's predicate is `_print_proto_body` with synthetic upvalue names,
+   not `print_chunk`.** `print_chunk` treats whatever it is handed as a chunk
+   ROOT, and a chunk root has no upvalue names, so it refuses (returns
+   `None`) for any proto that reads one. Substituting it gives **1240/1678**.
+   Measured 2026-08-14: of the **260** occurrences where `_print_proto_body`
+   succeeds and `print_chunk` does not, **all 260 have `nups >= 1`** and none
+   has `nups == 0` — the whole gap is the upvalue-naming artifact, not a
+   printing failure.
+
 Three different numbers, three different causes. M4 tasks 3 and 4 moved the
 top two rows and did not move the third at all; **task 13 moved only the
 third**, from 1139/1604 to 1389/1855, by making register classification per
@@ -2211,13 +2369,42 @@ per-file numbers predate task 11.
 
 Task 12 is the clearest case so far of the level census and the artifact
 counts answering different questions: `+1` row at `L3`, but three of the
-corpus's largest chunks (`snr_graphic.lua`, `snr_memory.lua`,
-`snr_mainmenu.lua`) stopped shipping the `__pld_R` state machine. Three pinned
-probe divergences converged as a direct consequence and had to be deleted —
-`snr_graphic`/`snr_memory`/`snr_mainmenu` in `probe_global_state.py`,
-`snr_mainmenu` in `probe_behaviour.py`, and `snr_mainmenu.lua:main_7` in
-`probe_enum.py` — leaving one pin in each of the first two and one in the
-third.
+corpus's largest chunks moved from whole-file fallback to **hybrid**, so a
+large fraction of each stopped going through the `__pld_R` state machine.
+**Not all of it** — "reduced", not "stopped", and the difference is what
+round 1 of this task's review had to correct in five places. Box-model lines,
+measured 2026-08-14 across the change:
+
+| file | `__pld_R` lines before | after |
+| --- | --- | --- |
+| `snr_graphic.lua` | 1862 / 2411 | **1324 / 1849** |
+| `snr_memory.lua` | 1225 / 1673 | **1038 / 1469** |
+| `snr_mainmenu.lua` | 3220 / 4782 | **1974 / 3325** |
+
+None of the three `main`s certifies `L3` (`snr_mainmenu.lua:main` is `L1`,
+`mismatch: code at root/7`), and `snr_mainmenu.lua:main_7` is `L1` with
+`shipped: "fallback"` — 18 of that file's surviving box-model lines are the
+very `["library"]` lines its probe pins were about. `quality_score.py` scores
+the three at 0.51 / 0.45 / 0.57, which is the same story on a different base.
+
+**The two fixes are jointly, not separately, responsible.** Measured by a
+source-level four-way ablation over all 229 files (checking out BASE/HEAD
+`names.py` and `freereg.py` independently and hashing
+`decompile_file(...).source`): the constructor-read fix alone and the
+closure-capture fix alone each produce output **byte-identical to BASE for
+every one of the 229 files**; only both together change anything, and they
+change exactly these three. On the *ledger* the split is different again —
+the constructor fix alone accounts for the whole `+1` `L3`
+(`snr_mainmenu.lua:main_2`) while shipping not one byte differently, and the
+capture fix alone moves neither. Level and artifact really are two questions.
+
+Three pinned probe divergences converged as a consequence. Deleting them was
+forced by the instruments, not chosen: `probe_common.adjudicate_pins` reports
+a converged pin as `gone`, each CLI returns 1 on it and each gate asserts it
+empty. Deleted: `snr_graphic`/`snr_memory`/`snr_mainmenu` in
+`probe_global_state.py`, `snr_mainmenu` in `probe_behaviour.py`, and
+`snr_mainmenu.lua:main_7` in `probe_enum.py` — leaving one pin in each of the
+first two and one in the third.
 
 Task 11 moved exactly one file out of each of the first two buckets'
 neighbours: `snr_fragment_main.lua` went hybrid -> fully structured, and

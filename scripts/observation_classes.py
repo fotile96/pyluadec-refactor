@@ -1020,6 +1020,14 @@ def main() -> int:
                   f"that is really what you want.", file=sys.stderr)
             return 1
     observed: dict[tuple[str, str], dict] = {}
+    # The orphan set the COMMITTED file already carried, so the banner at the
+    # end can report what this run newly quarantined rather than the running
+    # total. It printed the total under delta wording ("were moved to") for
+    # three milestones, and M6 task 12 read a 7-line banner as "7 newly
+    # quarantined" when 5 of them had been quarantined by task 11 and only 2
+    # were new. Empty under `--fresh`, which is correct: nothing is carried
+    # over, so nothing can be pre-existing.
+    prev_orphans: set[tuple[str, str]] = set()
     if keep_observed and dest.exists():
         prev = json.loads(dest.read_text())
         for rec in prev["candidates"]:
@@ -1028,6 +1036,7 @@ def main() -> int:
                 observed[(rec["file"], rec["proto_path"])] = obs
         for orph in prev.get("orphan_observations", []):
             observed[(orph["file"], orph["proto_path"])] = orph["observed"]
+            prev_orphans.add((orph["file"], orph["proto_path"]))
 
     all_protos: dict[tuple[str, str], object] = {}
     per_file: dict[str, dict] = {}
@@ -1258,6 +1267,19 @@ def main() -> int:
     # it silently is exactly the failure the milestone's own goal makes likely:
     # a proto certifies `L3`, leaves the leaf-refusal population, and a
     # human-reviewed note evaporates. Quarantine, and shout.
+    #
+    # There is a SECOND way to leave, and it is not the documented one --
+    # measured at M6 task 12, which is when it first happened.
+    # `snr_graphic.lua:main` was quarantined **without certifying**: its
+    # refusal reason moved from `mismatch: maxstacksize` to
+    # `mismatch: maxstacksize at root/2` (its own fields now match; a
+    # descendant's do not), and `refusal_origin` reads any `... at root/N` as
+    # `inherited`, so it stopped being a LEAF refusal while staying non-`L3`.
+    # An improvement that pushes a proto's first mismatch down into a
+    # descendant therefore orphans its observation just as an improvement that
+    # certifies it does. Both are quarantine, not loss, and both re-attach if
+    # the candidate returns -- but a reader who only knows the `L3` trigger
+    # will misread the banner.
     orphans = [{"file": f, "proto_path": path, "observed": obs}
                for (f, path), obs in sorted(observed.items())]
     doc = {"version": VERSION, "summary": summary, "candidates": records}
@@ -1283,13 +1305,30 @@ def main() -> int:
           f"input space <= {BUDGET}")
     print(f"  observed    : {summary['n_observed_records']} record(s) carried over")
     if orphans:
+        fresh_orphans = [o for o in orphans
+                         if (o["file"], o["proto_path"]) not in prev_orphans]
+        carried = len(orphans) - len(fresh_orphans)
         print("!" * 72, file=sys.stderr)
-        print(f"!! {len(orphans)} OBSERVATION(S) NO LONGER MATCH A CANDIDATE and "
-              f"were moved to `orphan_observations`:", file=sys.stderr)
-        for o in orphans:
+        # The count and the wording must agree: this run only MOVED the ones
+        # that were not already in `orphan_observations`. Printing the running
+        # total under "were moved to" is what misled M6 task 12 into reporting
+        # 7 newly quarantined observations when 2 were new.
+        print(f"!! {len(fresh_orphans)} OBSERVATION(S) NO LONGER MATCH A "
+              f"CANDIDATE and were moved to `orphan_observations` BY THIS RUN"
+              + (f" ({carried} more were already quarantined):"
+                 if carried else ":"), file=sys.stderr)
+        for o in fresh_orphans:
             print(f"!!   {o['file']}:{o['proto_path']} "
                   f"(reviewed_by {o['observed'].get('reviewed_by')})",
                   file=sys.stderr)
+        if carried:
+            print(f"!! already quarantined before this run ({carried}):",
+                  file=sys.stderr)
+            for o in orphans:
+                if (o["file"], o["proto_path"]) in prev_orphans:
+                    print(f"!!   {o['file']}:{o['proto_path']} "
+                          f"(reviewed_by {o['observed'].get('reviewed_by')})",
+                          file=sys.stderr)
         print("!! They are NOT lost -- they are quarantined in the JSON and "
               "will re-attach if the candidate returns.", file=sys.stderr)
         print("!" * 72, file=sys.stderr)

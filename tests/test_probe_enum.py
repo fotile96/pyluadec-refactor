@@ -552,8 +552,12 @@ def test_the_full_leaf_population_verdicts_are_pinned(corpus_dir):
     Re-measured 2026-08-14 after M6 task 12: **identical 9, divergent 1,
     budget-exceeded 1, never-reached 2** (was identical 8 / divergent 2 --
     `snr_mainmenu.lua:main_7` converged, all 128 of its assignments now
-    byte-identical, because task 12 lifted that chunk's `main` to `L3` so it
-    no longer ships through the fallback's `__pld_R` box model). The remaining
+    byte-identical). It did NOT converge by certifying -- round-1 correction:
+    `snr_mainmenu.lua:main` is `L1` (`mismatch: code at root/7`) and `main_7`
+    itself is `L1` with `shipped: "fallback"`. The file went whole-file
+    fallback -> HYBRID, so the frames on the failing path ship structured text
+    and both sides compose the message from a `GETTABLE` with a string key;
+    the file still emits `__pld_R` on 1974 of 3325 lines. The remaining
     divergence is pinned in `probe_enum.EXPECTED_DIVERGENCE` with
     instruction-level evidence and is the already-documented `__pld_R`
     `getobjname` class; adjudication is two-directional, so a changed message,

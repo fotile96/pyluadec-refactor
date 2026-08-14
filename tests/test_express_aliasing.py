@@ -4,12 +4,21 @@ table.
 The property under test, stated once:
 
     `lparser.c`'s `constructor` keeps the table on the expression stack for
-    the whole literal. `recfield`/`closelistfield` push the key and value,
-    emit `OP_SETTABLE`/`OP_SETLIST`, and then restore `fs->freereg = reg`
-    -- the slot *above* the table (`lparser.c:596`, `:632`). The table's own
-    register is never freed by a field store, so a field store is not the
-    consuming read that ends a staged value's life; it is bookkeeping inside
-    one still-unfinished expression.
+    the whole literal, and the two field forms restore `freereg` in two
+    different files:
+
+      * hash field -- `lparser.c::recfield` (`vendor/lua-5.1/src/lparser.c
+        :443`) saves `reg = fs->freereg`, emits `OP_SETTABLE`, and restores
+        `fs->freereg = reg;` at `:460`;
+      * array field -- `closelistfield` (`:464`) / `lastlistfield` (`:475`)
+        delegate to `luaK_setlist`, and the restore is `fs->freereg =
+        base + 1;` in `vendor/lua-5.1/src/lcode.c:829`.
+
+    (Corrected in round 1: this file first cited `lparser.c:596`/`:632`, which
+    are `explist1` and `funcargs`.) Either way the table's own register is
+    never freed by a field store, so a field store is not the consuming read
+    that ends a staged value's life; it is bookkeeping inside one
+    still-unfinished expression.
 
 `express/freereg.py::stack_discipline` already models half of this: `SETTABLE`/
 `SETLIST` `pop_ge(a + 1)` so "the table itself stays pending". The read half
@@ -280,10 +289,23 @@ def test_neutering_per_definition_capture_reproduces_the_whole_function_defect()
     """The closure-capture half of the task, same shape of proof.
 
     Neutering `_captured_here` to `False` would be the wrong direction (it
-    would simply seed nothing and could only inline MORE), so the neuter is
-    the pre-task reading: seed every captured register at every pc. The
-    fixture then materializes slot 1's inner constructors again, aliases the
-    outer table's two fields to the last one, and loses its `L3`."""
+    would simply seed nothing and could only inline MORE), so the neuter goes
+    the other way: force every captured register to a whole-function `local`.
+    The fixture then materializes slot 1's inner constructors again, aliases
+    the outer table's two fields to the last one, and loses its `L3`.
+
+    **What this is NOT** (round-1 correction; the docstring used to call it
+    "the pre-task reading"): it is a post-hoc `dataclasses.replace` on the
+    `RegClass` that `classify_registers` returns, so it never re-seeds
+    `frame_locals` into `stack_discipline` and cannot change what the
+    simulation pushes or promotes at a statement boundary. It is therefore not
+    the pre-task code path, and it is not equivalent to it -- measured
+    corpus-wide by printing all 229 chunks under this wrapper and under a real
+    BASE `names.py` (`7d36e2d`), holding `freereg.py` at HEAD: they differ on
+    **2 of 229** files (`snr_mainmenu.lua`, `snr_memory.lua`). The injection is
+    still valid -- it demonstrates that a whole-function reading of
+    `captured_regs` re-aliases this fixture and loses certification -- but it
+    demonstrates that about the *verdict*, not about the historical code."""
     p = _load(CAPTURE_REUSE_SRC)
     before = print_chunk(p)
     assert certify_proto(p, is_chunk_root=True).level == "L3"

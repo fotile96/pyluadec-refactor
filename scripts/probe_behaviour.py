@@ -186,17 +186,32 @@ def first_difference(orig: bytes, dec: bytes) -> tuple[int, bytes, bytes]:
 # cause rather than to a decompiler defect.
 #
 # snr_mainmenu.lua was the second entry and was DELETED here because its pair
-#   converged, which is the one way an entry may leave (the test asserts
-#   two-directionally, so a converged pin fails until it is removed). It was
-#   the getobjname naming artifact of the fallback's `__pld_R` box model:
-#   the original does `GETTABLE 6 6 "library"` immediately followed by
-#   `ADD 5 5 6`, so ldebug.c's kname() finds a STRING constant and says
-#   `field 'library'`, whereas the fallback's
+#   converged. Deletion was forced, not chosen: `probe_common.adjudicate_pins`
+#   reports a converged pin as `gone`, main() returns 1 on it and the gate
+#   asserts it empty. It was the getobjname naming artifact of the fallback's
+#   `__pld_R` box model: the original does `GETTABLE 6 6 "library"`
+#   immediately followed by `ADD 5 5 6`, so ldebug.c's kname() finds a STRING
+#   constant and says `field 'library'`, whereas the fallback's
 #   `__pld_R[5] = __pld_R[5] + __pld_R[6]` gives kname() a NUMBER key and it
-#   says `field '?'`. Task 12's per-definition closure-capture classification
-#   lifted that chunk's `main` to `L3`, so it no longer ships through the box
-#   model at all and both sides now say `field 'library'`. The same
-#   convergence removed three of the four pins in `probe_global_state.py`.
+#   says `field '?'`.
+#
+#   What changed in M6 task 12 is NOT that the chunk certifies -- round-1
+#   correction: this comment first said task 12 "lifted that chunk's `main` to
+#   `L3`, so it no longer ships through the box model at all", and BOTH halves
+#   are false. `snr_mainmenu.lua:main` is `L1` (`mismatch: code at root/7`) and
+#   the file still emits `__pld_R` on 1974 of its 3325 lines, 18 of them the
+#   very `["library"]` lines above. The file moved from whole-file fallback to
+#   HYBRID (3220/4782 box-model lines before, 1974/3325 after), and the
+#   *specific* proto on the failing path now ships structured text, so both
+#   sides reach the same `GETTABLE` with a string key.
+#
+#   The attribution matters too: closure-capture classification ALONE moves
+#   nothing here. Measured by a source-level 4-way ablation over all 229 files
+#   (checking out BASE/HEAD `names.py` and `freereg.py` independently), the
+#   shipped artifact is byte-identical to BASE under either fix on its own;
+#   only both together change anything, and they change exactly three files.
+#   The same convergence removed three of the four pins in
+#   `probe_global_state.py`.
 #
 # snr_novel.lua -- table iteration order. The two traces are the SAME MULTISET
 #   of 43 lines in a different order (asserted in the test), and the file's

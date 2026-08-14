@@ -352,10 +352,23 @@ def test_classes_json_is_a_reproducible_fixed_point(corpus_dir, tmp_path, monkey
     fresh["summary"]["n_observed_records"] = len(observed)
     # An observation whose proto has LEFT the candidate set is an orphan, not a
     # loss: the generator moves it to `orphan_observations` rather than
-    # dropping it. Five appeared at M6 task 11 -- `snr_common.lua:main_74_13`,
-    # `main_76_8`, `main_81`, `snr_fragment_main.lua:main_1` and
-    # `snr_story_main.lua:main_1`, all of which certified `L3` and so are no
-    # longer non-`L3` candidates. Reconstructed here for the same reason the
+    # dropping it. Seven are quarantined as of M6 task 12, in two batches and
+    # for two different reasons -- re-measured 2026-08-14, because the earlier
+    # wording here ("Five ... all of which certified `L3`") was both the wrong
+    # count and the wrong rule once the second batch arrived:
+    #
+    #   * five at M6 task 11 -- `snr_common.lua:main_74_13`, `main_76_8`,
+    #     `main_81`, `snr_fragment_main.lua:main_1` and
+    #     `snr_story_main.lua:main_1`. All five certify `L3`, so they are no
+    #     longer non-`L3` candidates.
+    #   * two at M6 task 12 -- `snr_mainmenu.lua:main_2`, which certifies `L3`
+    #     like the first batch, and `snr_graphic.lua:main`, which **does
+    #     not**: it is still `L1`, but its reason moved to
+    #     `mismatch: maxstacksize at root/2`, which `refusal_origin` reads as
+    #     `inherited`, so it stopped being a LEAF refusal. Leaving the
+    #     candidate set does not require certifying.
+    #
+    # Reconstructed here for the same reason the
     # `observed` records are: this test's claim is that the generator computes
     # NOTHING from an observation, so every observation-derived field has to be
     # re-inserted by hand and still reproduce the committed bytes.

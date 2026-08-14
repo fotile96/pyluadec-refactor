@@ -700,13 +700,28 @@ def exhaust(file, proto_path: str, *, jobs: int = 8,
 # routes every register through `__pld_R[<number>]`, so the key is a NUMBER
 # constant and `kname` says `field '?'`. Only the noun in an error MESSAGE
 # differs; the two sides fail at the same instruction with the same error kind.
-# Both should CONVERGE when one of these protos certifies `L3` and stops
-# shipping through the box model -- at which point adjudication reports `gone`
-# and the pin must be deleted, not left to pass silently. That happened to
-# `snr_mainmenu.lua:main_7` in M6 task 12 (per-definition closure-capture
-# classification lifted that chunk's `main` to `L3`), and its entry was deleted
-# below exactly as this comment prescribes -- all 128 of its assignments are
-# now byte-identical. The same convergence removed the file's pins in
+# Both should CONVERGE when the code on the failing path stops going through
+# the box model -- at which point adjudication reports `gone` and the pin must
+# be deleted, not left to pass silently. That happened to
+# `snr_mainmenu.lua:main_7` in M6 task 12: all 128 of its assignments are now
+# byte-identical and its entry was deleted below, exactly as this comment
+# prescribes.
+#
+# **Not because it certifies.** Round-1 correction: this comment first said
+# task 12 "lifted that chunk's `main` to `L3`", which is false twice over --
+# `snr_mainmenu.lua:main` is `L1` (`mismatch: code at root/7`) and `main_7`
+# itself is `L1` with `shipped: "fallback"`, i.e. the pinned proto is STILL
+# emitted by the state machine. What changed is that the file went from
+# whole-file fallback to HYBRID, so the enclosing frames on the failing path
+# ship structured text and the `GETTABLE` that composes the message now
+# carries its string key on both sides. The file still emits `__pld_R` on 1974
+# of 3325 lines (3220 of 4782 before), 18 of them the `["library"]` lines this
+# pin was about.
+#
+# The attribution is also joint, not single: measured by a source-level 4-way
+# ablation over all 229 files, neither the constructor-read fix nor the
+# closure-capture fix changes one byte of shipped output on its own; only both
+# together do. The same convergence removed the file's pins in
 # `probe_global_state.py` and `probe_behaviour.py`. `snr_common.lua:main_81`
 # remains: `snr_common.lua` still ships whole-file fallback.
 #
