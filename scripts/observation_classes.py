@@ -36,6 +36,41 @@ Each candidate record has two halves, and the split is load-bearing:
     it carries them across. `--fresh` drops them, which is how the mechanical
     half alone is shown to be a fixed point independent of the observations.
 
+## Two fields whose NAME promises more than the field measures
+
+Both are consumer traps rather than errors -- the values are what this module
+computes, and the tests assert exactly that -- so they are documented here,
+where a consumer reads, rather than renamed (a rename regenerates a committed
+artifact). Recorded at the M6 wrap, task 13, with the figures measured
+2026-08-14 at that tree.
+
+  * **`loop_polls_per_iteration` does not mean "every iteration".** It is
+    `bool(poll_loops(...)) or bool(in_loop_callees_reaching_poll)`, i.e. *a
+    poll site lies **somewhere** in some natural loop's body* -- directly, or
+    through an in-loop call to a callee that transitively reaches a poll. A
+    poll inside a conditional arm of the body satisfies it and does not run
+    every iteration. Under the stronger reading -- some loop has a poll site
+    whose CFG block **dominates every latch** of that loop -- it holds for
+    **116 of the 125** records that carry the flag (`choice-branch` 110/113,
+    `ui-keyloop` 6/9, `neither` 0/3). The nine exceptions:
+    `snr_common:main_71`, `snr_common:main_75`, `snr_e1_10_s:main_29`,
+    `snr_e2_10_f:main_35`, `snr_e2_10_s:main_13`, `snr_graphic:main_4`,
+    `snr_mainmenu:main_7`, `snr_s4_10_fb:main_16`, `snr_s6_10_s:main_19`. The
+    conclusion the flag was measured for is unaffected either way -- the two
+    interaction classes overlap on termination, so non-termination does not
+    distinguish Class 2 -- because 110/113 `choice-branch` survives the
+    stricter test too.
+  * **`mechanical.footprint` is a 7-key PROJECTION** of `footprints.json`'s 23
+    per-proto fields (`global_reads`, `table_key_reads`, `calls`,
+    `table_key_calls`, `dynamic_reads`, `read_sites`, `call_sites`). The two
+    honesty counters a consumer most needs are **not** joined:
+    `unattributed_calls` and `unattributed_reads`. Measured over the 156
+    candidates: **142 have `unattributed_calls > 0`, 908 sites in total**, and
+    127 have `unattributed_reads > 0`, 1171 sites. A consumer sizing a stub
+    surface from `footprint` alone will therefore under-count the call sites it
+    has to stub; join `corpus/observation/footprints.json` by
+    `(file, proto_path)` for the full record.
+
 ## Candidate selection (the brief's Step 1)
 
 Two populations, unioned:

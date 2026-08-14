@@ -21,10 +21,14 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 : "${PYLUADEC_CORPUS_DIR:?set PYLUADEC_CORPUS_DIR to the 229-file corpus}"
 
-# eb08890 = "Merge phase4-m4-loops", the last merged milestone tip and this
-# branch's fork point. Override with any ref that has a corpus/ledger.jsonl
-# (e.g. bbe74f6, the M3 tip, for a two-milestone diff).
-BASELINE_REF="${1:-eb08890}"
+# 0957364 = "Merge phase5-m5-longtail", the last merged milestone tip and the
+# M6 branch's fork point. Override with any ref that has a corpus/ledger.jsonl
+# (e.g. eb08890, the M4 tip, or bbe74f6, the M3 tip, for a multi-milestone
+# diff). Updated at the M6 wrap (task 13): the default had been left at
+# eb08890 through M5's merge, which still catches every downgrade but grades
+# against a two-milestone-old baseline. Comparing against the NEWEST merged
+# tip is the stricter reading and is what the line above always claimed to be.
+BASELINE_REF="${1:-0957364}"
 # Portability, not style (M5 task 8 round 1). `mktemp -t NAME` is the BSD
 # spelling and works on macOS, but GNU coreutils treats -t's argument as a
 # TEMPLATE and rejects one without trailing X's: src/mktemp.c does

@@ -2275,6 +2275,21 @@ out of M2" and §6 above for the full text of each.
 
 # M6 agenda
 
+**CLOSED OUT at the M6 wrap (task 13, 2026-08-14). What is still open lives in
+the "M7 agenda" section at the end of this file** — this section keeps its
+record, including the parts M6 did not touch, but it is no longer the place to
+read for what is next. Per-item disposition, each linked to the heading below:
+
+| # | item | disposition at the M6 wrap |
+|---|---|---|
+| 1 | reconstruction residual + `avg_score ≥ 0.997` | **partially closed** (tasks 11, 12): 48 non-`L3` shapes → **40**, `structure:` family 21 → 1. **The 0.997 half is WITHDRAWN, not deferred** — it stopped being a gate on 2026-08-13 (spec §2 decision log). Residual → M7 agenda 1 |
+| 2 | corpus-wide L2, the four taint gaps, the truncation residue | **untouched by M6.** L2 reach is still 1 file → M7 agenda 2 |
+| 3 | `next`/`pairs` iteration order | **untouched**, and it shrank with agenda 1: fallback-path occurrences 197 → **181** → M7 agenda 3 |
+| 4 | probe hardening (4 re-deferred entries + the driver duplication) | **the fifth sub-item is CLOSED** — M6 task 7 extracted the shared driver into `scripts/probe_common.lua` (504 lines) instead of making a third copy, and `probe_behaviour.lua` / `probe_keyseq.lua` / `probe_enum.lua` all load it. The four wire-format entries are **untouched** → M7 agenda 4 |
+| 5 | a `StructureError` does not name the proto that raised it | **untouched** (`structure/structured.py::_refused` still takes only the exception, re-checked 2026-08-14) → M7 agenda 5 |
+| 6 | the engineering-debt set | **the suite-headroom entry is resolved by a decision, not by work**: the 45s ceiling became a ~120s earmark for formal-verification instruments (human partner, 2026-08-13, with the 2026-08-14 tightening on what "too slow" has to be). The ordering question is **still unmeasured and still cheap to answer** — `find_spec("pytest_randomly")` is `None`, re-checked 2026-08-14. Everything else untouched → M7 agenda 6 |
+| 7 | M1's Linux x86_64 verification | **still outstanding**, and still the only exit criterion in this project that has been half-satisfied since 2026-08-10 → M7 agenda 7 |
+
 Written at the M5 wrap (task 12, 2026-08-13). Same conventions as the M4 and
 M5 agendas above: **open unless the heading says otherwise**, numbered so items
 can be cited, numbering is not a priority order, and **every figure quoted here
@@ -2295,11 +2310,32 @@ file fallback**; **1747/1944 (89.9%) occurrences ship structured text**; ported
 quality metric **0.968833**; L2 reach **1 file**. `./scripts/ratchet_job.sh`
 exits 0.
 
-## 1. Close the reconstruction residual, and reach `avg_score ≥ 0.997`
+## 1. Close the reconstruction residual, and reach `avg_score ≥ 0.997` — PARTIALLY CLOSED (M6 tasks 11, 12); the `0.997` half WITHDRAWN
 
-**This is M6's exit criterion**, inherited from M5 by the human partner's
-decision of 2026-08-12 (recorded in the spec's §2 decision table, not only
-here). Everything below is the diagnosis M5 handed over; none of it is
+### Disposition at the M6 wrap (task 13, 2026-08-14)
+
+**The `avg_score ≥ 0.997` clause is withdrawn, not carried.** It stopped being
+a gate on 2026-08-13 by the human partner's decision, recorded in the spec's
+§2 decision table (third row from the end). It is a dashboard observable and
+measures **0.977328** at the M6 wrap, from 0.968833. Do not re-derive an M7
+target from it: M6's own measurement is that this metric and defect detection
+are not the same question — the fingerprint it coarsens scores `cfg_reachable`
+**1.0** on `snr_common.lua:main_75`, a proto whose only loop the predecessor
+had deleted.
+
+**The residual half moved and is carried to M7 agenda 1.** Measured
+2026-08-14 at the wrap: **40 non-`L3` ledger rows** (48 at M6 start), split
+**29 own refusals + 11 inherited ancestors** by the leaf/ancestor join
+`tests/test_m6_exit.py::coverage_gaps` performs. `L3` is **1438/1478 unique
+(97.3%) / 1904/1944 occurrences (97.9%)**; **217 files ship fully structured,
+8 hybrid, 4 whole-file fallback**.
+
+**This section's two named defects are what tasks 11 and 12 worked on**, and
+their outcomes are recorded inline below (the compound-`if` entry) and in
+`docs/runbooks/structured-pipeline.md`'s "What is left, attributed rather than
+narrated". Everything below this line is the M5-era diagnosis as written.
+
+Everything below is the diagnosis M5 handed over; none of it is
 hand-waving and each part has a committed artefact to start from.
 
 The 48 non-`L3` unique protos / 48 non-`L3` occurrences split by
@@ -2471,9 +2507,11 @@ same multiset of 43 trace lines in a different order.
 Scope carefully, because it is smaller than it was: presize fidelity is
 guaranteed *indirectly* for anything that certifies `L3` (`NEWTABLE`'s `B`/`C`
 are part of `code`), so the gap is confined to protos still on the fallback
-path — which is now **197 of 1944 occurrences**, and `snr_novel.lua` is one of
-the 7. This item therefore shrinks as agenda 1 progresses and may vanish with
-it. Full text at "5. Table internal layout" in the M5 agenda above.
+path — which was **197 of 1944 occurrences** when this was written and is
+**181** at the M6 wrap (re-measured 2026-08-14: 1944 − 1763 shipped
+structured), and `snr_novel.lua` is one of the **4** remaining whole-file
+fallbacks (7 when this was written). This item therefore shrinks as agenda 1
+progresses and may vanish with it. Full text at "5. Table internal layout" in the M5 agenda above.
 
 ## 4. Probe hardening (the four re-deferred entries from M5 agenda 11)
 
@@ -2493,6 +2531,16 @@ A fifth, from M5 task 9's own closing concern: `scripts/probe_keyseq.lua`
 duplicates ~250 lines of `scripts/probe_behaviour.lua`. Deliberate, and pinned
 by a drift test — but a **fourth** probe should extract the engine rather than
 copy it a third time.
+
+> **CLOSED — M6 task 7 (2026-08-14).** The fourth probe (`probe_enum.lua`) did
+> not copy it. The shared driver moved into `scripts/probe_common.lua` (504
+> lines at the wrap) and all three of `probe_behaviour.lua`,
+> `probe_keyseq.lua` and `probe_enum.lua` load it. One consequence worth
+> knowing, recorded in the task-7 report: the "no Lua patterns in the probe"
+> rule had been asserted per probe against each probe's own file, so the ~460
+> driver lines that moved were briefly covered by nothing;
+> `test_no_lua_patterns_in_the_probe` is now parametrised over both files.
+> **The four wire-format entries above are untouched** and carry to M7.
 
 ## 5. A `StructureError` does not say which proto raised it
 
@@ -2612,3 +2660,217 @@ project's primary documented environment. That was found by reading upstream
 `coreutils/src/mktemp.c`, **not by running it**, because no Linux host was
 available — and it was fixed unverified. Both facts belong to whoever runs the
 Linux gate first.
+
+---
+
+# M7 agenda
+
+Written at the M6 wrap (task 13, 2026-08-14). Same conventions as the M4, M5
+and M6 agendas above: **open unless the heading says otherwise**, numbered so
+items can be cited, numbering is **not** a priority order, and **every figure
+here was measured at the M6 wrap tree unless it says otherwise** — re-derive
+before relying on any of them, and if one does not reproduce the measurement
+wins and the discrepancy gets written down.
+
+**Starting state, measured 2026-08-14.** `L3` **1438/1478 unique (97.3%) /
+1904/1944 occurrences (97.9%)**; **217 files ship fully structured, 8 hybrid,
+4 whole-file fallback**; **1763/1944 (90.7%)** occurrences ship structured
+text; ported quality metric **0.977328** (an observable, not a gate — spec §2
+decision table); L2 reach **1 file**. Suite **1077 tests**, 55.07-55.61s over three runs on
+macOS 15.2 / Apple M4 (arm64) against the ~120s earmark.
+`./scripts/ratchet_job.sh` exits 0 against baseline `0957364`
+(**8 upgraded, 0 downgraded**).
+
+Items 1–7 are the M6 agenda's items renumbered 1:1 with their M6 disposition
+folded in (see the table at the head of that section); items 8–11 are new, and
+8 and 9 exist because the 2026-08-14 plan amendments explicitly routed work
+here rather than dropping it.
+
+## 1. The reconstruction residual: 40 rows, five mechanisms, three open
+
+Carried from M6 agenda 1, whose `avg_score ≥ 0.997` half is **withdrawn** and
+must not be re-derived as an M7 target.
+
+**The accounting, measured 2026-08-14, because two different denominators are
+in circulation and both are right.** 40 non-`L3` ledger rows = **29 own
+refusals + 11 inherited ancestors** (an ancestor adopts a descendant's refusal
+verbatim; the join is `tests/test_m6_exit.py::coverage_gaps`). Attributed so
+far: **9 rows** — 6 by M6 task 12's `_same_block` neuter experiment (5 own +
+`snr_story_main:main`, which is inherited) and 3 by the clamp / conditional-
+value shape (all own). **Unattributed: 21 own + 10 inherited = 31 rows.** A
+document quoting "21" is counting own refusals; one quoting "31" is counting
+rows. Say which.
+
+`Reconstructor.write_reg`'s `reg not in self.declared` gate is the amplifier
+behind all of it, and M6 task 12 measured it to be **at least five
+mechanisms**: A constructor field stores (**closed**), B per-definition
+closure capture (**closed**), C `_same_block` (**open**, 6 rows), D the clamp /
+conditional-value shape (**open**, 3 rows — two arms of one conditional value
+joining before a common consumer, which needs a statement-level conditional-
+assignment region; `regions.CondValue` covers only the `TESTSET` `and`/`or`
+idiom and there is no `TESTSET` here), E the `hazard`-set consequence of A
+(**open**). Full diagnosis with the exemplars:
+`docs/runbooks/structured-pipeline.md`, "What is left, attributed rather than
+narrated".
+
+One survivor is not in this family at all: `snr_common.lua:main_71`
+(`structure: pc 286: else-join out of range`) is the last `structure:` row and
+is a **loop** recognizer gap — its `break` at pc 295 targets the exit of a
+`while true` that `_match_loop` does not recognize. Two more recognizer gaps
+have no corpus consumer and are pinned synthetically by
+`tests/test_sir_condtree.py::WHILE_HEADER_GAP`: `while <a and b> do` (the
+header must currently be one basic block) and `repeat ... until a or b`.
+
+## 2. Corpus-wide L2, the four taint gaps, and the truncation residue
+
+**Untouched by M6.** The full text is M6 agenda 2 above and it is unamended:
+reach is still **1 of 229 files**, 4 more refuse `taint-static`, **220 of 229
+contain no `pressButton` at all** (a structural ceiling, not a backlog), the
+static may-analysis has four documented granting gaps each committed as a
+test, and the truncation residue is a committed known-open route
+(`tests/test_l2_keyseq.py::test_a_branch_only_a_capped_sequence_enters_is_
+granted_on_a_truncated_prefix`).
+
+One thing M6 adds to it, and it cuts the other way: the two historical
+key-sequence checkpoints live in `snr_common.lua`, and M6 confirmed **two real
+defects in that file's predecessor text** (`main_76_2`, `main_75`) that the L2
+harness's own stubs make invisible — `scripts/probe_keyseq.py` stubs the very
+gates that select those arms, so its five authored sequences produce
+byte-identical traces on original, predecessor **and** repaired text
+(measured by the out-of-plan repair tasks; the claim is committed in
+`tests/test_cross_corpus.py`'s module docstring, which is where to re-derive
+it from). Raising
+L2 reach and making L2 able to see this class are not the same project.
+
+## 3. The `next`/`pairs` iteration-order gap
+
+**Untouched**, and smaller than it was: presize fidelity is guaranteed
+indirectly for anything that certifies `L3`, so the gap is confined to the
+fallback path, which is **181 of 1944 occurrences** at the M6 wrap (197 at the
+M5 wrap). Full text at M6 agenda 3.
+
+## 4. Probe hardening — four wire-format entries
+
+The fifth entry (a fourth probe copying the driver a third time) is **closed**
+by M6 task 7's extraction into `scripts/probe_common.lua`. The four remaining
+are unchanged and still share one blocker — the probes' wire format is
+load-bearing, so the obvious repairs move pinned divergence strings. Full text
+at M6 agenda 4 / M5 agenda 11.
+
+## 5. A `StructureError` does not say which proto raised it
+
+**Untouched**, re-checked 2026-08-14: `structure/structured.py::_refused`
+still takes only the exception, so an ancestor adopts a descendant's message
+with the descendant's pc. That is exactly the confusion item 1's accounting
+had to work around by hand. Full text at M6 agenda 5.
+
+## 6. Engineering debt
+
+The suite-headroom entry is **resolved by a decision rather than by work**
+(45s → a ~120s earmark for formal-verification instruments, with the
+2026-08-14 tightening on what a "too slow" claim must contain). The rest of M6
+agenda 6's list is untouched, plus three M6 additions:
+
+- **The ordering question is still unmeasured and still cheap.**
+  `find_spec("pytest_randomly")` is `None` (re-checked 2026-08-14), so every
+  A/B this project has ever run compared two identical collection orders.
+  Decide it on whether order-independence is worth a dependency.
+- **`corpus/observation/classes.json`'s two consumer traps**, documented at
+  the M6 wrap but not fixed, because fixing either moves a committed artifact:
+  (a) `loop_polls_per_iteration` means "a poll site lies **somewhere** in a
+  natural loop's body, directly or through an in-loop call to a poll-reaching
+  callee" — under a dominance test (a poll site whose block dominates every
+  latch of that loop) it is **116 of the 125** records that carry the flag,
+  measured 2026-08-14, the nine exceptions being `snr_common:main_71`,
+  `snr_common:main_75`, `snr_e1_10_s:main_29`, `snr_e2_10_f:main_35`,
+  `snr_e2_10_s:main_13`, `snr_graphic:main_4`, `snr_mainmenu:main_7`,
+  `snr_s4_10_fb:main_16` and `snr_s6_10_s:main_19`; (b) `mechanical.footprint`
+  is a **7-key projection** of `footprints.json`'s 23 per-proto fields, and
+  the two omitted honesty counters are the ones a consumer most needs —
+  **142 of the 156 candidates have `unattributed_calls > 0` (908 in total)**
+  and 127 have `unattributed_reads > 0` (1171), none of it visible in
+  `classes.json`. Both fixes are field renames/additions, i.e. a regeneration,
+  which is why they are here and not in M6.
+- **`tests/conftest.py::pred_compiled` has no consumer** as of the M6 wrap
+  (grep: one definition, zero uses). M6 task 13 removed its `strip` default
+  rather than leave a trap; if M7 gives it consumers, keep the parameter
+  required.
+
+## 7. M1's Linux x86_64 verification
+
+**Still outstanding**, unchanged since 2026-08-10 and still the only exit
+criterion in this project that has been half-satisfied for a whole phase:
+`docs/runbooks/64bit-migration.md` requires *both* 64-bit platforms green and
+only macOS arm64 has been proven. M5's `mktemp -t` finding (BSD-only spelling,
+fixed unverified) is the standing evidence that this is not ceremonial. Full
+text at M6 agenda 7.
+
+## 8. The Class-1 instrument's corpus-wide run
+
+**Routed here by the 2026-08-14 plan amendment**, not dropped. `probe_enum` is
+built, fault-injection-proven and pinned over the **13 compound-`if` leaves**;
+what the amendment cut was the corpus-wide Class-1 run. Three things it needs
+first, all measured:
+
+- **Size it with `probe_enum.channels_of`, never with `classes.json`'s
+  `input_space`.** The published figure collapses every string constant to
+  `"str"`; corpus-wide the within-budget count is **1936 of 1944, not 1940**,
+  and for `choice-branch` candidates it is **106 of 113, not 110** (re-derived
+  2026-08-14 at the wrap tree). The candidate totals moved with the population
+  and the corpus-wide ones did not: task 7 measured 162 candidates, 159 coarse
+  → 155 fine; the wrap measures **156 candidates, 153 coarse → 149 fine**,
+  because tasks 11 and 12 closed leaf refusals in between. Worst ratios: `snr_s7_10_f:main_53` 4 → 118 (29.5×),
+  `snr_s2_10_s:main_60` 240 → 5280, `snr_s3_10_s:main_59` 3456 → 72576,
+  `snr_s4_10_s:main_58` 1152 → 23616.
+- **The predecessor-recompiled arm does not exist.** `probe_enum._payload`
+  accepts `original` and `decompiled` only; the third side was dropped with
+  the corpus-wide run (report §5.9). If M7 wants Track 1 driving, that arm is
+  new work, and §3/§4's static adjudication is the yardstick it has to beat.
+- **Two protos are never reached** (`snr_fragment_main:main_1`,
+  `snr_story_main:main_1`): the chunk publishes them under no name the
+  discovery walk finds.
+
+## 9. The Class-2 (UI poll loop) instrument
+
+**Design note delivered** (`docs/reports/m6-uiloop-design.md`), **prototype
+routed here** by the same amendment. Read the note's own labelling of which
+assumptions are measured and which are not before building anything. The two
+measurements that matter most: the loop-body cut correspondence is **18 of
+19** hand-cut protos, the sole failure being `snr_music:main_3` — which is
+sole failure *because the predecessor's poll loop is missing altogether*,
+i.e. the instrument's hardest case is a real defect; and the class overlap
+(item 6's `loop_polls_per_iteration`, with the dominance refinement) means a
+Class-2 instrument is not serving a disjoint population from Class 1.
+
+## 10. What the cross-corpus adjudication left open
+
+- **Four `snr_common.lua` paths were never walked end to end** (`main_55`,
+  `main_28`, `main_76_7`, `main_77_24`). The loss sweeps walked **every site
+  they flag** on all four, which bounds them for the swept fields only —
+  global reads, global writes, call targets, call shapes, return arity, loop
+  headers, reachable back edges and per-opcode test counts. That is a bound,
+  not an end-to-end walk.
+- **Two premises bytecode cannot settle**, both load-bearing for the twelve
+  `equivalent-transform` verdicts: no side-effecting `__index`/`__newindex` on
+  `_G` or on engine-owned tables, and `pairs()` order-insensitivity in the
+  engine's own callees. Supporting but not conclusive: the eight metatable
+  identifiers occur in **0 of 229** predecessor sources and, as a substring of
+  any string constant, **0 of 229** original bytecode files — the metatables
+  that would matter are installed by the PSP engine's C side, which neither
+  corpus can see.
+- **`corpus/pred_repairs/` repaired six defects and reconciled nothing else.**
+  Its README lists what was deliberately left: the duplicated loop tail in
+  `main_76_2` and the three-poll fall-through it causes, the `cursor row == 6`
+  arm, and byte fidelity anywhere (two of the four instruction counts moved
+  closer to the original, two moved further — the repairs buy behaviour, not
+  bytes). Handing these upstream to the localization project is not a task in
+  this repository, and nothing here reads that directory.
+
+## 11. The provocations that have never been started
+
+`M6+ 实验` in spec §7 — GPU proposer, `lparser`/`lcode` instrumented rule
+mining, Lua 5.2 ingest — **none was started in M6**, and the pass-registry
+decision (spec §2) named the GPU proposer as the plugin surface's only real
+customer. If one of these starts, the registry question re-opens *with an
+actual interface to design against*, which was the whole point of retiring it
+rather than building it speculatively.

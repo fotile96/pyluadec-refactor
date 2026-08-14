@@ -8,6 +8,14 @@ task's assertions live in `tests/test_predcorpus.py`; this file exists so the
 per-file numbers behind those assertions are inspectable without re-running
 anything.
 
+**Milestone closed 2026-08-14. Read §6 first** -- it is the summary of record
+(exit clauses one by one, the six defects, where the decompiler ended up, the
+three spec decision-log rows, the deferred minors' disposition, and the
+figures from earlier sections that did not reproduce at the wrap). Sections 1
+to 5 are each a task's evidence **as it stood when that task closed**, kept
+that way on purpose; where a later task moved one of their numbers, §6.6 or a
+dated note at the number itself says so.
+
 ## 1. Predecessor-corpus parity census (task 2)
 
 > **Round 1 correction (2026-08-13).** The first version of this section
@@ -1360,10 +1368,13 @@ instrument cost: it is the pin gate for the cross-corpus scan.
 ### 3.12 What this leaves open
 
 * **Four of the six defects are newly found and none is repaired here.**
-  `corpus/pred_repairs/` (M6 task 4, out of plan) covers `snr_music.lua` and
-  `snr_common.lua:main_76_2` only. Defects (3), (4), (5) and (6) are recorded, not
-  fixed, and the adjudication deliberately ran against the *unmodified*
-  predecessor corpus.
+  `corpus/pred_repairs/` (task X, out of plan — this section originally cited
+  it as "M6 task 4", which is the in-plan observation pass; corrected at the
+  M6 wrap) covered `snr_music.lua` and `snr_common.lua:main_76_2` when this
+  was written. **A second out-of-plan round, task X2, repaired the other four**
+  — see §6.2. Both rounds are downstream of this adjudication, which
+  deliberately ran against the *unmodified* predecessor corpus, as does every
+  arm and sweep in this report.
 * **Promote the reachable-back-edge sweep** (§3.7). It is one reachability walk
   per proto, it found a defect no rule in this harness ranks, and
   `semantic_score._cfg_shape`'s `cfg_reachable` demonstrably scores 1.0 on a proto
@@ -1717,6 +1728,17 @@ Worst ratios: `snr_s7_10_f.lua:main_53` 4 → 118 (**29.5×**),
 `snr_s2_10_s.lua:main_60` 240 → 5280 (22.0×), `snr_s3_10_s.lua:main_59`
 3456 → 72576 (21.0×), `snr_s4_10_s.lua:main_58` 1152 → 23616 (20.5×).
 
+> **The candidate rows of that table moved after task 12, and the corpus rows
+> did not** (re-derived at the M6 wrap, 2026-08-14, same
+> `probe_enum.channels_of` walk). Task 12 closed leaf refusals, so
+> `classes.json` regenerated with **156** candidates instead of 162:
+> candidates **156**, within budget **153 → 149**; `ui-keyloop` **9** (all 9
+> within budget under both models); `neither` **34** (all 34). `choice-branch`
+> is unchanged at **113**, and so is its headline **110 → 106**. The whole-
+> corpus row is unchanged too: 1944 protos, **26** differ, **1940 → 1936**.
+> Every "worst ratio" above reproduces exactly. The lesson stands unchanged;
+> only the population it is quoted over moved.
+
 So **Task 4's "110 of 113 Class-1 candidates fit 4096" is 106 of 113 for an
 enumeration**, and the corpus-wide "1940 of 1944" is 1936. This was a defect
 in `observation_classes.py`'s own documentation — its module docstring defined
@@ -1944,3 +1966,168 @@ Smaller things, each recorded rather than silently accepted:
   `PROBE` path, so the ~460 driver lines that moved into `probe_common.lua`
   were covered by nothing. `test_no_lua_patterns_in_the_probe` is now
   parametrised over both files.
+
+## 6. Milestone summary (task 13)
+
+Every figure in this section was **re-measured at the closing tree on
+2026-08-14** unless it is explicitly attributed to an earlier task. Where a
+figure from an earlier section did not reproduce, §6.6 says so rather than
+quietly restating it.
+
+### 6.1 The exit clauses, one by one
+
+The spec's exit conditions
+(`docs/superpowers/specs/2026-08-13-m6-cross-corpus-validation-design.md` §3),
+with the verdict and the evidence for each:
+
+| spec §3 clause | verdict | evidence |
+|---|---|---|
+| Track 1.0 observation complete: per-proto class list + interaction surfaces committed | **met** | `corpus/observation/classes.json`, **156 candidates** = 29 leaf refusals + 132 CAP dominants (5 in both); classes `choice-branch` 113 / `neither` 34 / `ui-keyloop` 9. Gated by `tests/test_m6_exit.py::test_m6_exit_observation_covers_every_leaf_refusal` (a ledger↔`classes.json` join) and `..._every_cap_file`, plus `tests/test_observation_classes.py`'s corpus-gated fixed point |
+| Track 1 harness landed; full-corpus scan of the fingerprint / L1.5 / L1.75 arms | **met** | `scripts/cross_corpus.py --arm all` over 229 files; §2 |
+| Class-1 enumerated differential over the observed-enumerable protos | **re-scoped 2026-08-14**, met in its amended form | `scripts/probe_enum.py`, exhaustive over the **13** compound-`if` leaves with explicit `budget-exceeded` rows and no silent sampling; §5. The corpus-wide run is M7 agenda 8 |
+| Class-2: design + prototype | **re-scoped 2026-08-14**, met in its amended form | `docs/reports/m6-uiloop-design.md`, assumptions labelled measured / unmeasured. The prototype is M7 agenda 9 |
+| divergence queue adjudicated row by row, verdicts committed as pins | **met** | `cross_corpus.PRED_PINS`: **18 rows over 16 files**, **6 `real-bug` / 12 `equivalent-transform`**, 0 `probe-artifact`, **0 `suspect`**; §3. Gated by `tests/test_m6_exit.py::test_m6_exit_every_divergence_is_adjudicated` and by `tests/test_cross_corpus.py`'s pin gate |
+| Track 2 (structure reference + LLM meta-reconstruction) over the leaf refusals | **dropped 2026-08-14 — premise falsified by measurement** | `build_sir` structures **12 of the predecessor's 13** corresponding leaves (92.3%) after task 11, so the mechanical reference is nearly free and the ~1–2M-token pass buys nothing. Spec §2 decision table |
+| Track 3: the two named defects closed, or re-characterised with a measurement | **met, as a partial with the residual named** | compound `if`: `structure:` family **21 ledger shapes → 1** (task 11). Register classification: two of **five** measured mechanisms closed (task 12); the other three are M7 agenda 1 with their row counts |
+| suite discipline | **met** | **1077 tests**; ceiling was raised from 45s to a ~120s earmark by the human partner on 2026-08-13. Measured at the wrap: **55.07-55.61s over three runs** (macOS 15.2 / Apple M4, arm64) |
+| **no** 0.997 gate; quality stays an observable | **met by decision** | spec §2 decision table; measured **0.977328**, reported by `scripts/quality_score.py` and the dashboard, gated by nothing |
+
+### 6.2 The headline: six defects, and two repair rounds
+
+Six defects confirmed in the predecessor's shipped output, **four previously
+unknown**, each walked at instruction level (§3.4, §4.2). Two of them —
+`snr_common.lua:main_76_2`'s unconditional `break` and empty `else` — are
+**verbatim the two historical checkpoints in the predecessor project's own
+debug playbook**, which is the strongest available statement that this corpus
+is a live oracle and not a museum piece.
+
+**All six were found by the static arm, and five of the six are invisible to
+both dynamic arms** (§3.8): `snr_mainmenu:main_7` returns `agree` on an
+18-event behaviour run, and `snr_common.lua`'s behaviour row is silent at
+`truncated:1/79`.
+
+Two out-of-plan tasks repaired all six by hand under `corpus/pred_repairs/`
+(task X: `snr_music.lua`, `snr_common.lua:main_76_2`; task X2: the other
+four), each verified at instruction level and at runtime with a bespoke
+driver. What was deliberately **not** repaired is listed in that directory's
+README — the duplicated loop tail in `main_76_2` and the three-poll
+fall-through it causes, the `cursor row == 6` arm, and byte fidelity anywhere
+(two of four instruction counts moved closer to the original, two moved
+further: the repairs buy behaviour, not bytes). `$PYLUADEC_PRED_CORPUS_DIR` was
+not modified, and the only mention of the repair directory anywhere in `src/`,
+`tests/` or `scripts/` is one comment in `scripts/cross_corpus.py` saying it is
+**not** an input (grepped 2026-08-14).
+
+### 6.3 Where our own decompiler ended up
+
+| | M6 start (`0957364`) | M6 wrap | gate |
+|---|---|---|---|
+| `L3`, unique shapes | 1430/1478 (96.8%) | **1438/1478 (97.3%)** | `tests/test_m6_exit.py`, floor 0.96 |
+| `L3`, occurrences | 1896/1944 (97.5%) | **1904/1944 (97.9%)** | `tests/test_m5_exit.py`, floor 0.96 |
+| occurrences shipping structured text | 1747/1944 (89.9%) | **1763/1944 (90.7%)** | `tests/test_m5_exit.py`, floor 0.85 |
+| files fully structured / hybrid / whole-file fallback | 216 / 6 / 7 | **217 / 8 / 4** | not gated (data) |
+| ported quality metric | 0.968833 | **0.977328** | `tests/test_m5_exit.py`, floor 0.96 — **not** 0.997 |
+| non-`L3` ledger rows | 48 | **40** (29 own + 11 inherited) | — |
+
+`scripts/ratchet_diff.py` against `0957364`: **8 upgraded, 0 downgraded**, 16
+occurrences moved fallback → structured, none the other way.
+`./scripts/ratchet_job.sh` exits 0 (its default baseline was moved from
+`eb08890` to `0957364` at this wrap — the same line always claimed to name the
+last merged milestone tip, and M5's merge had not been picked up).
+
+### 6.4 The three decision-log rows
+
+All three modify clauses the user confirmed section by section, so all three
+are recorded in
+`docs/superpowers/specs/2026-08-09-pyluadec-refactor-overall-design.md` §2 and
+not only here.
+
+1. **`avg_score 0.997` is no longer a gate anywhere** (2026-08-13). Not
+   because it was out of reach — the reason is that M6 measured it to be
+   uncorrelated with defect detection: `semantic_score`'s `cfg_reachable`
+   component scores exactly **1.0** on `snr_common.lua:main_75`, the proto
+   whose only loop the predecessor had deleted (§4.4, §4.7).
+2. **Tasks 7 and 8 re-scoped** (2026-08-14), on the three measurements in
+   §6.1's table plus the one that falsified Task 8's framing.
+3. **Tasks 9 and 10 dropped** (2026-08-14), premise falsified. If a future
+   population ever shows `build_sir` failing on the predecessor side at a
+   materially lower rate than 92.3%, the argument returns and that measurement
+   is the thing to re-run first.
+
+### 6.5 Deferred minors, disposed of at the wrap
+
+None was dropped silently. Each is fixed, re-deferred with a reason, or closed
+as wrong with the measurement.
+
+* **Task 2 — `tests/conftest.py::pred_compiled` defaulted to `strip=False`.**
+  **Fixed.** The fixture's callable now takes `strip` as a required
+  keyword-only argument and keys its cache on it. A naive consumer would
+  otherwise have reintroduced the manufactured `upvalues`-tuple-length
+  mismatch on all **260** `nups > 0` protos — the artifact that inflated §1's
+  round-0 census. Measured at the wrap: the fixture had **zero consumers**, so
+  the change costs nothing and removes the trap before it has a victim.
+* **Task 2 — a 1–2s suite delta attributed to "the extra `carries_debug`
+  walk".** **Closed as wrong**, on the task-2 review's own re-measurement,
+  which found cross-day host variance rather than a walk over 229 files. It is
+  recorded here because the task report that carried the claim is not a
+  committed artifact and would otherwise take the correction with it. This
+  session's independent corroboration of the variance: four interleaved
+  full-suite runs on trees differing by one 13-test file measured 55.79 /
+  56.47s (without) against 56.73 / 56.81s (with), a spread inside the arms
+  comparable to the difference between them.
+* **Task 4 — `loop_polls_per_iteration` overstates, and
+  `mechanical.footprint` is a projection.** **Documented rather than fixed**,
+  because both fixes regenerate a committed artifact and the wrap's own
+  constraint was that `corpus/observation/*.json` must not move. Both now have
+  a section in `scripts/observation_classes.py`'s module docstring — where a
+  consumer reads — with the figures re-derived this session: the dominance
+  reading holds for **116 of the 125** flagged records (the nine exceptions
+  named), and **142 of 156** candidates have `unattributed_calls > 0` (908
+  sites), invisible in the 7-key projection. Renaming/joining is M7 agenda 6.
+* **Task 7 — `classes.json`'s `input_space` is not a sizing figure.**
+  **Already fixed in place** by task 7 (in `observation_classes.py`'s
+  "Channels and input space" section) and **re-derived here**: corpus-wide
+  within budget is **1936 of 1944**, `choice-branch` **106 of 113**. See the
+  note added under §5.3's table for what moved when the candidate population
+  shrank.
+* **Task 12 — the residual's unattributed shapes and mechanisms C/D/E.**
+  **Re-deferred, with the accounting reconciled** (M7 agenda 1): 40 rows = 29
+  own refusals + 11 inherited; 9 rows attributed (6 `_same_block`, of which one
+  is the inherited `snr_story_main:main`; 3 clamp); **21 own + 10 inherited
+  unattributed**. The two circulating figures are the same fact under
+  different denominators: `docs/runbooks/structured-pipeline.md` says "31 of
+  the 40 unattributed", counting rows; "21" counts own refusals only. Both are
+  correct and neither is complete without saying which.
+* **Standing, out of milestone scope — M1's Linux x86_64 verification.**
+  **Re-deferred and flagged at the wrap** (M7 agenda 7): unchanged since
+  2026-08-10, macOS arm64 only, and `docs/runbooks/64bit-migration.md`
+  requires both platforms.
+
+### 6.6 Numbers from earlier sections that did not reproduce at the wrap
+
+* **The candidate population is 156, not 162.** Tasks 11 and 12 closed leaf
+  refusals after task 4 and task 7 ran, and `classes.json` regenerated. Every
+  figure quoted over "162 candidates" needs its denominator moved:
+  per-iteration polling is **125 of 156** (was 127 of 162 — `choice-branch`
+  stays 113/113); the review figure "146 of 162 candidates have unattributed
+  calls, 946 total" is **142 of 156, 908 total**; §5.3's candidate rows are in
+  the note added there. **Nothing that is quoted over the whole corpus or over
+  `choice-branch` moved.**
+* **The loss sweep is 3.31s, not 3.5s**, over the same 1944 pairs — inside the
+  variance §4.8 already documents, recorded only so the two figures are not
+  read as a change.
+* **The `_same_block` attribution "6 of the 40" includes one inherited row.**
+  Not a retraction — task 12's own list names `snr_story_main:main_3` **and
+  its root** — but the root is an ancestor, so the own-refusal share is 5, and
+  that is what makes 21 and 31 both correct.
+
+### 6.7 What M6 did not do
+
+The full list is the **M7 agenda** at the end of
+`docs/runbooks/m3-backlog.md`, written at this wrap and numbered so its items
+can be cited. The headline items: the reconstruction residual's three open
+mechanisms (agenda 1); corpus-wide L2, whose reach is still **1 file**, and
+the four taint gaps and the truncation residue (agenda 2); the Class-1
+corpus-wide enumerated run and the Class-2 prototype, both routed there by the
+2026-08-14 amendments rather than abandoned (agendas 8 and 9); and M1's Linux
+verification (agenda 7).

@@ -234,7 +234,7 @@ M3–M4 的旧说法「产物为结构化 ⟺ root proto 认证 `L3`」是**替�
   两处 backstop 见 `docs/runbooks/structured-pipeline.md`「The L2 gate」。
 - 行为探针（L1.75 门，M4 task 10 新增）：`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_behaviour.py`。在打桩环境下**实际调用**每个 chunk 定义的全局函数并比对事件轨迹，干净跑法打印 `227/229 identical, 2 pinned divergence(s), 398196 recorded events`。设计、能力边界、两条钉子的指令级证据见 `docs/runbooks/m3-backlog.md`「Behaviour probe (L1.75)」节。
 - 效应表-发射器一致性门：`uv run pytest tests/test_effects_emitter_consistency.py`（语料臂 + 合成操作数网格，无需语料也能跑合成臂）。
-- **Ratchet 门（M5 task 8）**：`PYLUADEC_CORPUS_DIR=... ./scripts/ratchet_job.sh [BASELINE_REF]`——全套件 + 台账 baseline diff + 24 例全量差分执行扫描，实测 37.9s，`BASELINE_REF` 默认 `eb08890`（上一个里程碑合并点）。只要 diff：`git show <ref>:corpus/ledger.jsonl > /tmp/base.jsonl && uv run python scripts/ratchet_diff.py /tmp/base.jsonl corpus/ledger.jsonl`。
+- **Ratchet 门（M5 task 8）**：`PYLUADEC_CORPUS_DIR=... ./scripts/ratchet_job.sh [BASELINE_REF]`——全套件 + 台账 baseline diff + 24 例全量差分执行扫描，**实测 58.2s（2026-08-14，M6 收口树，1077 个用例）**，`BASELINE_REF` 默认 **`0957364`**（M5 合并点 = 上一个里程碑合并点；M6 task 13 把默认值从 `eb08890` 前移，那行注释本来就写着「最近一个已合并的里程碑」）。只要 diff：`git show <ref>:corpus/ledger.jsonl > /tmp/base.jsonl && uv run python scripts/ratchet_diff.py /tmp/base.jsonl corpus/ledger.jsonl`。
 - 单文件结构化反编译 / 看认证结果 / 调试某个未认证函数：命令见 `structured-pipeline.md`「Common operations」节。
 
 ### 台账新字段
@@ -364,21 +364,59 @@ Phase 5 已完成（12 个任务）。**能力边界、认证门不变式、归�
 - **`express/freereg.py`**（task 11）：`_stack_discipline` 从 `names.py` 拆出。
 - **`refusal_reason` 带上了 `Mismatch.path`**（task 12，M5 agenda 8）：非 root 的失配现在记成 `mismatch: <字段> at <路径>`。实测语料上 22 条 `mismatch` 里 20 条在 `root`、2 条不在（两个 hybrid root），台账因此动了 2 行，ratchet 0 降级。
 
-## Phase 6（M6：跨语料）进行中——已落地的部分
+## Phase 6（M6：跨语料交叉验证）现状
 
-M6 尚未收口，本节只记**已经改变了当前实测值**的任务，别把它当里程碑总结。权威仍是 `docs/runbooks/structured-pipeline.md`（能力边界、`Condition trees` 一节）。
+Phase 6 已完成。计划 13 个任务，实际执行 11 个（**T9/T10 取消、T7/T8 缩范围，两条决定都记进了 spec §2 决策表**，见下）外加 3 个计划外任务（两轮前作缺陷手工修复 + loss sweep 门）。**能力边界、认证门不变式、归一化阶梯、L2 门的权威仍是 `docs/runbooks/structured-pipeline.md`**；交叉语料的全部证据在 `docs/reports/m6-cross-corpus.md`（含每个缺陷的指令级走查）、观察数据在 `docs/reports/m6-observation.md`、Class-2 设计说明在 `docs/reports/m6-uiloop-design.md`；**尚未完成的工作全部在 `docs/runbooks/m3-backlog.md` 末尾的「M7 agenda」**。本节只给定位与速查。
 
-### task 11：compound `if` 条件树（2026-08-14）
+### 头条不是一个比率，是已发布软件里的 6 个缺陷
 
-- `sir/regions.py` 新增 `CondTest` / `CondOp` / `CondNode` / `cond_claimed`，`If.cond` 类型放宽为 `LirInstr | CondNode`（单测试的 `if` 一个字节都没变，所以这次改动**没有动任何既有台账行**）。识别器是 `sir/build.py::_match_cond_chain` + `_parse_cond`，重建是 `express/reconstruct.py::cond_tree_expr`，极性折进 `condition_expr(..., jump_is_true_exit=)`，打印是 `emit/lua.py::Printer.condition` 的新分支（纯折叠，`_PREC` 决定括号，没有后处理）。
-- **派发顺序是被测量证明过的，不是偏好**：`_structure_if` 先试原有的单比较读法，只有它抛 `StructureError` 才试链。反过来（链优先）重跑全语料是 `L3` 1432/1478，正着是 **1437/1478**——五个 proto 会被降级。
-- **收口值（实测 2026-08-14）**：`L3` **1437/1478 唯一（97.2%）、1903/1944 处出现（97.9%）**（M5 收口 96.8% / 97.5%）；产物 **217 全结构化 / 5 hybrid / 7 整文件 fallback**（M5 收口 216/6/7）；质量分 **0.971947**（M5 收口 0.968833）。`scripts/ratchet_diff.py` 对 `0957364`：**7 升级、0 降级**。
-- **`structure:` 家族从 21 个台账形状降到 1 个**（`snr_common.lua:main_71`，而且它不是条件缺陷，是 `_match_loop` 认不出那个 `while true` 导致 pc 295 的 `break` 没被认出来）。20 个里 7 个直接到 `L3`，13 个落进 `mismatch:`——那 13 个是**本来就被结构拒绝挡住的重建缺陷**（`write_reg` 的 `declared` 闸门把暂存临时量物化成 `local` 再赋值），不是新引入的。
-- **仍是缺口**：`while <a and b> do`（`_match_while_header` 要求 header 是单个基本块）、`repeat ... until a or b`。两者都由 `tests/test_sir_condtree.py::WHILE_HEADER_GAP` 钉住，语料上没有 proto 需要它们。
-- **那 13 个 `mismatch:` 的量级差一个数量级，别当成一类**（fix round 1 更正）：`snr_common.lua:main_76_2` 是「多占几个槽 + 多几条 `MOVE`」，`snr_graphic.lua:main` 是 `code` 385 → 650、`maxstacksize` 20 → 24、**语义直接错**（四个表构造器塌成一个别名）。同一个 `write_reg` `declared` 闸门家族，后果完全不同。共同点只有一条、且是实测的：**13 个 proto 的首个 opcode 分歧全部落在 `cond_claimed(...)` 之外（13/13）**——这才是「本来就有、只是被结构拒绝挡住」的证据。
-- **打印层顺带修了一处 output surface 回归**（fix round 1）：`_parse_cond` 建的是右倾树，而 `_PREC` 把 `and`/`or` 当左结合，于是 `a and b and c` 被打成 `a and (b and c)`。新增 `emit/lua.py::_ASSOCIATIVE`，凭据是 6 对源码经真 `luac_sz4` 编译后**字节相同**（`tests/test_emit_readability.py`）。台账逐字节不变；**当前产物 0 字节变化**——25 处同操作符嵌套全在仍发 fallback 的 proto 里。
-- **前身语料的结构参照率（Task 9 Step 1 的顺带测量）**：修好之后是 **12/13（92.3%）**，唯一失败是 `snr_common.lua:main_76_2` 的 `pc 63: unrecognized transfer JMP`。修好之前测得的 6/13（46.2%）是**被本任务的缺陷污染的数**（7 个失败里 6 个正是 compound `if`），别再引用。
+前作产物被重编译、打包回 PSP ISO、由真人通关验证过（十几轮 human-in-loop 修复）。M6 把我们的仪器对准它，**确认了 6 个缺陷，其中 4 个此前未知**，每一个都在指令级走查过：
 
-### 本里程碑反复出现、值得带进 M6 的那个缺陷
+1. `snr_music.lua:main_3` —— 轮询循环整个消失，音乐鉴赏进去就弹回主菜单，不可用。
+2. `snr_common.lua:main_76_2` —— 一个无条件 `break` 让回想模式误开存档界面；一个空 `else` 卡住帧。**两条都逐字对应前作自己 debug playbook 里的历史检查点。**
+3. `snr_mainmenu.lua:main_7` —— `systemSave`/`novelFlag`/`musicFlag` 三道 gate 被删，两条互斥分支同时执行。
+4. `snr_graphic.lua:main_4` —— 一个 `== 6` / `== 4` 比较被丢掉，出现两次。
+5. `snr_memory.lua:main_4` —— 同一个缺陷、同一个形状，同样出现两次。
+6. `snr_common.lua:main_75` —— 一个重试 `while` 变成了 `if`。
 
-**「散文断言了没人量过的行为」**——task 8 花了四轮、task 9 花了四轮，每一轮的修复里都新长出一个同形的实例；task 11 的版本是一个**正确的发现外挂了一个没量过的最高级**（「唯一一个动台账的屏障」，实测是三个动）。写任何行为性句子之前先量它，包括没有测试断言的那些。最高级词（唯一 / 总是 / 从不 / 全部 / 完整）每出现一次都要么有一次测量，要么改写。
+**6 个全部由静态比对找到；其中 5 个对两条动态臂都不可见。** 两个计划外任务已按缺陷逐个手工修复，产物在 `corpus/pred_repairs/`（指令级 + 运行时双验证，专用驱动脚本同目录；**上游 `$PYLUADEC_PRED_CORPUS_DIR` 一个字节没动**）。
+
+### 收口数字（2026-08-14 实测）
+
+- `L3`：**1438/1478 唯一 proto（97.3%）、1904/1944 处出现（97.9%）**（M5 收口 96.8% / 97.5%）。
+- **产物**：229 个文件里 **217 全结构化 / 8 hybrid / 4 整文件 fallback**（M5 收口 216/6/7）。逐 occurrence **1763/1944（90.7%）发结构化文本**。
+- 质量分 **0.977328**（M5 收口 0.968833）。**它不再是任何门**——见下文决策日志第一条。
+- `scripts/ratchet_diff.py` 对 M5 合并基线 `0957364`：**8 升级、0 降级**。
+- 测试：**1077 passed，55.07–55.61s**（macOS 15.2 / Apple M4 arm64 / Darwin 24.2.0，本会话三次实测），对约 120s 的定向拨款。`./scripts/ratchet_job.sh` 三道门 exit 0，端到端 **58.2s**。
+- 前作语料 parity 普查：**229/229 可编译、229/229 proto 树 1:1 对应、0/229 字节精确**（3903 处实质失配 / 1433 条路径 / 2989 个信号，由 `tests/test_predcorpus.py` 断言）。
+- 分歧队列：**18 行 / 16 个文件**，裁决为 **6 `real-bug` / 12 `equivalent-transform`**；`intentional-edit` 作为**路径级**裁决出现 1 处（`snr_common.lua:main_83` 的字体资源路径，行级裁决仍是 `real-bug`）；`probe-artifact` 与 `suspect` **各 0 行**。
+- Loss sweeps：1944 对 proto 里 **25 个丢了东西**，**3.31s**；按扫描 `global_reads` 1 / `n_natural_loops`+`n_back_edges` 4 / `test_ops` 24 / 第四组（`global_writes`、`call_targets`、`call_shapes`、`return_arity`）**0**。
+
+### 新增的东西（速查）
+
+- `src/pyluadec/predcorpus.py`（task 2）：前作源码 → `oracle.compile_source` → `ingest`。**`strip` 参数必须由调用方按 `strip=not carries_debug(original)` 显式选**，否则 260 个 `nups > 0` 的 proto 会凭空多出 `upvalues` 长度失配（这个伪影已经污染过一次普查数字）。
+- `src/pyluadec/lift/footprint.py` + `scripts/footprint_dump.py`（task 3）：静态交互面（全局读写、表键读写、调用、`dynamic_reads` 诚实计数），产出 `corpus/observation/footprints.json`。
+- `scripts/observation_classes.py` + `corpus/observation/classes.json`（task 4）：**156 个候选** proto（29 个叶子拒绝 + 132 个 CAP 主导，5 个两者兼是）的分类与交互面，`choice-branch` 113 / `ui-keyloop` 9 / `neither` 34。
+- `scripts/cross_corpus.py` + `tests/test_cross_corpus.py`（task 5/6）：指纹 / L1.5 / L1.75 三条臂的跨语料扫描 + `PRED_PINS`（与我方钉子**分表**，spec 明令不得复用）。全语料扫描是 job，不是套件成员。
+- `scripts/loss_sweep.py` + `tests/test_loss_sweep.py`（计划外 task X3）：四组「原始有、前作没有」的逐 proto 丢失扫描。**这是本里程碑最划算的仪器**——比被设计的分级指纹便宜，却多抓到两个缺陷。
+- `scripts/probe_enum.py` / `.lua`（task 7，已缩范围）：枚举差分驱动，在 13 个复合 `if` 叶子上做可行性演示，`EnumVerdict` 带 `budget-exceeded`（**绝不静默采样**）。
+- `tests/test_m6_exit.py`（task 13）：出口门，13 个用例，**0.15s**，不需要语料。地板见该文件 docstring。
+
+### spec 决策表新增三条（**本里程碑最需要被读到的部分**）
+
+三条都改动了 spec 已确认条款，因此按流程记进 `docs/superpowers/specs/2026-08-09-pyluadec-refactor-overall-design.md` §2 决策表：
+
+1. **`avg_score 0.997` 不再是任何里程碑的出口门槛**（2026-08-13，human partner），降级为面板观测值。**理由不是够不着**（收口实测 0.977328）：M6 实测该指标与缺陷检出无关——6 个缺陷全由静态比对找到，其中 `snr_common.lua:main_75` 的 `cfg_reachable` 分量**恰好 1.0**，而它唯一的循环没了。`tests/test_m5_exit.py` 的 0.96 地板继续有效，未收紧未放松。
+2. **Task 7 / Task 8 缩范围**（2026-08-14）：T7 从全语料枚举扫描缩为 13 个叶子上的可行性演示，T8 从「设计 + 原型」缩为设计说明。依据是测量：5/6 个缺陷对动态臂不可见；最便宜的静态工具赢过被设计的那个；T8 的前提（「不终止是 Class 2 的区分性难点」）被证伪——**当时的候选集 127/162 每轮迭代都轮询按键，含 113/113 个 `choice-branch`**（收缩后的候选集上复测 **125/156**）。
+3. **Task 9 / Task 10 取消**（2026-08-14），记为**前提被测量证伪**而非未完成：`build_sir` 在前作对应的 13 个叶子 proto 上成功 **12 个（92.3%）**，机械参照几乎免费，那趟 ~1–2M token 的 LLM pass 买不到任何新东西。修复前的 6/13 是被我们自己的缺陷污染的数，别再引用。
+
+### task 11 / task 12：残差收口的技术要点
+
+- **task 11：compound `if` 条件树。** `sir/regions.py` 新增 `CondTest` / `CondOp` / `CondNode` / `cond_claimed`，识别器 `sir/build.py::_match_cond_chain`，重建 `express/reconstruct.py::cond_tree_expr`，打印是 `emit/lua.py::Printer.condition` 的新分支（纯折叠）。**派发顺序被测量证明过**：先单比较、失败才试链，反过来会降级 5 个 proto。`structure:` 家族 **21 → 1** 个台账形状（幸存者 `snr_common.lua:main_71` 不是条件缺陷，是 `_match_loop` 认不出那个 `while true`）。**仍是缺口**：`while <a and b> do`、`repeat ... until a or b`，由 `tests/test_sir_condtree.py::WHILE_HEADER_GAP` 钉住，语料上没有 proto 需要它们。
+- **task 12：`write_reg` 的 `declared` 闸门。** 该闸门至少是**五个机制**：A 构造器字段存储（已关）、B 逐定义的闭包捕获（已关）、C `_same_block`（40 行里 6 行，未关）、D clamp / 条件值形状（3 行，未关）、E A 的 `hazard` 集后果（未关）。`snr_music.lua:main` 的别名表（M5 的诊断）**是对的，且已关**。
+- **残差记账（2026-08-14 实测）**：40 个非 `L3` 台账行 = **29 个自身拒绝 + 11 个继承祖先**；已归因 9 行（6 `_same_block`，其中 1 行是继承的 root；3 clamp，全是自身拒绝），**未归因 21 个自身拒绝 + 10 个继承 = 31 行**。这两个口径都出现在旧文档里，指的是同一件事的不同分母。
+
+### 本里程碑反复出现、值得带进 M7 的那个缺陷
+
+**「散文断言了没人量过的行为」**——M5 的 task 8/9 各花四轮；M6 有 **9 个 `fix:` 提交（8 轮复审 + 1 轮计划外修复）**，而**每一轮的主题就是上一轮写下的假句子**，commit 标题本身即证据：task 2「strip-mode asymmetry」、task 4「loops are headers」、task 5「two false sentences」、task 7「a false headline mechanism」、task 8「a misattributed verdict」、task 11「a tautology sold as evidence」、task 12「a false convergence story in five places, a wrong axiom citation」——最后这条是**公理层的错误引用**，也是这类缺陷能造成的最大伤害。本里程碑另有一类同形错误：**用一个为别的用途构造的投影去给自己做预算**（`classes.json` 的 `input_space` 把字符串常量塌成 `"str"`，于是 1152 与真实的 23616 差 20 倍）。写任何行为性句子之前先量它，包括没有测试断言的那些；最高级词（唯一 / 总是 / 从不 / 全部 / 完整 / 停止）每出现一次都要么有一次测量，要么改写。**文档是这类缺陷活得最久的地方。**
+

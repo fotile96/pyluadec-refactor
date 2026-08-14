@@ -1,5 +1,98 @@
 # Changelog
 
+## 2026-08-14 — M6: cross-corpus validation, and six defects in shipped software
+
+- **The headline is not a rate. It is six defects found in software that
+  shipped.** The predecessor project decompiled this same 229-script corpus;
+  its output was recompiled, repacked into a PSP ISO and **played through to
+  completion by a human** over a dozen fix rounds. M6 pointed this project's
+  instruments at it and confirmed **six defects, four of them previously
+  unknown**, every one walked at instruction level: `snr_music.lua:main_3` (the
+  music gallery's poll loop is gone, so the gallery bounces straight back to
+  the main menu); `snr_common.lua:main_76_2` (an unconditional `break` that
+  opens the save screen from recollection mode, and an empty `else` that hangs
+  the frame — **both verbatim the historical checkpoints in the predecessor's
+  own debug playbook**); `snr_mainmenu.lua:main_7` (a
+  `systemSave`/`novelFlag`/`musicFlag` gate deleted, so two mutually exclusive
+  arms both run); `snr_graphic.lua:main_4` and `snr_memory.lua:main_4` (a
+  `== 6` / `== 4` comparison dropped, twice each); and
+  `snr_common.lua:main_75` (a retry `while` became an `if`). Evidence is
+  pc/opcode-level throughout and carries no game text.
+- **All six were found by the static arm; five of the six are invisible to
+  both dynamic arms.** For `snr_mainmenu:main_7` the behaviour arm returns
+  `agree` over an 18-event run, and `snr_common.lua`'s behaviour row is silent
+  (`truncated:1/79` — its original-side run invoked 1 of the 79
+  function-valued globals the file defines before the 3000-event cap). Two
+  out-of-plan tasks repaired all six by hand under `corpus/pred_repairs/`,
+  verified at instruction level and at runtime with bespoke drivers; the
+  upstream predecessor corpus was not touched.
+- **The cheapest instrument beat the designed one.** `scripts/loss_sweep.py` —
+  four per-proto "the original has it, the predecessor does not" sweeps, one
+  walk per proto, **3.31s over all 1944 pairs** — found everything the graded
+  fingerprint found, **plus** a defect the fingerprint's `cfg_reachable` scores
+  **1.0** on (`snr_common:main_75`, whose only loop had vanished), **plus** one
+  that an aggregate five-opcode test count had hidden. 25 protos flag; every
+  one is pinned with a verdict and an instruction walk.
+- **`L3` is 1438/1478 unique (97.3%) and 1904/1944 occurrences (97.9%)**, from
+  1430 (96.8%) / 1896 (97.5%) at M5 close; **217 of 229 files ship fully
+  structured source, 8 hybrid, 4 whole-file fallback** (216/6/7); **1763/1944
+  (90.7%) occurrences ship structured text**. Two defects closed it: compound
+  `if` condition trees (`sir/regions.py::CondNode` +
+  `build.py::_match_cond_chain`, which took the `structure:` refusal family
+  from **21 ledger shapes to 1**) and two of the five mechanisms behind
+  `Reconstructor.write_reg`'s `declared` gate. `scripts/ratchet_diff.py`
+  against the M5 merge baseline `0957364`: **8 upgraded, 0 downgraded**.
+- **`avg_score 0.997` is no longer a gate anywhere** (human partner,
+  2026-08-13; recorded in the spec's own decision log, not only in a runbook).
+  M5 handed it to M6 as M6's exit; M6 removed it and kept it as a dashboard
+  observable. **The reason is not that it was out of reach** — it measures
+  **0.977328** at this tree, from 0.968833, with 217 files at exactly
+  1.000000. The reason is that M6 measured it to be uncorrelated with defect
+  detection: the fingerprint it coarsens scores a perfect `cfg_reachable` on a
+  proto whose only loop had been deleted. `tests/test_m5_exit.py`'s 0.96 floor
+  stands, neither tightened nor relaxed.
+- **Two more decision-log rows, both "premise falsified by measurement" rather
+  than "unfinished".** Tasks 7 and 8 were re-scoped (corpus-wide enumerated
+  differential → a feasibility demonstration on the 13 compound-`if` leaves;
+  design-plus-prototype → a design note) on the evidence above, plus the
+  measurement that killed Task 8's framing: **127 of the then-162 candidate
+  protos poll the key every iteration, including 113/113 `choice-branch`**, so
+  non-termination is not what distinguishes the UI-loop class. Tasks 9 and 10
+  (structure reference + a ~1–2M-token LLM meta-reconstruction pass) were
+  **dropped**: Task 9 Step 1 was the plan's own gate on Task 10, and measured
+  after the compound-`if` fix, `build_sir` succeeds on **12 of the
+  predecessor's 13 corresponding leaf protos (92.3%)**. The pre-fix 6/13 was
+  confounded — six of its seven failures were the defect Task 11 closed — and
+  should not be quoted.
+- **New instruments, all with a non-vacuity proof.** `predcorpus.py` (compile
+  + ingest the predecessor's source, with an explicit `strip` mode after a
+  corpus-wide census caught 260 protos of manufactured `upvalues` mismatch);
+  `lift/footprint.py` + `corpus/observation/footprints.json` (static
+  interaction surface, with `dynamic_reads` as its own honesty counter);
+  `observation_classes.py` + `corpus/observation/classes.json` (**156**
+  candidate protos classified with committed evidence); `cross_corpus.py`
+  (three arms, a **separate** `PRED_PINS` table — the spec forbids reusing our
+  own pins for a different candidate population); `probe_enum.py` (enumerated
+  differential driving over 13 leaves, with `budget-exceeded` rather than
+  silent sampling); `loss_sweep.py`. Full-corpus scans stay **jobs**; the suite
+  keeps gated smoke subsets and fixed-point gates.
+- **Predecessor parity, measured corpus-wide for the first time: 229/229
+  compile, 229/229 proto trees match 1:1, 0/229 byte-faithful** (3903
+  substantive rung-1 mismatches over 1433 paths, 2989 coarser signals). The
+  first version of that census was inflated by a strip-mode bug and is
+  corrected in place — shipping the predecessor's text through our `L3` gate
+  was already a measured non-goal (0/13) and stays one.
+- **Exit gate `tests/test_m6_exit.py`** (13 tests, 0.15s, no corpus needed):
+  unique `L3` ≥ **0.96** (achieved 97.3%), the ledger↔`classes.json`
+  cross-artifact join covering every leaf refusal and every CAP-dominant
+  proto, and every divergence adjudicated (no `suspect` verdicts). Every floor
+  sits below its achieved value and states that value in its assert message;
+  each is driven over mutated data and required to go red. Suite **1077 tests
+  in 55.07-55.61s over three runs** (macOS 15.2 / Apple M4, arm64) against the ~120s
+  earmark; `./scripts/ratchet_job.sh` runs its three gates end to end in 58.2s
+  and exits 0, now against the M5 merge baseline `0957364` rather than the M4
+  one it had been left pointing at.
+
 ## 2026-08-13 — M5: the long tail, the L2 gate, and a quality baseline
 
 - **`L3` is 1430/1478 unique (96.8%) and 1896/1944 occurrences (97.5%)**, from

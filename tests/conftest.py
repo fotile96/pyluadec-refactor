@@ -155,8 +155,8 @@ def pred_corpus_dir() -> Path:
 
 @pytest.fixture(scope="session")
 def pred_compiled(pred_corpus_dir):
-    """Session-scoped, lazy `name -> Proto` cache for the predecessor corpus,
-    the `pred_corpus_dir`-side twin of `decompiled` above.
+    """Session-scoped, lazy `(name, strip) -> Proto` cache for the predecessor
+    corpus, the `pred_corpus_dir`-side twin of `decompiled` above.
 
     `predcorpus.load_pred_proto` itself is cheap even uncached (measured
     2026-08-13: the full 229-file compile+ingest pass is ~0.67s cold, most of
@@ -165,14 +165,29 @@ def pred_compiled(pred_corpus_dir):
     here for the same reason `decompiled` is -- several tests wanting the
     same file's compiled proto should not each pay their own pass -- not
     because any single pass is expensive on its own.
-    """
-    cache: dict[str, object] = {}
 
-    def get(name: str):
+    **`strip` is REQUIRED, and that is the point of this signature** (M6 task
+    13, disposing of a task-2 review minor). The first version defaulted it
+    to `False`, mirroring `load_pred_proto`'s own default -- but that
+    function's docstring spends a paragraph saying a caller who is going to
+    `compare_protos` the result must pick `strip=not carries_debug(original)`
+    deliberately, and every original proto in this corpus is stripped. A
+    fixture that quietly supplies the wrong one hands its consumer a
+    manufactured `upvalues`-tuple-length mismatch on all **260** `nups > 0`
+    protos -- exactly the artifact that inflated the round-0 parity census
+    (`docs/reports/m6-cross-corpus.md` §1). It had **no consumers** at the M6
+    wrap, so making the parameter required costs nothing and removes the trap
+    before it has a victim; `tests/test_predcorpus.py::_census_one` computes
+    the flag per file and does not use this fixture.
+    """
+    cache: dict[tuple[str, bool], object] = {}
+
+    def get(name: str, *, strip: bool):
         from pyluadec.predcorpus import load_pred_proto
-        if name not in cache:
-            cache[name] = load_pred_proto(pred_corpus_dir, name)
-        return cache[name]
+        key = (name, strip)
+        if key not in cache:
+            cache[key] = load_pred_proto(pred_corpus_dir, name, strip=strip)
+        return cache[key]
 
     return get
 

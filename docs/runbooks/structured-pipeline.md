@@ -1600,7 +1600,7 @@ the original instruction stream actually did.
 ### Run the suite
 
 ```bash
-PYLUADEC_CORPUS_DIR=<corpus> uv run pytest              # 867 tests; 42.1-44.1s over 5 runs on macOS 15.2 / Apple M4 (drifts upward within a session), 39.4-41.1s on a second host (2026-08-13, M5 residual round).
+PYLUADEC_CORPUS_DIR=<corpus> PYLUADEC_PRED_CORPUS_DIR=<pred> uv run pytest   # 1077 tests; 55.07-55.61s over three runs on macOS 15.2 / Apple M4 (2026-08-14, M6 wrap; drifts upward within a session). Ceiling is a ~120s EARMARK for formal-verification instruments, not a general relaxation -- see CLAUDE.md. Without PYLUADEC_PRED_CORPUS_DIR the predecessor-corpus arms skip.
                                                         # Ordering is UNMEASURED, not "not a factor": no randomiser is installed, so `-p no:randomly` is a no-op and no M5 A/B ever varied the order. See m3-backlog.md, M6 agenda 6.
 PYLUADEC_CORPUS_DIR=<corpus> uv run pytest tests/test_effects_emitter_consistency.py -v
 ```
@@ -1640,13 +1640,16 @@ PYLUADEC_CORPUS_DIR=<corpus> ./scripts/ratchet_job.sh [BASELINE_REF]
 Three gates: the full suite (which contains `tests/test_ledger_ratchet.py`,
 i.e. the proof that `corpus/ledger.jsonl` is a byte-exact fixed point of
 `scripts/run_corpus.py`), the baseline diff, and the full 24-case generated
-sweep. `BASELINE_REF` defaults to `eb08890`, the last merged milestone tip.
-Measured end-to-end 2026-08-12 (round 3): **37.9s**.
+sweep. `BASELINE_REF` defaults to `0957364`, the last merged milestone tip
+(the M5 merge; the default was moved forward from `eb08890`, the M4 merge, at
+the M6 wrap -- see that line's comment in `ratchet_job.sh`). Measured
+end-to-end 2026-08-14 on the M6 wrap tree, 1077 tests: **58.2s** (37.9s on
+2026-08-12 at 867 tests, before the ceiling was raised to a ~120s earmark).
 
 The diff on its own:
 
 ```bash
-git show eb08890:corpus/ledger.jsonl > /tmp/baseline.jsonl
+git show 0957364:corpus/ledger.jsonl > /tmp/baseline.jsonl
 uv run python scripts/ratchet_diff.py /tmp/baseline.jsonl corpus/ledger.jsonl
 ```
 
