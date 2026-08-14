@@ -103,7 +103,7 @@
   earmark; `./scripts/ratchet_job.sh` runs its three gates end to end in 57.9-58.2s
   and exits 0, now against the M5 merge baseline `0957364` rather than the M4
   one it had been left pointing at. **After the final-review fix round the same
-  host measures 1087 tests in 52.73s and 56.83s over two runs, and the job in 60.05s** (the 10 added tests
+  host measures 1087 tests in 52.73-56.83s over three runs, and the job in 60.05-60.19s** (the 10 added tests
   cost 0.29s by `--durations`; the pre-round baseline on that same tree was
   57.90s, so they are inside the run-to-run spread). That round also made
   `ratchet_job.sh` **require `PYLUADEC_PRED_CORPUS_DIR`** — without it 32 tests
