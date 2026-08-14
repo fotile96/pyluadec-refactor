@@ -57,8 +57,10 @@ def probe(payload: bytes, *, is_source: bool, timeout: float = 30.0) -> str:
         # search for known ASCII markers. It is not a bytecode-derived string
         # kept on the Python side (that constraint is about Proto string
         # constants, not this probe's own output format), so decoding it for
-        # comparison is safe. errors="replace" is deliberate: a corpus file's
-        # Japanese string constants are not guaranteed UTF-8, and if such a byte
+        # comparison is safe. errors="replace" is deliberate: nothing
+        # guarantees a Lua string constant is UTF-8 in general (this corpus
+        # measures 0 non-UTF-8 out of 49063 -- see CLAUDE.md -- so the guard is
+        # DEFENSIVE here, not observed), and if such a byte
         # sequence ever leaked into a table key's tostring() output, replacing
         # the undecodable bytes still yields a *stable* (deterministic) string
         # that two runs of the same input decode identically -- which is all
@@ -81,8 +83,8 @@ def payload_of(result: str) -> str:
         # `strip_location(err)` output, which is NOT escaped, so a message
         # containing a `|` splits here in the wrong place. The two candidate
         # repairs both cost more than the defect: escaping `|` on the Lua side
-        # changes the probe's wire format, and the four pinned divergences in
-        # `_PINNED_DIVERGENCES` below are exact strings in that format;
+        # changes the probe's wire format, and the pinned divergences in
+        # `EXPECTED_ERROR_NAME_DIVERGENCE` below are exact strings in that format;
         # splitting from the right is no better, because the globals block can
         # contain `|` inside a serialised string value.
         #
@@ -108,7 +110,8 @@ def payload_of(result: str) -> str:
 # output, and getobjname names it "field 'v'" / "field '?'" instead of
 # "global 'gameSave'". The failing operation, the offending value's type and
 # the set of globals written before the failure all match. Instruction-level
-# evidence for each of the four is in docs/runbooks/m3-backlog.md.
+# evidence for each is in docs/runbooks/m3-backlog.md (written when there were
+# four; two of those four have since converged, see below).
 #
 # Pinned as EXACT PAIRS, not as an exclusion list: if either side's text
 # changes -- including if they start agreeing -- the gate fails and the pin
@@ -118,16 +121,30 @@ def payload_of(result: str) -> str:
 # tests/test_global_state_probe.py cannot disagree about what is pinned. They
 # used to: main() knew nothing about the pins and printed a red "225/229" plus
 # a non-zero exit while the test suite was green.
+#
+# Was four entries; `snr_graphic.lua`, `snr_memory.lua` and `snr_mainmenu.lua`
+# were deleted in M6 task 12 because their pairs CONVERGED. Deleting them was
+# not a judgement call: `probe_common.adjudicate_pins` reports a converged pin
+# as `gone`, main() below returns 1 on it and the gate asserts it empty, so a
+# stale pin fails loudly until it is removed.
+#
+# All three converged by the SAME mechanism, and it is NOT certification --
+# none of the three `main`s certifies `L3` (round-1 correction; this comment
+# first claimed `snr_mainmenu.lua`'s did, and it is `L1`, `mismatch: code at
+# root/7`). What changed is that all three moved from whole-file fallback to
+# HYBRID: enough of each chunk now ships structured text that the read which
+# fails is a real `GETGLOBAL` there rather than a `__pld_R[<number>]` lookup,
+# so `getobjname` names it identically on both sides.
+#
+# They still ship plenty of box model -- "converged" is not "stopped". Lines
+# carrying `__pld_R`, measured 2026-08-14 across M6 task 12:
+#     snr_graphic.lua    1862/2411 -> 1324/1849
+#     snr_memory.lua     1225/1673 -> 1038/1469
+#     snr_mainmenu.lua   3220/4782 -> 1974/3325   (of which 18 are still the
+#                                                  `["library"]` lines this
+#                                                  file's pin was about)
+# Measured 2026-08-14: 228/229 identical, 1 pinned divergence.
 EXPECTED_ERROR_NAME_DIVERGENCE = {
-    "snr_graphic.lua": (
-        "ERR|attempt to index global 'systemSave' (a nil value)|\n",
-        "ERR|attempt to index field '?' (a nil value)|\n"),
-    "snr_mainmenu.lua": (
-        "ERR|attempt to index global 'gameSave' (a nil value)|\n",
-        "ERR|attempt to index field 'v' (a nil value)|\n"),
-    "snr_memory.lua": (
-        "ERR|attempt to index global 'systemSave' (a nil value)|\n",
-        "ERR|attempt to index field 'v' (a nil value)|\n"),
     "snr_novel.lua": (
         "ERR|attempt to index global 'systemSave' (a nil value)|\n",
         "ERR|attempt to index field 'v' (a nil value)|\n"),

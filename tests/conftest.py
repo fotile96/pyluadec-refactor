@@ -139,6 +139,60 @@ def decompiled(corpus_dir):
 
 
 @pytest.fixture(scope="session")
+def pred_corpus_dir() -> Path:
+    """`PYLUADEC_PRED_CORPUS_DIR`, mirroring `corpus_dir` exactly (M6 task 2):
+    skip-not-error when unset or missing, same reasoning -- predecessor-
+    corpus availability is an environment fact, not a code defect. Points at
+    the predecessor project's 229 decompiled Lua SOURCE files (not
+    bytecode), conventionally `/Users/fotile96/Zndnovel/lua_scripts`.
+    """
+    p = os.environ.get("PYLUADEC_PRED_CORPUS_DIR")
+    if not p or not Path(p).is_dir():
+        pytest.skip("PYLUADEC_PRED_CORPUS_DIR not set or missing "
+                    "(predecessor-corpus tests skipped)")
+    return Path(p)
+
+
+@pytest.fixture(scope="session")
+def pred_compiled(pred_corpus_dir):
+    """Session-scoped, lazy `(name, strip) -> Proto` cache for the predecessor
+    corpus, the `pred_corpus_dir`-side twin of `decompiled` above.
+
+    `predcorpus.load_pred_proto` itself is cheap even uncached (measured
+    2026-08-13: the full 229-file compile+ingest pass is ~0.67s cold, most of
+    it `oracle.compile_source`'s own process memo from M6 task 1 already
+    doing the expensive part once per distinct source), so this fixture is
+    here for the same reason `decompiled` is -- several tests wanting the
+    same file's compiled proto should not each pay their own pass -- not
+    because any single pass is expensive on its own.
+
+    **`strip` is REQUIRED, and that is the point of this signature** (M6 task
+    13, disposing of a task-2 review minor). The first version defaulted it
+    to `False`, mirroring `load_pred_proto`'s own default -- but that
+    function's docstring spends a paragraph saying a caller who is going to
+    `compare_protos` the result must pick `strip=not carries_debug(original)`
+    deliberately, and every original proto in this corpus is stripped. A
+    fixture that quietly supplies the wrong one hands its consumer a
+    manufactured `upvalues`-tuple-length mismatch on all **260** `nups > 0`
+    protos -- exactly the artifact that inflated the round-0 parity census
+    (`docs/reports/m6-cross-corpus.md` §1). It had **no consumers** at the M6
+    wrap, so making the parameter required costs nothing and removes the trap
+    before it has a victim; `tests/test_predcorpus.py::_census_one` computes
+    the flag per file and does not use this fixture.
+    """
+    cache: dict[tuple[str, bool], object] = {}
+
+    def get(name: str, *, strip: bool):
+        from pyluadec.predcorpus import load_pred_proto
+        key = (name, strip)
+        if key not in cache:
+            cache[key] = load_pred_proto(pred_corpus_dir, name, strip=strip)
+        return cache[key]
+
+    return get
+
+
+@pytest.fixture(scope="session")
 def lifted_corpus(corpus_dir):
     """Session-scoped, eagerly-built list of every proto in the corpus,
     already ingested and lifted (round-1 fold-in of the M4 task-9 review's
@@ -213,39 +267,82 @@ def _corpus_dir_missing() -> bool:
     return not p or not Path(p).is_dir()
 
 
+def _pred_corpus_dir_missing() -> bool:
+    p = os.environ.get("PYLUADEC_PRED_CORPUS_DIR")
+    return not p or not Path(p).is_dir()
+
+
 @pytest.hookimpl(trylast=True)
 def pytest_terminal_summary(terminalreporter, exitstatus, config) -> None:
-    """Loud, hard-to-miss banner when PYLUADEC_CORPUS_DIR is unset/missing.
+    """Loud, hard-to-miss banner(s) when either corpus env var is unset/missing.
 
-    A bare `uv run pytest` without the corpus env var still exits 0 and
-    prints a green "N passed" -- correctly, per the `corpus_dir` fixture's
-    deliberate skip-not-error design (corpus availability is an environment
-    fact, not a code defect; see CLAUDE.md). But that green result silently
-    excludes **75** corpus-gated tests. That skip count is the claim; the
-    surrounding totals move with the suite and are dated evidence, not
-    constants -- measured 2026-08-13 at the M5 final fix round, a bare
-    `uv run pytest` reports `792 passed, 75 skipped` against `867 passed` with
-    the corpus present. The 13 this said before was true of an early-M2 tree
-    and had not been re-derived since; and the `789 / 864` that briefly stood
-    here was measured mid-round, before the last two tests landed. Re-derive,
-    do not copy. Among the 75 are the M2 exit gate
+    A bare `uv run pytest` without one or both corpus env vars still exits 0
+    and prints a green "N passed" -- correctly, per `corpus_dir`'s and (M6
+    task 2) `pred_corpus_dir`'s deliberate skip-not-error design (corpus
+    availability is an environment fact, not a code defect; see CLAUDE.md).
+    But that green result silently excludes corpus-gated tests. Skip counts
+    are the claim; the surrounding totals move with the suite and are dated
+    evidence, not constants -- measured 2026-08-13, before M6 task 2's two
+    new `test_predcorpus.py` tests existed, a bare `uv run pytest` reported
+    `794 passed, 75 skipped`. Re-derive, do not copy: earlier revisions of
+    this docstring quoted `792/75`, `789/864` and `13` in turn, each true of
+    a tree that had since moved on.
+
+    **After M6 task 2** the two env vars are independent and this hook
+    prints a separate banner for each that is missing (both may fire in one
+    run). With `PYLUADEC_CORPUS_DIR` set and `PYLUADEC_PRED_CORPUS_DIR`
+    unset, **32 tests skip across three modules** — re-measured 2026-08-14 at
+    the M6 final review (`1054` there was off by one; the re-review's live run
+    and the identity 1087 − 32 both give this), `1055 passed, 32 skipped`, split
+    `test_cross_corpus.py` **22**, `test_loss_sweep.py` **8**,
+    `test_predcorpus.py` **2**. This docstring said "only
+    `test_predcorpus.py`'s 2 tests skip (`869 passed, 2 skipped`)" until that
+    review; the "only" was false by 15x and it mattered, because the missing
+    30 include M6's whole-corpus loss sweep and the cross-corpus pin-rot gate.
+    `scripts/ratchet_job.sh` now REQUIRES the variable for exactly this
+    reason. With `PYLUADEC_CORPUS_DIR` unset the bare-run figure above
+    already includes all of those among its skips, since the
+    predecessor-corpus tests request `corpus_dir` before
+    `pred_corpus_dir` and so skip for the primary reason first.
+
+    Among the corpus-gated tests are the M2 exit gate
     (test_corpus_compile.py), both migration gates (test_golden.py,
     test_parity.py), and the ledger fixed-point test
-    (test_ledger_ratchet.py). This hook does not change the exit code or
-    turn the missing corpus into an error -- it only makes the consequence
+    (test_ledger_ratchet.py).
+
+    Corpus-gated too, as of M6 task 4: `test_observation_classes.py`'s
+    whole-corpus fixed point (`corpus/observation/classes.json`). This hook does not change the exit code or
+    turn a missing corpus into an error -- it only makes the consequence
     impossible to miss by skimming the summary line.
     """
-    if not _corpus_dir_missing():
+    primary_missing = _corpus_dir_missing()
+    pred_missing = _pred_corpus_dir_missing()
+    if not primary_missing and not pred_missing:
         return
-    terminalreporter.write_sep("=", "PYLUADEC_CORPUS_DIR not set", red=True, bold=True)
-    terminalreporter.write_line(
-        "Corpus-gated tests were skipped, not run -- including the M2 exit "
-        "gate (test_corpus_compile.py), the golden/parity migration gates "
-        "(test_golden.py, test_parity.py), and the ledger fixed-point test "
-        "(test_ledger_ratchet.py). A green result above does NOT mean those "
-        "passed. Set PYLUADEC_CORPUS_DIR to the 229-file corpus directory "
-        "and re-run before trusting this as a full-suite result -- see "
-        "CLAUDE.md / docs/runbooks/decompile-pipeline.md.")
+    if primary_missing:
+        terminalreporter.write_sep("=", "PYLUADEC_CORPUS_DIR not set", red=True, bold=True)
+        terminalreporter.write_line(
+            "Corpus-gated tests were skipped, not run -- including the M2 exit "
+            "gate (test_corpus_compile.py), the golden/parity migration gates "
+            "(test_golden.py, test_parity.py), and the ledger fixed-point test "
+            "(test_ledger_ratchet.py). A green result above does NOT mean those "
+            "passed. Set PYLUADEC_CORPUS_DIR to the 229-file corpus directory "
+            "and re-run before trusting this as a full-suite result -- see "
+            "CLAUDE.md / docs/runbooks/decompile-pipeline.md.")
+    if pred_missing:
+        terminalreporter.write_sep("=", "PYLUADEC_PRED_CORPUS_DIR not set", red=True, bold=True)
+        terminalreporter.write_line(
+            "Predecessor-corpus-gated tests were skipped, not run -- 32 of "
+            "them, measured 2026-08-14: the whole-corpus LOSS SWEEPS "
+            "(test_loss_sweep.py, 8 -- the instrument that found M6's sixth "
+            "defect), the CROSS-CORPUS scan and its pin-rot gate "
+            "(test_cross_corpus.py, 22), and the parity census "
+            "(test_predcorpus.py, 2). Those are M6's own gates. "
+            "A green result above does NOT mean those passed. Set "
+            "PYLUADEC_PRED_CORPUS_DIR to the predecessor's 229-file decompiled-"
+            "source directory (conventionally the sibling Zndnovel/lua_scripts "
+            "checkout) and re-run before trusting this as a full-suite result "
+            "-- see CLAUDE.md.")
 
 
 @pytest.fixture
@@ -254,14 +351,27 @@ def compile_lua(tmp_path):
     the compiled output.
 
     `luac` may be either a name relative to `build/` (e.g. "luac_sz4") or a
-    full Path to a luac binary. Skips the test (rather than raising a bare
-    FileNotFoundError) if `build/` or the requested luac binary is missing --
-    run ./scripts/build_native.sh first.
+    full Path to a luac binary.
+
+    **NO BUILD AT ALL -> skip; a PARTIAL build -> fail.** This used to skip on
+    any missing binary, so a `build/` holding `luac_sz4` but not `luac_sz8`
+    silently removed the entire sz8 arm from a green run (M6 final review,
+    item 19). Corpus availability is an environment fact and skipping for it
+    is deliberate; a half-built tree is a *code* artifact problem and must be
+    loud. `build/luac_sz4` is the discriminator because every oracle path in
+    the suite already requires it (`oracle.build_dir()` raises without it), so
+    its presence means a build was attempted.
     """
     def _compile(luac, src: str) -> Path:
         luac_path = luac if isinstance(luac, Path) else BUILD / luac
-        if not BUILD.is_dir() or not luac_path.is_file():
-            pytest.skip(f"{luac_path} not found; run ./scripts/build_native.sh")
+        if not BUILD.is_dir() or not (BUILD / "luac_sz4").is_file():
+            pytest.skip(f"{BUILD} has no build; run ./scripts/build_native.sh")
+        if not luac_path.is_file():
+            pytest.fail(
+                f"{luac_path} is missing from an otherwise-built {BUILD}. "
+                "This is a partial build, not a missing environment: "
+                "./scripts/build_native.sh produces every variant, and "
+                "skipping here would drop this arm from a green run.")
         s = tmp_path / "t.lua"
         o = tmp_path / "t.out"
         s.write_text(src, encoding="utf-8")

@@ -290,56 +290,57 @@ def test_production_insn_backstop_constant_is_unconditionally_400_million():
     assert "local INSN_BACKSTOP = 400000000" in PROBE.read_text(encoding="utf-8")
 
 
-def test_the_semantically_shared_parts_of_the_two_probes_are_identical():
-    """This probe is a SEPARATE file from `probe_behaviour.lua` on purpose --
-    the L1.75 gate's traces are frozen artefacts and threading two formats
-    through one script would put its evidence at risk of every L2 edit. The
-    price is duplication.
+def test_the_semantically_shared_parts_of_the_probes_are_one_implementation():
+    """These two probes were two copies of one driver. Measured 2026-08-14
+    with `difflib.SequenceMatcher` over the two files as they then stood,
+    **257 lines were identical** in blocks of 4 or more: the serialiser, the
+    recorder, the stub-return policy, the proxy metatable, the determinism
+    overrides and the environment shadow table. The predecessor of this test
+    pinned five of those regions as TEXT and asserted each appeared verbatim
+    in both files -- it accepted the duplication and policed it.
 
-    **What this pins, stated as a measurement rather than as "the two files
-    cannot drift".** They can: `difflib` reports 297 identical lines between
-    them, in runs of 5 or more totalling 245 (re-measured this session), and
-    an earlier version of this test pinned about 14 of those. It now pins every region whose drift would
-    make an L2 result incomparable with the L1.75 evidence that justified it
-    -- the budget constants, the whole stub-return policy, the whole proxy
-    arithmetic/index/newindex/call block, and the whole determinism-override
-    block. Comments, the serialisers and the recorder are NOT pinned, and a
-    change there is free.
+    M6 task 7 moved those bodies into `scripts/probe_common.lua` (the third
+    consumer, `probe_enum.lua`, is what forced the issue: the brief forbade a
+    fourth copy). So the property to assert is no longer "the two copies
+    agree" but the strictly stronger "there is one copy": each probe must
+    OBTAIN the shared pieces from `probe_common.lua` and must not re-declare
+    them locally. A future edit that pastes `stub_result` back into one probe
+    to tweak it fails here.
+
+    The three frozen budget constants stay pinned by text in both files --
+    they are per-gate constants, deliberately NOT shared, and their agreement
+    is what makes an L2 result comparable with the L1.75 evidence behind it.
     """
     from scripts.probe_behaviour import PROBE as L175
     a = L175.read_text(encoding="utf-8")
     b = PROBE.read_text(encoding="utf-8")
+    common = (PROBE.parent / "probe_common.lua").read_text(encoding="utf-8")
+
     for const in ("local MAX_EVENTS = 3000",
                   "local HOOK_STEP = 1000000",
                   "local INSN_BACKSTOP = 400000000"):
         assert const in a and const in b, const
 
-    def code_only(text: str) -> str:
-        # Comments are free to differ -- they document two different gates.
-        return "\n".join(l for l in text.splitlines()
-                          if l.strip() and not l.strip().startswith("--"))
+    # One implementation, in the shared module.
+    for decl in ("function M.serialiser()", "function M.recorder(cfg)",
+                 "function M.stub_result(name)", "function M.proxies(cfg)",
+                 "function M.install_determinism(G, S, record)",
+                 "function M.stub_env(cfg)", "function M.errtext(S, e)"):
+        assert decl in common, decl
 
-    def region(text, start, end):
-        i = text.index(start)
-        return code_only(text[i:text.index(end, i)])
-
-    b_code = code_only(b)
-
-    shared = [
-        ("stub-return policy",
-         region(a, "local function stub_result(name)", "\nend\n") + "\nend"),
-        ("proxy construction",
-         region(a, "local proxies = {}", "local function zero()")),
-        ("proxy index/newindex/call",
-         region(a, "proxy_mt.__index = function", "proxy_mt.__add = zero")),
-        ("proxy arithmetic",
-         region(a, "proxy_mt.__add = zero", "proxy_mt.__lt")),
-        ("determinism overrides",
-         region(a, "G.os.exit = function", "G.print = function")),
-    ]
-    for what, text in shared:
-        assert text in b_code, f"{what} has drifted between the two probes"
-    assert sum(len(t.splitlines()) for _, t in shared) > 60
+    # Both probes consume it, neither re-declares it.
+    for name, text in (("probe_behaviour.lua", a), ("probe_keyseq.lua", b)):
+        for use in ("C.serialiser()", "C.recorder{", "C.proxies{",
+                    "C.install_determinism(", "C.stub_env{", "C.errtext(S, e)"):
+            assert use in text, f"{name} does not use {use}"
+        for redeclared in ("local function stub_result(name)",
+                           "local proxy_mt = {}",
+                           "proxy_mt.__index = function",
+                           "proxy_mt.__add = zero",
+                           "G.os.exit = function",
+                           "local envfields = {}"):
+            assert redeclared not in text, \
+                f"{name} re-declares `{redeclared}` instead of sharing it"
 
 
 # --------------------------------------------------------------------------

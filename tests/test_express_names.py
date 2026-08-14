@@ -765,6 +765,31 @@ def _temp_write_violations(fn, rc):
             # is the standing proof of the equivalence.
             open_writes.append((pc, li.ri.a))
 
+    def _folded(r: int, def_pc: int, u: int) -> bool:
+        """True iff the read of `r` at `u` is a *field store of a table
+        constructor still being built in `r`*, which is not a consumer.
+
+        Stated from the RECONSTRUCTOR's side, deliberately, so this oracle
+        stays independent of `express/freereg.py`'s rule for the same shape
+        (`_constructor_field_target`): `Reconstructor._dispatch` opens a table
+        context at every `NEWTABLE` and, while the context's register is still
+        `r`, routes `SETTABLE`/`SETLIST` into `_fold_settable`/`_fold_setlist`
+        -- which append to the pending `TableExpr` and never call
+        `_read_reg(r)`. The value is spliced into its consumer exactly once,
+        by whatever finally takes the finished literal. Without this the
+        oracle reports one false violation per field on every inlined
+        constructor in the corpus (`config.lua`'s main chunk alone has a
+        13-field one).
+
+        The `NEWTABLE` test is on the reaching *definition* -- the write whose
+        window this is -- because a `SETTABLE` into a slot that some other
+        instruction produced is an ordinary assignment statement and really
+        does consume it (`a().b = 1`).
+        """
+        return (fn.instrs[def_pc].ri.op is Op.NEWTABLE
+                and fn.instrs[u].ri.op in (Op.SETTABLE, Op.SETLIST)
+                and fn.instrs[u].ri.a == r)
+
     bad = []
     for r in sorted(rc.temps):
         ws = sorted(set(writes.get(r, []))
@@ -775,7 +800,8 @@ def _temp_write_violations(fn, rc):
             if fn.instrs[pc].ri.op in control:
                 continue
             nxt = ws[i + 1] if i + 1 < len(ws) else None
-            n = sum(1 for u in rs if u > pc and (nxt is None or u <= nxt))
+            n = sum(1 for u in rs if u > pc and (nxt is None or u <= nxt)
+                    and not _folded(r, pc, u))
             if n != 1:
                 bad.append((r, pc, n))
     return bad

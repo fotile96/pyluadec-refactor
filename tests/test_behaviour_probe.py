@@ -364,9 +364,13 @@ def test_invocation_gap_catches_what_the_old_aggregate_thresholds_cannot():
 
 
 def test_probe_result_is_never_silently_decoded():
-    """The trace embeds corpus string constants verbatim, and the corpus is
-    Japanese game text that is frequently not UTF-8. The comparison unit is
-    bytes; nothing in the gate path decodes them."""
+    """The trace embeds corpus string constants verbatim, and the reason for
+    keeping them as bytes is the engineering red line, not the encoding:
+    CLAUDE.md records the corpus as measured 0 non-UTF-8 out of 49063 string
+    constants, so "frequently not UTF-8" (what this docstring used to say) is
+    false of the corpus. The synthetic input below is Shift-JIS and IS
+    undecodable, which is why this test can falsify a decode at all. The
+    comparison unit is bytes; nothing in the gate path decodes them."""
     from scripts.probe_behaviour import digest, probe_raw
     raw = b'function main() sink("\x93\xfa\x96{\x8c\xea") end'
     t = probe_raw(raw, is_source=True)
@@ -417,15 +421,17 @@ def behaviour_traces(corpus_dir, decompiled):
 def test_corpus_behaviour_matches(behaviour_traces, tmp_path):
     """Original bytecode and decompiled output must make the same engine calls.
 
-    Measured 2026-08-12: 227/229 byte-identical, 2 pinned. Pins are exact
-    (original, decompiled) first-differing-line pairs compared two-
-    directionally, so a changed message, a converged pair or a vanished file
-    all fail -- see EXPECTED_DIVERGENCE for the instruction-level evidence
-    behind each.
+    Re-measured 2026-08-14 (M6 task 12): 228/229 byte-identical, 1 pinned
+    (was 227/2 -- snr_mainmenu.lua converged). Pins are exact
+    (original, decompiled) WHOLE-TRACE DIGEST pairs compared two-
+    directionally, so any changed byte on either side, a converged pair or a
+    vanished file all fail -- see EXPECTED_DIVERGENCE for the
+    instruction-level evidence behind each, and `pin_evidence` for the
+    measured reason the key is no longer the first differing line pair.
     """
-    from scripts.probe_behaviour import dump_mismatch, first_difference
+    from scripts.probe_behaviour import dump_mismatch, pin_evidence
     assert len(behaviour_traces) == 229
-    divergent = {n: first_difference(o, d)[1:]
+    divergent = {n: pin_evidence(o, d)
                  for n, (o, d) in behaviour_traces.items() if o != d}
     unexpected, moved, gone = adjudicate_pins(divergent, EXPECTED_DIVERGENCE)
     for n in unexpected + moved:
@@ -446,20 +452,23 @@ def test_pinned_divergences_are_only_what_they_are_claimed_to_be(behaviour_trace
     """The adjudication above is a claim about *why* each pin diverges. Assert
     the claims, so they cannot quietly become wrong:
 
-    * snr_mainmenu -- exactly one differing line, and everything before it is
-      identical, i.e. both sides made the same 18 engine calls and then both
-      failed with the same operation on the same nil; only getobjname's noun
-      differs (`field 'library'` vs `field '?'`, the __pld_R box model).
     * snr_novel -- the two traces are the same MULTISET of lines, i.e. the same
       calls with the same arguments in a different order: table iteration
       order, not a behavioural difference.
+
+    snr_mainmenu was the second claim and is gone with its pin (M6 task 12).
+    It did NOT converge by certifying -- round-1 correction: its `main` is
+    `L1` (`mismatch: code at root/7`) and the file still emits `__pld_R` on
+    1974 of its 3325 lines (3220 of 4782 before task 12), 18 of them the very
+    `["library"]` lines the pin was about. What changed is whole-file fallback
+    -> HYBRID: the frames on the failing path ship structured text, so both
+    sides compose the message from a `GETTABLE` with a STRING key and name the
+    nil `field 'library'`. It is asserted as a CONVERGENCE below rather than
+    deleted outright, so that a regression putting it back on the fallback
+    path fails here too and not only in the pin adjudication above.
     """
     o, d = behaviour_traces["snr_mainmenu.lua"]
-    lo, ld = _lines(o), _lines(d)
-    assert len(lo) == len(ld)
-    assert sum(1 for a, b in zip(lo, ld) if a != b) == 1
-    assert b"attempt to perform arithmetic" in lo[-2]
-    assert b"attempt to perform arithmetic" in ld[-2]
+    assert o == d
 
     o, d = behaviour_traces["snr_novel.lua"]
     assert o != d
@@ -584,15 +593,54 @@ def test_injected_loop_bound_is_caught(corpus_dir, decompiled):
 def test_injected_forloop_bound_is_caught(corpus_dir, decompiled):
     """The same injection against the FORLOOP the fallback emitter writes out
     by hand: turn `__pld_i <= limit` into `__pld_i < limit`, i.e. run the loop
-    one iteration short. snr_memory.lua is one of the 17 files still shipping
-    fallback, so the floor is covered as well as the structured path."""
+    one iteration short. snr_memory.lua ships a HYBRID chunk (M6 task 12
+    re-measurement: 4 files are whole-file fallback and 8 more, this one among
+    them, carry fallback-emitted inline functions inside otherwise structured
+    source), so the floor is covered as well as the structured path.
+
+    The register in the anchor is `__pld_R[3]`, not `__pld_R[5]`: task 12's
+    classification change moved which of this file's protos ship fallback at
+    all, and the `[5]` line no longer exists. `_injected` asserts the anchor is
+    unique, which is what caught that -- re-derived, not widened."""
     orig, mutated = _injected(
         corpus_dir, decompiled, "snr_memory.lua",
-        b"\nif (__pld_s > 0 and __pld_i <= __pld_R[5]) or "
-        b"(__pld_s <= 0 and __pld_i >= __pld_R[5]) then\n",
-        b"\nif (__pld_s > 0 and __pld_i < __pld_R[5]) or "
-        b"(__pld_s <= 0 and __pld_i >= __pld_R[5]) then\n")
+        b"\nif (__pld_s > 0 and __pld_i <= __pld_R[3]) or "
+        b"(__pld_s <= 0 and __pld_i >= __pld_R[3]) then\n",
+        b"\nif (__pld_s > 0 and __pld_i < __pld_R[3]) or "
+        b"(__pld_s <= 0 and __pld_i >= __pld_R[3]) then\n")
     assert mutated != orig
+
+
+def test_the_pin_key_does_not_absorb_an_unrelated_change(corpus_dir, decompiled):
+    """The pin key must be the whole compared evidence, not a projection of it.
+
+    Through M6 the key was `first_difference(o, d)[1:]`. Measured on this tree
+    (2026-08-14, final-review item 8): replacing `= 68` with `= 168` in
+    `snr_novel.lua`'s DECOMPILED source -- 3 sites, in a scratch copy; the
+    corpus is never written -- moves the trace but leaves the first differing
+    line pair byte-for-byte unchanged, so the old key adjudicated the mutated
+    run as the existing pin and the gate stayed green. Both halves are
+    asserted here, so this cannot rot into "the digests differ" without also
+    proving the old key would not have.
+    """
+    from scripts.probe_behaviour import (EXPECTED_DIVERGENCE, first_difference,
+                                         pin_evidence, probe_raw)
+    f = corpus_dir / "snr_novel.lua"
+    src = decompiled(f).source
+    assert src.count(b"= 68") == 3
+    o = probe_raw(f.read_bytes(), is_source=False)
+    d = probe_raw(src, is_source=True)
+    m = probe_raw(src.replace(b"= 68", b"= 168"), is_source=True)
+    assert m != d
+    # The old key: unchanged by the injection, so `adjudicate_pins` saw a
+    # matching pin and reported nothing.
+    assert first_difference(o, m)[1:] == first_difference(o, d)[1:]
+    # The key in force: the clean run matches the pin, the injected run does
+    # not, and `moved` is what fires.
+    assert pin_evidence(o, d) == EXPECTED_DIVERGENCE["snr_novel.lua"]
+    assert pin_evidence(o, m) != EXPECTED_DIVERGENCE["snr_novel.lua"]
+    assert adjudicate_pins({"snr_novel.lua": pin_evidence(o, m)},
+                           EXPECTED_DIVERGENCE) == ([], ["snr_novel.lua"], [])
 
 
 def test_probe_is_deterministic_across_separate_processes(corpus_dir, decompiled):

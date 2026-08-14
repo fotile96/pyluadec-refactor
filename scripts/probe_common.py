@@ -15,13 +15,22 @@ from __future__ import annotations
 
 
 def adjudicate_pins(
-    divergent: dict[str, tuple[str, str]],
-    pinned: dict[str, tuple[str, str]],
+    divergent: dict[str, tuple],
+    pinned: dict[str, tuple],
 ) -> tuple[list[str], list[str], list[str]]:
-    """`(unexpected, moved, gone)` -- each a sorted list of file names.
+    """`(unexpected, moved, gone)` -- each a sorted list of keys.
 
-    `divergent` is the set of files that actually differ, keyed by name, with
-    the `(original, decompiled)` evidence pair; `pinned` is the expectation.
+    `divergent` is the set of subjects that actually differ, keyed by name,
+    with the evidence tuple; `pinned` is the expectation.
+
+    The evidence tuple is deliberately UNTYPED beyond `tuple`. Only `==` is
+    ever applied to it, and the three callers already disagree on its shape:
+    `probe_global_state.py` pins `(str, str)`, `probe_behaviour.py` pins
+    `(bytes, bytes)` -- bytes on purpose, see its `first_difference` -- and
+    `probe_enum.py` pins `(str, bytes, bytes)`, adding the assignment that
+    exposes the divergence, and keys on `file:proto_path` rather than on a
+    file name. The annotation said `tuple[str, str]` through all of that and
+    was simply false; widening it is not a loosening.
 
     * `unexpected` -- diverges and is not pinned: a new defect, or an old one
       that moved to a different file.

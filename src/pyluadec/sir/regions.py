@@ -23,8 +23,70 @@ class Seq:
 
 
 @dataclass(frozen=True)
+class CondTest:
+    """One leaf test of a condition TREE (M6 task 11).
+
+    `staging` is the operand code evaluated only when control reaches this
+    test -- empty for the first leaf of a chain, whose operands were staged by
+    the preceding sibling `Straight`, and non-empty for any later leaf whose
+    operands luac emitted *after* an earlier test's jump. Like a `VAlt`'s
+    staging it must reconstruct to ZERO statements; `Reconstructor._stage_run`
+    is the guard, the same one `CondValue` uses.
+
+    `jump_is_true_exit` is the whole of the polarity information the bytecode
+    does not carry in the instruction itself. `lcode.c` compiles a boolean
+    operand in one of two modes: `luaK_goiftrue` (used for an `and`'s left
+    operand and for the whole condition of an `if`/`while`) inverts a
+    comparison's jump so the jump is the FALSE exit, and `luaK_goiffalse`
+    (used for an `or`'s left operand) leaves it so the jump is the TRUE exit.
+    The two are indistinguishable from the instruction alone -- `EQ A=1` is
+    `x == y` under one reading and `x ~= y` under the other -- so which list
+    the jump landed on is recovered from its TARGET, in `sir.build
+    ._parse_cond`, and recorded here.
+    """
+    staging: tuple[LirInstr, ...]
+    test: LirInstr
+    jmp_pc: int
+    jump_is_true_exit: bool
+
+
+@dataclass(frozen=True)
+class CondOp:
+    """An `and`/`or` join of two condition subtrees. `left` always occupies
+    strictly lower pcs than `right`, so a left-then-right walk is program
+    order -- which `Reconstructor.cond_tree_expr` depends on, because reading
+    a staged temp POPS it out of the env."""
+    op: str                          # "and" | "or"
+    left: "CondNode"
+    right: "CondNode"
+
+
+CondNode = CondTest | CondOp
+
+
+def cond_claimed(node: CondNode) -> frozenset[int]:
+    """Every pc a condition tree occupies -- staging, tests, and their JMPs.
+
+    Kept next to the node definitions for the same reason `value_claimed` is:
+    a new field cannot be added without this function being the obvious place
+    that has to learn about it."""
+    if isinstance(node, CondTest):
+        return frozenset({node.test.ri.pc, node.jmp_pc}
+                         | {li.ri.pc for li in node.staging})
+    return cond_claimed(node.left) | cond_claimed(node.right)
+
+
+@dataclass(frozen=True)
 class If:
-    cond: LirInstr
+    #: Either a single compare/`TEST` instruction (the M3 form -- fall-through
+    #: is the then-body, so `Reconstructor.condition_expr` reads it directly),
+    #: or a `CondNode` tree for an `and`/`or` chain (M6 task 11).
+    cond: "LirInstr | CondNode"
+    #: Informational only -- no consumer reads it (see `While`'s docstring for
+    #: the convention and for why the name is inverted relative to the value).
+    #: Always `False` when `cond` is a `CondNode`: polarity there is per-leaf,
+    #: in `CondTest.jump_is_true_exit`, and there is no single instruction
+    #: whose A field could stand for the whole tree.
     negated: bool
     then_body: "Region"
     else_body: "Region | None"

@@ -557,16 +557,23 @@ mixed = function(p, q) local r = (p or q) == 1 a = b return r end
 # Corpus arm.
 # --------------------------------------------------------------------------
 
-HYBRID_FILES = ("snr_fragment_main.lua", "snr_s1_10_s.lua", "snr_s3_10_s.lua",
-                "snr_s4_10_s.lua", "snr_s5_10_s.lua", "snr_story_main.lua")
+HYBRID_FILES = ("snr_s1_10_s.lua", "snr_s3_10_s.lua", "snr_s4_10_s.lua",
+                "snr_s5_10_s.lua", "snr_story_main.lua")
 
 
 def test_corpus_hybrid_files_ship_hybrid(corpus_dir, decompiled):
-    """The six corpus files hybrid emission recovered, named so that one
-    silently dropping back to a whole-file state machine fails here rather than
-    only moving a score. Not a threshold: a file that starts shipping FULLY
+    """The corpus files hybrid emission recovered, named so that one silently
+    dropping back to a whole-file state machine fails here rather than only
+    moving a score. Not a threshold: a file that starts shipping FULLY
     structured (a residual fix) also fails, and the right response is to move
-    it out of this tuple in the same commit."""
+    it out of this tuple in the same commit.
+
+    That is exactly what happened at M6 task 11 (2026-08-14): six became five.
+    `snr_fragment_main.lua`'s substituted `main_1` certified once compound `if`
+    conditions were representable, so the file now ships fully structured and
+    left this tuple. `snr_story_main.lua` stayed hybrid but its frontier
+    halved, from 2 substituted functions to 1 (`main_1` certified, the other
+    did not) -- see `SENTINELS_PER_FILE`."""
     for name in HYBRID_FILES:
         res = decompiled(corpus_dir / name)
         assert res.hybrid is True, name
@@ -599,22 +606,26 @@ def test_corpus_hybrid_invariant_on_one_file(corpus_dir):
 # 2026-08-12. Pinned so the reach measurement below cannot silently start
 # injecting nothing.
 SENTINELS_PER_FILE = {
-    "snr_fragment_main.lua": 1, "snr_s1_10_s.lua": 1, "snr_s3_10_s.lua": 1,
-    "snr_s4_10_s.lua": 1, "snr_s5_10_s.lua": 2, "snr_story_main.lua": 2,
+    "snr_s1_10_s.lua": 1, "snr_s3_10_s.lua": 1,
+    "snr_s4_10_s.lua": 1, "snr_s5_10_s.lua": 2, "snr_story_main.lua": 1,
 }
 
 # The files whose substituted code each standing probe EXECUTES, measured
 # 2026-08-12 (round 1) by the test below. This is the honest scope of the
 # claim "the probes are the semantic gate for the hybrid boundary": they gate
-# it on 4 of the 6 files and on neither of the other two.
+# it on 4 of the 5 files and on neither the fifth.
 #
-# `snr_fragment_main.lua`: its only global, `main`, errors after 12 recorded
-# events, and the substituted `main_1` is a chunk LOCAL called from another
-# chunk local -- nothing the invocation loop can reach.
 # `snr_s5_10_s.lua`: the run hits the 3000-event cap before the invocation
 # loop reaches the code that calls `main_42`/`main_43`. It is also the file
 # `test_corpus_hybrid_invariant_on_one_file` picks, so it is doubly the least
-# covered of the six.
+# covered of the set.
+#
+# Re-measured 2026-08-14 (M6 task 11), and the numerator did not move: the
+# same four files move under the sentinel and the same one does not.
+# `snr_fragment_main.lua` -- the OTHER unreached file, whose substituted
+# `main_1` was a chunk local nothing the invocation loop could call -- has
+# left the population entirely by certifying, so the unreached set went from
+# two of six to one of five without any probe getting better.
 PROBE_REACH_GLOBAL_STATE: frozenset[str] = frozenset()
 PROBE_REACH_BEHAVIOUR = frozenset({
     "snr_s1_10_s.lua", "snr_s3_10_s.lua", "snr_s4_10_s.lua",
@@ -634,15 +645,15 @@ def test_probe_reach_of_the_substituted_code(corpus_dir, monkeypatch):
     This exists because round 1 of this task claimed the probes were the
     boundary's semantic evidence for all 6 hybrids. They are not -- the
     committed injection (`test_a_broken_upvalue_write_at_the_boundary_diverges`)
-    is also a no-op on the corpus, since none of the 8 substituted functions
-    performs a `SETUPVAL` through a name slot (measured: all 6 artifacts stay
+    is also a no-op on the corpus, since none of the substituted functions
+    performs a `SETUPVAL` through a name slot (measured: all artifacts stay
     byte-identical under that patch). Pinned rather than asserted-away so that
     a future hybrid landing in an unreached region is noticed: a file joining
     or leaving either set fails here and the pin must be re-derived in the same
     commit.
 
-    Directly driving the two unreached files' substituted functions is not
-    available: both are chunk LOCALS, and the original side is stripped
+    Directly driving the unreached file's substituted functions is not
+    available: they are chunk LOCALS, and the original side is stripped
     bytecode with no source to append a driver to, so there is no symmetric way
     to call them. The synthetic differential tests above cover the boundary's
     mechanisms; this test bounds what the corpus gate adds to that.

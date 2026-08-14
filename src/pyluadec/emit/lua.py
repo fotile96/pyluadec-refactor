@@ -70,9 +70,9 @@ from pyluadec.express.reconstruct import (Assign, AssignTarget, ExprStmt,
 from pyluadec.ingest.proto import Proto
 from pyluadec.lift import LUA_KEYWORDS, Op
 from pyluadec.lift.lift import LirFunction, LirInstr, lift_proto
-from pyluadec.sir import (Break, CondValue, EndIter, GenericFor, If,
-                          NumericFor, Region, Repeat, Return, Seq, Straight,
-                          While, WhileTrue)
+from pyluadec.sir import (Break, CondNode, CondOp, CondTest, CondValue,
+                          EndIter, GenericFor, If, NumericFor, Region, Repeat,
+                          Return, Seq, Straight, While, WhileTrue)
 from pyluadec.sir.build import StructureError, build_sir
 # `emit` importing from `structure` is an emit -> structure dependency, and
 # `structure.structured` itself imports FROM `emit.lua` (`print_chunk_or_raise`,
@@ -100,6 +100,39 @@ _PREC = {"or": 1, "and": 2,
          "..": 4, "+": 5, "-": 5, "*": 6, "/": 6, "%": 6,
          "unary": 7, "^": 8}
 _RIGHT_ASSOC = frozenset({"..", "^"})
+# Operators whose RIGHT operand needs no parentheses at its own precedence,
+# because regrouping them changes neither the value nor the emitted code.
+# `and`/`or` only, and the claim is narrow and measured rather than a general
+# appeal to associativity: `lparser.c`'s `'(' expr ')'` arm calls
+# `luaK_dischargevars`, which leaves an expression's true/false jump LISTS
+# intact, so a parenthesised short-circuit operand is not "closed off" the way
+# a parenthesised arithmetic sub-expression is. Measured 2026-08-14, six pairs
+# compiled with the real `luac_sz4` and compared byte-for-byte
+# (`tests/test_emit_readability.py::
+# test_associative_and_or_chains_compile_identically`):
+# `a and b and c`, `a or b or c`, `a and b and c and d` and their fully
+# right-nested spellings are identical in `if`-condition and in value position.
+#
+# `and`/`or` are also the only ops that could benefit: they are the only two
+# entries at their own precedence levels, so "same precedence" and "same
+# operator" coincide, and a right child at a DIFFERENT precedence is still
+# governed by the ordinary `prec < parent_prec` rule (`a and (b or c)` keeps
+# its parentheses, `a or b and c` never had any). Added at M6 task 11 fix
+# round 1: `sir.build._parse_cond` builds right-leaning trees, so without this
+# a multi-operand condition prints as `a and (b and c)` -- the same class of
+# output-surface regression M5 task 7 closed for `(-1)`.
+#
+# **EVIDENCE SYNTHETIC, measured 0 of 229 corpus files** (2026-08-14, M6 final
+# review item 13), labelled the way this milestone's other narrow rules are.
+# Neutering this to `frozenset()` and regenerating all 229 chunks changes
+# nothing: `sha256(decompile_file(f).source)` is identical for every file.
+# The neuter is not inert -- `tests/test_emit_readability.py::
+# test_associative_and_or_chains_are_flat` fails under it, on synthetic input.
+# So the rule is real and falsifiable, and this corpus simply contains no
+# `if a and b and c`-shaped condition that reaches the structured printer.
+# This is an OUTPUT-SURFACE change; it is row 7 of the versioned table in
+# `docs/runbooks/structured-pipeline.md` ("What changed in v2").
+_ASSOCIATIVE = frozenset({"and", "or"})
 # Precedence demanded of the base of a call/index/method-call position
 # (`X(...)`, `X[...]`, `X:m(...)`) -- higher than any real operator's own
 # precedence, so any Bin/UnExpr used there always gets wrapped: `(a+b)()`,
@@ -400,7 +433,7 @@ def _expr(e: Expr, depth: int, parent_prec: int, ctx: "Printer | None",
     if isinstance(e, BinExpr):
         prec = _PREC[e.op]
         lp = prec + (1 if e.op in _RIGHT_ASSOC else 0)
-        rp = prec + (0 if e.op in _RIGHT_ASSOC else 1)
+        rp = prec + (0 if e.op in _RIGHT_ASSOC or e.op in _ASSOCIATIVE else 1)
         out = (f"{_expr(e.lhs, depth, lp, ctx, indent)} {e.op} "
                f"{_expr(e.rhs, depth, rp, ctx, indent)}")
         return f"({out})" if prec < parent_prec else out
@@ -590,10 +623,10 @@ class Printer:
         vals = ", ".join(self.expr(e, indent=indent) for e in s.exprs)
         return f"local {names} = {vals}"
 
-    def condition(self, cond: LirInstr, indent: int = 0) -> str:
-        """Render a comparison/TEST instruction as the boolean expression that
-        is true exactly when control **falls through** past the JMP that
-        follows it.
+    def condition(self, cond: "LirInstr | CondNode", indent: int = 0) -> str:
+        """Render a comparison/TEST instruction -- or a whole `and`/`or`
+        condition TREE -- as the boolean expression that is true exactly when
+        control **falls through** past the JMP that follows it.
 
         Three callers, all wanting exactly that expression:
           - `If`: the fallthrough is the `then_body`, so this IS the `if`
@@ -639,8 +672,20 @@ class Printer:
         single source of truth both region kinds carry. (`If.negated` has
         always been informational in this printer; `Repeat.negated` is defined
         the same way so the two cannot drift apart.)
+
+        A `CondNode` (M6 task 11, `If` only) delegates to
+        `Reconstructor.cond_tree_expr` instead, and stays a fold for the same
+        reason the single-instruction case is: the whole `and`/`or` structure
+        lives in the Expr tree, and every parenthesis comes from `_PREC`
+        (`or` 1, `and` 2, both left-associative), never from this method
+        deciding anything. `a and b or c` therefore prints bare, `a and (b or
+        c)` gets exactly one pair, and no constant/closure/`...` node can
+        acquire a spurious pair the way one left of `^` does -- `_SIMPLE_PREC`
+        is 9, above both.
         """
         try:
+            if isinstance(cond, (CondTest, CondOp)):
+                return self.expr(self.recon.cond_tree_expr(cond), indent=indent)
             return self.expr(self.recon.condition_expr(cond), indent=indent)
         except ReconstructError as exc:
             # Region-level refusal, as before: a region whose condition slot

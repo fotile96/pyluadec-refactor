@@ -47,8 +47,10 @@ verified against the tree; convert any you touch.
    block; never trust the paste, including this sentence's claim about it.
 2. **Read off a committed artifact or a standing test.** The L3 rates come
    from `corpus/ledger.jsonl` (`uv run python scripts/ledger_dashboard.py`).
-   The 225/229 global-state figure comes from
-   `tests/test_global_state_probe.py` / `scripts/probe_global_state.py`. The
+   The 228/229 global-state figure comes from
+   `tests/test_global_state_probe.py` / `scripts/probe_global_state.py`
+   (it was 225/229 with 4 pins until M6 task 12 converged three of them;
+   re-run 2026-08-14). The
    effects–emitter counts (214192/214192, 6981 open rows, 7448 grid rows) live in
    `tests/test_effects_emitter_consistency.py`'s `corpus_scan` fixture, but
    the test asserts only floors — to see the exact numbers you have to print
@@ -385,6 +387,21 @@ byte-identical across each commit:
 | unary `-` separator | always (`- x`) | only against a leading `-` (`- -x`), where `--` would start a comment |
 | indentation | 2 spaces, **function bodies not indented at all** | 4 spaces uniformly, function bodies included |
 | non-ASCII string constant | decimal escapes always (`"\227\128\144…"`) | raw UTF-8 when the bytes decode and re-encode identically, decimal escapes otherwise |
+| same-operator `and`/`or` chain | `a and (b and c)` | `a and b and c` (`emit/lua.py::_ASSOCIATIVE`; **added M6 task 11 fix round 1**, not M5 task 7) |
+
+The last row was missing from this table until the M6 final review found it —
+it is a real seventh surface change and it had no entry here, in CLAUDE.md or
+in `CHANGELOG.md`. Two things about it, both measured 2026-08-14:
+
+- **On this corpus it is inert.** Neutering `_ASSOCIATIVE` to `frozenset()`
+  and regenerating all 229 chunks changes **0 files**
+  (`sha256(decompile_file(f).source)` identical for every one).
+- **It is not unfalsifiable.** The same neuter fails
+  `tests/test_emit_readability.py::test_associative_and_or_chains_are_flat` on
+  synthetic input, and its byte-equivalence is proven against the real `luac`
+  by `test_associative_and_or_chains_compile_identically` (6 pairs). So its
+  evidence is *synthetic*, which is legitimate and is now labelled at the
+  constant, exactly as this milestone labels its other narrow rules.
 
 Two consequences worth knowing before reading a v2 file:
 
@@ -545,9 +562,13 @@ byte-exact by construction — so the semantic evidence for the boundary comes
 from running the code: the two standing probes
 (`scripts/probe_global_state.py` L1.5, `scripts/probe_behaviour.py` L1.75) over
 all 229 files, plus the differential-execution arm in
-`tests/test_hybrid_chunk.py`. Both probes are unchanged by hybrid emission:
-225/229 and 227/229 identical with the same 4 and 2 pinned divergences
-(measured 2026-08-12, after the change).
+`tests/test_hybrid_chunk.py`. Both probes were unchanged by M5 task 6's hybrid
+emission: 225/229 and 227/229 identical with the same 4 and 2 pinned
+divergences (measured 2026-08-12, after that change — a dated snapshot, kept
+because the claim it supports is about that change). **M6 task 12's
+classification work then moved both**, in the direction the pins are supposed
+to move: 228/229 and 228/229 with 1 pin each, four pins deleted as `gone`
+(re-measured live 2026-08-14).
 
 **How far the probes actually reach into the substituted code — measured, and
 smaller than round 1 of this task claimed.** Injecting an unconditional
@@ -1472,9 +1493,13 @@ grouping key" below. Current output on this corpus:
 ```
 ledger key: 16/1478 shash group(s) carry >1 debug fingerprint (462 fingerprints between them); 0 disagree on (level, rung, reason)
 compiled 229/229; ledger: 1478 unique protos (1944 occurrences)
-structured 1896/1944 protos (97.5%); L3 1430/1478 unique (96.8%)
-shipped: 1747/1944 protos structured (89.9%); 216 files fully structured, 6 hybrid, 7 whole-file fallback
+structured 1904/1944 protos (97.9%); L3 1438/1478 unique (97.3%)
+shipped: 1763/1944 protos structured (90.7%); 217 files fully structured, 8 hybrid, 4 whole-file fallback
+L2: 1/5 authored file(s) granted; 2/1478 row(s) carry the badge (13 sequence(s) over 5/229 files)
 ```
+
+(Re-measured 2026-08-14 after M6 task 12. The `L2:` line is newer than the
+M5-close transcript this block used to show.)
 
 ### Read the dashboard
 
@@ -1482,11 +1507,13 @@ shipped: 1747/1944 protos structured (89.9%); 216 files fully structured, 6 hybr
 uv run python scripts/ledger_dashboard.py            # or --markdown
 ```
 
-Current output (M5 task 5): 1478 unique protos / 1944 occurrences / 229
-files, `compile_ok 1478/1478`, `level L3 1430`, `level L1 48`, L3 share 96.8%
-unique / 97.5% occurrences, `L3 rung 1: 1430`, `ladder l3-ladder-v1`. (After
-M5 task 4 it was `level L3 1403` / `level L1 75`, 94.9% / 96.1%; at M4
-close `level L3 1389` / `level L1 89`, 94.0% / 95.4%; at M3 close
+Current output (M6 task 12): 1478 unique protos / 1944 occurrences / 229
+files, `compile_ok 1478/1478`, `level L3 1438`, `level L1 40`, L3 share 97.3%
+unique / 97.9% occurrences, `L3 rung 1: 1438`, `ladder l3-ladder-v1`. (After
+M6 task 11 it was `level L3 1437` / `level L1 41`; at M5 task 5
+`level L3 1430` / `level L1 48`, 96.8% / 97.5%; after M5 task 4
+`level L3 1403` / `level L1 75`, 94.9% / 96.1%; at M4 close
+`level L3 1389` / `level L1 89`, 94.0% / 95.4%; at M3 close
 `level L3 1112` / `level L1 366`, 75.2% / 81.1%.)
 
 ### Debug one function that refuses to certify
@@ -1594,7 +1621,7 @@ the original instruction stream actually did.
 ### Run the suite
 
 ```bash
-PYLUADEC_CORPUS_DIR=<corpus> uv run pytest              # 867 tests; 42.1-44.1s over 5 runs on macOS 15.2 / Apple M4 (drifts upward within a session), 39.4-41.1s on a second host (2026-08-13, M5 residual round).
+PYLUADEC_CORPUS_DIR=<corpus> PYLUADEC_PRED_CORPUS_DIR=<pred> uv run pytest   # 1087 tests; 52.73 / 56.18 / 56.83s over three runs on macOS 15.2 / Apple M4 (2026-08-14, M6 final-review fix round; the M6 wrap measured 1077 tests at 55.07-55.61s over three runs, and the same tree measured 57.90s just before this round -- the suite drifts upward within a session and has 1-2s of run-to-run spread, so do not compare single runs across sessions). Ceiling is a ~120s EARMARK for formal-verification instruments, not a general relaxation -- see CLAUDE.md. Without PYLUADEC_PRED_CORPUS_DIR 32 tests SKIP (test_cross_corpus.py 22, test_loss_sweep.py 8, test_predcorpus.py 2) and the run still exits 0 -- which is why scripts/ratchet_job.sh now requires the variable.
                                                         # Ordering is UNMEASURED, not "not a factor": no randomiser is installed, so `-p no:randomly` is a no-op and no M5 A/B ever varied the order. See m3-backlog.md, M6 agenda 6.
 PYLUADEC_CORPUS_DIR=<corpus> uv run pytest tests/test_effects_emitter_consistency.py -v
 ```
@@ -1634,13 +1661,16 @@ PYLUADEC_CORPUS_DIR=<corpus> ./scripts/ratchet_job.sh [BASELINE_REF]
 Three gates: the full suite (which contains `tests/test_ledger_ratchet.py`,
 i.e. the proof that `corpus/ledger.jsonl` is a byte-exact fixed point of
 `scripts/run_corpus.py`), the baseline diff, and the full 24-case generated
-sweep. `BASELINE_REF` defaults to `eb08890`, the last merged milestone tip.
-Measured end-to-end 2026-08-12 (round 3): **37.9s**.
+sweep. `BASELINE_REF` defaults to `0957364`, the last merged milestone tip
+(the M5 merge; the default was moved forward from `eb08890`, the M4 merge, at
+the M6 wrap -- see that line's comment in `ratchet_job.sh`). Measured
+end-to-end 2026-08-14 on the M6 wrap tree, 1077 tests: **57.9-58.2s** (37.9s on
+2026-08-12 at 867 tests, before the ceiling was raised to a ~120s earmark).
 
 The diff on its own:
 
 ```bash
-git show eb08890:corpus/ledger.jsonl > /tmp/baseline.jsonl
+git show 0957364:corpus/ledger.jsonl > /tmp/baseline.jsonl
 uv run python scripts/ratchet_diff.py /tmp/baseline.jsonl corpus/ledger.jsonl
 ```
 
@@ -1834,6 +1864,322 @@ right time to run it is at a milestone wrap and before any merge that touches
 `corpus/ledger.jsonl`. If a runner is ever added, that script is the job body;
 adding one was deliberately out of scope rather than forgotten.
 
+## Condition trees: `and`/`or` in an `if` (M6 task 11)
+
+`regions.If.cond` used to be one compare instruction. That is enough for
+`if a then`, and it is enough for `if a and b then f() end` -- which compiles
+to the SAME bytecode as `if a then if b then f() end end`, so the nested
+reading is a correct reading. It is not enough the moment the `if` has an
+`else`: `luaK_patchtohere` sends both conjuncts' false-exits to the else
+block, while the nested reading would send the inner one to the end of the
+outer then-block, skipping the else entirely. `or` had no nested reading at
+all -- `luaK_goiffalse` patches its truelist to the START of the then-block,
+so the first compare's jump goes FORWARD over the second condition.
+
+`If.cond` is now `LirInstr | CondNode`, where `CondNode` is `CondTest`
+(a leaf: conditionally-evaluated `staging`, the test, its JMP pc, and the
+polarity bit) or `CondOp` (`"and"`/`"or"` over two subtrees). Single-test
+`if`s are untouched and still carry a bare `LirInstr` -- which is why this
+change moved no existing row.
+
+### How the tree is recovered
+
+`lcode.c` compiles a boolean expression into a chain of test+JMP pairs with
+two pending-jump lists (`luaK_infix`/`luaK_posfix`, lcode.c:684-736):
+
+* `X and Y` -- `luaK_goiftrue(X)` puts X's own jump on the FALSElist and
+  patches X's truelist to *here*, the start of Y's code;
+* `X or Y` -- `luaK_goiffalse(X)` puts X's jump on the TRUElist and patches
+  X's falselist to *here*.
+
+`ifstat` then runs `luaK_goiftrue` over the whole expression, so the LAST
+test's jump is always the false exit, the falselist is patched to the else
+block (or the join), and the truelist to the start of the then-block.
+
+Reading that backwards is `sir/build.py::_parse_cond`. The information the
+instruction stream does NOT carry is which list each jump landed on -- `EQ A=1`
+is `x == y` compiled for an `or` and `x ~= y` compiled for an `and`,
+identically encoded -- and it is recovered from the jump's TARGET: a jump to
+the true-target set is a truelist jump, one to the false target is a falselist
+jump, and one landing on a later span's start is the "patched to here"
+boundary between an `and`/`or`'s two operands, which is what makes grouping
+(`(a or b) and c` vs `a or (b and c)`) recoverable. The polarity bit is then
+folded into `Reconstructor.condition_expr`'s existing A/C-field reading via
+its `jump_is_true_exit=` keyword, rather than wrapped in a second `not` --
+`not (not (x == y))` compiles identically (two `invertjump`s cancel) but is
+nobody's source.
+
+The true-target set has two members, not one: the pc after the chain's last
+JMP, and -- when a JMP sits at that pc -- that JMP's own target, because
+`luaK_jump` concatenates the pending truelist onto it instead of flushing it.
+`snr_common.lua:main_81` is the corpus instance: its then-block is a `break`,
+so the `and`'s true-exit at pc 15 carries 26, the loop exit, while the chain
+falls through to 19.
+
+### Dispatch order, and why it is not a preference
+
+`_structure_if` tries the incumbent ONE-compare reading FIRST and only
+consults `_match_cond_chain` when that raises `StructureError`. The interval
+arithmetic cannot distinguish `if a and b then` from
+`if a then x = 1 if b then ... end end` -- same two tests, same two targets,
+differing only in whether the instructions BETWEEN the tests are operand
+staging or a statement, which `sir.build` has no register model to decide
+(`Reconstructor._stage_run` decides it, one layer down, after the region tree
+is fixed). Trying the chain first would therefore guess on exactly the shapes
+where guessing is wrong. Re-measured 2026-08-14 at the M6 final review, on
+this tree: inverting the order regenerates the ledger at `L3` **1433**/1478
+unique / **1899**/1944 occurrences instead of **1438**/1478 / **1904**/1944 --
+five protos downgraded. (The anchors here read 1432 vs 1437, task 11's totals;
+the delta of five is the load-bearing part and it reproduces exactly.)
+
+### The predecessor's structure reference, as a by-product
+
+M6 Task 9's Step 1 asks how often `build_sir` accepts the PREDECESSOR
+project's corresponding proto (its decompiled Lua source, recompiled with the
+oracle and lifted). Loaded with
+`predcorpus.load_pred_proto(pred_dir, name, strip=not carries_debug(original))`
+-- the `strip=` argument is load-bearing; the default would manufacture an
+`upvalues`-length mismatch on all 260 `nups > 0` protos.
+
+Over the 13 compound-`if` leaves, measured 2026-08-14:
+
+| tree | rate | failures |
+| --- | --- | --- |
+| `5961ea2` (before this task) | 6/13 (46.2%) | 6 × `if targets out of range`, 1 × `unrecognized transfer JMP` |
+| `76a09e8` (after) | **12/13 (92.3%)** | 1 × `unrecognized transfer JMP` (`snr_common.lua:main_76_2` pc 63) |
+
+The pre-task figure is **confounded**: six of its seven failures are the very
+compound-`if` defect this section closes, so 46.2% measured the recognizer,
+not the predecessor. **92.3% is the figure to reason from** — and the decision
+it feeds (whether an LLM meta-reconstruction pass over the predecessor's
+structure is worth commissioning) should also weigh that 8 of these 13 protos
+are `ui-keyloop` shapes, five of which are among the six predecessor defects
+this milestone confirmed. A high mechanical acceptance rate on the
+predecessor's output is not the same thing as its structure being right.
+
+### What it does not cover
+
+`while <a and b> do` is a NAMED gap, pinned by
+`tests/test_sir_condtree.py::WHILE_HEADER_GAP`. `_match_while_header` requires
+the header to be ONE basic block ("nothing jumps into the middle of the
+condition code"), which a two-test chain is not, and extending it means
+reshaping `regions.While`'s `header`/`cond` split as well. No corpus proto
+needs it. `repeat ... until a and b` certifies (the incumbent bottom-test
+reading already describes it); `repeat ... until a or b` does not, and is
+pinned in the same list -- the split is measured, not smoothed over.
+
+## Constructor field stores and captured registers (M6 task 12)
+
+Two independent defects in `classify_registers`, both reached through the same
+downstream amplifier: `Reconstructor.write_reg`'s `reg not in self.declared`
+gate. Once one definition of a register is materialized as a `local`, every
+later definition of that register becomes a *reassignment* — so a single
+misclassified definition does not merely cost one statement, it can silently
+alias every later value written into the slot.
+
+### 1. A field store is not a read of the table
+
+`stack_discipline`'s pop-once rule grades a staged definition a temporary iff
+its value is read exactly once before the statement ends. It already knew that
+`SETTABLE`/`SETLIST` do not *free* the table (`pop_ge(a + 1)`, "the table
+itself stays pending") but still counted their read of it, so a constructor
+with N fields scored N + 1 reads and was graded a **local**.
+
+The sources are unambiguous, and the two field forms restore `freereg` in two
+different files — a reader given only the `lparser.c` pointer will not find the
+`SETLIST` half at all:
+
+| field form | emits | restores `freereg` |
+| --- | --- | --- |
+| hash (`{k = v}`, `{[e] = v}`) | `lparser.c::recfield`, `vendor/lua-5.1/src/lparser.c:443` | `fs->freereg = reg;` at `lparser.c:460` |
+| array (`{a, b, c}`) | `lparser.c::closelistfield` `:464` / `lastlistfield` `:475`, which delegate to `luaK_setlist` (`lcode.c:819`) | `fs->freereg = base + 1;` at **`lcode.c:829`** |
+
+Either way the table's own slot survives the store: the value stays on the
+expression stack until whatever the literal is an operand of takes it.
+`freereg._constructor_field_target` is the read half of that sentence.
+
+(Round-1 correction: this section and `freereg.py` first cited
+`lparser.c:596`/`:632`, which are inside `explist1` and `funcargs`. The
+substance was right and the pointers were wrong, which at the axiom layer is
+the difference between a fix and a coincidence.)
+
+Two faces, both one-line reproductions (`tests/test_express_aliasing.py`):
+
+* `f({x = 1})` printed `local l0_1 = {x = 1} f(l0_1)` — one stack slot more
+  than luac used (`mismatch: maxstacksize`).
+* `local t = {a = {..}, b = {..}}` printed `local l0_1 = {..}`,
+  `l0_1 = {..}`, `local l0_0 = {a = l0_1, b = l0_1}` — **both fields aliased
+  to the last table**. This is a different program, not an unfaithful
+  rendering: `t.a.x` reads 3 where the original reads 1. `snr_graphic.lua:main`
+  had eight tables collapsed into one (`code` 385 → 650); M5 adjudicated the
+  same shape at `snr_music.lua:main`.
+
+The discriminator is the pending definition's own opcode — only a slot whose
+most recent push was `OP_NEWTABLE` gets the exemption — **plus a constant
+key**, because `_dispatch` folds only `isk(ri.b)` and `_fold_settable` has no
+register-key form. A dynamic-key constructor (`{[f()] = 1, [g()] = 2}`) is
+materialized and emitted as one `t[k] = v` statement per field, each of which
+reads the table for real; exempting those reads made `config.lua` raise
+`register 0 is read again after its staged value was consumed` and stop
+printing entirely. That was measured while the rule was being written, and it
+is pinned by a neuter test rather than left as a comment.
+
+### 2. `captured_regs` is a union, and was read as a whole-function fact
+
+`lift.LirFunction.captured_regs` is the union over every `CLOSURE` in the
+function of the slots its `MOVE` pseudo-instructions capture. `names.py` seeded
+all of them as named locals for the whole function, which says "slot 7 holds a
+live local everywhere" on the strength of one `function() ... end` near the
+end of the chunk. A capture proves only that the slot held a live local **at
+the `CLOSURE`'s pc**.
+
+`snr_graphic.lua:main` is the measured worst case: **five** `CLOSURE`s at pcs
+356, 358, 359, 366 and 372 capture registers 0–13, which made every definition
+of registers 0–13
+across the whole 385-instruction chunk a named local — including the eight
+nested table constructors in slot 1 at pcs **2, 19, 28, 39, 41, 43, 45, 47**,
+and hence defect 1's aliasing
+on top. (Re-measured 2026-08-14: this said "four `CLOSURE`s" and "pcs 2–45";
+there are five `CLOSURE`s, referencing five distinct subprotos, and the last
+constructor is at 47.)
+
+The refinement is per definition and is the weakest one that keeps the
+capture's own guarantee: a definition is a captured local iff it is the **last
+definition of that register at or before some capturing `CLOSURE`**, i.e. iff
+the value it writes is the one that closure captures. Everything else in the
+slot goes back to the freereg simulation. Population: **6 of 1944** protos
+have a captured register with definitions no closure captures — but they
+include `snr_graphic.lua:main`, `snr_memory.lua:main` and
+`snr_mainmenu.lua:main`, so the shipping effect is out of all proportion to
+the count (whole-file fallback 7 → 4, hybrid 5 → 8).
+
+A register `captured_regs` names but `closure_pseudo` cannot attribute to a pc
+stays whole-function seeded. That is empty for anything `lift_proto` produces
+and non-empty for hand-built `LirFunction`s, which is exactly what
+`tests/test_express_names.py::test_parameters_and_captured_registers_win_over_the_controls_override`
+constructs — it failed without the fallback, so the fallback is load-bearing,
+not decorative.
+
+### What is left, attributed rather than narrated
+
+40 non-`L3` shapes remain (41 before this task). The `declared` gate is
+**at least three mechanisms**, and only two of them are closed here. The
+third is `_same_block`: it refuses to stage a value whose consumer sits in
+another basic block, and an `and`/`or` sub-expression puts a jump between a
+staged callee and its `CALL`. One line reproduces it — `g(a and 1 or 2)`
+prints `local l0_0 = g  local l0_1 = a and 1 or 2  l0_0(l0_1)` and fails on
+`maxstacksize` — and it is `snr_common.lua:main_76_2`, the exemplar the task
+brief opened with.
+
+Measured attribution, 2026-08-14, by neutering `_same_block` to a tautology
+and re-certifying all 40 (a measurement only; the guard is load-bearing for
+execution-count correctness and its own docstring carries the proof): **6 of
+the 40** certify — `snr_graphic:main_2`, `snr_memory:main_2`,
+`snr_novel:main_2`, `snr_novel:main_3`, `snr_story_main:main_3` and its root.
+So `_same_block` is a real third mechanism but not the dominant one.
+
+`snr_common:main_71` (`structure: pc 286: else-join out of range`) is out of
+this family altogether — see the capability-boundary section, which states the
+same mechanism as **measured**. Round 1 of task 12 checked the jump structure
+it rests on (pc 295 is a `JMP` whose only successor is 410, pc 409 is a `JMP`
+back to 279, so 279/410 really are a loop header and its exit) and then wrote
+that "the `_match_loop`/`break_target=410` half is carried from task 11 and is
+unverified at this commit" — which contradicted the other passage and is the
+sentence the M6 final review flagged. **Re-run 2026-08-14, all three in one
+call, ~30s:**
+
+```
+_structure_if(284, break_target=410)  -> OK tuple
+_structure_if(284, break_target=None) -> StructureError: pc 286: else-join out of range
+_match_loop(279)                      -> None
+```
+
+So the capability-boundary passage is the correct one and this half is
+verified, not carried.
+
+### The `reconstruct: register N is read again` family — a fourth mechanism
+
+Five ledger rows, and they are **not** five defects. Measured 2026-08-14:
+
+* **Two are inherited ancestors.** `snr_common:main` carries `main_69`'s
+  message verbatim and `snr_s5_10_s:main` carries `main_42`'s;
+  `observation_classes.refusal_origin`'s `reconstruct` rule classifies both
+  `inherited`, and neither appears in `classes.json`'s candidate set.
+* **Three are own refusals** — `snr_common:main_69` (register 7),
+  `snr_s5_10_s:main_42` (register 11), `snr_s5_10_s:main_43` (register 9) —
+  and all three are the **same shape**, a clamp:
+
+  ```
+  250 SUB      R7 = R7 - R2      <- graded TEMP (its one read is the LT below)
+  251 LT       0 R7 K            <- reads R7
+  252 JMP      -> 254
+  253 LOADK    R7 = K1           <- graded LOCAL (the RK/literal barrier)
+  ...
+  257 SETTABLE R8[K] = R7        <- reads R7 AFTER THE JOIN
+  ```
+
+  (`snr_common:main_69`; `snr_s5_10_s:main_43` is `ADD` at 196 / `LE` 197 /
+  `JMP` 198 / `LOADK` 199 / read at 202+, and `main_42` is the same at
+  232/234/235. Source shape: `local v = a - b  if v < LIM then v = LIM end
+  t.k = v`.) The two verdicts are individually defensible — the `SUB` really
+  is read once before the branch, and the `LOADK` really is disqualified by
+  the RK/literal barrier — but they are **two arms of one conditional value**,
+  and at pc 257 the register holds either. The reconstructor stages the `SUB`,
+  the `LT` pops it, and the post-join read hits
+  `reconstruct.py::_read_reg`'s `_consumed` refusal.
+
+  This is the "no control-flow model" limitation that refusal's own docstring
+  names, and it is a **fourth** mechanism, not `_same_block`'s: `_same_block`
+  is one definition whose single consumer is in another block, this is two
+  definitions on two arms joining before a common consumer. None of the three
+  flips under the `_same_block` neuter above. Closing it needs a region for a
+  statement-level conditional assignment — `regions.CondValue` covers only the
+  `TESTSET`-based `and`/`or` idiom, and there is no `TESTSET` here.
+
+That leaves **31** of the 40 unattributed (40 − 6 `_same_block` − 3 clamp).
+The 31 is a row count and **already includes** the purely inherited
+`... at root/N` rows that will follow whatever their descendants do —
+`m3-backlog.md` §1 states the split as 21 own + 10 inherited = 31. (This
+sentence used to end "plus the 9 purely inherited …", which added them a
+second time; corrected at the M6 final review.)
+
+### `snr_music.lua:main` — the M5 diagnosis was right, and is now closed
+
+The task brief named it as a third instance of the constructor-aliasing
+family, from M5's adjudication. That diagnosis **survives**, and this task
+closed it. Measured 2026-08-14 by printing the chunk at BASE and at HEAD and
+recompiling both:
+
+| | BASE | HEAD | original |
+| --- | --- | --- | --- |
+| `code` length | 107 | **99** | 99 |
+| `maxstacksize` | 29 | 27 | 24 |
+| first differing pc | 2 | 1 | — |
+
+At BASE the printed source opens `local l0_1 = {…}` / `l0_1 = {…}` /
+`l0_1 = {…}` — four constructors collapsed into slot 1, exactly as M5 said. At
+HEAD they fold into one literal (`local l0_0 = {layerName = {…},
+musicTitle = {…}, …}`) and the instruction count is exactly right.
+
+What is left is a **fifth mechanism, and it is a consequence of closing the
+first**: the outer constructor's context is now held open longer, so the
+`local` for the table is emitted after three later scalar `local`s and every
+register shifts by three (24 → 27 is exactly those three slots). Instrumented
+directly — the reg-0 context opens at pc 1 in both, and closes:
+
+* at BASE while dispatching **pc 81** (`LOADBOOL` into register 1), because the
+  inner tables had been materialized into register 1 and folding them left
+  `LocalExpr(1)` items in the context's `hazard` set;
+* at HEAD while dispatching **pc 84** (the `CLOSURE` that reads register 0),
+  because the inner tables now fold as nested `TableExpr`s and `hazard` is
+  **empty**.
+
+So a fold that removes a hazard also removes the thing that used to close the
+context at the right place. It cost nothing here — the row was
+`mismatch: maxstacksize` before and after, and the ratchet shows 0 downgrades
+— but it is a real reordering hazard and it is the reason `snr_music.lua:main`
+did not certify despite its headline defect being fixed.
+
 ## Ledger fields added in M3
 
 `corpus/ledger.jsonl`, one row per unique `structural_hash`.
@@ -1956,9 +2302,77 @@ occurrences.
 
 | stage | unique | occurrences |
 | --- | --- | --- |
-| `build_sir` accepts the proto's own body | 1465 (99.1%) | 1931 (99.3%) |
-| whole subtree prints (proto **and** every descendant) | 1452 (98.2%) | 1918 (98.7%) |
-| certifies `L3` | **1430 (96.8%)** | **1896 (97.5%)** |
+| `build_sir` accepts the proto's own body | 1477 (99.9%) | 1943 (99.9%) |
+| whole subtree prints (proto **and** every descendant) | 1472 (99.6%) | 1938 (99.7%) |
+| certifies `L3` | **1438 (97.3%)** | **1904 (97.9%)** |
+
+(Re-measured 2026-08-14 after M6 task 12. After task 11 the third row was
+1437/1903; the previous figures, at M5 close, were 1465/1931, 1452/1918 and
+1430/1896. Task 12 moved the third row only — the top two are untouched,
+because neither of its two fixes changes what `build_sir` accepts or what
+prints.)
+
+**The command, because rows 1 and 2 have never named one and row 2 is easy to
+get wrong** (added in task 12 round 1, after a reviewer's reasonable predicate
+produced 1240/1678 for row 2 and the figure could not be checked):
+
+```bash
+PYLUADEC_CORPUS_DIR=<corpus> uv run python - <<'PY'
+import json, os
+from pathlib import Path
+from collections import defaultdict
+from pyluadec.ingest import load_file
+from pyluadec.lift import lift_proto
+from pyluadec.pipeline import walk_proto_paths
+from pyluadec.sir.build import build_sir, StructureError
+from pyluadec.emit.lua import _print_proto_body
+from pyluadec.express.reconstruct import ReconstructError
+from pyluadec.verify.ledger import structural_hash
+
+C = Path(os.environ["PYLUADEC_CORPUS_DIR"])
+sir_ok, body_ok, occ = {}, {}, defaultdict(int)
+for f in sorted(C.glob("*.lua")):
+    tree = {}
+    walk_proto_paths("main", load_file(f), tree)
+    for path, p in tree.items():
+        h = structural_hash(p)
+        occ[h] += 1
+        try:
+            build_sir(lift_proto(p)); a = True
+        except StructureError:
+            a = False
+        try:
+            _print_proto_body(p, depth=1,
+                              upval_names=tuple(f"u{i}" for i in range(p.nups)))
+            b = True
+        except (StructureError, ReconstructError):
+            b = False
+        sir_ok[h] = sir_ok.get(h, True) and a
+        body_ok[h] = body_ok.get(h, True) and b
+rows = [json.loads(l) for l in open("corpus/ledger.jsonl")]
+l3 = {r["shash"] for r in rows if r["level"] == "L3"}
+tot = lambda d: (sum(1 for h, v in d.items() if v),
+                 sum(occ[h] for h, v in d.items() if v))
+print("row 1", tot(sir_ok))
+print("row 2", tot(body_ok))
+print("row 3", (len(l3), sum(occ[h] for h in l3)))
+PY
+```
+
+Two details are load-bearing and neither is guessable from the table:
+
+1. **The unit is the unique `structural_hash`, folded with AND over every
+   occurrence** — a shape counts only if *every* occurrence of it succeeds.
+   Counting occurrences independently and de-duplicating afterwards gives a
+   different, larger number.
+2. **Row 2's predicate is `_print_proto_body` with synthetic upvalue names,
+   not `print_chunk`.** `print_chunk` treats whatever it is handed as a chunk
+   ROOT, and a chunk root has no upvalue names, so it refuses (returns
+   `None`) for any proto that reads one. Substituting it gives **1240/1678**.
+   Measured 2026-08-14: of the **260** occurrences where `_print_proto_body`
+   succeeds and `print_chunk` does not, **all 260 have `nups >= 1`** and none
+   has `nups == 0` — the whole gap is the upvalue-naming artifact, not a
+   printing failure.
 
 Three different numbers, three different causes. M4 tasks 3 and 4 moved the
 top two rows and did not move the third at all; **task 13 moved only the
@@ -1974,37 +2388,91 @@ prints one iterator expression instead of three materialized locals
 `<`/`<=` (cluster 3). All three are detailed in point 3 below. **M5 tasks 6–12
 moved none of the three rows**, deliberately: task 6 changed how chunks are
 assembled rather than what certifies, and tasks 7–12 were surface, gates and
-documents.
+documents. **M6 task 11** moved all three again, by giving `regions.If` a
+condition TREE: the `structure:` refusal family went from 21 ledger shapes to
+**1**, of which 7 reached `L3` outright and 13 moved down into row 3 (they
+print now, and fail on `code`/`maxstacksize`). Net `+7` unique `L3`, `0`
+downgrades against the M5 merge baseline `0957364`. **M6 task 12** moved it
+once more, by `+1` unique / `+1` occurrence — a small number that badly
+understates the change, because its real effect is on the *shipping* counts
+below, not on the level census. See "Constructor field stores and captured
+registers" below for both mechanisms.
 
-**Artifact counts, re-measured 2026-08-13 (task 12) — and note they are no
-longer a single number.** 216 of the 229 files ship **fully** structured source
-(92 at M3 close, 212 at M4 close, 215 after M5 task 4, 216 after task 5); since
-M5 task 6 a further **6 ship hybrid** (structured with fallback holes at the
-`CLOSURE` sites that would not certify) and **7 ship the whole-file M2
-fallback** (13 before task 6, 17 at M4 close). Per occurrence, **1747 of 1944
-(89.9%) ship structured text**; by instruction volume the same split is 85.8% /
-14.2%. The corpus quality average is **0.968833** (0.935633 at M4 close,
-0.946390 after M5 task 4, 0.950580 after task 5, 0.968833 after task 6 and
-unmoved since). Full evaluation, including the five volume bases that disagree
-with each other by a factor of six, in `docs/reports/m5-quality.md`.
+**Artifact counts, re-measured 2026-08-14 (M6 task 12) — and note they are no
+longer a single number.** **217** of the 229 files ship **fully** structured
+source (92 at M3 close, 212 at M4 close, 215 after M5 task 4, 216 after task 5,
+217 after M6 task 11, unchanged by task 12); a further **8 ship hybrid**
+(structured with fallback holes at the `CLOSURE` sites that would not certify;
+6 before task 11, 5 after it, 8 after task 12) and **4 ship the whole-file M2
+fallback** (7 before task 12, 13 before M5 task 6, 17 at M4 close). Per
+occurrence, **1763 of 1944 (90.7%) ship structured text** (1749 after task 11).
+The corpus quality average is **0.977328** (0.935633 at M4 close, 0.946390
+after M5 task 4, 0.950580 after task 5, 0.968833 after task 6, 0.971947 after
+M6 task 11). Full evaluation, including the five volume bases that disagree
+with each other by a factor of six, in `docs/reports/m5-quality.md` — whose
+per-file numbers predate task 11.
 
-1. **1478 → 1465: `build_sir` refuses 13 unique protos** (169 before M4 task
-   3, 43 after it, 31 after task 4, 13 after M5 task 4). By message: 11
-   `if targets out of range`, 2 `else-join out of range` — and, re-measured
-   2026-08-12, **every one of the 13 is the same defect**: a compound `if`
-   condition (`a and b`, `a or b`) on an `if` that has an else branch.
-   `regions.If` carries ONE compare instruction. `a and b` is therefore read
-   as nested `if`s, which is the same bytecode with no else branch (so
-   `if a and b then f() end` certifies) and a different one with an else,
-   because `luaK_patchtohere` sends both conjuncts' false-exits to the else
-   block while the nested reading would send the inner one to the end of the
-   outer then-block. `or` has no nested-`if` reading at all: `luaK_goiffalse`
-   (lcode.c:563-583) patches its truelist to the START of the then-block, so
-   the first compare's jump goes forward OVER the second condition. Closing
-   this needs a condition TREE — the acyclic analogue of what M4 task 4 built
-   for the VALUE idiom. A 26-instruction runnable repro of the smallest
-   corpus instance (`snr_common.lua:main_81`), reverse-engineered to its
-   source, is `tests/test_sir_longtail2.py::COMPOUND_CONDITION_EXEMPLAR`.
+Task 12 is the clearest case so far of the level census and the artifact
+counts answering different questions: `+1` row at `L3`, but three of the
+corpus's largest chunks moved from whole-file fallback to **hybrid**, so a
+large fraction of each stopped going through the `__pld_R` state machine.
+**Not all of it** — "reduced", not "stopped", and the difference is what
+round 1 of this task's review had to correct in five places. Box-model lines,
+measured 2026-08-14 across the change:
+
+| file | `__pld_R` lines before | after |
+| --- | --- | --- |
+| `snr_graphic.lua` | 1862 / 2411 | **1324 / 1849** |
+| `snr_memory.lua` | 1225 / 1673 | **1038 / 1469** |
+| `snr_mainmenu.lua` | 3220 / 4782 | **1974 / 3325** |
+
+None of the three `main`s certifies `L3` (`snr_mainmenu.lua:main` is `L1`,
+`mismatch: code at root/7`), and `snr_mainmenu.lua:main_7` is `L1` with
+`shipped: "fallback"` — 18 of that file's surviving box-model lines are the
+very `["library"]` lines its probe pins were about. `quality_score.py` scores
+the three at 0.51 / 0.45 / 0.57, which is the same story on a different base.
+
+**The two fixes are jointly, not separately, responsible.** Measured by a
+source-level four-way ablation over all 229 files (checking out BASE/HEAD
+`names.py` and `freereg.py` independently and hashing
+`decompile_file(...).source`): the constructor-read fix alone and the
+closure-capture fix alone each produce output **byte-identical to BASE for
+every one of the 229 files**; only both together change anything, and they
+change exactly these three. On the *ledger* the split is different again —
+the constructor fix alone accounts for the whole `+1` `L3`
+(`snr_mainmenu.lua:main_2`) while shipping not one byte differently, and the
+capture fix alone moves neither. Level and artifact really are two questions.
+
+Three pinned probe divergences converged as a consequence. Deleting them was
+forced by the instruments, not chosen: `probe_common.adjudicate_pins` reports
+a converged pin as `gone`, each CLI returns 1 on it and each gate asserts it
+empty. Deleted: `snr_graphic`/`snr_memory`/`snr_mainmenu` in
+`probe_global_state.py`, `snr_mainmenu` in `probe_behaviour.py`, and
+`snr_mainmenu.lua:main_7` in `probe_enum.py` — leaving one pin in each of the
+first two and one in the third.
+
+Task 11 moved exactly one file out of each of the first two buckets'
+neighbours: `snr_fragment_main.lua` went hybrid -> fully structured, and
+`snr_story_main.lua` stayed hybrid with its substituted frontier halved (2
+functions -> 1).
+
+1. **1478 → 1477: `build_sir` refuses 1 unique proto** (169 before M4 task
+   3, 43 after it, 31 after task 4, 13 after M5 task 4, 1 after M6 task 11).
+
+   The 13 that M5 close left here were all one defect — a compound `if`
+   condition (`a and b`, `a or b`) on an `if` that HAS an else branch —
+   and **M6 task 11 closed it** with the condition TREE this paragraph used
+   to ask for; see "Condition trees" below for the recognizer.
+
+   The survivor is `snr_common.lua:main_71`, `structure: pc 286: else-join
+   out of range`, and it is **not** a condition defect. Measured 2026-08-14:
+   the two tests at pc 284/286 target 297 and 298, which resolve to neither a
+   true exit, a false exit, nor an internal split point, so
+   `_match_cond_chain` declines them — correctly; they are a nested `if` with
+   an `else`. What refuses is the `break` at pc 295 targeting 410, the exit
+   of a `while true` (header 279, closing JMP 409) that `_match_loop` does
+   not recognize. Structuring the same `if` WITH `break_target=410` succeeds;
+   the refusal that escapes comes from a later attempt made without one.
 
    What M5 task 4 removed from this list, all of it one mechanism —
    `luaK_jump` concatenating `fs->jpc` onto whatever JMP is emitted next
@@ -2029,9 +2497,11 @@ with each other by a factor of six, in `docs/reports/m5-quality.md`.
    `unrecognized transfer TESTSET` had already gone in M4 task 4, when
    `_match_cond_value` claimed the `and`/`or` VALUE idiom as a `CondValue`
    region.
-2. **1465 → 1452: 13 more unique protos build a region tree but do not
+2. **1477 → 1472: 5 more unique protos build a region tree but do not
    print.** `print_chunk` inlines the whole tree at each `CLOSURE` site, so
    one unstructurable inner function takes its entire ancestor chain with it.
+   All 5 carry a `reconstruct:` reason (re-measured 2026-08-14; the paragraph
+   below is the M5-close census of a list that was 26 protos then).
 
    The cleanest cut is over all **26** protos whose subtree does not print
    (1944 − 1918 occurrences, and 1478 − 1452 unique — every residual shape
@@ -2076,7 +2546,66 @@ with each other by a factor of six, in `docs/reports/m5-quality.md`.
    1 is never `declared` and the header's `GETUPVAL` stages cleanly. Pinned
    by `tests/test_sir_longtail2.py::test_while_header_refusal_is_a_
    reconstructor_scope_defect_not_a_while_defect`.
-3. **1452 → 1430: 22 unique protos print but do not certify.** This was the
+3. **1472 → 1438: 34 unique protos print but do not certify.** Was 22 at M5
+   close; M6 task 11 moved 13 protos INTO this bucket out of point 1, which
+   is an advance in diagnosis rather than a regression — they used to refuse
+   before printing and now print and fail comparison. Re-derived straight off
+   the committed ledger 2026-08-14 (M6 final review; this read "1472 → 1437:
+   35" with a breakdown of 17/14/4, which was the post-task-11 state):
+   **14 `mismatch: code`, 11 `mismatch: maxstacksize`, and 9
+   `mismatch: <field> at root/<n>`** — 3 `maxstacksize at root/2`, 1 each of
+   `maxstacksize at root/18`, `code at root/3`, `code at root/7`,
+   `code at root/48`, `code at root/58`, `code at root/59` — the last group
+   being ancestors whose own fields match and whose named descendant's do not.
+   The whole non-`L3` set is 34 `mismatch` + 5 `reconstruct` + 1 `structure`
+   = 40 rows.
+
+   **None of the 13 fails inside a condition tree.** Measured 2026-08-14 for
+   all thirteen: the first *opcode* divergence between the original and the
+   recompile lies outside every `cond_claimed(...)` pc set, 13 times out of 13.
+   So the arrivals are a pre-existing reconstruction defect that the structure
+   refusal had been masking, not damage done by the new recognizer.
+
+   `snr_common.lua:main_76_2` (174 instructions, the smallest **leaf** among
+   them -- `snr_story_main.lua:main` at 10 instructions is the smallest of the
+   13 outright, but its mismatch is a descendant's) is the exemplar for the
+   *stack-inflation* form: the first opcode divergence is at pc 43, inside a
+   plain `if/else`, where `Reconstructor.write_reg`'s
+   `reg not in self.declared` gate materialises a staged temp as a `local`
+   re-assignment (`local l1_3 = systemSave` ... `l1_3 = systemSave`) and the
+   recompile grows extra slots and `MOVE`s.
+
+   **That is one form of the family, not the whole of it, and the magnitude
+   varies by an order of magnitude** (fix round 1 correction -- an earlier
+   version of this paragraph said `maxstacksize` and `code` were "the two
+   faces of the same thing", which is true of `main_76_2` and false of the
+   worst case).
+
+   **`snr_graphic.lua:main` was the other end, and task 12 CLOSED it. This
+   paragraph described it in the present tense until the M6 final review;
+   what follows is the historical description, then the measurement.** As of
+   M5 close its root printed `code` **385 -> 650**, `maxstacksize` **20 ->
+   24**, first opcode divergence at **pc 1** (`NEWTABLE 0 0 8` vs `NEWTABLE 0
+   0 15`), and the printed source was **semantically wrong** rather than
+   merely fat -- line 1 declared
+   `local l0_1 = {...15 entries...}`, line 2 *reassigned* `l0_1 = {...7
+   entries...}`, and line 17's `local l0_0 = {layerName = l0_1, layerNumber =
+   l0_1, ...}` therefore pointed every field at the last table written. Eight
+   distinct constructors collapsed into one alias (eight, not four -- the
+   count agrees with this file's two other statements of it; measured
+   2026-08-14, `NEWTABLE` into register 1 at pcs **2, 19, 28, 39, 41, 43, 45,
+   47**).
+
+   **Measured 2026-08-14 on this tree**: `certify_proto(main,
+   is_chunk_root=True)` gives `L1` with `reason = "mismatch: maxstacksize at
+   root/2"` -- the ROOT itself now matches (`code` 385, `maxstacksize` 20,
+   both equal), and the surviving mismatches are all in descendants
+   (`root/2` `maxstacksize` + `code`, `root/3` `maxstacksize` + `code`,
+   `root/4` `code`). The aliasing form of the family is gone here; the stack-
+   inflation form is what is left. Certification refuses it either way, which
+   is the whole point of the gate.
+
+   The paragraph below is the M5-close analysis of the same bucket. This was the
    dominant gap until M4 task 13 (283 protos, of which 253 differed from the
    original by extra `MOVE` instructions and by nothing else at all). The
    cause was `RegClass`'s whole-function, per-register-*number* verdict, and
@@ -2309,16 +2838,20 @@ committed tests, so "known" here means recorded and fenced, not tolerated.
    moves there is a pure `NEWTABLE`; two folded items straddling an effectful
    statement are needed to make it visible.
 
-2. **Two of M4 task 5's five ported semantic-regression cases ship
-   fallback**, and are pinned to `L1` so they fail loudly when fixed:
-   `test_if_and_elseif_conjunctions_preserved` (refused,
-   `structure: pc 4: if targets out of range` — the nested-AND-in-an-elseif
-   -chain family, the same 17-proto corpus cluster) and
+2. **One of M4 task 5's five ported semantic-regression cases still ships
+   fallback**, pinned to `L1` so it fails loudly when fixed:
    `test_counter_closure_and_dispatch_mix` (prints, then differs on
-   `maxstacksize` 18 vs 20 and 13 vs 15 constants — clusters B/D). Both
-   docstrings in `tests/test_semantic_regressions.py` carry the full
-   diagnosis. Both run their fallback artifact and check its stdout, so the
+   `maxstacksize` 18 vs 20 and 13 vs 15 constants — clusters B/D). Its
+   docstring in `tests/test_semantic_regressions.py` carries the full
+   diagnosis, and it runs its fallback artifact and checks its stdout, so the
    *semantics* are regression-tested regardless of the level.
+
+   **This item said TWO until the M6 final review.** The other was
+   `test_if_and_elseif_conjunctions_preserved`, and **M6 task 11 moved it
+   `L1` -> `L3`, structured** — the test itself, `m3-backlog.md`'s M6 agenda
+   entry and `tests/test_m6_exit.py` all say so; only this paragraph still
+   pinned it to `L1` with a `structure: pc 4: if targets out of range` that
+   the condition-tree recognizer no longer produces.
 
 3. **`run_corpus.py`'s forced-`L0` path** used to keep whatever
    `confessions` the entry already had, which for an individually-`L3` proto
@@ -2665,11 +3198,15 @@ basis. Kept here as a worked example of a
 planning-stage number that survived into three documents and a module
 docstring without ever being measured.
 
-The other standing limits are the two probes. The **global-state probe**
-(L1.5) reaches 225/229 files with 4 pinned divergences; read its reach table
+The other standing limits are the two probes. Both numbers below were
+re-measured live at the M6 final review (2026-08-14) and both had moved: M6
+task 12's hybrid emission converged three L1.5 pins and one L1.75 pin. The
+**global-state probe** (L1.5) reaches **228/229** files with **1** pinned
+divergence (was 225/4); read its reach table
 before treating it as strong evidence, because for 222 of 229 files the entire
 compared payload is `string:main=<function>`. The **behaviour probe** (L1.75,
-M4 task 10) deepens that to 227/229 over 398196 recorded events — but its
+M4 task 10) deepens that to **228/229** (was 227/229) over 398196 recorded events — the
+event total did NOT move — but its
 reach is bimodal, not a uniform deepening: the 3000-event cap truncates 132 of
 229 files, which contribute 99.5% of the events, while the other 97 contribute
 a median of **10** events each. Both are documented in
@@ -3053,10 +3590,17 @@ whole-chunk drive with `tail=CROSS`, and it does not diverge — but only
 because it caps inside `autoSystemSave` before reaching `cBrStr`. Change that
 tail key to `CIRCLE` and the same drive diverges at trace line 276
 (`R|cBrStr|bad argument #1 to 'len'` vs `to '?'`). That is the `getobjname`
-naming artifact of the fallback's `__pld_R` box model, **already pinned as an
-exact byte pair by the L1.75 gate** (`probe_behaviour.EXPECTED_DIVERGENCE`,
-for `snr_mainmenu`), so it is owned, two-directionally asserted, and would
-fail there if it changed or converged. L2 deliberately does not pin
+naming artifact of the fallback's `__pld_R` box model — the already-documented
+class. **Corrected at the M6 final review (2026-08-14): this sentence used to
+say the divergence was "already pinned as an exact byte pair by the L1.75
+gate (`probe_behaviour.EXPECTED_DIVERGENCE`, for `snr_mainmenu`)", and that
+entry was deleted two commits later** (`741bf1a`, M6 task 12) because
+`snr_mainmenu.lua`'s pair CONVERGED — the same task removed three more of the
+class from `probe_global_state.py`. A reader was being pointed at a table that
+no longer contains it. What is live: the class is pinned two-directionally as
+`probe_enum.EXPECTED_DIVERGENCE["snr_common.lua:main_81"]`, on a different
+proto of this same file. *This* `cBrStr` pair is pinned nowhere, and saying so
+is the point — L2 deliberately does not pin
 divergences of its own: a pin is an exemption, and this gate refuses on
 divergence rather than excusing it. `snr_common` refuses anyway, on
 `taint-static`.
