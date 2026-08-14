@@ -370,6 +370,9 @@ Phase 5 已完成（12 个任务）。**能力边界、认证门不变式、归�
 ## Phase 6（M6：跨语料交叉验证）现状
 
 Phase 6 已完成。计划 13 个任务，实际执行 11 个（**T9/T10 取消、T7/T8 缩范围，两条决定都记进了 spec §2 决策表**，见下）外加 3 个计划外任务（两轮前作缺陷手工修复 + loss sweep 门）。**能力边界、认证门不变式、归一化阶梯、L2 门的权威仍是 `docs/runbooks/structured-pipeline.md`**；交叉语料的全部证据在 `docs/reports/m6-cross-corpus.md`（含每个缺陷的指令级走查）、观察数据在 `docs/reports/m6-observation.md`、Class-2 设计说明在 `docs/reports/m6-uiloop-design.md`；**尚未完成的工作全部在 `docs/runbooks/m3-backlog.md` 末尾的「M7 agenda」**。本节只给定位与速查。
+收口三轮（终审 25 项 → 修复轮 → 复审）的处置、以及**哪些结论被独立重跑过、哪些只是那一轮的自述**，在
+`docs/reports/m6-cross-corpus.md` §7——复审没留证据文件，所以它「约 40 个数字都复现了」是断言不是记录，
+§7.3 明写了这一点，别把它当已核验事实引用。
 
 ### 头条不是一个比率，是已发布软件里的 6 个缺陷
 

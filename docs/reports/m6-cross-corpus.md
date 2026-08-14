@@ -2154,3 +2154,67 @@ the four taint gaps and the truncation residue (agenda 2); the Class-1
 corpus-wide enumerated run and the Class-2 prototype, both routed there by the
 2026-08-14 amendments rather than abandoned (agendas 8 and 9); and M1's Linux
 verification (agenda 7).
+
+---
+
+## 7. Final review, fix round, re-review — disposition, and what is audited
+
+Three rounds closed the milestone. This section exists because the last of
+them left no committed evidence file, and the milestone's own signature
+defect is prose asserting behaviour nobody ran. So the disposition is
+recorded here **split into what was independently re-run and what rests on a
+round's own word** — the split is the point, not a formality.
+
+### 7.1 The rounds
+
+| round | range | outcome |
+|---|---|---|
+| final whole-branch review | `e9af4cf..dc3972b` (33 commits) | **25 findings** + a first-pass minor list. 0 Critical in shipped code. Blocking: #1 `ratchet_job.sh` did not require `PYLUADEC_PRED_CORPUS_DIR`; #6 `pred_repairs/README.md`'s three ledger claims; #20 `CLAUDE.md`'s out-of-suite clause credited `probe_enum` with a non-zero exit it did not have |
+| fix round | `21e9c56..a053abd` (5 commits) | **23 items fixed, 2 routed to M7 agenda 6** (the repo-wide `task-N-report.md` citations; `pred_repairs` file modes). Gate semantics strengthened, not relaxed: `probe_enum` gained a pinned refusal set, the L1.75 pin key gained its full evidence, `ratchet_job.sh` gained the second guard |
+| re-review | `dc3972b..a053abd` | **4 residual defects, all in the fix round's own prose**, fixed in `e726d1f` |
+
+The re-review's one Important is worth naming: the fix round — whose entire
+theme was eliminating unmeasured numbers — wrote `1054 passed, 32 skipped`
+into `tests/conftest.py`, `scripts/ratchet_job.sh` and `CLAUDE.md`, inside
+the sentence advertising itself as re-measured. The true figure is **1055**,
+and the cheapest disproof was arithmetic rather than a re-run: the full suite
+is 1087 and 32 skip, so 1054 is impossible. The other three were the guard's
+line number (35 → 36), `LOSS_PINS`' file count (11 → 10), and a one-off
+opcode check described in the present tense as though it were a standing gate
+— reworded to past tense, with the missing regression net routed to M7
+agenda 6.
+
+### 7.2 Independently re-run at the wrap (2026-08-15, macOS 15.2 / Apple M4)
+
+Each row is a command anyone can run from a clone with both corpus variables
+set, followed by what it actually printed.
+
+| check | command | result |
+|---|---|---|
+| full suite | `uv run pytest -q` (both vars) | `1087 passed in 51.12s` |
+| skip census | `uv run pytest -q` with `PYLUADEC_PRED_CORPUS_DIR` unset | `1055 passed, 32 skipped in 45.89s` — confirms the correction |
+| guard fires | `env -u PYLUADEC_PRED_CORPUS_DIR ./scripts/ratchet_job.sh` | exits **1**, bash naming **line 36** |
+| ratchet job | `./scripts/ratchet_job.sh` (both vars) | **exit 0**, 54.1s end to end, gate 3 `24 passed in 2.09s` |
+| `LOSS_PINS` shape | import the table and count | **25 rows over 10 files** |
+| the item-7 re-base | decode the pinned pcs through `ingest` + `lift_proto` | all 1-based and correct: `snr_graphic:main_4` 117/120/123 are `EQ` against constants **3.0 / 6.0 / 9.0** (so `K[3]/K[6]/K[9]` in the notes denotes the *value*); `snr_memory:main_4` 118/121/124 the same; `snr_common:main_76_2` pc 86 `EQ A=0`; `snr_music:main_3` pc 368 `JMP sBx=-357` with successor **12**; `snr_common:main_75` pc 159 `JMP sBx=-73` with successor **87** |
+| protected artifacts | `git diff --stat dc3972b..HEAD -- corpus/` | only `pred_repairs/README.md` and `check_config_gates.lua`; `corpus/ledger.jsonl`, `footprints.json`, `classes.json` **byte-identical** |
+| sweep completeness | grep the tree for `1054`, `rows over`, `machine-checked` | no stale site survives; the two `1054` hits left are the deliberate in-place corrections, and `lparser.c:1054` is unrelated |
+
+### 7.3 Asserted by the re-review, **not** independently re-derived
+
+The re-review reported "~40 load-bearing numbers re-derived and reproduced,
+including the item-14 inversion, both neuter proofs, all four probes' clean
+lines, and ~30 decoded pc–opcode pairs", and "all 25 items + the minor list
+fixed-verified or routed-ok". **No artifact backs those two claims** — the
+round's evidence lives only in its commit message. About eight of the 25
+items were spot-checked at the wrap (§7.2) and every one held, including five
+of the ~30 pc pairs, which is why the tables are believed correct. What is
+not established is *coverage*: nothing in the tree distinguishes "the fix
+diff was clean" from "the review sampled shallowly", and none of the four
+residuals it did report touch the round's riskiest edits, which were the exit
+contracts of `probe_enum`, `probe_behaviour` and `ratchet_job.sh` (of those,
+only `ratchet_job.sh`'s two exit paths were re-run here).
+
+Read the re-review's coverage claim as an assertion of the same class this
+milestone spent nine `fix:` commits removing. The corrections it made are
+verified; the completeness of its search is not.
