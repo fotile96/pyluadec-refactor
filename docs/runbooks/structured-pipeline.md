@@ -1472,9 +1472,13 @@ grouping key" below. Current output on this corpus:
 ```
 ledger key: 16/1478 shash group(s) carry >1 debug fingerprint (462 fingerprints between them); 0 disagree on (level, rung, reason)
 compiled 229/229; ledger: 1478 unique protos (1944 occurrences)
-structured 1896/1944 protos (97.5%); L3 1430/1478 unique (96.8%)
-shipped: 1747/1944 protos structured (89.9%); 216 files fully structured, 6 hybrid, 7 whole-file fallback
+structured 1904/1944 protos (97.9%); L3 1438/1478 unique (97.3%)
+shipped: 1763/1944 protos structured (90.7%); 217 files fully structured, 8 hybrid, 4 whole-file fallback
+L2: 1/5 authored file(s) granted; 2/1478 row(s) carry the badge (13 sequence(s) over 5/229 files)
 ```
+
+(Re-measured 2026-08-14 after M6 task 12. The `L2:` line is newer than the
+M5-close transcript this block used to show.)
 
 ### Read the dashboard
 
@@ -1482,11 +1486,13 @@ shipped: 1747/1944 protos structured (89.9%); 216 files fully structured, 6 hybr
 uv run python scripts/ledger_dashboard.py            # or --markdown
 ```
 
-Current output (M5 task 5): 1478 unique protos / 1944 occurrences / 229
-files, `compile_ok 1478/1478`, `level L3 1430`, `level L1 48`, L3 share 96.8%
-unique / 97.5% occurrences, `L3 rung 1: 1430`, `ladder l3-ladder-v1`. (After
-M5 task 4 it was `level L3 1403` / `level L1 75`, 94.9% / 96.1%; at M4
-close `level L3 1389` / `level L1 89`, 94.0% / 95.4%; at M3 close
+Current output (M6 task 12): 1478 unique protos / 1944 occurrences / 229
+files, `compile_ok 1478/1478`, `level L3 1438`, `level L1 40`, L3 share 97.3%
+unique / 97.9% occurrences, `L3 rung 1: 1438`, `ladder l3-ladder-v1`. (After
+M6 task 11 it was `level L3 1437` / `level L1 41`; at M5 task 5
+`level L3 1430` / `level L1 48`, 96.8% / 97.5%; after M5 task 4
+`level L3 1403` / `level L1 75`, 94.9% / 96.1%; at M4 close
+`level L3 1389` / `level L1 89`, 94.0% / 95.4%; at M3 close
 `level L3 1112` / `level L1 366`, 75.2% / 81.1%.)
 
 ### Debug one function that refuses to certify
@@ -1935,6 +1941,104 @@ needs it. `repeat ... until a and b` certifies (the incumbent bottom-test
 reading already describes it); `repeat ... until a or b` does not, and is
 pinned in the same list -- the split is measured, not smoothed over.
 
+## Constructor field stores and captured registers (M6 task 12)
+
+Two independent defects in `classify_registers`, both reached through the same
+downstream amplifier: `Reconstructor.write_reg`'s `reg not in self.declared`
+gate. Once one definition of a register is materialized as a `local`, every
+later definition of that register becomes a *reassignment* — so a single
+misclassified definition does not merely cost one statement, it can silently
+alias every later value written into the slot.
+
+### 1. A field store is not a read of the table
+
+`stack_discipline`'s pop-once rule grades a staged definition a temporary iff
+its value is read exactly once before the statement ends. It already knew that
+`SETTABLE`/`SETLIST` do not *free* the table (`pop_ge(a + 1)`, "the table
+itself stays pending") but still counted their read of it, so a constructor
+with N fields scored N + 1 reads and was graded a **local**.
+
+`lparser.c` is unambiguous: `recfield` (`:596`) and `closelistfield`/
+`lastlistfield` (`:632`) push the key and value above the table, emit the
+store, and restore `fs->freereg` to the slot immediately above the table. The
+table stays on the expression stack until whatever the literal is an operand
+of takes it. `freereg._constructor_field_target` is the read half of that
+sentence.
+
+Two faces, both one-line reproductions (`tests/test_express_aliasing.py`):
+
+* `f({x = 1})` printed `local l0_1 = {x = 1} f(l0_1)` — one stack slot more
+  than luac used (`mismatch: maxstacksize`).
+* `local t = {a = {..}, b = {..}}` printed `local l0_1 = {..}`,
+  `l0_1 = {..}`, `local l0_0 = {a = l0_1, b = l0_1}` — **both fields aliased
+  to the last table**. This is a different program, not an unfaithful
+  rendering: `t.a.x` reads 3 where the original reads 1. `snr_graphic.lua:main`
+  had eight tables collapsed into one (`code` 385 → 650); M5 adjudicated the
+  same shape at `snr_music.lua:main`.
+
+The discriminator is the pending definition's own opcode — only a slot whose
+most recent push was `OP_NEWTABLE` gets the exemption — **plus a constant
+key**, because `_dispatch` folds only `isk(ri.b)` and `_fold_settable` has no
+register-key form. A dynamic-key constructor (`{[f()] = 1, [g()] = 2}`) is
+materialized and emitted as one `t[k] = v` statement per field, each of which
+reads the table for real; exempting those reads made `config.lua` raise
+`register 0 is read again after its staged value was consumed` and stop
+printing entirely. That was measured while the rule was being written, and it
+is pinned by a neuter test rather than left as a comment.
+
+### 2. `captured_regs` is a union, and was read as a whole-function fact
+
+`lift.LirFunction.captured_regs` is the union over every `CLOSURE` in the
+function of the slots its `MOVE` pseudo-instructions capture. `names.py` seeded
+all of them as named locals for the whole function, which says "slot 7 holds a
+live local everywhere" on the strength of one `function() ... end` near the
+end of the chunk. A capture proves only that the slot held a live local **at
+the `CLOSURE`'s pc**.
+
+`snr_graphic.lua:main` is the measured worst case: four `CLOSURE`s at pcs
+356–372 capture registers 0–13, which made every definition of registers 0–13
+across the whole 385-instruction chunk a named local — including the eight
+nested table constructors in slot 1 at pcs 2–45, and hence defect 1's aliasing
+on top.
+
+The refinement is per definition and is the weakest one that keeps the
+capture's own guarantee: a definition is a captured local iff it is the **last
+definition of that register at or before some capturing `CLOSURE`**, i.e. iff
+the value it writes is the one that closure captures. Everything else in the
+slot goes back to the freereg simulation. Population: **6 of 1944** protos
+have a captured register with definitions no closure captures — but they
+include `snr_graphic.lua:main`, `snr_memory.lua:main` and
+`snr_mainmenu.lua:main`, so the shipping effect is out of all proportion to
+the count (whole-file fallback 7 → 4, hybrid 5 → 8).
+
+A register `captured_regs` names but `closure_pseudo` cannot attribute to a pc
+stays whole-function seeded. That is empty for anything `lift_proto` produces
+and non-empty for hand-built `LirFunction`s, which is exactly what
+`tests/test_express_names.py::test_parameters_and_captured_registers_win_over_the_controls_override`
+constructs — it failed without the fallback, so the fallback is load-bearing,
+not decorative.
+
+### What is left, attributed rather than narrated
+
+40 non-`L3` shapes remain (41 before this task). The `declared` gate is
+**at least three mechanisms**, and only two of them are closed here. The
+third is `_same_block`: it refuses to stage a value whose consumer sits in
+another basic block, and an `and`/`or` sub-expression puts a jump between a
+staged callee and its `CALL`. One line reproduces it — `g(a and 1 or 2)`
+prints `local l0_0 = g  local l0_1 = a and 1 or 2  l0_0(l0_1)` and fails on
+`maxstacksize` — and it is `snr_common.lua:main_76_2`, the exemplar the task
+brief opened with.
+
+Measured attribution, 2026-08-14, by neutering `_same_block` to a tautology
+and re-certifying all 40 (a measurement only; the guard is load-bearing for
+execution-count correctness and its own docstring carries the proof): **6 of
+the 40** certify — `snr_graphic:main_2`, `snr_memory:main_2`,
+`snr_novel:main_2`, `snr_novel:main_3`, `snr_story_main:main_3` and its root.
+So `_same_block` is a real third mechanism but not the dominant one; the
+other 34 are unattributed and need their own diagnosis. `snr_common:main_71`
+(`structure: pc 286: else-join out of range`) is out of this family
+altogether — see the capability-boundary section.
+
 ## Ledger fields added in M3
 
 `corpus/ledger.jsonl`, one row per unique `structural_hash`.
@@ -2059,10 +2163,13 @@ occurrences.
 | --- | --- | --- |
 | `build_sir` accepts the proto's own body | 1477 (99.9%) | 1943 (99.9%) |
 | whole subtree prints (proto **and** every descendant) | 1472 (99.6%) | 1938 (99.7%) |
-| certifies `L3` | **1437 (97.2%)** | **1903 (97.9%)** |
+| certifies `L3` | **1438 (97.3%)** | **1904 (97.9%)** |
 
-(Re-measured 2026-08-14 after M6 task 11. The previous figures, at M5 close,
-were 1465/1931, 1452/1918 and 1430/1896.)
+(Re-measured 2026-08-14 after M6 task 12. After task 11 the third row was
+1437/1903; the previous figures, at M5 close, were 1465/1931, 1452/1918 and
+1430/1896. Task 12 moved the third row only — the top two are untouched,
+because neither of its two fixes changes what `build_sir` accepts or what
+prints.)
 
 Three different numbers, three different causes. M4 tasks 3 and 4 moved the
 top two rows and did not move the third at all; **task 13 moved only the
@@ -2082,20 +2189,35 @@ documents. **M6 task 11** moved all three again, by giving `regions.If` a
 condition TREE: the `structure:` refusal family went from 21 ledger shapes to
 **1**, of which 7 reached `L3` outright and 13 moved down into row 3 (they
 print now, and fail on `code`/`maxstacksize`). Net `+7` unique `L3`, `0`
-downgrades against the M5 merge baseline `0957364`.
+downgrades against the M5 merge baseline `0957364`. **M6 task 12** moved it
+once more, by `+1` unique / `+1` occurrence — a small number that badly
+understates the change, because its real effect is on the *shipping* counts
+below, not on the level census. See "Constructor field stores and captured
+registers" below for both mechanisms.
 
-**Artifact counts, re-measured 2026-08-14 (M6 task 11) — and note they are no
+**Artifact counts, re-measured 2026-08-14 (M6 task 12) — and note they are no
 longer a single number.** **217** of the 229 files ship **fully** structured
 source (92 at M3 close, 212 at M4 close, 215 after M5 task 4, 216 after task 5,
-217 after M6 task 11); a further **5 ship hybrid** (structured with fallback
-holes at the `CLOSURE` sites that would not certify; 6 before task 11) and
-**7 ship the whole-file M2 fallback** (13 before M5 task 6, 17 at M4 close).
-Per occurrence, **1749 of 1944 (90.0%) ship structured text**. The corpus
-quality average is **0.971947** (0.935633 at M4 close, 0.946390 after M5
-task 4, 0.950580 after task 5, 0.968833 after task 6, 0.971947 after M6
-task 11). Full evaluation, including the five volume bases that disagree with
-each other by a factor of six, in `docs/reports/m5-quality.md` — whose
+217 after M6 task 11, unchanged by task 12); a further **8 ship hybrid**
+(structured with fallback holes at the `CLOSURE` sites that would not certify;
+6 before task 11, 5 after it, 8 after task 12) and **4 ship the whole-file M2
+fallback** (7 before task 12, 13 before M5 task 6, 17 at M4 close). Per
+occurrence, **1763 of 1944 (90.7%) ship structured text** (1749 after task 11).
+The corpus quality average is **0.977328** (0.935633 at M4 close, 0.946390
+after M5 task 4, 0.950580 after task 5, 0.968833 after task 6, 0.971947 after
+M6 task 11). Full evaluation, including the five volume bases that disagree
+with each other by a factor of six, in `docs/reports/m5-quality.md` — whose
 per-file numbers predate task 11.
+
+Task 12 is the clearest case so far of the level census and the artifact
+counts answering different questions: `+1` row at `L3`, but three of the
+corpus's largest chunks (`snr_graphic.lua`, `snr_memory.lua`,
+`snr_mainmenu.lua`) stopped shipping the `__pld_R` state machine. Three pinned
+probe divergences converged as a direct consequence and had to be deleted —
+`snr_graphic`/`snr_memory`/`snr_mainmenu` in `probe_global_state.py`,
+`snr_mainmenu` in `probe_behaviour.py`, and `snr_mainmenu.lua:main_7` in
+`probe_enum.py` — leaving one pin in each of the first two and one in the
+third.
 
 Task 11 moved exactly one file out of each of the first two buckets'
 neighbours: `snr_fragment_main.lua` went hybrid -> fully structured, and

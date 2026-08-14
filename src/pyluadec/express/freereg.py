@@ -76,6 +76,15 @@ def _pending_def(pending: list[_Pending], r: int) -> _Pending | None:
 # through the signature to get there, is indirection with no second reader, so
 # it stays in place and is marked there instead. Its neuter proof does not
 # live with the other three either; see that comment.
+#
+# `_constructor_field_target` below is NOT a fifth barrier: the four above all
+# *disqualify* a definition that the pop-once count would have accepted, and
+# it does the opposite -- it declines to count a read that was never a
+# consumption in `lparser.c` to begin with, so it can only ever let more
+# definitions through. It lives in this section because it is the same kind of
+# object (a state-independent question about what `lparser.c` emits, answered
+# by looking at one instruction and the pending stack) and because a reader
+# auditing the read-counting rules needs to find all of them in one place.
 
 
 def _same_block(block_floor: Callable[[int], int], d: int, r: int) -> bool:
@@ -250,6 +259,81 @@ def _bar_literal_operands(fn: LirFunction, li: LirInstr,
             ent.bad = True
 
 
+def _constructor_field_target(fn: LirFunction, li: LirInstr,
+                              pending: list[_Pending]) -> int | None:
+    """The register this instruction reads *without consuming it*, or None.
+
+    `SETTABLE`/`SETLIST` emitted by a **table constructor** read the table's
+    own slot, and that read is not a use of the value: `lparser.c`'s
+    `recfield` (`:596`) and `closelistfield`/`lastlistfield` (`:632`,
+    `luaK_setlist`) push the key and value above the table, emit the store,
+    and then restore `fs->freereg` to the slot immediately above the table.
+    The table stays on the expression stack, still unfinished, until whatever
+    the literal is an operand of takes it. So a field store must not spend the
+    one read the pop-once rule allows -- with N fields the table scored N + 1
+    reads and was graded a local, which is precisely backwards for
+    `f({x = 1})`.
+
+    `stack_discipline` already models the write half of exactly this
+    (`SETTABLE`/`SETLIST` do `pop_ge(a + 1)`, "the table itself stays
+    pending"); this is the read half of the same sentence.
+
+    ## Why the discriminator is `OP_NEWTABLE`
+
+    A `SETTABLE` is *also* how an assignment statement `v.k = e` stores, and
+    there the target expression genuinely is consumed: `a().b = 1` leaves
+    `a()`'s result on the stack precisely so the `SETTABLE` can take it, and
+    `luaK_storevar` frees it. The two are told apart by what pushed the slot.
+    Only a constructor's table is pushed by `OP_NEWTABLE`, and `lparser.c`
+    emits `OP_NEWTABLE` from exactly one place (`constructor`), so "the most
+    recent push into this slot was a `NEWTABLE`" is the same question as "this
+    store is a field of a live constructor". It is also the same test
+    `express/reconstruct.py::_dispatch` uses to decide whether to fold the
+    store into a `TableExpr` (`self._table_ctx_stack[-1]["reg"] == a`), so the
+    classification and the reconstruction agree by construction rather than by
+    coincidence.
+
+    ## Why `SETTABLE` additionally needs a CONSTANT key
+
+    `_dispatch`'s fold is `op is Op.SETTABLE and a == reg and isk(ri.b)`:
+    `_fold_settable` builds the key with `ConstExpr(constants[indexk(ri.b)])`
+    and has no register-key form. A **dynamic-key** constructor
+    (`{[f()] = 1, [g()] = 2}`, `config.lua`'s main chunk) therefore does NOT
+    fold -- the reconstructor closes the context, materializes the table, and
+    emits each field as its own `t[k] = v` statement, which reads the table
+    once per field for real. Exempting those reads told the classifier the
+    table was a pop-once temporary; the reconstructor then popped it at the
+    first field and raised `register 0 is read again after its staged value
+    was consumed` at the second, taking `config.lua` from a `maxstacksize`
+    mismatch to a reconstruction refusal. Measured, not reasoned: this
+    condition is what keeps that file printable.
+
+    The `c` check keeps the exemption from swallowing a store that reads the
+    table in the *value* position too (`t[k] = t`). A constructor cannot
+    produce that shape -- its values live above the table -- so declining the
+    exemption there costs nothing and keeps the rule's statement true as
+    written. **DEFENSIVE, not load-bearing:** measured over the corpus,
+    **0** of 1944 protos contain a `SETTABLE` with `isk(B)` and a register `C`
+    equal to `A`, so nothing here currently depends on it. Kept because the
+    sentence above ("the exemption applies to the table's own slot") is only
+    true as written with it, not because a fixture fails without it.
+
+    Being wrong in either direction costs certifications, never correctness:
+    the printed source is recompiled and compared field by field before
+    anything ships.
+    """
+    ri = li.ri
+    if ri.op is Op.SETTABLE:
+        if not isk(ri.b) or (not isk(ri.c) and ri.c == ri.a):
+            return None
+    elif ri.op is not Op.SETLIST:
+        return None
+    ent = _pending_def(pending, ri.a)
+    if ent is None or fn.instrs[ent.def_pc].ri.op is not Op.NEWTABLE:
+        return None
+    return ri.a
+
+
 def stack_discipline(fn: LirFunction, ordered: list[int],
                      known_local: Callable[[int, int], bool],
                      loop_control: Callable[[int, int], bool],
@@ -395,10 +479,18 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
         key = (pc, reg)
         def_verdict[key] = def_verdict.get(key, True) and ok
 
-    def do_read(r: int, at: int) -> None:
+    def do_read(r: int, at: int, count: bool = True) -> None:
         for ent in pending:
             if ent.reg == r:
-                ent.n_reads += 1
+                # `count=False` is a live constructor reading its own table
+                # slot to store a field (`_constructor_field_target`): a read
+                # in the instruction stream that is not a *use* of the value.
+                # The block check still applies -- a constructor and its field
+                # stores are straight-line code, so a store in another block
+                # means this is not the shape the exemption describes, and
+                # `bad` drives the answer to `local`, the safe direction.
+                if count:
+                    ent.n_reads += 1
                 if not _same_block(block_floor, ent.def_pc, at):
                     ent.bad = True
                 return
@@ -530,8 +622,9 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
         op, a, b, c = ri.op, ri.a, ri.b, ri.c
 
         _bar_literal_operands(fn, li, pending)
+        uncounted = _constructor_field_target(fn, li, pending)
         for r in sorted(li.effects.reads):
-            do_read(r, pc)
+            do_read(r, pc, count=r != uncounted)
         if li.effects.reads_open:
             read_open(a if op is Op.RETURN else a + 1, pc)
 

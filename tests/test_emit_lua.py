@@ -213,19 +213,27 @@ def test_bare_local_decl_has_no_trailing_equals(tmp_path):
     target (b).
 
     Source: a generic `for` whose iterator staging (`CALL` with three result
-    registers) lands on register numbers where one -- the table literal's
-    slot, materialized as `local l0_2 = {l0_0}` a statement earlier -- is
-    already in `declared`. `_emit_multi` then sees a MIXED tuple (one target
-    declared, two fresh) and must bring the fresh ones into scope with a bare
-    `local l0_1, l0_3` before assigning the whole tuple, because a second
-    `local` of an existing name would shadow rather than assign. Confirmed by
-    inspecting the printed source below: it contains a bare local line with
-    no initialiser.
+    registers) lands on register numbers where one -- the argument slot,
+    materialized as `local l0_2 = l0_0 and {l0_0} or {}` a statement earlier
+    because `_same_block` refuses to stage a value across the `and`/`or`'s
+    jumps -- is already in `declared`. `_emit_multi` then sees a MIXED tuple
+    (one target declared, two fresh) and must bring the fresh ones into scope
+    with a bare `local l0_3` before assigning the whole tuple, because a
+    second `local` of an existing name would shadow rather than assign.
+    Confirmed by inspecting the printed source below: it contains a bare local
+    line with no initialiser.
 
-    The original source here was `local ok, a = f()` with a later use of `a`.
-    That stopped reaching the mixed branch in M4 task 13: with per-definition
-    classification neither result register is declared before the `CALL`, so
-    the all-fresh branch handles it. Re-derived rather than patched.
+    This fixture has now been re-derived TWICE, both times because a
+    classification fix stopped the old source reaching the branch, which is
+    worth stating plainly: the mixed branch is reachable only through a
+    register the classifier gets *wrong*, so every improvement to
+    classification is expected to break the fixture rather than the branch.
+    The original source was `local ok, a = f()` with a later use of `a`; that
+    stopped reaching it in M4 task 13 (per-definition classification leaves
+    neither result register declared before the `CALL`). Its replacement used
+    `pairs({x})` after an `if` arm, relying on the table literal being
+    materialized; M6 task 12 stopped materializing constructors, so the
+    `and`/`or` above supplies the still-mis-classified register instead.
 
     The mixed branch is reached by 0 corpus protos (measured this session by
     instrumenting `_emit_multi` over every occurrence `emit_certified_chunk`
@@ -242,7 +250,7 @@ def test_bare_local_decl_has_no_trailing_equals(tmp_path):
           "function g() return 8 end\n"
           "local x = f()\n"
           "if x then local y = g() print(y) end\n"
-          "for k, v in pairs({x}) do print(k, v) end\n")
+          "for k, v in pairs(x and {x} or {}) do print(k, v) end\n")
     printed = print_chunk(_proto(src, tmp_path))
     assert printed is not None
     assert any(line.strip().startswith("local ") and "=" not in line

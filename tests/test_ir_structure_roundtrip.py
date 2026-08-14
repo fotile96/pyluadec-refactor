@@ -141,6 +141,12 @@ _SCRIPT_SUBSET_LEVELS = {
 }
 
 
+# Of the four non-`L3` mains above, the two whose chunk ships HYBRID rather
+# than whole-file fallback (measured 2026-08-14, M6 task 12; both were
+# whole-file fallback before it).
+_SUBSET_HYBRID = frozenset({"snr_graphic.lua", "snr_memory.lua"})
+
+
 def _skip_if_subset_missing(corpus_dir) -> None:
     missing = [f for f in _SCRIPT_SUBSET_LEVELS if not (corpus_dir / f).is_file()]
     if missing:
@@ -180,6 +186,16 @@ def test_real_script_subset_preserves_shape(corpus_dir, decompiled):
     claimed and re-executed; that totality is proven elsewhere (the fallback
     module's own pc-claim coverage, exercised corpus-wide, and
     `test_corpus_compile.py`'s all-229-compile gate), not re-proven here.
+
+    Two of the four are HYBRID chunks (M6 task 12; measured 2026-08-14):
+    `snr_graphic.lua` and `snr_memory.lua` have an unproved `main`, but
+    `certify_hybrid` compared `main`'s OWN fields against a real recompile and
+    replaced only the descendant `CLOSURE` sites it could not certify, so
+    `main` itself ships structured text and confesses nothing. The
+    non-`L3`-implies-`fallback-state-machine` shorthand this test used is a
+    property of whole-file fallback, not of non-certification, and it stopped
+    holding for those two here -- so which of the two shapes each file ships
+    is pinned by name below rather than inferred from the level.
     """
     _skip_if_subset_missing(corpus_dir)
     for name, expected_level in _SCRIPT_SUBSET_LEVELS.items():
@@ -188,6 +204,10 @@ def test_real_script_subset_preserves_shape(corpus_dir, decompiled):
         if expected_level == "L3":
             assert res.confessions_by_proto["main"] == []
             assert res.rungs["main"] is not None
+        elif name in _SUBSET_HYBRID:
+            # `main` is unproved but its own fields were compared; only
+            # descendants were replaced, so there is nothing for it to confess.
+            assert res.confessions_by_proto["main"] == []
         else:
             assert res.confessions_by_proto["main"][0]["reason"] == "fallback-state-machine"
 

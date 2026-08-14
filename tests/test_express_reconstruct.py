@@ -67,7 +67,13 @@ def test_table_constructor_reconstructs(tmp_path):
     from pyluadec.express.names import classify_registers
     from pyluadec.express.reconstruct import reconstruct_straight, LocalDecl
     from pyluadec.express.expr import TableExpr
-    p, fn = _proto_and_fn("local t = {10, 20, 30} return t", tmp_path)
+    # `f(t) g(t)` rather than `return t` (M6 task 12): a table constructor
+    # read exactly once is now correctly a luac expression-stack temporary,
+    # so `local t = {...} return t` reconstructs as `return {...}` with no
+    # LocalDecl at all -- and recompiles identically, since luac emits the
+    # same NEWTABLE/SETLIST either way. Two reads make `t` a genuine local
+    # again, which is the shape this test is about.
+    p, fn = _proto_and_fn("local t = {10, 20, 30} f(t) g(t)", tmp_path)
     rc = classify_registers(fn)
     stmts = reconstruct_straight(fn, tuple(fn.instrs[i] for i in sorted(fn.instrs)), rc, depth=0)
     decls = [s for s in stmts if isinstance(s, LocalDecl) and any(isinstance(e, TableExpr) for e in s.exprs)]
@@ -125,7 +131,13 @@ def test_table_constructor_array_values_are_correct_constants(tmp_path):
     from pyluadec.express.names import classify_registers
     from pyluadec.express.reconstruct import reconstruct_straight, LocalDecl
     from pyluadec.express.expr import ConstExpr, TableExpr
-    p, fn = _proto_and_fn("local t = {10, 20, 30} return t", tmp_path)
+    # `f(t) g(t)` rather than `return t` (M6 task 12): a table constructor
+    # read exactly once is now correctly a luac expression-stack temporary,
+    # so `local t = {...} return t` reconstructs as `return {...}` with no
+    # LocalDecl at all -- and recompiles identically, since luac emits the
+    # same NEWTABLE/SETLIST either way. Two reads make `t` a genuine local
+    # again, which is the shape this test is about.
+    p, fn = _proto_and_fn("local t = {10, 20, 30} f(t) g(t)", tmp_path)
     rc = classify_registers(fn)
     stmts = reconstruct_straight(fn, tuple(fn.instrs[i] for i in sorted(fn.instrs)), rc, depth=0)
     decls = [s for s in stmts if isinstance(s, LocalDecl) and any(isinstance(e, TableExpr) for e in s.exprs)]
@@ -393,7 +405,7 @@ def test_loop_var_never_gets_a_localdecl(tmp_path):
 #      an explicit refusal.
 
 def test_nested_table_constructor_reconstructs_without_crashing(tmp_path):
-    """Finding 1 regression pin: 'local t = {a=1, b={}, c=2} return t' --
+    """Finding 1 regression pin: 'local t = {a=1, b={}, c=2} f(t) g(t)' --
     a table literal with another table literal as one of its own values,
     interrupting the outer NEWTABLE's SETLIST/SETTABLE fold with a nested
     NEWTABLE -- must not raise, and the nested `{}` should fold straight
@@ -410,7 +422,13 @@ def test_nested_table_constructor_reconstructs_without_crashing(tmp_path):
     from pyluadec.express.names import classify_registers
     from pyluadec.express.reconstruct import reconstruct_straight, LocalDecl
     from pyluadec.express.expr import TableExpr
-    p, fn = _proto_and_fn("local t = {a=1, b={}, c=2} return t", tmp_path)
+    # `f(t) g(t)` rather than `return t` (M6 task 12): a table constructor
+    # read exactly once is now correctly a luac expression-stack temporary,
+    # so `local t = {...} return t` reconstructs as `return {...}` with no
+    # LocalDecl at all -- and recompiles identically, since luac emits the
+    # same NEWTABLE/SETLIST either way. Two reads make `t` a genuine local
+    # again, which is the shape this test is about.
+    p, fn = _proto_and_fn("local t = {a=1, b={}, c=2} f(t) g(t)", tmp_path)
     rc = classify_registers(fn)
     stmts = reconstruct_straight(fn, tuple(fn.instrs[i] for i in sorted(fn.instrs)), rc, depth=0)
     decls = [s for s in stmts if isinstance(s, LocalDecl)

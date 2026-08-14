@@ -190,9 +190,12 @@ def test_non_identifier_and_keyword_keys_keep_their_brackets():
 
 
 def test_table_constructor_identifier_keys_lose_their_brackets():
-    assert printed(DOT_CTOR_SRC) == (
-        'local l0_0 = {k = 1, ["end"] = 2, [1] = 3}\n'
-        "return l0_0\n")
+    # The constructor stopped being materialized as `local l0_0 = ...` in M6
+    # task 12 (a constructor's own field stores are no longer counted as reads
+    # of the table, so a literal read once is a temporary and inlines into the
+    # `return`). Same bytecode either way; the dot sugar under test is
+    # unaffected.
+    assert printed(DOT_CTOR_SRC) == 'return {k = 1, ["end"] = 2, [1] = 3}\n'
 
 
 def test_dot_sugar_fixtures_certify_l3():

@@ -401,10 +401,82 @@ def classify_registers(fn: LirFunction) -> RegClass:
     # function seeding, `g`'s third argument (which lands in the loop
     # variable's slot) counted as a write to a named local, ended the
     # statement, and promoted `g` and its first two arguments to locals.
-    frame_locals = set(range(fn.proto.numparams)) | set(fn.captured_regs)
+    #
+    # `fn.captured_regs` gets the same treatment (M6 task 12). It is the UNION
+    # over every `CLOSURE` in the function of the slots that closure's `MOVE`
+    # pseudo-instructions capture, so seeding it whole-function says "slot 7
+    # holds a named local everywhere" on the strength of one `function() ...
+    # end` near the end of the chunk. `lparser.c` says no such thing: a
+    # capture proves the slot held a live local **at the `CLOSURE`'s pc**, and
+    # tells you nothing about the same slot two hundred instructions earlier,
+    # which luac reuses statement by statement like any other scratch. The
+    # measured cost on this corpus was total: `snr_graphic.lua:main` captures
+    # registers 0-13 at four `CLOSURE`s in pcs 356-372, which made every
+    # definition of registers 0-13 over the whole 385-instruction chunk a
+    # named local -- including the eight nested table constructors in slot 1
+    # at pcs 2-45, which then collapsed into one aliased table (see
+    # `tests/test_express_aliasing.py`).
+    #
+    # The refinement is per *definition*, and it is the weakest one that keeps
+    # the capture's own guarantee: a definition is a captured local iff it is
+    # the LAST definition of that register at or before some capturing
+    # `CLOSURE` -- i.e. iff the value it writes is the one that closure
+    # actually captures. Every other definition of the slot is handed back to
+    # the freereg simulation. A capture with no definition before it at all
+    # (the slot holds a parameter, or bytecode this walk cannot account for)
+    # has nothing to attribute, so that register stays whole-function seeded,
+    # exactly as before -- DEFENSIVE, measured: 0 of the corpus's 1944 protos
+    # have a capture with no preceding definition, so nothing depends on that
+    # branch today.
+    #
+    # Population this actually moves, measured 2026-08-14: 6 of 1944 protos
+    # have a captured register that ALSO has definitions no closure captures.
+    # Small, but they include `snr_graphic.lua:main`, `snr_memory.lua:main`
+    # and `snr_mainmenu.lua:main` -- three of the largest chunks in the corpus,
+    # and the difference between shipping fallback and shipping structured
+    # source for all three.
+    capture_pcs: dict[int, list[int]] = {}
+    for cpc, pseudo in fn.closure_pseudo.items():
+        for ps in pseudo:
+            if ps.op is Op.MOVE:
+                capture_pcs.setdefault(ps.b, []).append(cpc)
+    captured_defs: set[tuple[int, int]] = set()   # (def_pc, reg)
+    unattributed_captures: set[int] = set()
+    for r, cpcs in capture_pcs.items():
+        dl = defs.get(r, ())
+        for cpc in cpcs:
+            j = bisect.bisect_right(dl, cpc) - 1
+            if j >= 0:
+                captured_defs.add((dl[j], r))
+            else:
+                unattributed_captures.add(r)
+    # A register `fn.captured_regs` names but `fn.closure_pseudo` cannot
+    # attribute to a `CLOSURE` pc. `lift_proto` derives the two from each
+    # other so this is empty for anything it produces; it is not empty for
+    # hand-built `LirFunction`s, which set `captured_regs` directly and often
+    # leave `closure_pseudo` empty (tests/test_express_names.py::
+    # test_parameters_and_captured_registers_win_over_the_controls_override is
+    # one). With no pc to scope the capture to, the whole-function seeding is
+    # the only honest reading of the field, and it is the conservative one.
+    unattributed_captures |= set(fn.captured_regs) - set(capture_pcs)
+    captured_regs = {r for _, r in captured_defs} - unattributed_captures
+    captured_defs = {k for k in captured_defs if k[1] in captured_regs}
+    frame_locals = (set(range(fn.proto.numparams)) | unattributed_captures)
+
+    def _captured_here(r: int, pc: int) -> bool:
+        """True iff the definition of `r` that reaches `pc` is one a `CLOSURE`
+        captures. Asked at a definition pc (from `push`/`named_local`, where
+        `bisect_right` returns that pc itself) and at a read pc (from
+        `do_read`, where it returns the reaching definition)."""
+        if r not in captured_regs:
+            return False
+        dl = defs.get(r, ())
+        j = bisect.bisect_right(dl, pc) - 1
+        return j >= 0 and (dl[j], r) in captured_defs
 
     def _known_local(r: int, pc: int) -> bool:
         return (r in frame_locals
+                or _captured_here(r, pc)
                 or (r in dedicated_controls and _in(ctl_win.get(r, ()), pc))
                 or _in(var_win.get(r, ()), pc))
 
@@ -412,7 +484,8 @@ def classify_registers(fn: LirFunction) -> RegClass:
         return r in controls and _in(ctl_win.get(r, ()), pc)
 
     def _named_local(r: int, pc: int) -> bool:
-        return r in frame_locals or _in(var_win.get(r, ()), pc)
+        return (r in frame_locals or _captured_here(r, pc)
+                or _in(var_win.get(r, ()), pc))
 
     stack_temps, stack_temp_defs = stack_discipline(
         fn, ordered, _known_local, _loop_control, _named_local, _block_floor)
@@ -449,7 +522,7 @@ def classify_registers(fn: LirFunction) -> RegClass:
         # override in front of two guards that exist to be unconditional is
         # the kind of inconsistency this module has already been bitten by
         # (M3 task-5 round-5 review).
-        if r < fn.proto.numparams or r in fn.captured_regs:
+        if r in frame_locals:
             locals_.add(r); continue
         if r in controls:
             spans = ctl_win.get(r, ())
@@ -489,6 +562,35 @@ def classify_registers(fn: LirFunction) -> RegClass:
             temps.add(r)
         else:
             locals_.add(r)
+    # `RegClass`' documented invariant, restated as code rather than trusted:
+    # a definition a `CLOSURE` captures is a named local, so it is never a
+    # `temp_defs` entry, and a register with even one such definition cannot
+    # be a whole-register `temps` member.
+    #
+    # The two lines have opposite verdicts, both measured 2026-08-14 by
+    # deleting each on its own and re-classifying all 1944 corpus protos:
+    #
+    #  * `temp_defs -= captured_defs` -- DEFENSIVE, 0/1944 change. `push`
+    #    already declines to push a captured definition (`_known_local` ->
+    #    `_captured_here`), so the only way one could reach `temp_defs` is via
+    #    the `dedicated_controls`/`loop_vars` branches above, which assemble
+    #    `mine` from `defs` directly rather than from the simulation's
+    #    verdicts -- i.e. only if a `for` header's control triple were also
+    #    closure-captured. Kept as the statement of the invariant, not claimed
+    #    as a live guard.
+    #  * `temps -= captured_regs` (with `locals_ |=`) -- LOAD-BEARING,
+    #    6/1944 change, and deleting it undoes this task's whole
+    #    closure-capture result (shipped 1763 -> 1749 protos, whole-file
+    #    fallback 4 -> 7). The mechanism: a captured definition is never
+    #    pushed, so it contributes no verdict, and a register whose OTHER
+    #    definitions are all temps would land in `temps` -- which
+    #    `write_reg` reads as "stage every definition of this register",
+    #    including the captured one, leaving the closure referring to a name
+    #    the function never declares. Pinned by tests/test_express_aliasing.py
+    #    ::test_neutering_per_definition_capture_reproduces_the_whole_function_defect.
+    temp_defs -= captured_defs
+    temps -= captured_regs
+    locals_ |= captured_regs
     return RegClass(locals=frozenset(locals_), temps=frozenset(temps),
                     loop_vars=frozenset(loop_vars),
                     temp_defs=frozenset(temp_defs))

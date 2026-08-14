@@ -549,20 +549,28 @@ def test_the_full_leaf_population_verdicts_are_pinned(corpus_dir):
     """The task's deliverable, as a gate. All 13 leaves, every assignment of
     every one that fits the budget, both sides.
 
-    Measured 2026-08-14 (standalone CLI, 5.70/5.78/5.74s wall): **identical
-    8, divergent 2, budget-exceeded 1, never-reached 2**. The two divergences
-    are pinned in `probe_enum.EXPECTED_DIVERGENCE` with instruction-level
-    evidence and are both the already-documented `__pld_R` `getobjname`
-    class; adjudication is two-directional, so a changed message, a different
-    diverging assignment, a converged pair or a vanished proto all fail here.
+    Re-measured 2026-08-14 after M6 task 12: **identical 9, divergent 1,
+    budget-exceeded 1, never-reached 2** (was identical 8 / divergent 2 --
+    `snr_mainmenu.lua:main_7` converged, all 128 of its assignments now
+    byte-identical, because task 12 lifted that chunk's `main` to `L3` so it
+    no longer ships through the fallback's `__pld_R` box model). The remaining
+    divergence is pinned in `probe_enum.EXPECTED_DIVERGENCE` with
+    instruction-level evidence and is the already-documented `__pld_R`
+    `getobjname` class; adjudication is two-directional, so a changed message,
+    a different diverging assignment, a converged pair or a vanished proto all
+    fail here.
 
     The counts are asserted as an exact partition rather than as floors: this
     is a fixed 13-element population, so a floor would be a number that could
     only move by someone editing it.
 
     **Re-measured after task 11 (2026-08-14, 6.73s wall): every one of these
-    numbers is unchanged** -- same partition, same two pinned divergences
-    byte-for-byte, same 182/106.
+    numbers was unchanged then** -- same partition, same two pinned
+    divergences byte-for-byte, same 182/106. Task 12 is the first change that
+    moves them, and it moves them the way this instrument was built to
+    report: one pinned row converged, so `total_adjudicated` rises from 106 to
+    181 (its 128 assignments now run to completion instead of stopping at the
+    first difference) while `total_space` stays 182.
 
     **That is NOT semantic evidence for task 11, and an earlier version of
     this docstring wrongly said it was** (fix round 1). `drive` takes the
@@ -601,18 +609,19 @@ def test_the_full_leaf_population_verdicts_are_pinned(corpus_dir):
             # The property `identical` actually asserts, restated at the
             # call site so it cannot rot into "the run did not crash".
             assert v.n_assignments == v.space_size > 0
-    assert counts == {"identical": 8, "divergent": 2,
+    assert counts == {"identical": 9, "divergent": 1,
                       "budget-exceeded": 1, "never-reached": 2}, counts
     assert adjudicate_pins(divergent, probe_enum.EXPECTED_DIVERGENCE) \
         == ([], [], [])
     # The enumerated product over the ten drivable rows is 182 assignments;
-    # 106 of them are ADJUDICATED, because `exhaust` stops at the first
-    # difference on the two divergent rows (indices 1 and 53). Both numbers
-    # are pinned: the first is what "exhaustive" means here, the second is
-    # what `n_assignments` reports, and conflating them is how round 1's
-    # "186 assignments / 372 driven runs" came about.
+    # 181 of them are ADJUDICATED, because `exhaust` stops at the first
+    # difference on the one remaining divergent row (index 1 of 2). Both
+    # numbers are pinned: the first is what "exhaustive" means here, the
+    # second is what `n_assignments` reports, and conflating them is how round
+    # 1's "186 assignments / 372 driven runs" came about. Was 106 while
+    # `snr_mainmenu.lua:main_7` diverged at index 53 of its 128.
     assert total_space == 182
-    assert total_adjudicated == 106
+    assert total_adjudicated == 181
 
 
 def test_the_one_over_budget_leaf_is_refused_with_its_size(corpus_dir):

@@ -700,9 +700,15 @@ def exhaust(file, proto_path: str, *, jobs: int = 8,
 # routes every register through `__pld_R[<number>]`, so the key is a NUMBER
 # constant and `kname` says `field '?'`. Only the noun in an error MESSAGE
 # differs; the two sides fail at the same instruction with the same error kind.
-# Both should CONVERGE when Task 11 makes these protos certify `L3` and stop
+# Both should CONVERGE when one of these protos certifies `L3` and stops
 # shipping through the box model -- at which point adjudication reports `gone`
-# and the pins must be deleted, not left to pass silently.
+# and the pin must be deleted, not left to pass silently. That happened to
+# `snr_mainmenu.lua:main_7` in M6 task 12 (per-definition closure-capture
+# classification lifted that chunk's `main` to `L3`), and its entry was deleted
+# below exactly as this comment prescribes -- all 128 of its assignments are
+# now byte-identical. The same convergence removed the file's pins in
+# `probe_global_state.py` and `probe_behaviour.py`. `snr_common.lua:main_81`
+# remains: `snr_common.lua` still ships whole-file fallback.
 #
 # `snr_common.lua:main_81` (`keyWait`) is a NEW instance of that class. It is
 # new because of the TARGETED NAMED ENTRY, not because of the enumeration --
@@ -741,12 +747,6 @@ EXPECTED_DIVERGENCE: dict[str, tuple[str, bytes, bytes]] = {
         "pressButton()=v0",
         b"R|keyWait|attempt to perform arithmetic on a nil value",
         b"R|keyWait|attempt to perform arithmetic on field '?' (a nil value)"),
-    "snr_mainmenu.lua:main_7": (
-        "gameSave.myCard[140].hold=v0,gameSave.startMenuState=v3,"
-        "pressButton()=v0,systemSave.libFlag=v1,systemSave.musicFlag=v0,"
-        "systemSave.novelFlag=v0",
-        b"R|main|attempt to perform arithmetic on field 'library' (a nil value)",
-        b"R|main|attempt to perform arithmetic on field '?' (a nil value)"),
 }
 
 

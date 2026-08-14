@@ -181,25 +181,22 @@ def first_difference(orig: bytes, dec: bytes) -> tuple[int, bytes, bytes]:
 # The corpus files whose original and decompiled behaviour traces do NOT agree,
 # pinned as the exact (original, decompiled) FIRST DIFFERING LINE, so that a
 # changed message, a converged pair or a vanished file all fail the gate.
-# Measured 2026-08-12 over all 229 files: 227 agree byte-for-byte, these 2 do
-# not, and both were adjudicated to known, documented causes rather than to a
-# decompiler defect.
+# Re-measured 2026-08-14 (M6 task 12) over all 229 files: 228 agree
+# byte-for-byte, this 1 does not, and it was adjudicated to a known, documented
+# cause rather than to a decompiler defect.
 #
-# snr_mainmenu.lua -- the getobjname naming artifact of the fallback's __pld_R
-#   box model, the same class already pinned in probe_global_state.py. Both
-#   traces are 20 lines (header + 17 preceding events + the differing event +
-#   a trailing blank); both sides record the SAME 17 preceding events and then
-#   both fail with an arithmetic-on-nil error; only the noun differs.
-#   Instruction-level evidence:
+# snr_mainmenu.lua was the second entry and was DELETED here because its pair
+#   converged, which is the one way an entry may leave (the test asserts
+#   two-directionally, so a converged pin fails until it is removed). It was
+#   the getobjname naming artifact of the fallback's `__pld_R` box model:
 #   the original does `GETTABLE 6 6 "library"` immediately followed by
-#   `ADD 5 5 6` (luac listing pcs 117/118, and identically at 299/300,
-#   518/519, 743/744, 883/884 -- every one of them composes the same message),
-#   so ldebug.c's kname() finds a STRING constant and says `field 'library'`.
-#   Our fallback emits that same pair as
-#       __pld_R[6] = __pld_R[6]["library"]
-#       __pld_R[5] = __pld_R[5] + __pld_R[6]
-#   so the ADD's operand was produced by a GETTABLE whose key is the NUMBER
-#   constant 6; kname() refuses a non-string RK and says `field '?'`.
+#   `ADD 5 5 6`, so ldebug.c's kname() finds a STRING constant and says
+#   `field 'library'`, whereas the fallback's
+#   `__pld_R[5] = __pld_R[5] + __pld_R[6]` gives kname() a NUMBER key and it
+#   says `field '?'`. Task 12's per-definition closure-capture classification
+#   lifted that chunk's `main` to `L3`, so it no longer ships through the box
+#   model at all and both sides now say `field 'library'`. The same
+#   convergence removed three of the four pins in `probe_global_state.py`.
 #
 # snr_novel.lua -- table iteration order. The two traces are the SAME MULTISET
 #   of 43 lines in a different order (asserted in the test), and the file's
@@ -211,9 +208,6 @@ def first_difference(orig: bytes, dec: bytes) -> tuple[int, bytes, bytes]:
 #   instead. Different node array, different `next()` order. This is backlog
 #   item 5 (table internal layout), now with runtime evidence.
 EXPECTED_DIVERGENCE: dict[str, tuple[bytes, bytes]] = {
-    "snr_mainmenu.lua": (
-        b"R|main|attempt to perform arithmetic on field 'library' (a nil value)",
-        b"R|main|attempt to perform arithmetic on field '?' (a nil value)"),
     "snr_novel.lua": (
         b'C|comLayerLoadFalse|2|58,"novel/novel_3_ad.gim"',
         b'C|comLayerLoadFalse|2|64,"novel/novel_3_cb.gim"'),

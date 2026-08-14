@@ -519,8 +519,9 @@ def test_leaf_refusal_rule_agrees_with_an_independent_stubbing_experiment(corpus
             non_l3[k] = (row, protos[k])
 
     # 48 before M6 task 11 closed 20 of the 21 `structure:` shapes (7 to `L3`,
-    # 13 to `mismatch:`); re-measured 2026-08-14.
-    assert len(non_l3) == 41, len(non_l3)
+    # 13 to `mismatch:`), then 41 before task 12's constructor/capture
+    # classification fixes lifted one more; re-measured 2026-08-14.
+    assert len(non_l3) == 40, len(non_l3)
     checked = 0
     for (f, path), (row, p) in sorted(non_l3.items()):
         kind = row["refusal_reason"].split(":", 1)[0]

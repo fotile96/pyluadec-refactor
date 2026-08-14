@@ -81,8 +81,8 @@ def payload_of(result: str) -> str:
         # `strip_location(err)` output, which is NOT escaped, so a message
         # containing a `|` splits here in the wrong place. The two candidate
         # repairs both cost more than the defect: escaping `|` on the Lua side
-        # changes the probe's wire format, and the four pinned divergences in
-        # `_PINNED_DIVERGENCES` below are exact strings in that format;
+        # changes the probe's wire format, and the pinned divergences in
+        # `EXPECTED_ERROR_NAME_DIVERGENCE` below are exact strings in that format;
         # splitting from the right is no better, because the globals block can
         # contain `|` inside a serialised string value.
         #
@@ -108,7 +108,8 @@ def payload_of(result: str) -> str:
 # output, and getobjname names it "field 'v'" / "field '?'" instead of
 # "global 'gameSave'". The failing operation, the offending value's type and
 # the set of globals written before the failure all match. Instruction-level
-# evidence for each of the four is in docs/runbooks/m3-backlog.md.
+# evidence for each is in docs/runbooks/m3-backlog.md (written when there were
+# four; two of those four have since converged, see below).
 #
 # Pinned as EXACT PAIRS, not as an exclusion list: if either side's text
 # changes -- including if they start agreeing -- the gate fails and the pin
@@ -118,16 +119,16 @@ def payload_of(result: str) -> str:
 # tests/test_global_state_probe.py cannot disagree about what is pinned. They
 # used to: main() knew nothing about the pins and printed a red "225/229" plus
 # a non-zero exit while the test suite was green.
+#
+# Was four entries; `snr_graphic.lua`, `snr_memory.lua` and `snr_mainmenu.lua`
+# were deleted in M6 task 12 because their pairs CONVERGED, which is the one
+# way an entry is allowed to leave. Per-definition closure-capture
+# classification made the first two certify enough of themselves to ship
+# hybrid rather than whole-file fallback, and lifted `snr_mainmenu.lua`'s main
+# to `L3` outright; in all three the failing read is a real `GETGLOBAL` in our
+# output too, so `getobjname` names it identically. Measured 2026-08-14:
+# 228/229 identical, 1 pinned divergence.
 EXPECTED_ERROR_NAME_DIVERGENCE = {
-    "snr_graphic.lua": (
-        "ERR|attempt to index global 'systemSave' (a nil value)|\n",
-        "ERR|attempt to index field '?' (a nil value)|\n"),
-    "snr_mainmenu.lua": (
-        "ERR|attempt to index global 'gameSave' (a nil value)|\n",
-        "ERR|attempt to index field 'v' (a nil value)|\n"),
-    "snr_memory.lua": (
-        "ERR|attempt to index global 'systemSave' (a nil value)|\n",
-        "ERR|attempt to index field 'v' (a nil value)|\n"),
     "snr_novel.lua": (
         "ERR|attempt to index global 'systemSave' (a nil value)|\n",
         "ERR|attempt to index field 'v' (a nil value)|\n"),
