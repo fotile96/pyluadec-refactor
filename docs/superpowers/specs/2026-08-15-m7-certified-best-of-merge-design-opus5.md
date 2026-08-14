@@ -29,6 +29,16 @@
 > - **Numbers**: every figure below was re-verified against `corpus/ledger.jsonl`
 >   at `3669950` on 2026-08-15 unless a date says otherwise. House rule stands:
 >   a stated number is a hypothesis about a tree — re-derive at task start.
+> - **Rev 3 (Fable 5 review, 2026-08-15, this branch)**: re-verified the
+>   checkable claims against the tree (40-row breakdown, fallback occurrence
+>   counts, `cross_corpus.py:765`, the eight `LOSS_KINDS`, 3903/1433, 12/13,
+>   the `O<n>`/`P<n>` pin format — all reproduced) and corrected three prose
+>   defects of the house's named recurring class: §2.1's sweep families are
+>   one-directional and already per-proto (the two-sided form is new work,
+>   now stated); §3 was missing the `predcorpus` strip trap, which sits
+>   directly under its go/no-go measurement; §5's mechanism-D count
+>   contradicted its own attribution line (5 rows = 3 own clamp + 2
+>   inherited).
 
 ## 0. Problem
 
@@ -114,8 +124,21 @@ cleanliness must not outrank or substitute for static per-proto comparison.
 
 A per-proto static equivalence verdict between a pred proto and its original
 counterpart (the 1:1 tree correspondence is established — 229/229 files,
-`tests/test_predcorpus.py`). Families, all already implemented by M6
-instruments and here promoted from file-aggregates to per-proto verdicts:
+`tests/test_predcorpus.py`). Families, each anchored to an M6 instrument —
+**but the anchoring is not a free promotion**, two corrections re-verified
+against the tree (Fable 5 review, 2026-08-15): the loss sweeps are *already*
+per-proto (the file-aggregate arm is the fingerprint, whose per-file verdict
+reports only the worst path — per-proto verdicts there are the promotion);
+and the sweeps are **one-directional** — `LOSS_KINDS` flags a proto only when
+the pred value is *smaller* (`scripts/loss_sweep.py:56`). `panel-pass` means
+*equal*, so the panel needs the **two-sided form** of each sweep family; a
+pred proto that *gained* a counter passes today's sweep, and direction is not
+hypothetical on this corpus — `snr_common.lua:main_76_2` gains three `EQ`
+while losing three `TESTSET` (the loss sweep caught it only via the loss
+half). The two-sided extension is new work of the same shape and cost class
+as the fifth family below, and its gain side must be measured on the corpus
+before the panel's verdicts are trusted (expect new pins: the twelve
+`equivalent-transform` files plausibly show benign gains).
 
 - the four `loss_sweep` groups: `global_reads`; `n_natural_loops` +
   `n_back_edges`; `test_ops` (per-opcode: EQ/LT/LE/TEST/TESTSET); the
@@ -166,6 +189,19 @@ byte-exact against what the pred text means, in our style, with readable
 UTF-8. Factor E (pred vs original) is carried by the panel per §2.1.
 A proto that refuses ships the pred text verbatim for its subtree
 (`*-verbatim`), with the refusal reason recorded in the warranty row.
+
+**The strip trap is load-bearing here** (added by the Fable 5 review,
+2026-08-15): pred text compiled by `luac_sz4` carries debug tables, while our
+re-certification recompiles include none — `predcorpus.load_pred_proto`'s own
+docstring requires the caller to choose `strip=not carries_debug(original)`
+explicitly, and M6 recorded that getting this wrong polluted a survey once
+(260 `nups > 0` protos sprouting phantom `upvalues`-length mismatches). The
+§3 recert pipeline compares two artifacts *both produced this milestone*, so
+the rule instantiates as: the pred-side reference bytecode and the
+re-certification recompile must use the same strip convention, chosen
+explicitly and stated in the recert task — otherwise the full-population
+recert-rate measurement (this section's go/no-go number) is polluted by the
+exact asymmetry M6 already paid for.
 
 Feasibility evidence (M6, re-derive at task start): `build_sir` succeeded on
 **12/13** pred leaf protos (92.3%); pred text is real-luac-compiled source,
@@ -225,10 +261,15 @@ fallback text.
 
 Baseline (re-verified 2026-08-15 at `3669950`): 40 non-`L3` rows = 29 own
 refusals + 11 inherited. By reason: `mismatch: code` 19 (14 root + 5
-`at root/*`), `mismatch: maxstacksize` 15 (11 + 4), `reconstruct:` clamp
-shape 5, `structure:` 1 (`snr_common.lua:main_71`, the `while true`
-recognizer gap). Attributed: 9 (6 mechanism C `_same_block`, 3 mechanism D
-clamp); unattributed 21 own + 10 inherited.
+`at root/*`), `mismatch: maxstacksize` 15 (11 + 4), `reconstruct:` 5 —
+which is **3 own clamp shapes + 2 inherited ancestors** carrying a
+descendant's message verbatim (`snr_common:main` ← `main_69`,
+`snr_s5_10_s:main` ← `main_42`; runbook "a fourth mechanism". An earlier
+revision wrote "clamp shape 5", contradicting its own attribution line —
+corrected by the Fable 5 review, 2026-08-15), `structure:` 1
+(`snr_common.lua:main_71`, the `while true` recognizer gap). Attributed: 9
+(6 mechanism C `_same_block`, 3 mechanism D clamp); unattributed 21 own + 10
+inherited.
 
 Order of attack — adopted from the glm spec §5, which sequences it
 correctly `[vs glm: adopted]`:
@@ -236,8 +277,9 @@ correctly `[vs glm: adopted]`:
 1. **`config.lua`** first — one own refusal holds the whole file;
    investigate before committing (a "trivial" refusal may name a new
    mechanism; report rather than stretch).
-2. **Mechanism D** (clamp / conditional-value): the 5 `reconstruct:` rows.
-   Needs a statement-level conditional-assignment region;
+2. **Mechanism D** (clamp / conditional-value): the **3 own** `reconstruct:`
+   rows (the other 2 of the 5 are inherited ancestors and dissolve under
+   step 5). Needs a statement-level conditional-assignment region;
    `regions.CondValue` covers only the `TESTSET` idiom and there is no
    `TESTSET` here.
 3. **Mechanism C** (`_same_block`): 6 rows.
