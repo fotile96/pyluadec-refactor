@@ -120,3 +120,89 @@ def test_file_panel_keys_use_repo_path_spelling(tmp_path):
     out = file_panel(tmp_path / "corpus", tmp_path / "pred", "a.lua")
     assert set(out) == {"main"}
     assert out["main"].diffs == {}
+
+
+# --------------------------------------------------------------------------
+# Task 4: the committed artifact, its fixed point, and the pins' currency.
+# Corpus-gated: one ~6s scan serves every assertion in this section.
+
+@pytest.fixture(scope="module")
+def panel_scan():
+    """One shared ~6s scan for both corpus-gated Task-4 tests (a module-level
+    cache; the suite pays for the scan once)."""
+    from pathlib import Path as _P
+    import os
+    import invariant_panel as ip
+
+    corpus = _P(os.environ["PYLUADEC_CORPUS_DIR"])
+    pred = _P(os.environ["PYLUADEC_PRED_CORPUS_DIR"])
+    return ip.scan_all(corpus, pred)
+
+
+def test_panel_fixed_point_and_pin_currency(panel_scan):
+    """The job's gate, in-suite: the live scan must reproduce the committed
+    `corpus/observation/panel.json` byte-for-byte, and every pin must still
+    describe a live divergence (no moved evidence, no converged rows)."""
+    import invariant_panel as ip
+    from probe_common import adjudicate_pins
+
+    scan = panel_scan
+    committed = (ROOT / "corpus" / "observation" / "panel.json").read_bytes()
+    assert ip.panel_bytes(scan) == committed
+    divergent = ip._non_pass(scan)
+    divergent_ev = {k: tuple(sorted(d.items())) for k, d in divergent.items()}
+    unexpected, moved, gone = adjudicate_pins(divergent_ev, ip.pin_evidence())
+    assert unexpected == [] or all(k in divergent for k in unexpected)
+    # the pins' currency is the strict form: every pin is still divergent with
+    # unchanged evidence (the unpinned bulk is byte-checked above, not here)
+    assert moved == [] and gone == []
+    assert len(ip.PANEL_PINS) == 217
+
+
+def test_panel_fixed_point_is_not_vacuous(panel_scan):
+    """Neuter proof: a hand-edit inside the committed artifact (flip one
+    verdict) must break the byte comparison -- the gate reads the artifact,
+    not just its own output."""
+    import invariant_panel as ip
+
+    scan = panel_scan
+    committed = (ROOT / "corpus" / "observation" / "panel.json").read_bytes()
+    tampered = committed.replace(b'"pass"', b'"pasx"', 1)
+    assert tampered != committed
+    assert ip.panel_bytes(scan) != tampered
+
+
+def test_panel_summary_pin():
+    """The cheap suite arm (no corpus): the committed artifact's verdict-class
+    counts are pinned. Measured 2026-08-15 (M7 task 4): 1411 pass / 217
+    pinned / 316 unpinned over 1944 protos in 229 files."""
+    import json
+
+    data = json.loads((ROOT / "corpus" / "observation" / "panel.json").read_text())
+    rows = [v for f in data.values() for v in f.values()]
+    assert len(data) == 229
+    assert len(rows) == 1944
+    n_pass = sum(1 for v in rows if v == "pass")
+    n_pin = sum(1 for v in rows if isinstance(v, dict) and "pinned" in v)
+    n_un = sum(1 for v in rows if isinstance(v, dict) and "unpinned" in v)
+    assert (n_pass, n_pin, n_un) == (1411, 217, 316)
+    # every pinned row's note exists in PANEL_PINS (artifact/module agreement)
+    import invariant_panel as ip
+
+    for f, protos in data.items():
+        for p, v in protos.items():
+            if isinstance(v, dict) and "pinned" in v:
+                assert ip.PANEL_PINS[f"{f}:{p}"].note == v["pinned"]
+
+
+def test_unpinned_rows_never_carry_constant_values_in_defect_protos():
+    """The six defect protos are pinned regardless of family mix (their
+    divergence IS the defect); recorded so a future regen cannot silently
+    drop them into the unpinned bulk."""
+    import invariant_panel as ip
+
+    for key in ("snr_music.lua:main_3", "snr_common.lua:main_76_2",
+                "snr_mainmenu.lua:main_7", "snr_graphic.lua:main_4",
+                "snr_memory.lua:main_4", "snr_common.lua:main_75",
+                "snr_common.lua:main_83"):
+        assert key in ip.PANEL_PINS

@@ -1,0 +1,4147 @@
+{
+ "config.lua": {
+  "main": {
+   "unpinned": {
+    "constant_values": "orig-only 0 value(s), pred-only 14 value(s), first divergence at pc 28 SETGLOBAL",
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts, global_reads",
+    "loss:global_reads": "totals orig 24 != pred 38, 2 key(s) differ"
+   }
+  }
+ },
+ "snr_common.lua": {
+  "main": {
+   "unpinned": {
+    "constant_values": "orig-only 0 value(s), pred-only 174 value(s), first divergence at pc 14 SETGLOBAL",
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts, global_reads",
+    "loss:global_reads": "totals orig 612 != pred 786, 5 key(s) differ"
+   }
+  },
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_10": "pass",
+  "main_11": "pass",
+  "main_12": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_13": "pass",
+  "main_14": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_15": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_16": "pass",
+  "main_17": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_18": "pass",
+  "main_19": "pass",
+  "main_2": {
+   "unpinned": {
+    "constant_values": "orig-only 0 value(s), pred-only 2 value(s), first divergence at pc 9 GETGLOBAL",
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts, global_reads",
+    "loss:global_reads": "totals orig 2 != pred 4, 1 key(s) differ"
+   }
+  },
+  "main_20": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_21": "pass",
+  "main_22": "pass",
+  "main_23": {
+   "unpinned": {
+    "fingerprint": "differing field(s): cfg_reachable, cfg_all"
+   }
+  },
+  "main_24": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_24_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_24_1": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_25": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_25_0": "pass",
+  "main_25_1": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_25_2": "pass",
+  "main_25_3": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_25_4": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_26": "pass",
+  "main_27": {
+   "pinned": "equivalent-transform (M6 LOSS_PINS per-proto verdict)"
+  },
+  "main_28": {
+   "unpinned": {
+    "constant_values": "orig-only 0 value(s), pred-only 1 value(s), first divergence at pc 3 GETGLOBAL",
+    "fingerprint": "differing field(s): code_len, cfg_all, opcode_counts, opcode_family_counts, global_reads",
+    "loss:global_reads": "totals orig 118 != pred 119, 1 key(s) differ",
+    "loss:test_ops": "per-opcode TESTSET 2!=0"
+   }
+  },
+  "main_29": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_29_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_3": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_30": "pass",
+  "main_31": "pass",
+  "main_32": "pass",
+  "main_33": "pass",
+  "main_34": "pass",
+  "main_35": "pass",
+  "main_36": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_37": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_38": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_39": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_4": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_40": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_41": "pass",
+  "main_42": "pass",
+  "main_43": "pass",
+  "main_44": "pass",
+  "main_45": "pass",
+  "main_46": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_47": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_48": "pass",
+  "main_49": "pass",
+  "main_5": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_50": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, cfg_all, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_51": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_52": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_53": "pass",
+  "main_54": "pass",
+  "main_55": {
+   "pinned": "equivalent-transform (M6 LOSS_PINS per-proto verdict)"
+  },
+  "main_56": {
+   "unpinned": {
+    "constant_values": "orig-only 1 value(s), pred-only 0 value(s), first divergence at pc 28 LOADK",
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_57": {
+   "unpinned": {
+    "constant_values": "orig-only 1 value(s), pred-only 0 value(s), first divergence at pc 29 LOADK",
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_58": {
+   "unpinned": {
+    "constant_values": "orig-only 1 value(s), pred-only 0 value(s), first divergence at pc 29 LOADK",
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_59": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, cfg_reachable, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_6": {
+   "unpinned": {
+    "constant_values": "orig-only 0 value(s), pred-only 1 value(s), first divergence at pc 9 GETGLOBAL",
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts, global_reads",
+    "loss:global_reads": "totals orig 2 != pred 3, 1 key(s) differ"
+   }
+  },
+  "main_60": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_61": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_62": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_63": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_64": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_65": "pass",
+  "main_66": "pass",
+  "main_67": "pass",
+  "main_68": "pass",
+  "main_69": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_7": "pass",
+  "main_70": "pass",
+  "main_71": {
+   "unpinned": {
+    "constant_values": "orig-only 2 value(s), pred-only 1 value(s), first divergence at pc 284 EQ",
+    "fingerprint": "differing field(s): code_len, cfg_all, opcode_counts, opcode_family_counts",
+    "loss:test_ops": "per-opcode EQ 18!=16, TEST 1!=2, TESTSET 2!=0"
+   }
+  },
+  "main_72": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_73": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_74": {
+   "unpinned": {
+    "constant_values": "orig-only 0 value(s), pred-only 20 value(s), first divergence at pc 13 SETTABLE",
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_74_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_74_1": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_74_10": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_74_11": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_74_12": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_74_13": {
+   "pinned": "equivalent-transform (M6 LOSS_PINS per-proto verdict)"
+  },
+  "main_74_14": "pass",
+  "main_74_15": "pass",
+  "main_74_16": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_74_17": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_74_18": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_74_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_74_3": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_74_4": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_74_5": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_74_6": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_74_7": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_74_8": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_74_9": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_75": {
+   "pinned": "defect 6 (M6 report 3.4; repaired, corpus/pred_repairs)"
+  },
+  "main_76": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_76_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_76_1": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_76_2": {
+   "pinned": "defect 2 (M6 report 3.4; repaired, corpus/pred_repairs)"
+  },
+  "main_76_3": "pass",
+  "main_76_4": "pass",
+  "main_76_5": "pass",
+  "main_76_6": "pass",
+  "main_76_7": {
+   "pinned": "equivalent-transform (M6 LOSS_PINS per-proto verdict)"
+  },
+  "main_76_8": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, cfg_reachable, cfg_all, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_77": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_77_0": "pass",
+  "main_77_1": {
+   "unpinned": {
+    "fingerprint": "differing field(s): opcode_counts"
+   }
+  },
+  "main_77_10": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_77_11": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_77_12": "pass",
+  "main_77_13": "pass",
+  "main_77_14": "pass",
+  "main_77_15": "pass",
+  "main_77_16": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_77_17": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_77_18": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_77_19": "pass",
+  "main_77_2": "pass",
+  "main_77_20": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_77_21": "pass",
+  "main_77_22": "pass",
+  "main_77_23": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_77_24": {
+   "pinned": "equivalent-transform (M6 LOSS_PINS per-proto verdict)"
+  },
+  "main_77_25": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_77_3": "pass",
+  "main_77_4": "pass",
+  "main_77_5": "pass",
+  "main_77_6": "pass",
+  "main_77_7": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_77_8": "pass",
+  "main_77_9": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_78": "pass",
+  "main_79": "pass",
+  "main_8": "pass",
+  "main_80": "pass",
+  "main_81": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, cfg_all, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_82": "pass",
+  "main_83": {
+   "pinned": "row-level real-bug, path-level intentional-edit (M6 report 3.5; font resource path)"
+  },
+  "main_9": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_0.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_1.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_10.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_100.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_101.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_102.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": "pass",
+  "main_3": {
+   "unpinned": {
+    "constant_values": "orig-only 1 value(s), pred-only 0 value(s), first divergence at pc 89 LOADK",
+    "fingerprint": "differing field(s): code_len, cfg_all, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_4": "pass",
+  "main_5": "pass"
+ },
+ "snr_crd_103.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_10": "pass",
+  "main_11": "pass",
+  "main_12": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_2": "pass",
+  "main_3": "pass",
+  "main_4": "pass",
+  "main_5": "pass",
+  "main_6": "pass",
+  "main_7": "pass",
+  "main_8": "pass",
+  "main_9": "pass"
+ },
+ "snr_crd_104.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_10": "pass",
+  "main_11": "pass",
+  "main_12": "pass",
+  "main_13": "pass",
+  "main_14": "pass",
+  "main_15": "pass",
+  "main_16": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_2": "pass",
+  "main_3": "pass",
+  "main_4": "pass",
+  "main_5": "pass",
+  "main_6": "pass",
+  "main_7": "pass",
+  "main_8": "pass",
+  "main_9": "pass"
+ },
+ "snr_crd_105.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_106.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_107.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_108.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_109.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_11.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_110.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": "pass",
+  "main_3": "pass",
+  "main_4": "pass",
+  "main_5": "pass",
+  "main_6": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_111.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_112.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_113.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_114.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_115.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_116.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_117.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_118.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_119.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_12.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_120.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_121.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_122.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_123.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_124.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_125.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_126.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_127.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_128.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_129.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_13.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_130.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_131.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_132.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_133.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_134.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_135.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_136.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_137.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_138.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_139.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_14.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_140.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_141.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_142.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_143.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_144.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_145.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_146.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_147.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_148.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_149.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_15.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_150.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_151.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_152.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_153.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_154.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_155.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_156.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_157.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_158.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_159.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_16.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_160.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_161.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_162.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_163.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_164.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_165.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_166.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_167.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": "pass",
+  "main_3": "pass",
+  "main_4": "pass",
+  "main_5": "pass",
+  "main_6": "pass",
+  "main_7": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_168.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": "pass",
+  "main_3": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_169.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_17.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_170.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_171.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_172.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_173.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_174.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_175.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_176.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": "pass",
+  "main_3": "pass",
+  "main_4": "pass",
+  "main_5": "pass",
+  "main_6": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_177.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": "pass",
+  "main_3": "pass",
+  "main_4": "pass",
+  "main_5": "pass",
+  "main_6": "pass",
+  "main_7": "pass",
+  "main_8": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_178.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_179.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_18.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_180.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_181.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_182.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_183.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_184.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_185.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_186.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_187.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_188.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_189.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_19.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_190.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_191.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_192.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_193.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": "pass",
+  "main_3": "pass",
+  "main_4": "pass",
+  "main_5": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_194.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": "pass",
+  "main_3": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_195.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_2.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_20.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_21.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_22.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_23.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_24.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_25.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_26.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_27.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_28.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_29.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_3.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_30.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": "pass",
+  "main_3": "pass",
+  "main_4": "pass",
+  "main_5": "pass",
+  "main_6": "pass",
+  "main_7": "pass",
+  "main_8": "pass",
+  "main_9": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_31.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_32.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_33.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_34.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": "pass",
+  "main_3": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_35.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": "pass",
+  "main_3": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_36.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_37.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_38.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_39.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_4.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_40.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_41.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": "pass",
+  "main_3": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_42.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_43.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_44.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": "pass",
+  "main_3": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_45.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_46.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_47.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_48.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_49.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": "pass",
+  "main_3": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_5.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_50.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_51.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_52.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_53.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_54.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_55.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_56.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_57.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_58.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": "pass",
+  "main_3": "pass",
+  "main_4": "pass",
+  "main_5": "pass",
+  "main_6": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_59.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_6.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_60.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_61.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": "pass",
+  "main_3": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_62.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_63.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_64.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_65.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_66.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_67.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_68.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": "pass",
+  "main_3": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_69.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_7.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_70.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": "pass",
+  "main_3": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_71.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_72.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_73.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_74.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_75.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_76.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_77.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": "pass",
+  "main_3": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_78.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_79.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_8.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_80.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_81.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_82.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_83.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_84.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_85.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": "pass",
+  "main_3": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_86.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_87.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_88.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_89.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": "pass",
+  "main_3": "pass",
+  "main_4": "pass",
+  "main_5": "pass",
+  "main_6": "pass",
+  "main_7": "pass",
+  "main_8": "pass",
+  "main_9": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_9.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_90.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": "pass",
+  "main_3": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_91.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_92.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_93.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_94.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_crd_95.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_96.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_97.lua": {
+  "main": "pass",
+  "main_0": "pass"
+ },
+ "snr_crd_98.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_crd_99.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass"
+ },
+ "snr_e1_10_f.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_0_0": "pass",
+  "main_1": "pass",
+  "main_1_0": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_e1_10_s.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_10": "pass",
+  "main_10_0": "pass",
+  "main_11": "pass",
+  "main_11_0": "pass",
+  "main_12": "pass",
+  "main_12_0": "pass",
+  "main_13": "pass",
+  "main_13_0": "pass",
+  "main_14": "pass",
+  "main_14_0": "pass",
+  "main_15": "pass",
+  "main_15_0": "pass",
+  "main_16": "pass",
+  "main_16_0": "pass",
+  "main_17": "pass",
+  "main_17_0": "pass",
+  "main_18": "pass",
+  "main_18_0": "pass",
+  "main_19": "pass",
+  "main_19_0": "pass",
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_20": "pass",
+  "main_20_0": "pass",
+  "main_21": "pass",
+  "main_21_0": "pass",
+  "main_22": "pass",
+  "main_22_0": "pass",
+  "main_23": "pass",
+  "main_23_0": "pass",
+  "main_24": "pass",
+  "main_24_0": "pass",
+  "main_25": "pass",
+  "main_25_0": "pass",
+  "main_26": "pass",
+  "main_26_0": "pass",
+  "main_27": "pass",
+  "main_27_0": "pass",
+  "main_28": "pass",
+  "main_28_0": "pass",
+  "main_29": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_2_0": "pass",
+  "main_3": "pass",
+  "main_3_0": "pass",
+  "main_4": "pass",
+  "main_4_0": "pass",
+  "main_5": "pass",
+  "main_5_0": "pass",
+  "main_6": "pass",
+  "main_6_0": "pass",
+  "main_7": "pass",
+  "main_7_0": "pass",
+  "main_8": "pass",
+  "main_8_0": "pass",
+  "main_9": "pass",
+  "main_9_0": "pass"
+ },
+ "snr_e2_10_f.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_0_0": "pass",
+  "main_1": "pass",
+  "main_10": "pass",
+  "main_10_0": "pass",
+  "main_11": "pass",
+  "main_11_0": "pass",
+  "main_12": "pass",
+  "main_12_0": "pass",
+  "main_13": "pass",
+  "main_13_0": "pass",
+  "main_14": "pass",
+  "main_14_0": "pass",
+  "main_15": "pass",
+  "main_15_0": "pass",
+  "main_16": "pass",
+  "main_16_0": "pass",
+  "main_17": "pass",
+  "main_17_0": "pass",
+  "main_18": "pass",
+  "main_18_0": "pass",
+  "main_19": "pass",
+  "main_19_0": "pass",
+  "main_1_0": "pass",
+  "main_2": "pass",
+  "main_20": "pass",
+  "main_20_0": "pass",
+  "main_21": "pass",
+  "main_21_0": "pass",
+  "main_22": "pass",
+  "main_22_0": "pass",
+  "main_23": "pass",
+  "main_23_0": "pass",
+  "main_24": "pass",
+  "main_24_0": "pass",
+  "main_25": "pass",
+  "main_25_0": "pass",
+  "main_26": "pass",
+  "main_26_0": "pass",
+  "main_27": "pass",
+  "main_27_0": "pass",
+  "main_28": "pass",
+  "main_28_0": "pass",
+  "main_29": "pass",
+  "main_29_0": "pass",
+  "main_2_0": "pass",
+  "main_3": "pass",
+  "main_30": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_30_0": "pass",
+  "main_31": "pass",
+  "main_31_0": "pass",
+  "main_32": "pass",
+  "main_32_0": "pass",
+  "main_33": "pass",
+  "main_33_0": "pass",
+  "main_34": "pass",
+  "main_34_0": "pass",
+  "main_35": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_3_0": "pass",
+  "main_4": "pass",
+  "main_4_0": "pass",
+  "main_5": "pass",
+  "main_5_0": "pass",
+  "main_6": "pass",
+  "main_6_0": "pass",
+  "main_7": "pass",
+  "main_7_0": "pass",
+  "main_8": "pass",
+  "main_8_0": "pass",
+  "main_9": "pass",
+  "main_9_0": "pass"
+ },
+ "snr_e2_10_s.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_10": "pass",
+  "main_10_0": "pass",
+  "main_11": "pass",
+  "main_11_0": "pass",
+  "main_12": "pass",
+  "main_12_0": "pass",
+  "main_13": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_2": "pass",
+  "main_2_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_3": "pass",
+  "main_3_0": "pass",
+  "main_4": "pass",
+  "main_4_0": "pass",
+  "main_5": "pass",
+  "main_5_0": "pass",
+  "main_6": "pass",
+  "main_6_0": "pass",
+  "main_7": "pass",
+  "main_7_0": "pass",
+  "main_8": "pass",
+  "main_8_0": "pass",
+  "main_9": "pass",
+  "main_9_0": "pass"
+ },
+ "snr_fragment_main.lua": {
+  "main": "pass",
+  "main_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_1": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_2": "pass",
+  "main_3": {
+   "pinned": "equivalent-transform (M6 LOSS_PINS per-proto verdict)"
+  }
+ },
+ "snr_graphic.lua": {
+  "main": {
+   "unpinned": {
+    "constant_values": "orig-only 0 value(s), pred-only 175 value(s), first divergence at pc 40 SETTABLE",
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_1": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_2": {
+   "pinned": "equivalent-transform (M6 LOSS_PINS per-proto verdict)"
+  },
+  "main_3": {
+   "pinned": "equivalent-transform (M6 LOSS_PINS per-proto verdict)"
+  },
+  "main_4": {
+   "pinned": "defect 4 (M6 report 3.4; repaired, corpus/pred_repairs)"
+  }
+ },
+ "snr_lib.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": {
+   "pinned": "equivalent-transform (M6 LOSS_PINS per-proto verdict)"
+  }
+ },
+ "snr_mainmenu.lua": {
+  "main": {
+   "unpinned": {
+    "constant_values": "orig-only 0 value(s), pred-only 38 value(s), first divergence at pc 8 SETTABLE",
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_1": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_3": "pass",
+  "main_4": "pass",
+  "main_5": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_6": "pass",
+  "main_7": {
+   "pinned": "defect 3 (M6 report 3.4; repaired, corpus/pred_repairs)"
+  }
+ },
+ "snr_memory.lua": {
+  "main": {
+   "unpinned": {
+    "constant_values": "orig-only 0 value(s), pred-only 16 value(s), first divergence at pc 28 SETTABLE",
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_1": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_2": {
+   "pinned": "equivalent-transform (M6 LOSS_PINS per-proto verdict)"
+  },
+  "main_3": {
+   "pinned": "equivalent-transform (M6 LOSS_PINS per-proto verdict)"
+  },
+  "main_4": {
+   "pinned": "defect 5 (M6 report 3.4; repaired, corpus/pred_repairs)"
+  }
+ },
+ "snr_music.lua": {
+  "main": {
+   "unpinned": {
+    "constant_values": "orig-only 0 value(s), pred-only 22 value(s), first divergence at pc 38 SETTABLE",
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_1": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_2": "pass",
+  "main_3": {
+   "pinned": "defect 1 (M6 report 3.4; repaired, corpus/pred_repairs)"
+  }
+ },
+ "snr_novel.lua": {
+  "main": {
+   "unpinned": {
+    "constant_values": "orig-only 0 value(s), pred-only 5 value(s), first divergence at pc 68 SETTABLE",
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_1": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_10": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_11": "pass",
+  "main_12": {
+   "unpinned": {
+    "constant_values": "orig-only 0 value(s), pred-only 2 value(s), first divergence at pc 17 LOADK",
+    "fingerprint": "differing field(s): code_len, cfg_all, opcode_counts, opcode_family_counts",
+    "loss:test_ops": "per-opcode TEST 1!=2, TESTSET 2!=0"
+   }
+  },
+  "main_13": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_2": {
+   "pinned": "equivalent-transform (M6 LOSS_PINS per-proto verdict)"
+  },
+  "main_3": {
+   "pinned": "equivalent-transform (M6 LOSS_PINS per-proto verdict)"
+  },
+  "main_4": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_5": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_6": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_7": {
+   "unpinned": {
+    "constant_values": "orig-only 0 value(s), pred-only 1 value(s), first divergence at pc 5 LOADK",
+    "fingerprint": "differing field(s): code_len, cfg_reachable, cfg_all, opcode_counts, opcode_family_counts",
+    "loss:test_ops": "per-opcode TEST 0!=2, TESTSET 3!=0"
+   }
+  },
+  "main_8": "pass",
+  "main_9": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  }
+ },
+ "snr_s0_10_f.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_0_0": "pass",
+  "main_1": {
+   "unpinned": {
+    "constant_values": "orig-only 1 value(s), pred-only 0 value(s), first divergence at pc 249 LOADK",
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_1_0": "pass",
+  "main_2": "pass",
+  "main_2_0": "pass",
+  "main_3": "pass",
+  "main_3_0": "pass",
+  "main_4": "pass",
+  "main_4_0": "pass",
+  "main_5": "pass",
+  "main_5_0": "pass",
+  "main_6": "pass",
+  "main_6_0": "pass",
+  "main_7": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_s1_10_f.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_0_0": "pass",
+  "main_1": "pass",
+  "main_1_0": "pass",
+  "main_2": "pass",
+  "main_2_0": "pass",
+  "main_3": "pass",
+  "main_3_0": "pass",
+  "main_4": "pass",
+  "main_4_0": "pass",
+  "main_5": "pass",
+  "main_5_0": "pass",
+  "main_6": "pass",
+  "main_6_0": "pass",
+  "main_7": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_s1_10_s.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_0_0": "pass",
+  "main_1": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_10": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_10_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_11": "pass",
+  "main_11_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_12": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_12_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_13": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_13_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_14": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_14_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_15": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_15_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_16": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_16_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_17": "pass",
+  "main_17_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_18": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_18_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_19": "pass",
+  "main_19_0": "pass",
+  "main_1_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_20": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_21": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_22": "pass",
+  "main_23": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_24": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_25": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_26": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_27": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_28": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_29": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_2_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_3": "pass",
+  "main_30": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_31": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_32": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_33": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_34": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_35": "pass",
+  "main_36": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_36_0": "pass",
+  "main_37": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_37_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_38": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_38_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_39": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_39_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_3_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_4": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_40": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_40_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_41": "pass",
+  "main_41_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_42": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_42_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_43": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_43_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_44": "pass",
+  "main_44_0": "pass",
+  "main_45": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_45_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_46": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_46_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_47": "pass",
+  "main_47_0": "pass",
+  "main_48": {
+   "unpinned": {
+    "constant_values": "orig-only 1 value(s), pred-only 0 value(s), first divergence at pc 3 LOADK",
+    "fingerprint": "differing field(s): opcode_counts"
+   }
+  },
+  "main_4_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_5": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_5_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_6": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_6_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_7": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_7_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_8": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_8_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_9": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_9_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_s2_10_f.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_0_0": "pass",
+  "main_1": "pass",
+  "main_1_0": "pass",
+  "main_2": "pass",
+  "main_2_0": "pass",
+  "main_3": "pass",
+  "main_3_0": "pass",
+  "main_4": "pass",
+  "main_4_0": "pass",
+  "main_5": "pass",
+  "main_5_0": "pass",
+  "main_6": "pass",
+  "main_6_0": "pass",
+  "main_7": "pass",
+  "main_7_0": "pass",
+  "main_8": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_s2_10_s.lua": {
+  "main": "pass",
+  "main_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_0_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_1": "pass",
+  "main_10": "pass",
+  "main_10_0": "pass",
+  "main_11": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_11_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_12": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_12_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_13": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_13_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_14": "pass",
+  "main_14_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_15": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_15_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_16": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_16_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_17": "pass",
+  "main_17_0": "pass",
+  "main_18": "pass",
+  "main_18_0": "pass",
+  "main_19": "pass",
+  "main_19_0": "pass",
+  "main_1_0": "pass",
+  "main_2": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_20": "pass",
+  "main_20_0": "pass",
+  "main_21": "pass",
+  "main_21_0": "pass",
+  "main_22": "pass",
+  "main_22_0": "pass",
+  "main_23": "pass",
+  "main_23_0": "pass",
+  "main_24": "pass",
+  "main_24_0": "pass",
+  "main_25": "pass",
+  "main_25_0": "pass",
+  "main_26": "pass",
+  "main_26_0": "pass",
+  "main_27": "pass",
+  "main_27_0": "pass",
+  "main_28": "pass",
+  "main_28_0": "pass",
+  "main_29": "pass",
+  "main_29_0": "pass",
+  "main_2_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_3": "pass",
+  "main_30": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_30_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_31": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_31_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_32": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_32_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_33": "pass",
+  "main_33_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_34": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_34_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_35": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_35_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_36": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_36_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_37": "pass",
+  "main_37_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_38": "pass",
+  "main_38_0": "pass",
+  "main_39": "pass",
+  "main_39_0": "pass",
+  "main_3_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_4": "pass",
+  "main_40": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_40_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_41": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_41_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_42": "pass",
+  "main_42_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_43": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_43_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_44": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_44_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_45": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_45_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_46": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_46_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_47": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_47_0": "pass",
+  "main_48": "pass",
+  "main_48_0": "pass",
+  "main_49": "pass",
+  "main_4_0": "pass",
+  "main_5": "pass",
+  "main_50": "pass",
+  "main_51": "pass",
+  "main_52": "pass",
+  "main_53": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_53_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_54": "pass",
+  "main_54_0": "pass",
+  "main_55": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_55_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_56": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_56_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_57": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_57_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_58": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_58_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_59": "pass",
+  "main_59_0": "pass",
+  "main_5_0": "pass",
+  "main_6": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_60": {
+   "unpinned": {
+    "constant_values": "orig-only 0 value(s), pred-only 10 value(s), first divergence at pc 6 GETGLOBAL",
+    "fingerprint": "differing field(s): code_len, cfg_all, opcode_counts, opcode_family_counts, global_reads, call_targets, call_shapes",
+    "loss:call_shapes": "totals orig 93 != pred 97, 3 key(s) differ",
+    "loss:call_targets": "totals orig 93 != pred 97, 3 key(s) differ",
+    "loss:global_reads": "totals orig 157 != pred 161, 2 key(s) differ",
+    "loss:n_back_edges": "orig 3 != pred 5"
+   }
+  },
+  "main_6_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_7": "pass",
+  "main_7_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_8": "pass",
+  "main_8_0": "pass",
+  "main_9": "pass",
+  "main_9_0": "pass"
+ },
+ "snr_s3_10_fa.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_0_0": "pass",
+  "main_1": "pass",
+  "main_1_0": "pass",
+  "main_2": "pass",
+  "main_2_0": "pass",
+  "main_3": "pass",
+  "main_3_0": "pass",
+  "main_4": "pass",
+  "main_4_0": "pass",
+  "main_5": "pass",
+  "main_5_0": "pass",
+  "main_6": "pass",
+  "main_6_0": "pass",
+  "main_7": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_s3_10_fb.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_0_0": "pass",
+  "main_1": "pass",
+  "main_1_0": "pass",
+  "main_2": "pass",
+  "main_2_0": "pass",
+  "main_3": "pass",
+  "main_3_0": "pass",
+  "main_4": "pass",
+  "main_4_0": "pass",
+  "main_5": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_s3_10_fc.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_0_0": "pass",
+  "main_1": "pass",
+  "main_1_0": "pass",
+  "main_2": "pass",
+  "main_2_0": "pass",
+  "main_3": "pass",
+  "main_3_0": "pass",
+  "main_4": "pass",
+  "main_4_0": "pass",
+  "main_5": "pass",
+  "main_5_0": "pass",
+  "main_6": "pass",
+  "main_6_0": "pass",
+  "main_7": "pass",
+  "main_7_0": "pass",
+  "main_8": "pass",
+  "main_8_0": "pass",
+  "main_9": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_s3_10_s.lua": {
+  "main": "pass",
+  "main_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_0_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_1": "pass",
+  "main_10": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_10_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_11": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_11_0": "pass",
+  "main_12": "pass",
+  "main_13": "pass",
+  "main_14": "pass",
+  "main_15": "pass",
+  "main_16": "pass",
+  "main_17": "pass",
+  "main_18": "pass",
+  "main_19": "pass",
+  "main_1_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_2": "pass",
+  "main_20": "pass",
+  "main_21": "pass",
+  "main_22": "pass",
+  "main_23": "pass",
+  "main_24": "pass",
+  "main_25": "pass",
+  "main_26": "pass",
+  "main_27": "pass",
+  "main_28": "pass",
+  "main_29": "pass",
+  "main_2_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_3": "pass",
+  "main_30": "pass",
+  "main_31": "pass",
+  "main_32": "pass",
+  "main_33": "pass",
+  "main_34": "pass",
+  "main_34_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_35": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_35_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_36": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_36_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_37": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_37_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_38": "pass",
+  "main_38_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_39": "pass",
+  "main_39_0": "pass",
+  "main_3_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_4": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_40": "pass",
+  "main_40_0": "pass",
+  "main_41": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_41_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_42": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_42_0": "pass",
+  "main_43": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_43_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_44": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_44_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_45": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_45_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_46": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_46_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_47": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_47_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_48": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_48_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_49": "pass",
+  "main_49_0": "pass",
+  "main_4_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_5": "pass",
+  "main_50": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_50_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_51": "pass",
+  "main_51_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_52": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_52_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_53": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_53_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_54": "pass",
+  "main_54_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_55": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_55_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_56": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_56_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_57": "pass",
+  "main_57_0": "pass",
+  "main_58": "pass",
+  "main_58_0": "pass",
+  "main_59": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_5_0": "pass",
+  "main_6": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_6_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_7": "pass",
+  "main_7_0": "pass",
+  "main_8": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_8_0": "pass",
+  "main_9": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_9_0": "pass"
+ },
+ "snr_s4_10_fa.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_0_0": "pass",
+  "main_1": "pass",
+  "main_10": "pass",
+  "main_10_0": "pass",
+  "main_11": "pass",
+  "main_11_0": "pass",
+  "main_12": "pass",
+  "main_12_0": "pass",
+  "main_13": "pass",
+  "main_13_0": "pass",
+  "main_14": "pass",
+  "main_14_0": "pass",
+  "main_15": "pass",
+  "main_15_0": "pass",
+  "main_16": "pass",
+  "main_16_0": "pass",
+  "main_17": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_1_0": "pass",
+  "main_2": "pass",
+  "main_2_0": "pass",
+  "main_3": "pass",
+  "main_3_0": "pass",
+  "main_4": "pass",
+  "main_4_0": "pass",
+  "main_5": "pass",
+  "main_5_0": "pass",
+  "main_6": "pass",
+  "main_6_0": "pass",
+  "main_7": "pass",
+  "main_7_0": "pass",
+  "main_8": "pass",
+  "main_8_0": "pass",
+  "main_9": "pass",
+  "main_9_0": "pass"
+ },
+ "snr_s4_10_fb.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_0_0": "pass",
+  "main_1": "pass",
+  "main_10": "pass",
+  "main_10_0": "pass",
+  "main_11": "pass",
+  "main_11_0": "pass",
+  "main_12": "pass",
+  "main_12_0": "pass",
+  "main_13": "pass",
+  "main_13_0": "pass",
+  "main_14": "pass",
+  "main_14_0": "pass",
+  "main_15": "pass",
+  "main_15_0": "pass",
+  "main_16": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_1_0": "pass",
+  "main_2": "pass",
+  "main_2_0": "pass",
+  "main_3": "pass",
+  "main_3_0": "pass",
+  "main_4": "pass",
+  "main_4_0": "pass",
+  "main_5": "pass",
+  "main_5_0": "pass",
+  "main_6": "pass",
+  "main_6_0": "pass",
+  "main_7": "pass",
+  "main_7_0": "pass",
+  "main_8": "pass",
+  "main_8_0": "pass",
+  "main_9": "pass",
+  "main_9_0": "pass"
+ },
+ "snr_s4_10_s.lua": {
+  "main": "pass",
+  "main_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_0_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_1": "pass",
+  "main_10": "pass",
+  "main_11": "pass",
+  "main_12": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_12_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_13": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_13_0": "pass",
+  "main_14": "pass",
+  "main_15": "pass",
+  "main_16": "pass",
+  "main_17": "pass",
+  "main_18": "pass",
+  "main_19": "pass",
+  "main_1_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_2": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_20": "pass",
+  "main_21": "pass",
+  "main_22": "pass",
+  "main_23": "pass",
+  "main_24": "pass",
+  "main_25": "pass",
+  "main_26": "pass",
+  "main_27": "pass",
+  "main_28": "pass",
+  "main_29": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_29_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_2_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_3": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_30": "pass",
+  "main_30_0": "pass",
+  "main_31": "pass",
+  "main_31_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_32": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_32_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_33": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_33_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_34": "pass",
+  "main_34_0": "pass",
+  "main_35": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_35_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_36": "pass",
+  "main_36_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_37": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_37_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_38": "pass",
+  "main_38_0": "pass",
+  "main_39": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_39_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_3_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_4": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_40": "pass",
+  "main_40_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_41": "pass",
+  "main_41_0": "pass",
+  "main_42": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_42_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_43": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_43_0": "pass",
+  "main_44": "pass",
+  "main_45": "pass",
+  "main_46": "pass",
+  "main_47": "pass",
+  "main_47_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_48": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_48_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_49": "pass",
+  "main_49_0": "pass",
+  "main_4_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_5": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_50": "pass",
+  "main_50_0": "pass",
+  "main_51": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_51_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_52": "pass",
+  "main_52_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_53": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_53_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_54": "pass",
+  "main_54_0": "pass",
+  "main_55": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_55_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_56": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_56_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_57": "pass",
+  "main_57_0": "pass",
+  "main_58": {
+   "unpinned": {
+    "constant_values": "orig-only 2 value(s), pred-only 0 value(s), first divergence at pc 3 LOADK",
+    "fingerprint": "differing field(s): code_len, cfg_all, opcode_counts, opcode_family_counts, call_targets, call_shapes",
+    "loss:call_shapes": "totals orig 114 != pred 116, 2 key(s) differ",
+    "loss:call_targets": "totals orig 114 != pred 116, 2 key(s) differ"
+   }
+  },
+  "main_5_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_6": "pass",
+  "main_6_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_7": "pass",
+  "main_7_0": "pass",
+  "main_8": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_8_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_9": "pass",
+  "main_9_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  }
+ },
+ "snr_s5_10_f.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_0_0": "pass",
+  "main_1": "pass",
+  "main_1_0": "pass",
+  "main_2": "pass",
+  "main_2_0": "pass",
+  "main_3": "pass",
+  "main_3_0": "pass",
+  "main_4": "pass",
+  "main_4_0": "pass",
+  "main_5": "pass",
+  "main_5_0": "pass",
+  "main_6": "pass",
+  "main_6_0": "pass",
+  "main_7": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_s5_10_s.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": "pass",
+  "main_10": "pass",
+  "main_10_0": "pass",
+  "main_11": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_11_0": "pass",
+  "main_12": "pass",
+  "main_12_0": "pass",
+  "main_13": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_13_0": "pass",
+  "main_14": "pass",
+  "main_14_0": "pass",
+  "main_15": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_15_0": "pass",
+  "main_16": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_16_0": "pass",
+  "main_17": "pass",
+  "main_17_0": "pass",
+  "main_18": "pass",
+  "main_18_0": "pass",
+  "main_19": "pass",
+  "main_19_0": "pass",
+  "main_2": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_20": "pass",
+  "main_20_0": "pass",
+  "main_21": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_21_0": "pass",
+  "main_22": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_22_0": "pass",
+  "main_23": "pass",
+  "main_23_0": "pass",
+  "main_24": "pass",
+  "main_24_0": "pass",
+  "main_25": "pass",
+  "main_25_0": "pass",
+  "main_26": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_26_0": "pass",
+  "main_27": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_27_0": "pass",
+  "main_28": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_28_0": "pass",
+  "main_29": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_29_0": "pass",
+  "main_2_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_3": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_30": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_30_0": "pass",
+  "main_31": "pass",
+  "main_31_0": "pass",
+  "main_32": "pass",
+  "main_32_0": "pass",
+  "main_33": "pass",
+  "main_33_0": "pass",
+  "main_34": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_34_0": "pass",
+  "main_35": "pass",
+  "main_35_0": "pass",
+  "main_36": "pass",
+  "main_36_0": "pass",
+  "main_37": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_37_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_38": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_38_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_39": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_39_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_3_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_4": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_40": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_40_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_41": "pass",
+  "main_41_0": "pass",
+  "main_42": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_43": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_44": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_45": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_46": {
+   "unpinned": {
+    "constant_values": "orig-only 3 value(s), pred-only 0 value(s), first divergence at pc 3 LOADK",
+    "fingerprint": "differing field(s): code_len, cfg_all, opcode_counts, opcode_family_counts",
+    "loss:n_back_edges": "orig 5 != pred 3",
+    "loss:test_ops": "per-opcode EQ 49!=48"
+   }
+  },
+  "main_4_0": "pass",
+  "main_5": "pass",
+  "main_5_0": "pass",
+  "main_6": "pass",
+  "main_6_0": "pass",
+  "main_7": "pass",
+  "main_7_0": "pass",
+  "main_8": "pass",
+  "main_8_0": "pass",
+  "main_9": "pass",
+  "main_9_0": "pass"
+ },
+ "snr_s6_10_f.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_0_0": "pass",
+  "main_1": "pass",
+  "main_1_0": "pass",
+  "main_2": "pass",
+  "main_2_0": "pass",
+  "main_3": "pass",
+  "main_3_0": "pass",
+  "main_4": "pass",
+  "main_4_0": "pass",
+  "main_5": "pass",
+  "main_5_0": "pass",
+  "main_6": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  }
+ },
+ "snr_s6_10_s.lua": {
+  "main": "pass",
+  "main_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_0_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_1": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_10": "pass",
+  "main_10_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_11": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_11_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_12": "pass",
+  "main_12_0": "pass",
+  "main_13": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_13_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_14": "pass",
+  "main_14_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_15": "pass",
+  "main_15_0": "pass",
+  "main_16": "pass",
+  "main_16_0": "pass",
+  "main_17": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_17_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_18": "pass",
+  "main_18_0": "pass",
+  "main_19": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_1_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_2": "pass",
+  "main_2_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_3": "pass",
+  "main_3_0": "pass",
+  "main_4": "pass",
+  "main_5": "pass",
+  "main_6": "pass",
+  "main_7": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_7_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_8": "pass",
+  "main_8_0": "pass",
+  "main_9": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_9_0": "pass"
+ },
+ "snr_s7_10_f.lua": {
+  "main": "pass",
+  "main_0": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_1": "pass",
+  "main_10": "pass",
+  "main_10_0": "pass",
+  "main_11": "pass",
+  "main_11_0": "pass",
+  "main_12": "pass",
+  "main_12_0": "pass",
+  "main_13": "pass",
+  "main_13_0": "pass",
+  "main_14": "pass",
+  "main_14_0": "pass",
+  "main_15": "pass",
+  "main_15_0": "pass",
+  "main_16": "pass",
+  "main_16_0": "pass",
+  "main_17": "pass",
+  "main_17_0": "pass",
+  "main_18": "pass",
+  "main_18_0": "pass",
+  "main_19": "pass",
+  "main_19_0": "pass",
+  "main_2": "pass",
+  "main_20": "pass",
+  "main_20_0": "pass",
+  "main_21": "pass",
+  "main_21_0": "pass",
+  "main_22": "pass",
+  "main_22_0": "pass",
+  "main_23": "pass",
+  "main_23_0": "pass",
+  "main_24": "pass",
+  "main_24_0": "pass",
+  "main_25": "pass",
+  "main_25_0": "pass",
+  "main_26": "pass",
+  "main_26_0": "pass",
+  "main_27": "pass",
+  "main_27_0": "pass",
+  "main_28": "pass",
+  "main_28_0": "pass",
+  "main_29": "pass",
+  "main_29_0": "pass",
+  "main_3": "pass",
+  "main_30": "pass",
+  "main_30_0": "pass",
+  "main_31": "pass",
+  "main_31_0": "pass",
+  "main_32": "pass",
+  "main_32_0": "pass",
+  "main_33": "pass",
+  "main_33_0": "pass",
+  "main_34": "pass",
+  "main_34_0": "pass",
+  "main_35": "pass",
+  "main_35_0": "pass",
+  "main_36": "pass",
+  "main_36_0": "pass",
+  "main_37": "pass",
+  "main_37_0": "pass",
+  "main_38": "pass",
+  "main_38_0": "pass",
+  "main_39": "pass",
+  "main_39_0": "pass",
+  "main_3_0": "pass",
+  "main_4": "pass",
+  "main_40": "pass",
+  "main_40_0": "pass",
+  "main_41": "pass",
+  "main_41_0": "pass",
+  "main_42": "pass",
+  "main_42_0": "pass",
+  "main_43": "pass",
+  "main_43_0": "pass",
+  "main_44": "pass",
+  "main_44_0": "pass",
+  "main_45": "pass",
+  "main_45_0": "pass",
+  "main_46": "pass",
+  "main_46_0": "pass",
+  "main_47": "pass",
+  "main_47_0": "pass",
+  "main_48": "pass",
+  "main_48_0": "pass",
+  "main_49": "pass",
+  "main_49_0": "pass",
+  "main_5": "pass",
+  "main_50": "pass",
+  "main_50_0": "pass",
+  "main_51": "pass",
+  "main_51_0": "pass",
+  "main_52": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_53": "pass",
+  "main_5_0": "pass",
+  "main_6": "pass",
+  "main_6_0": "pass",
+  "main_7": "pass",
+  "main_7_0": "pass",
+  "main_8": "pass",
+  "main_8_0": "pass",
+  "main_9": "pass",
+  "main_9_0": "pass"
+ },
+ "snr_s8_10_f.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_0_0": "pass",
+  "main_1": "pass",
+  "main_10": "pass",
+  "main_10_0": "pass",
+  "main_11": "pass",
+  "main_11_0": "pass",
+  "main_12": "pass",
+  "main_12_0": "pass",
+  "main_13": "pass",
+  "main_13_0": "pass",
+  "main_14": "pass",
+  "main_14_0": "pass",
+  "main_15": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_1_0": "pass",
+  "main_2": "pass",
+  "main_2_0": "pass",
+  "main_3": "pass",
+  "main_3_0": "pass",
+  "main_4": "pass",
+  "main_4_0": "pass",
+  "main_5": "pass",
+  "main_5_0": "pass",
+  "main_6": "pass",
+  "main_6_0": "pass",
+  "main_7": "pass",
+  "main_7_0": "pass",
+  "main_8": "pass",
+  "main_8_0": "pass",
+  "main_9": "pass",
+  "main_9_0": "pass"
+ },
+ "snr_s8_10_s.lua": {
+  "main": "pass",
+  "main_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_0_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_1": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_1_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_2": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_2_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_3": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_3_0": {
+   "unpinned": {
+    "fingerprint": "differing field(s): code_len, opcode_counts, opcode_family_counts"
+   }
+  },
+  "main_4": "pass",
+  "main_4_0": "pass",
+  "main_5": "pass"
+ },
+ "snr_story_main.lua": {
+  "main": "pass",
+  "main_0": "pass",
+  "main_1": {
+   "pinned": "equivalent-transform (M6 fingerprint queue, per-file verdict)"
+  },
+  "main_2": "pass",
+  "main_3": {
+   "unpinned": {
+    "constant_values": "orig-only 0 value(s), pred-only 3 value(s), first divergence at pc 22 GETGLOBAL",
+    "fingerprint": "differing field(s): code_len, cfg_all, opcode_counts, opcode_family_counts, global_reads, call_targets, call_shapes",
+    "loss:call_shapes": "totals orig 78 != pred 79, 1 key(s) differ",
+    "loss:call_targets": "totals orig 78 != pred 79, 1 key(s) differ",
+    "loss:global_reads": "totals orig 111 != pred 112, 1 key(s) differ",
+    "loss:test_ops": "per-opcode TESTSET 2!=0"
+   }
+  }
+ }
+}
