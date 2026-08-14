@@ -31,7 +31,7 @@ cd "$(dirname "$0")/.."
 # the whole-corpus loss sweep that found defect 6 and the pin-rot gate
 # `test_every_pin_still_diverges_with_the_recorded_evidence`. Measured on this
 # tree (2026-08-14): with PYLUADEC_PRED_CORPUS_DIR unset, `uv run pytest -q`
-# reports `1054 passed, 32 skipped` -- 22 in test_cross_corpus.py, 8 in
+# reports `1055 passed, 32 skipped` -- 22 in test_cross_corpus.py, 8 in
 # test_loss_sweep.py, 2 in test_predcorpus.py -- and still exits 0.
 : "${PYLUADEC_PRED_CORPUS_DIR:?set it to the predecessor corpus of 229 decompiled .lua sources -- 32 M6 gate tests skip SILENTLY without it}"
 

@@ -195,7 +195,7 @@ class LossPin:
 #: Adjudicated pins, keyed `"<file>:<proto path>"`. A clean gate is
 #: `adjudicate_pins` returning three empty lists.
 #:
-#: 25 rows over 11 files, all adjudicated 2026-08-14. Six carry a defect
+#: 25 rows over 10 files, all adjudicated 2026-08-14. Six carry a defect
 #: number from `docs/reports/m6-cross-corpus.md` §3; the other 19 are
 #: `equivalent-transform`. `O<n>`/`P<n>` are ORIGINAL/PREDECESSOR pcs, **1-based**,
 #: matching `pyluadec.lift` (which decodes `p.code[pc - 1]` at pc) and
@@ -205,9 +205,11 @@ class LossPin:
 #: That claim was FALSE for three of these notes until the M6 final review
 #: (2026-08-14): `snr_common.lua:main_76_2`, `snr_graphic.lua:main_4` and
 #: `snr_memory.lua:main_4` quoted §3 verbatim and were therefore 0-based, in a
-#: table whose own docstring said 1-based. All three were re-based, and the
-#: whole table is now machine-checked -- for every `O<n> OPNAME` / `P<n> OPNAME`
-#: pair here, the opcode at 1-based pc `n` is `OPNAME`.
+#: table whose own docstring said 1-based. All three were re-based, and every
+#: `O<n> OPNAME` / `P<n> OPNAME` pair here was machine-checked in that pass --
+#: the opcode at 1-based pc `n` is `OPNAME`. The checker was a one-off, not a
+#: standing gate (M7 agenda 6); edits to this table are unguarded until it
+#: becomes one.
 #:
 #: The recurring benign mechanism, stated once rather than in nineteen notes:
 #: a `TEST`/`TESTSET` whose tested register was written by the immediately

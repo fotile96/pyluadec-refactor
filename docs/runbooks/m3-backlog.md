@@ -2814,6 +2814,17 @@ plus three M6 additions:
   `./build/lua_sz4 <file>`; the upstream bit is an artifact of the
   predecessor's environment and the README claims no mode parity. Recorded so
   the decision is visible rather than silently ignored.
+- **The pin tables' opcode check is not a standing gate** (M6 final-review
+  re-review, 2026-08-14, routed here). `PRED_PINS` and `LOSS_PINS` were
+  re-based to 1-based and verified pair by pair against the decoded
+  instruction stream during the fix round, but **no test in the tree enforces
+  `O<n> OPNAME` / `P<n> OPNAME` today** — future edits to either table are
+  unguarded against the exact defect the re-base fixed (a 0-based pc copied
+  from §3 prose). The re-review independently re-decoded ~30 pairs and all
+  held, so the tables are correct now; what is missing is the regression
+  net. Committing the checker as a corpus-gated test is cheap: it needs only
+  `ingest` and the two corpora. Until it exists, both tables say so at the
+  re-base note.
 - **`corpus/observation/classes.json`'s two consumer traps**, documented at
   the M6 wrap but not fixed, because fixing either moves a committed artifact:
   (a) `loop_polls_per_iteration` means "a poll site lies **somewhere** in a

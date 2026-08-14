@@ -292,7 +292,8 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config) -> None:
     prints a separate banner for each that is missing (both may fire in one
     run). With `PYLUADEC_CORPUS_DIR` set and `PYLUADEC_PRED_CORPUS_DIR`
     unset, **32 tests skip across three modules** — re-measured 2026-08-14 at
-    the M6 final review, `1054 passed, 32 skipped`, split
+    the M6 final review (`1054` there was off by one; the re-review's live run
+    and the identity 1087 − 32 both give this), `1055 passed, 32 skipped`, split
     `test_cross_corpus.py` **22**, `test_loss_sweep.py` **8**,
     `test_predcorpus.py` **2**. This docstring said "only
     `test_predcorpus.py`'s 2 tests skip (`869 passed, 2 skipped`)" until that

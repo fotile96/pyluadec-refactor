@@ -1439,7 +1439,7 @@ gate. It reuses `probe_common.adjudicate_pins`, `cross_corpus.json_safe`,
 | 3 | `test_ops` | **24** | 23 |
 | 4 | `global_writes`, `call_targets`, `call_shapes`, `return_arity` | **0** | 0 |
 
-25 distinct protos over 11 files, all pinned. Two figures did not reproduce and
+25 distinct protos over 10 files, all pinned. Two figures did not reproduce and
 in both cases the difference is a *definition* the sweep is now explicit about:
 
 * **Back edges: 4, not 3.** The fourth is `snr_mainmenu.lua:main_7` — defect
@@ -1519,10 +1519,11 @@ used to assert that the pin notes were already 1-based. They were not:
 `scripts/cross_corpus.py::PRED_PINS` was **uniformly 0-based on both sides**,
 and `scripts/loss_sweep.py::LOSS_PINS` was **mixed** — 1-based except for the
 three notes that quoted §3 verbatim. Both tables were re-based to 1-based in
-that pass and the result is machine-checked: for every `O<n> OPNAME` /
-`P<n> OPNAME` pair in either table, the opcode at 1-based pc `n` is `OPNAME`,
-and every quoted predecessor set, jump target and unreachable-pc claim was
-re-derived from the decoded instruction stream.
+that pass and every `O<n> OPNAME` / `P<n> OPNAME` pair in either table was
+machine-checked in it: the opcode at 1-based pc `n` is `OPNAME`, and every
+quoted predecessor set, jump target and unreachable-pc claim was re-derived
+from the decoded instruction stream. The checker was a one-off, not a standing
+gate (M7 agenda 6).
 
 So, in force now:
 
