@@ -1643,7 +1643,7 @@ i.e. the proof that `corpus/ledger.jsonl` is a byte-exact fixed point of
 sweep. `BASELINE_REF` defaults to `0957364`, the last merged milestone tip
 (the M5 merge; the default was moved forward from `eb08890`, the M4 merge, at
 the M6 wrap -- see that line's comment in `ratchet_job.sh`). Measured
-end-to-end 2026-08-14 on the M6 wrap tree, 1077 tests: **58.2s** (37.9s on
+end-to-end 2026-08-14 on the M6 wrap tree, 1077 tests: **57.9-58.2s** (37.9s on
 2026-08-12 at 867 tests, before the ceiling was raised to a ~120s earmark).
 
 The diff on its own:

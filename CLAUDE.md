@@ -234,7 +234,7 @@ M3–M4 的旧说法「产物为结构化 ⟺ root proto 认证 `L3`」是**替�
   两处 backstop 见 `docs/runbooks/structured-pipeline.md`「The L2 gate」。
 - 行为探针（L1.75 门，M4 task 10 新增）：`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_behaviour.py`。在打桩环境下**实际调用**每个 chunk 定义的全局函数并比对事件轨迹，干净跑法打印 `227/229 identical, 2 pinned divergence(s), 398196 recorded events`。设计、能力边界、两条钉子的指令级证据见 `docs/runbooks/m3-backlog.md`「Behaviour probe (L1.75)」节。
 - 效应表-发射器一致性门：`uv run pytest tests/test_effects_emitter_consistency.py`（语料臂 + 合成操作数网格，无需语料也能跑合成臂）。
-- **Ratchet 门（M5 task 8）**：`PYLUADEC_CORPUS_DIR=... ./scripts/ratchet_job.sh [BASELINE_REF]`——全套件 + 台账 baseline diff + 24 例全量差分执行扫描，**实测 58.2s（2026-08-14，M6 收口树，1077 个用例）**，`BASELINE_REF` 默认 **`0957364`**（M5 合并点 = 上一个里程碑合并点；M6 task 13 把默认值从 `eb08890` 前移，那行注释本来就写着「最近一个已合并的里程碑」）。只要 diff：`git show <ref>:corpus/ledger.jsonl > /tmp/base.jsonl && uv run python scripts/ratchet_diff.py /tmp/base.jsonl corpus/ledger.jsonl`。
+- **Ratchet 门（M5 task 8）**：`PYLUADEC_CORPUS_DIR=... ./scripts/ratchet_job.sh [BASELINE_REF]`——全套件 + 台账 baseline diff + 24 例全量差分执行扫描，**实测 57.9–58.2s（2026-08-14，M6 收口树，1077 个用例，两次）**，`BASELINE_REF` 默认 **`0957364`**（M5 合并点 = 上一个里程碑合并点；M6 task 13 把默认值从 `eb08890` 前移，那行注释本来就写着「最近一个已合并的里程碑」）。只要 diff：`git show <ref>:corpus/ledger.jsonl > /tmp/base.jsonl && uv run python scripts/ratchet_diff.py /tmp/base.jsonl corpus/ledger.jsonl`。
 - 单文件结构化反编译 / 看认证结果 / 调试某个未认证函数：命令见 `structured-pipeline.md`「Common operations」节。
 
 ### 台账新字段
@@ -387,7 +387,7 @@ Phase 6 已完成。计划 13 个任务，实际执行 11 个（**T9/T10 取消�
 - **产物**：229 个文件里 **217 全结构化 / 8 hybrid / 4 整文件 fallback**（M5 收口 216/6/7）。逐 occurrence **1763/1944（90.7%）发结构化文本**。
 - 质量分 **0.977328**（M5 收口 0.968833）。**它不再是任何门**——见下文决策日志第一条。
 - `scripts/ratchet_diff.py` 对 M5 合并基线 `0957364`：**8 升级、0 降级**。
-- 测试：**1077 passed，55.07–55.61s**（macOS 15.2 / Apple M4 arm64 / Darwin 24.2.0，本会话三次实测），对约 120s 的定向拨款。`./scripts/ratchet_job.sh` 三道门 exit 0，端到端 **58.2s**。
+- 测试：**1077 passed，55.07–55.61s**（macOS 15.2 / Apple M4 arm64 / Darwin 24.2.0，本会话三次实测），对约 120s 的定向拨款。`./scripts/ratchet_job.sh` 三道门 exit 0，端到端 **57.9–58.2s**。
 - 前作语料 parity 普查：**229/229 可编译、229/229 proto 树 1:1 对应、0/229 字节精确**（3903 处实质失配 / 1433 条路径 / 2989 个信号，由 `tests/test_predcorpus.py` 断言）。
 - 分歧队列：**18 行 / 16 个文件**，裁决为 **6 `real-bug` / 12 `equivalent-transform`**；`intentional-edit` 作为**路径级**裁决出现 1 处（`snr_common.lua:main_83` 的字体资源路径，行级裁决仍是 `real-bug`）；`probe-artifact` 与 `suspect` **各 0 行**。
 - Loss sweeps：1944 对 proto 里 **25 个丢了东西**，**3.31s**；按扫描 `global_reads` 1 / `n_natural_loops`+`n_back_edges` 4 / `test_ops` 24 / 第四组（`global_writes`、`call_targets`、`call_shapes`、`return_arity`）**0**。

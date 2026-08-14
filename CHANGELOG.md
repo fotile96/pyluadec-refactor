@@ -89,7 +89,7 @@
   sits below its achieved value and states that value in its assert message;
   each is driven over mutated data and required to go red. Suite **1077 tests
   in 55.07-55.61s over three runs** (macOS 15.2 / Apple M4, arm64) against the ~120s
-  earmark; `./scripts/ratchet_job.sh` runs its three gates end to end in 58.2s
+  earmark; `./scripts/ratchet_job.sh` runs its three gates end to end in 57.9-58.2s
   and exits 0, now against the M5 merge baseline `0957364` rather than the M4
   one it had been left pointing at.
 
