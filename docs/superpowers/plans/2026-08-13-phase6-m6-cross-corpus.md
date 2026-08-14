@@ -332,3 +332,42 @@ already verified by the existing L3 certification gate.
 no silent sampling"; Task 8's becomes "design note delivered with its assumptions
 labelled measured or unmeasured". Task 13 records this amendment in the spec decision
 log alongside the 0.997 drop.
+
+---
+
+## AMENDED 2026-08-14 (second) — Tasks 9 and 10 dropped, by the project owner's decision
+
+**Both are cut from M6.** The reason is a measurement, not a re-prioritisation.
+
+**Task 10's premise is falsified.** It was commissioned because a mechanical structure
+reference might not be available, so LLM meta-reconstruction would have to substitute.
+Task 9's Step 1 is the gate the plan itself set for that ("if the rate is low, the
+reference value collapses; report and stop for controller adjudication"). Measured at
+Task 11, and independently re-derived by its review: **`build_sir` succeeds on 12 of the
+predecessor's 13 corresponding leaf protos — 92.3%** (sole failure
+`snr_common.lua:main_76_2`, `pc 63: unrecognized transfer JMP`). The pre-fix figure was
+**6/13 (46.2%)** and is confounded: six of its seven failures were the compound-`if`
+defect Task 11 closed, so it measured *our own* recognizer, not the predecessor's
+quality. The reference is essentially free; the ~1–2M-token pass buys nothing it does
+not already have.
+
+**Task 9's own value is reduced by what Task 11 found.** Its deliverable is a
+region-tree reference. The blocker in the remaining population is
+`Reconstructor.write_reg`'s `reg not in self.declared` gate — a **register
+classification** defect, measured on `snr_common:main_76_2` (a staged temp materialised
+as a `local` re-assignment, `LOADK R5,K0` vs `MOVE R5,R3` at pc 43) and on
+`snr_graphic:main` (four table constructors collapsed by aliasing: `local l0_1 = {…15…}`
+then `l0_1 = {…7…}` and six more reassignments, so every field of the line-17 table
+aliases the last one written). A region tree does not say which registers are locals and
+which are temporaries, which is exactly what Task 12 needs.
+
+**Task 12 proceeds directly**, with what Task 11 handed it: a named mechanism, two
+diagnosed exemplars, the 13 rows that left the `structure:` family and now fail
+comparison (`mismatch: maxstacksize` ×6, `mismatch: code` ×5, `mismatch: code at root/N`
+×2), and the existing `L3` gate as acceptance.
+
+**M7 agenda seed:** Task 9's structure-reference diagnosis and Task 10's LLM pass are
+recorded as *premise falsified by measurement*, not as unfinished work. If a future
+population arises where `build_sir` fails on the predecessor side at a materially lower
+rate than 92.3%, the argument for them returns and this measurement is the thing to
+re-run first.
