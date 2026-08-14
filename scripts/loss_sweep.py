@@ -198,9 +198,16 @@ class LossPin:
 #: 25 rows over 11 files, all adjudicated 2026-08-14. Six carry a defect
 #: number from `docs/reports/m6-cross-corpus.md` §3; the other 19 are
 #: `equivalent-transform`. `O<n>`/`P<n>` are ORIGINAL/PREDECESSOR pcs, **1-based**,
-#: matching `pyluadec.lift` and `luac -l -l`; §3's notes quote 0-based pcs from
-#: `semantic_score._Ins`, so a pc here is one greater than the same instruction
-#: there.
+#: matching `pyluadec.lift` (which decodes `p.code[pc - 1]` at pc) and
+#: `luac_sz4 -l -l`; the report's §3/§4 PROSE numbers pcs from 0, so a pc here
+#: is one greater than the same instruction there.
+#:
+#: That claim was FALSE for three of these notes until the M6 final review
+#: (2026-08-14): `snr_common.lua:main_76_2`, `snr_graphic.lua:main_4` and
+#: `snr_memory.lua:main_4` quoted §3 verbatim and were therefore 0-based, in a
+#: table whose own docstring said 1-based. All three were re-based, and the
+#: whole table is now machine-checked -- for every `O<n> OPNAME` / `P<n> OPNAME`
+#: pair here, the opcode at 1-based pc `n` is `OPNAME`.
 #:
 #: The recurring benign mechanism, stated once rather than in nineteen notes:
 #: a `TEST`/`TESTSET` whose tested register was written by the immediately
@@ -285,8 +292,8 @@ LOSS_PINS: dict[str, LossPin] = {
         "TESTSET 2->0 against EQ +7 and LT +2, so the five-opcode total goes "
         "27->33 and the aggregate sweep section 3.7 published never saw this proto. "
         "The defect is adjudicated in PRED_PINS[fingerprint][snr_common.lua]: "
-        "an EQ polarity flip at O85/P92 makes a break unconditional and P67 "
-        "JMP->4 re-enters the header, skipping the wait(1) at P273-275. "
+        "an EQ polarity flip at O86/P93 makes a break unconditional and P68 "
+        "JMP->5 re-enters the header, skipping the wait(1) at P274-276. "
         "n_back_edges 1->4 is a GAIN -- one loop whose tail luac wrote four "
         "times, the M6 task 4 correction -- and gains are not swept"),
     "snr_common.lua:main_76_7": LossPin(
@@ -338,7 +345,7 @@ LOSS_PINS: dict[str, LossPin] = {
          "global_reads=67 global_writes=0 call_targets=65 call_shapes=65 return_arity=1 test_ops=60 n_natural_loops=7 n_back_edges=8"),
         "test_ops-9 = EQ-6 + TEST-3, and the EQ half is the defect: an "
         "or-chain lost a disjunct and its else arm was un-nested, walked pc by "
-        "pc in PRED_PINS[fingerprint][snr_graphic.lua] (O116/O119/O122 test "
+        "pc in PRED_PINS[fingerprint][snr_graphic.lua] (O117/O120/O123 test "
         "K[3]/K[6]/K[9]; the predecessor tests only 3 and 9, and the LEFT "
         "handler drops == 4 the same way). Site census bounds the benign "
         "half: 8 TEST/TESTSET in the original of which 1 is statically "
@@ -389,7 +396,7 @@ LOSS_PINS: dict[str, LossPin] = {
          "global_reads=41 global_writes=3 call_targets=44 call_shapes=44 return_arity=1 test_ops=49 n_natural_loops=2 n_back_edges=2"),
         "test_ops-8 = EQ-6 + TEST-2, the same defect as snr_graphic.lua:"
         "main_4 and walked in PRED_PINS[fingerprint][snr_memory.lua] "
-        "(O117/O120/O123 test K[3]/K[6]/K[9], the predecessor only 3 and 9; "
+        "(O118/O121/O124 test K[3]/K[6]/K[9], the predecessor only 3 and 9; "
         "the LEFT handler drops == 4). Site census: 7 TEST/TESTSET in the "
         "original, 0 of them statically decided, 5 in the predecessor -- so "
         "unlike main_3 above, none of this proto's lost tests is the benign "

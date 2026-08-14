@@ -23,7 +23,15 @@ local function rec(s) nev = nev + 1 ev[nev] = s end
 local function fmt(v)
   local t = type(v)
   if t == "number" or t == "boolean" or t == "nil" then return tostring(v) end
-  if t == "string" then return v end
+  -- `s<len>`, never the string itself: these chunks' constants are Japanese
+  -- game text and no driver output in this repository may quote it. This
+  -- returned `v` verbatim until the M6 final review, which made the README's
+  -- "the drivers record string arguments as `s<len>` and nothing else" false
+  -- of exactly one of the three drivers. Re-measured 2026-08-14 after the
+  -- change: the four-cell matrix in README.md is unchanged on all three files
+  -- (23/17/20 events, `OK|-1` / `OK|3` / HANG exactly as tabulated) -- the
+  -- rendering never fed a control decision.
+  if t == "string" then return "s" .. string.len(v) end
   return t
 end
 

@@ -284,6 +284,21 @@ class Pin:
 #: because it was skipped. 229/229 agree, on a payload whose median length is 22
 #: characters (section 2.5): an empty table here is a fact about the arm's
 #: sensitivity, not about the predecessor.
+#:
+#: **Pc base.** `O<n>` / `P<n>` are ORIGINAL / PREDECESSOR pcs, **1-based**,
+#: matching `pyluadec.lift` (which decodes `p.code[pc - 1]` at pc) and
+#: `luac_sz4 -l -l`. The report's section 3 PROSE numbers pcs from 0, so a pc
+#: here is one greater than the same instruction there.
+#:
+#: These notes were uniformly 0-BASED on both sides until the M6 final review
+#: (2026-08-14) -- while `loss_sweep.py`'s sibling table asserted, of both
+#: tables, that pin notes are 1-based. Re-based in that pass and machine-
+#: checked: for every `O<n> OPNAME` / `P<n> OPNAME` pair below the opcode at
+#: 1-based pc `n` is `OPNAME`, and every quoted predecessor set, jump target
+#: and unreachable-pc claim was re-derived from the decoded instruction stream.
+#: One number was wrong under EITHER base and is corrected rather than shifted:
+#: `snr_mainmenu.lua`'s fourth gate site was written `O1810`; the four gate
+#: heads are at 1-based 207, 745, 1280, **1825**.
 PRED_PINS: dict[str, dict[str, Pin]] = {
     "fingerprint": {
         "config.lua": Pin(
@@ -298,19 +313,19 @@ PRED_PINS: dict[str, dict[str, Pin]] = {
             "real-bug",
             ("main_76_2 code=174 reach=(4, 3, 0) all=(73, 71, 1) reads=27 calls=16",
              "main_76_2 code=279 reach=(4, 3, 0) all=(103, 101, 10) reads=42 calls=27"),
-            "two defects. main_76_2: O85 EQ A=0 (equal falls to O87 JMP->93, "
-            "continue) vs P92 EQ A=1 (equal takes P93 JMP->277 RETURN) = "
-            "unconditional break; and P67 JMP->4 re-enters the loop header, "
-            "skipping the wait(1) at P273-275 that O168-170 always reaches. "
-            "main_75: O158 JMP sBx=-73 -> 86 is the proto's only back edge and "
+            "two defects. main_76_2: O86 EQ A=0 (equal falls to O88 JMP->94, "
+            "continue) vs P93 EQ A=1 (equal takes P94 JMP->278 RETURN) = "
+            "unconditional break; and P68 JMP->5 re-enters the loop header, "
+            "skipping the wait(1) at P274-276 that O169-171 always reaches. "
+            "main_75: O159 JMP sBx=-73 -> 87 is the proto's only back edge and "
             "the predecessor has none, so a retry while became an if"),
         "snr_crd_102.lua": Pin(
             "equivalent-transform",
             ("main_3 code=150 reach=(4, 3, 0) all=(14, 13, 1) reads=22 calls=27",
              "main_3 code=149 reach=(4, 3, 0) all=(15, 14, 2) reads=22 calls=27"),
-            "three changes: O92 LOADK dead store and O127 MOVE copy elided "
+            "three changes: O93 LOADK dead store and O128 MOVE copy elided "
             "(the CALL now returns into the tested register directly), plus "
-            "P130 JMP sBx=-41 with preds=[] -- the escape jump of an if/else "
+            "P131 JMP sBx=-41 with preds=[] -- the escape jump of an if/else "
             "whose then arm ends in break, the proto's only unreachable pc"),
         "snr_fragment_main.lua": Pin(
             "equivalent-transform",
@@ -318,18 +333,18 @@ PRED_PINS: dict[str, dict[str, Pin]] = {
              "main_1 code=919 reach=(45, 46, 2) all=(136, 137, 2) reads=155 calls=62"),
             "cfg_all identical (136,137,2); opcode delta is only LOADNIL 0->1 "
             "and MOVE +27. The cfg_reachable move is two test-polarity flips "
-            "(O423 EQ A=1 / O882 LE A=1 vs P434 EQ A=0 / P911 LE A=0 with an "
+            "(O424 EQ A=1 / O883 LE A=1 vs P435 EQ A=0 / P912 LE A=0 with an "
             "added jump-to-fallthrough), which changes which way the crude walk "
-            "falls, not the branch; O887/O888 are dead on the original side"),
+            "falls, not the branch; O888/O889 are dead on the original side"),
         "snr_graphic.lua": Pin(
             "real-bug",
             ("main_4 code=769 reach=(4, 4, 1) all=(185, 188, 7) reads=67 calls=63",
              "main_4 code=848 reach=(4, 4, 1) all=(182, 185, 7) reads=67 calls=65"),
-            "an or-chain lost a disjunct and its else arm was un-nested. O116 "
-            "EQ K[3] / O119 EQ K[6] / O122 EQ K[9] all reach the A block at "
-            "O124 (preds {117,120,122}) and A ends O159 JMP->212 skipping B; "
-            "the predecessor tests only 3 and 9 (P135, P138) and preds(P205) = "
-            "{139,172,204}, so B is reached by the not-equal jump AND by both "
+            "an or-chain lost a disjunct and its else arm was un-nested. O117 "
+            "EQ K[3] / O120 EQ K[6] / O123 EQ K[9] all reach the A block at "
+            "O125 (preds {118,121,123}) and A ends O160 JMP->213 skipping B; "
+            "the predecessor tests only 3 and 9 (P136, P139) and preds(P206) = "
+            "{140,173,205}, so B is reached by the not-equal jump AND by both "
             "copies of A. c==6 runs B only; c==3 and c==9 run A then B. Same "
             "loss again in the LEFT handler (== 4 dropped)"),
         "snr_lib.lua": Pin(
@@ -344,21 +359,21 @@ PRED_PINS: dict[str, dict[str, Pin]] = {
             "real-bug",
             ("main_7 code=2182 reach=(7, 6, 0) all=(624, 635, 16) reads=291 calls=271",
              "main_7 code=2266 reach=(7, 6, 0) all=(628, 639, 16) reads=283 calls=271"),
-            "four progress gates deleted. O206-O221 (GETTABLE 'novel' + EQ, "
+            "four progress gates deleted. O207-O222 (GETTABLE 'novel' + EQ, "
             "GETGLOBAL 'systemSave'/GETTABLE 'novelFlag' + EQ K[bool:true], and "
-            "the same pair for 'music'/'musicFlag') selects between O222-228 "
-            "and O230-251, separated by O229 JMP->252. The predecessor has no "
-            "test: P215 LT sends the case straight to P230, which FALLS "
-            "THROUGH into P237/P244/P251, so both arms run. Counts over the "
+            "the same pair for 'music'/'musicFlag') selects between O223-229 "
+            "and O231-252, separated by O230 JMP->253. The predecessor has no "
+            "test: P216 LT sends the case straight to P231, which FALLS "
+            "THROUGH into P238/P245/P252, so both arms run. Counts over the "
             "proto: 'systemSave' 24->16, 'novelFlag' 12->8, 'musicFlag' 8->4 = "
-            "4 gate sites (O206, O744, O1279, O1810). first_cut said suspect"),
+            "4 gate sites (O207, O745, O1280, O1825). first_cut said suspect"),
         "snr_memory.lua": Pin(
             "real-bug",
             ("main_4 code=482 reach=(4, 4, 1) all=(142, 141, 2) reads=41 calls=42",
              "main_4 code=533 reach=(4, 4, 1) all=(140, 139, 3) reads=41 calls=44"),
-            "same defect as snr_graphic.lua:main_4. O117 EQ K[3] / O120 EQ K[6] "
-            "/ O123 EQ K[9] -> A at O125 (preds {118,121,123}); predecessor "
-            "tests only 3 and 9 (P136, P139) and preds(P206) = {140,173,205}. "
+            "same defect as snr_graphic.lua:main_4. O118 EQ K[3] / O121 EQ K[6] "
+            "/ O124 EQ K[9] -> A at O126 (preds {119,122,124}); predecessor "
+            "tests only 3 and 9 (P137, P140) and preds(P207) = {141,174,206}. "
             "c==6 takes the else arm; c==3 and c==9 take both. LEFT handler "
             "drops == 4 the same way. The predecessor-only numeric constant "
             "num:8 is unrelated -- it is a SETLIST array in main rewritten as "
@@ -367,17 +382,17 @@ PRED_PINS: dict[str, dict[str, Pin]] = {
             "real-bug",
             ("main_3 code=377 reach=(16, 16, 1) all=(112, 111, 2) reads=20 calls=23",
              "main_3 code=407 reach=(16, 15, 0) all=(112, 111, 1) reads=22 calls=26"),
-            "the gallery poll loop is gone. O367 JMP sBx=-357 -> 11 has no "
+            "the gallery poll loop is gone. O368 JMP sBx=-357 -> 12 has no "
             "counterpart: the predecessor's 407 instructions contain no jump to "
-            "P11, its tail is duplicated (P371-384, P385-397) and neither copy "
-            "loops -- P384 JMP->398 is forward and P397 falls through to P398, "
-            "the epilogue that calls run(cGetFileName(...)) at P400-405"),
+            "P12, its tail is duplicated (P372-385, P386-398) and neither copy "
+            "loops -- P385 JMP->399 is forward and P398 falls through to P399, "
+            "the epilogue that calls run(cGetFileName(...)) at P401-406"),
         "snr_novel.lua": Pin(
             "equivalent-transform",
             ("main_7 code=96 reach=(14, 14, 1) all=(40, 38, 1) reads=11 calls=11",
              "main_7 code=107 reach=(15, 15, 1) all=(44, 42, 3) reads=11 calls=11"),
-            "dead escape jumps (P70, P86 in main_7 and P98, P282 in main_12 all "
-            "have preds=[]; the live back edges match O91 and O263/O296), tail "
+            "dead escape jumps (P71, P87 in main_7 and P99, P283 in main_12 all "
+            "have preds=[]; the live back edges match O92 and O264/O297), tail "
             "duplication of single instructions with all reaching paths "
             "covered, and drops of TEST/TESTSET on provably truthy values "
             "(a LOADK of a number, or OP_LEN on a table, which always yields a "
@@ -386,18 +401,18 @@ PRED_PINS: dict[str, dict[str, Pin]] = {
             "equivalent-transform",
             ("main_60 code=1182 reach=(4, 3, 0) all=(259, 258, 3) reads=157 calls=93",
              "main_60 code=1200 reach=(4, 3, 0) all=(263, 262, 7) reads=161 calls=97"),
-            "tail duplication at two sites. O541-549 (preds {506,508,538}) is "
-            "emitted as P540-548 (preds {536}) and P549-557 (preds {504,506}), "
+            "tail duplication at two sites. O542-550 (preds {507,509,539}) is "
+            "emitted as P541-549 (preds {537}) and P550-558 (preds {505,507}), "
             "the copies equal instruction-for-instruction modulo registers and "
-            "equal to the original, with P539 unreachable; same at O661-669 -> "
-            "P669-677 / P678-686 with P668 unreachable. The wait +2 and the two "
+            "equal to the original, with P540 unreachable; same at O662-670 -> "
+            "P670-678 / P679-687 with P669 unreachable. The wait +2 and the two "
             "extra upvalue calls are the duplicated block, not new call sites"),
         "snr_s3_10_s.lua": Pin(
             "equivalent-transform",
             ("main_59 code=1292 reach=(4, 3, 0) all=(335, 334, 4) reads=160 calls=109",
              "main_59 code=1297 reach=(4, 3, 0) all=(337, 336, 6) reads=160 calls=109"),
-            "the two gained back edges P573 and P638 both have preds=[]: each "
-            "follows an unconditional forward jump (P572, P637), so it is the "
+            "the two gained back edges P574 and P639 both have preds=[]: each "
+            "follows an unconditional forward jump (P573, P638), so it is the "
             "escape jump of an if/then/break/else. Loop tails are identical "
             "modulo registers and the live headers keep the same predecessor "
             "sets; the MOVE churn is call-result relocation and dead stores"),
@@ -405,9 +420,9 @@ PRED_PINS: dict[str, dict[str, Pin]] = {
             "equivalent-transform",
             ("main_58 code=1372 reach=(4, 3, 0) all=(402, 401, 3) reads=147 calls=114",
              "main_58 code=1379 reach=(4, 3, 0) all=(404, 403, 3) reads=147 calls=116"),
-            "tail duplication. O435-436 (preds {414,417,420,423,426,429,432}) "
-            "splits into P435-436 (preds minus 414) and P438-439 (pred {414}); "
-            "same for O999-1000. The pred sets partition the original's, so no "
+            "tail duplication. O436-437 (preds {415,418,421,424,427,430,433}) "
+            "splits into P436-437 (preds minus 415) and P439-440 (pred {415}); "
+            "same for O1000-1001. The pred sets partition the original's, so no "
             "path gains or loses a call. Back edges 3 vs 3, same three heads, "
             "0 unreachable pcs on either side"),
         "snr_s5_10_s.lua": Pin(
@@ -416,19 +431,19 @@ PRED_PINS: dict[str, dict[str, Pin]] = {
              "main_46 code=808 reach=(4, 3, 0) all=(146, 145, 3) reads=153 calls=90"),
             "the only row where a LIVE back edge count falls without a defect. "
             "The original's if/elseif chain gives each arm its own jump back "
-            "(O87, O98, O100, O106); the predecessor writes sequential ifs, so "
+            "(O88, O99, O101, O107); the predecessor writes sequential ifs, so "
             "an arm falls through the remaining equality tests to a shared back "
-            "edge (P97, P103). preds(O47)={46,87,98,100,106} vs "
-            "preds(P47)={46,97,103}: same head, no path lost. The selector "
+            "edge (P98, P104). preds(O48)={47,88,99,101,107} vs "
+            "preds(P48)={47,98,104}: same head, no path lost. The selector "
             "register is written once before the chain and never inside an arm, "
             "and the tests are against distinct numeric constants"),
         "snr_s7_10_f.lua": Pin(
             "equivalent-transform",
             ("main_52 code=95 reach=(6, 5, 0) all=(22, 20, 1) reads=19 calls=19",
              "main_52 code=98 reach=(6, 5, 0) all=(24, 22, 3) reads=19 calls=19"),
-            "the two gained back edges P42 and P58 both have preds=[], each "
-            "following an unconditional forward jump to the loop exit (P41, "
-            "P57). The live back edge P85 sBx=-75 matches O82 sBx=-72, same "
+            "the two gained back edges P43 and P59 both have preds=[], each "
+            "following an unconditional forward jump to the loop exit (P42, "
+            "P58). The live back edge P86 sBx=-75 matches O83 sBx=-72, same "
             "head; the one extra reachable instruction is a MOVE landing a call "
             "result in a local before the EQ"),
         "snr_story_main.lua": Pin(
@@ -436,9 +451,9 @@ PRED_PINS: dict[str, dict[str, Pin]] = {
             ("main_1 code=1009 reach=(24, 25, 2) all=(136, 137, 2) reads=189 calls=78",
              "main_1 code=1045 reach=(45, 46, 2) all=(136, 137, 2) reads=189 calls=78"),
             "cfg_all identical (136,137,2), opcode delta only LOADNIL 0->1 and "
-            "MOVE +35. O480 EQ A=1 + JMP->1008 vs P491 EQ A=0 + JMP->494 + "
-            "JMP->1044 is the same two-way branch written the other way round; "
-            "the added jumps are paid for by O1005/O1006, which are dead. "
+            "MOVE +35. O481 EQ A=1 + JMP->1009 vs P492 EQ A=0 + JMP->495 + "
+            "JMP->1045 is the same two-way branch written the other way round; "
+            "the added jumps are paid for by O1006/O1007, which are dead. "
             "main_3's CALL 78->79 is a duplicated or-fallback arm with "
             "identical per-path dynamic call counts"),
     },

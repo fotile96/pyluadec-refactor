@@ -995,7 +995,9 @@ below them.
 ### 3.4 The five defects, at instruction level
 
 Evidence is pc/opcode/register and ASCII identifiers only. `O<n>` is an original
-pc, `P<n>` a predecessor pc. Every fact below was re-derived this session with
+pc, `P<n>` a predecessor pc, and **this section numbers them from 0** — the pin
+tables in `scripts/cross_corpus.py` and `scripts/loss_sweep.py` number from 1
+(see §4.6), so the same instruction is one greater there. Every fact below was re-derived this session with
 `scripts/cross_corpus.py`, `verify.semantic_score.collect_proto_signatures` and a
 reachability walk over the decoded instruction stream. `EQ` semantics are
 `lvm.c`'s: `if (equalobj(RK(B), RK(C)) == GETARG_A(i)) dojump`, i.e. the
@@ -1058,8 +1060,12 @@ concatenated, and the later `layerVisible(..., true)` overrides the earlier
 
 The count, measured over the whole proto: `GETGLOBAL 'systemSave'` **24 -> 16**,
 `GETTABLE 'novelFlag'` **12 -> 8**, `GETTABLE 'musicFlag'` **8 -> 4** — exactly
-**four** gate sites deleted (`O206`, `O744`, `O1279`, `O1810`), each reading one
-of each flag. Menu entries the save data has not unlocked are faded in instead of
+**four** gate sites deleted (`O206`, `O744`, `O1279`, `O1824`), each reading one
+of each flag. (The fourth was written `O1810` until the M6 final review; that pc
+is wrong under either base — 0-based `O1810` is the `JMP` at 1-based 1811,
+1-based 1810 is an `LT`. Re-derived 2026-08-14: the four `GETUPVAL` /
+`GETTABLE 'novel'` / `EQ` gate heads are at 1-based **207, 745, 1280, 1825**,
+i.e. 0-based 206, 744, 1279, **1824**.) Menu entries the save data has not unlocked are faded in instead of
 staying hidden.
 
 This row's first cut was **`suspect`**, and §2.10 recommended ranking it last.
@@ -1508,9 +1514,25 @@ raises); a register that is an operand of `OP_LT`/`OP_LE` is fixed the same way
 because `lvm.c::luaV_lessthan` admits two numbers or two strings and raises
 otherwise.
 
-Pin notes quote **1-based** pcs (`O<n>` original, `P<n>` predecessor), matching
-`pyluadec.lift` and `luac -l -l`. §3's notes quote 0-based pcs from
-`semantic_score._Ins`, so the same instruction is one greater here.
+**Pc bases, corrected at the M6 final review (2026-08-14).** This paragraph
+used to assert that the pin notes were already 1-based. They were not:
+`scripts/cross_corpus.py::PRED_PINS` was **uniformly 0-based on both sides**,
+and `scripts/loss_sweep.py::LOSS_PINS` was **mixed** — 1-based except for the
+three notes that quoted §3 verbatim. Both tables were re-based to 1-based in
+that pass and the result is machine-checked: for every `O<n> OPNAME` /
+`P<n> OPNAME` pair in either table, the opcode at 1-based pc `n` is `OPNAME`,
+and every quoted predecessor set, jump target and unreachable-pc claim was
+re-derived from the decoded instruction stream.
+
+So, in force now:
+
+- **Pin notes** (`PRED_PINS`, `LOSS_PINS`) quote **1-based** pcs (`O<n>`
+  original, `P<n>` predecessor), matching `pyluadec.lift` — which decodes
+  `p.code[pc - 1]` at pc — and `luac_sz4 -l -l`.
+- **This report's §3 and §4 prose** quotes **0-based** pcs, so the same
+  instruction is **one greater** in a pin note than in the prose above. (Left
+  0-based deliberately: renumbering the prose is a much larger edit with no
+  gate behind it, and an undisclosed base is the defect, not a base.)
 
 ### 4.7 Non-vacuity: the gate can fail, and it names the proto
 

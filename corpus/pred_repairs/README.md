@@ -147,15 +147,50 @@ becomes `while succeedLoadSystemdata() == false do`, and each of the four
 repaired proto has back edge `170 → 93` with `preds(93) = {92, 170}`, and all
 four false-jumps now target `171`, the loop exit.
 
-**Independent corroboration for this one, and only this one.** `main_75`
-certifies `L3` in `corpus/ledger.jsonl`, so this repository's own structured
-print of it *is* byte-faithful to the original bytecode, and it reads
-`while succeedLoadSystemdata() == false do … else break … wait(1) end
-applySystemdata()` — the same structure. (Reproduce with
-`structure.structured._print_proto_body(proto, depth=1, upval_names=())`.)
-The other three protos repaired here are `L1` with
-`refusal_reason = "structure: … if targets out of range"`, and all four ship
-fallback text, so for those the only reference used was the original bytecode.
+**Independent corroboration, for two of the six repaired protos.**
+`snr_common.lua:main_75` and `snr_music.lua:main_3` both certify **`L3`** in
+`corpus/ledger.jsonl` — this repository printed structured source for each,
+recompiled it with `build/luac_sz4` and matched the original proto field by
+field — so for those two the repair had a second, independent reference
+besides the raw bytecode.
+
+For `main_75` the printed text can be read directly and it reads
+`while succeedLoadSystemdata() == false do … break … wait(1) end
+applySystemdata()` — the same structure as the repair (re-measured
+2026-08-14: 1 `while` line, 4 `break` lines, tail `wait(1)` / `end` /
+`applySystemdata()`). Reproduce with
+`structure.structured._print_proto_body(proto, depth=1, upval_names=())`.
+`main_3` has 7 upvalues, so that low-level helper needs names it cannot
+synthesise on its own; use
+`structure.structured.certify_proto(proto, is_chunk_root=False)` and read
+`.level` instead — measured `L3`, rung 1, `reason=None` for both.
+
+The other four (`snr_common.lua:main_76_2`, `snr_mainmenu.lua:main_7`,
+`snr_graphic.lua:main_4`, `snr_memory.lua:main_4`) are `L1`, so for those the
+only reference was the original bytecode.
+
+**Corrected at the M6 final review (2026-08-14).** This paragraph previously
+said the corroboration applied to `main_75` "and only this one", that "the
+other **three** protos repaired here are `L1` with `refusal_reason =
+"structure: … if targets out of range"`", and that "all **four** ship fallback
+text". All three claims were false against the committed ledger — they were
+written before tasks 11 and 12 moved it. Re-measured now, over
+`corpus/ledger.jsonl`:
+
+| proto | `level` | `refusal_reason` | `shipped` |
+|---|---|---|---|
+| `snr_common.lua:main_75` | `L3` | — | `fallback` |
+| `snr_music.lua:main_3` | `L3` | — | `fallback` |
+| `snr_common.lua:main_76_2` | `L1` | `mismatch: maxstacksize` | `fallback` |
+| `snr_mainmenu.lua:main_7` | `L1` | `mismatch: code` | `fallback` |
+| `snr_graphic.lua:main_4` | `L1` | `mismatch: code` | `fallback` |
+| `snr_memory.lua:main_4` | `L1` | `mismatch: code` | `fallback` |
+
+**Six** protos were repaired, not four (six defects across five files — the
+`### 1`–`### 6` headings above). **No `structure:` refusal survives on any of
+them**: task 11's condition-tree recognizer took that family from 21 ledger
+shapes to 1, and the survivor is `snr_common.lua:main_71`, which is not in this
+table. All six do ship fallback text, which is the one claim that held.
 
 ## What was **not** repaired
 
