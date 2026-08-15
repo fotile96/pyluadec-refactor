@@ -21,6 +21,7 @@ the corpus lacks (it reaches 33 of 38 opcodes).
 """
 from __future__ import annotations
 
+import bisect
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
@@ -31,6 +32,103 @@ from pyluadec.lift.opcodes import OP_SPECS, ArgMode, Fmt, Op, isk
 # the largest constant-table index that fits in an RK operand. Past it
 # `luaK_exp2RK` gives up and loads the constant into a register instead.
 _MAXINDEXRK = 255
+
+
+def _merge_veto_skipped_kill(reg: int, def_pc: int, kill_li: LirInstr,
+                             jmp_list: list[tuple[int, int]],
+                             reads_at: dict[int, list[int]],
+                             writes_at: dict[int, list[int]],
+                             open_reads: list[tuple[int, int]]) -> bool:
+    """Skipped-kill veto (M7 task 7): True iff `kill_li` (a write popping the
+    pending entry for `reg` defined at `def_pc`) does not read `reg` itself
+    -- so the pop is a kill, not an operand consumption -- AND a `JMP`
+    between the definition and the kill jumps past the kill to a point where
+    `reg`'s next tracked mention is a *read*.
+
+    On that taken path the entry's value survives what the pc-linear walk
+    modelled as its death: the single read the walk counted (the condition)
+    did not consume it on every path, so the entry crossed a statement
+    boundary and is a named local, not a temp. This is the half of the
+    clamp/conditional-reassignment family rule B cannot see: the OLD
+    definition (`SUB`/`MOVE`/`GETGLOBAL` staging the initial value) is killed
+    by the then-arm's reassignment, and the walk happily pops it as consumed
+    because the condition read it once.
+
+    Narrow by construction: only writes that do not read the killed register
+    (explicitly, or via an `R[a..top)` open range) can be kills this rule
+    speaks about, and `stack_discipline` only asks it at its generic-write
+    site -- operand-consumption pops (`ADD`'s operands, call arguments,
+    `SETLIST` items) are exempt because the instruction reads what it pops.
+    The `and`/`or` *condition* chains (`if a and b then`) do not fire either:
+    their short-circuit jump lands where the branch decision was already
+    taken, so the next mention of the slot is a fresh staging *write*, not a
+    read. Being wrong here costs certifications, never correctness (the
+    certification gate recompiles everything this grades).
+
+    ## Why there is no symmetric "merge-read" rule (measured, then deleted)
+
+    A second veto was built for the OTHER half of the family -- the arm's own
+    redefinition (`LOADK`/`MOVE`), whose join read is reachable from before
+    it -- and deleted the same day: promote-the-old-definition (this rule)
+    plus `write_reg`'s "`declared` still wins" gate absorbs the whole family
+    end to end. Once the old definition is a named local, the reconstructor
+    has declared the slot, and every later write to it materializes as an
+    assignment regardless of its temp grade, so the join read always has a
+    name. Measured both ways (M7 task 7): with the merge-read veto neutered,
+    all 1944 corpus occurrences certify identically (1909 `L3` both ways) and
+    every synthetic carrier of the family certifies. The shapes it alone
+    could catch -- a pending temp read at a pc reachable from before its own
+    def, with the slot never declared -- real luac cannot produce, because an
+    expression-stack temp never crosses a branch in the first place.
+    """
+    ri = kill_li.ri
+    if reg in kill_li.effects.reads:
+        return False
+    if kill_li.effects.reads_open and reg >= (
+            ri.a if ri.op is Op.RETURN else ri.a + 1):
+        return False
+    kill_pc = ri.pc
+    # `jmp_list` is sorted and strictly increasing on pc (one instruction per
+    # pc), so tuple bisection bounds "JMPs strictly between def and kill".
+    lo = bisect.bisect_right(jmp_list, (def_pc, 1 << 30))
+    hi = bisect.bisect_left(jmp_list, (kill_pc, 0))
+    for k in range(lo, hi):
+        j_pc, succ = jmp_list[k]
+        if succ > kill_pc and _next_mention_is_read(
+                reg, succ, reads_at, writes_at, open_reads):
+            return True
+    return False
+
+
+def _next_mention_is_read(reg: int, from_pc: int,
+                          reads_at: dict[int, list[int]],
+                          writes_at: dict[int, list[int]],
+                          open_reads: list[tuple[int, int]]) -> bool:
+    """True iff `reg`'s first tracked mention at or after `from_pc` is a read
+    (explicit, or an `R[a..top)` open read covering it) rather than a write.
+
+    A write first means the taken path overwrites the slot before anyone sees
+    the old value, so the kill the walk modelled was harmless on that path
+    too and no veto is owed. Mentions are the per-register sorted lists built
+    by `stack_discipline` in one pass; the lookups are bisections.
+
+    A read at the SAME pc as the limiting write counts as a read: every
+    opcode that both reads and writes a register reads the old value first
+    (`ADD A=B=C` with A==B, `FORPREP`'s `R[A] -= R[A+2]`, a CALL overwriting
+    its callee slot with the result) -- there is no write-then-read operand
+    order in the 5.1 instruction set, so the tie resolves to "read".
+    """
+    wl = writes_at.get(reg, [])
+    i = bisect.bisect_left(wl, from_pc)
+    limit = wl[i] if i < len(wl) else None
+    rl = reads_at.get(reg, [])
+    j = bisect.bisect_left(rl, from_pc)
+    if j < len(rl) and (limit is None or rl[j] <= limit):
+        return True
+    lo = bisect.bisect_left(open_reads, (from_pc, -1))
+    hi = bisect.bisect_left(open_reads, (limit, -1)) if limit is not None \
+        else len(open_reads)
+    return any(base <= reg for _, base in open_reads[lo:hi])
 
 
 @dataclass(slots=True)
@@ -489,6 +587,27 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
     def_verdict: dict[tuple[int, int], bool] = {}
     last_def: dict[int, int] = {}           # reg -> pc of its most recent push
 
+    # The skipped-kill veto (M7 task 7) needs jump and per-register mention
+    # tables. Built in one pass over the same `ordered` walk below -- the
+    # lists are pc-ascending by construction, which the bisections in the
+    # veto helper rely on.
+    jmp_list: list[tuple[int, int]] = []    # (pc, successor) per JMP
+    reads_at: dict[int, list[int]] = {}     # reg -> its read pcs
+    writes_at: dict[int, list[int]] = {}    # reg -> its write pcs
+    open_reads: list[tuple[int, int]] = []  # (pc, base) per R[a..top) read
+    for pc in ordered:
+        li0 = fn.instrs[pc]
+        ri0 = li0.ri
+        if ri0.op is Op.JMP:
+            jmp_list.append((pc, li0.successors[0]))
+        for r in li0.effects.reads:
+            reads_at.setdefault(r, []).append(pc)
+        for r in li0.effects.writes:
+            writes_at.setdefault(r, []).append(pc)
+        if li0.effects.reads_open:
+            open_reads.append((pc, ri0.a if ri0.op is Op.RETURN
+                               else ri0.a + 1))
+
     def mark(reg: int, ok: bool) -> None:
         verdict[reg] = verdict.get(reg, True) and ok
 
@@ -575,10 +694,21 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
                 if not _same_block(block_floor, ent.def_pc, at):
                     ent.bad = True
 
-    def pop_ge(base: int) -> None:
+    def pop_ge(base: int, kill: LirInstr | None = None) -> None:
         while pending and pending[-1].reg >= base:
             ent = pending.pop()
             ok = ent.n_reads == 1 and not ent.bad
+            if ok and kill is not None and _merge_veto_skipped_kill(
+                    ent.reg, ent.def_pc, kill, jmp_list, reads_at,
+                    writes_at, open_reads):
+                # Skipped-kill veto (M7 task 7): a branch jumps past this
+                # kill to a read of the slot, so the value is live on that
+                # path and the definition is a named local. Only the generic
+                # -write site below passes `kill`; every other pop is an
+                # operand consumption or a statement boundary and keeps the
+                # None default.
+                ent.bad = True
+                ok = False
             mark(ent.reg, ok)
             mark_def(ent.def_pc, ent.reg, ok)
 
@@ -674,7 +804,7 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
         else:
             writes = sorted(li.effects.writes)
             if writes:
-                pop_ge(writes[0])
+                pop_ge(writes[0], kill=li)
                 if named_local(writes[0], pc):
                     promote_all()                  # assignment to a named local
                 else:

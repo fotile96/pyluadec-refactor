@@ -3,20 +3,20 @@
  "summary": {
   "n_files": 229,
   "n_protos": 1944,
-  "n_candidates": 155,
-  "n_leaf_refusals": 28,
-  "n_non_l3": 39,
+  "n_candidates": 152,
+  "n_leaf_refusals": 25,
+  "n_non_l3": 35,
   "n_cap_files": 132,
   "n_cap_dominants": 132,
   "n_in_both_populations": 5,
   "class_census": {
-   "choice-branch": 113,
-   "neither": 33,
+   "choice-branch": 111,
+   "neither": 32,
    "ui-keyloop": 9
   },
   "class_census_leaf_refusals": {
-   "choice-branch": 5,
-   "neither": 16,
+   "choice-branch": 3,
+   "neither": 15,
    "ui-keyloop": 7
   },
   "class_census_cap_dominants": {
@@ -26,12 +26,12 @@
   },
   "drivable_within_budget_by_class": {
    "choice-branch": [
-    110,
-    113
+    108,
+    111
    ],
    "neither": [
-    33,
-    33
+    32,
+    32
    ],
    "ui-keyloop": [
     9,
@@ -46,7 +46,7 @@
    "pressButton"
   ],
   "candidates_polling_per_iteration": {
-   "choice-branch": 113,
+   "choice-branch": 111,
    "neither": 3,
    "ui-keyloop": 9
   },
@@ -61,8 +61,8 @@
    "oCard.selectCardNotCancelObj": "snr_common.lua:main_77_18",
    "oCard.selectCardObj": "snr_common.lua:main_77_17"
   },
-  "n_observed_records": 56,
-  "n_orphan_observations": 8
+  "n_observed_records": 54,
+  "n_orphan_observations": 10
  },
  "candidates": [
   {
@@ -396,161 +396,6 @@
     "reviewed_by": "ui-keyloop-audit",
     "class_agrees": true,
     "note": "comDlgSelectItem (main chunk pc 3168 CLOSURE / 3169 SETGLOBAL). Loop pcs 210-408, polls at CALL 224/276/375/396, exit via done-flag R17. Also one of the seven option callees: the two classes sit at different levels of the same call graph."
-   }
-  },
-  {
-   "file": "snr_common.lua",
-   "proto_path": "main_69",
-   "mechanical": {
-    "selected_as": [
-     "leaf-refusal"
-    ],
-    "n_insns": 268,
-    "nups": 0,
-    "numparams": 0,
-    "level": "L1",
-    "refusal_reason": "reconstruct: register 7 is read again after its staged value was consumed; classification called that definition a temporary",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": true,
-    "probe": {
-     "file_status": "CAP",
-     "file_events": 3001,
-     "dominant_global": null,
-     "dominant_global_events": null
-    },
-    "n_natural_loops": 1,
-    "n_back_edges": 2,
-    "poll_loops": [],
-    "calls_poll_directly": false,
-    "reaches_poll": false,
-    "loop_polls_per_iteration": false,
-    "in_loop_callees_reaching_poll": [],
-    "option_calls": [],
-    "channels": [
-     {
-      "path": [
-       {
-        "key": "gameSave"
-       },
-       {
-        "key": "fragmentDoSceneId"
-       }
-      ],
-      "text": "gameSave.fragmentDoSceneId",
-      "domain": 2,
-      "constants": [],
-      "truth_tested": false
-     },
-     {
-      "path": [
-       {
-        "key": "gameSave"
-       },
-       {
-        "key": "storyRoute"
-       },
-       {
-        "dynamic": true
-       },
-       {
-        "key": "sceneId"
-       }
-      ],
-      "text": "gameSave.storyRoute[*].sceneId",
-      "domain": 2,
-      "constants": [],
-      "truth_tested": false
-     }
-    ],
-    "register_comparisons": 1,
-    "input_space": 4,
-    "drivable_within_budget": true,
-    "class": "neither",
-    "class_evidence": "no poll loop and no option call; 2 branch channel(s)",
-    "footprint": {
-     "global_reads": [
-      "cGetFileName",
-      "cStopBGMWrap",
-      "comEffectYellowIn",
-      "comSectionStoryGetCount",
-      "gameSave",
-      "keyPlaySE",
-      "layerClip",
-      "layerCopy",
-      "layerLoad",
-      "layerMovePosition",
-      "layerName",
-      "layerPosition",
-      "plotTitle",
-      "sceneId2aCard",
-      "sceneState",
-      "seName",
-      "string",
-      "switchScreen",
-      "vms",
-      "wait"
-     ],
-     "table_key_reads": [
-      [
-       "gameSave",
-       "fragmentDoSceneId"
-      ],
-      [
-       "gameSave",
-       "storyRoute"
-      ],
-      [
-       "layerName",
-       "pose1"
-      ],
-      [
-       "layerName",
-       "pose2"
-      ],
-      [
-       "layerName",
-       "pose3"
-      ],
-      [
-       "seName",
-       "viewCard"
-      ],
-      [
-       "string",
-       "gsub"
-      ]
-     ],
-     "calls": [
-      "cGetFileName",
-      "cStopBGMWrap",
-      "comEffectYellowIn",
-      "comSectionStoryGetCount",
-      "keyPlaySE",
-      "layerClip",
-      "layerCopy",
-      "layerLoad",
-      "layerMovePosition",
-      "layerPosition",
-      "switchScreen",
-      "vms",
-      "wait"
-     ],
-     "table_key_calls": [
-      [
-       "string",
-       "gsub"
-      ]
-     ],
-     "dynamic_reads": 33,
-     "read_sites": 78,
-     "call_sites": 32
-    }
-   },
-   "observed": {
-    "reviewed_by": "neither-audit",
-    "class_agrees": true,
-    "note": "comAyanoTimeRefresh, a HUD/plot-status redraw. keyPlaySE at pc 47 is corpus-defined and does not reach a poll."
    }
   },
   {
@@ -22051,7 +21896,7 @@
     "nups": 7,
     "numparams": 0,
     "level": "L1",
-    "refusal_reason": "mismatch: code",
+    "refusal_reason": "mismatch: maxstacksize",
     "refusal_origin": "own",
     "shipped": "fallback",
     "hybrid_chunk": true,
@@ -25235,299 +25080,6 @@
   },
   {
    "file": "snr_s5_10_s.lua",
-   "proto_path": "main_42",
-   "mechanical": {
-    "selected_as": [
-     "leaf-refusal"
-    ],
-    "n_insns": 263,
-    "nups": 0,
-    "numparams": 5,
-    "level": "L1",
-    "refusal_reason": "reconstruct: register 11 is read again after its staged value was consumed; classification called that definition a temporary",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": true,
-    "probe": {
-     "file_status": "CAP",
-     "file_events": 3001,
-     "dominant_global": null,
-     "dominant_global_events": null
-    },
-    "n_natural_loops": 1,
-    "n_back_edges": 1,
-    "poll_loops": [],
-    "calls_poll_directly": false,
-    "reaches_poll": true,
-    "loop_polls_per_iteration": true,
-    "in_loop_callees_reaching_poll": [
-     "oCard.selectCardNotCancelObj"
-    ],
-    "option_calls": [
-     {
-      "callee": "oCard.selectCardNotCancelObj",
-      "pc": 176,
-      "in_loop": true
-     }
-    ],
-    "channels": [
-     {
-      "path": [
-       {
-        "key": "oCard"
-       },
-       {
-        "key": "selectCardNotCancelObj"
-       },
-       {
-        "call": true
-       }
-      ],
-      "text": "oCard.selectCardNotCancelObj()",
-      "domain": 2,
-      "constants": [],
-      "truth_tested": false
-     }
-    ],
-    "register_comparisons": 1,
-    "input_space": 2,
-    "drivable_within_budget": true,
-    "class": "choice-branch",
-    "class_evidence": "no poll loop; option call oCard.selectCardNotCancelObj at pc 176 (1 option call site(s)); 1 branch channel(s)",
-    "footprint": {
-     "global_reads": [
-      "cGetFileName",
-      "cPlayBGMWrap",
-      "cPlayLoopSeWrap",
-      "cPlayOneshotMusic",
-      "cStopBGMWrap",
-      "cStopLoopSeWrap",
-      "comEffectFadeOut",
-      "comEffectWhiteOut",
-      "comEffectYellowIn",
-      "comPoseLoad",
-      "gameSave",
-      "layerCopy",
-      "layerName",
-      "oCard",
-      "oHour",
-      "switchScreen",
-      "vms",
-      "wait"
-     ],
-     "table_key_reads": [
-      [
-       "gameSave",
-       "ayanoTime"
-      ],
-      [
-       "layerName",
-       "bg1"
-      ],
-      [
-       "layerName",
-       "bg_1_a_0"
-      ],
-      [
-       "oCard",
-       "cursorPositionInit"
-      ],
-      [
-       "oCard",
-       "selectCardNotCancelObj"
-      ],
-      [
-       "oHour",
-       "hourGlassStageCngTo"
-      ]
-     ],
-     "calls": [
-      "cGetFileName",
-      "cPlayBGMWrap",
-      "cPlayLoopSeWrap",
-      "cPlayOneshotMusic",
-      "cStopBGMWrap",
-      "cStopLoopSeWrap",
-      "comEffectFadeOut",
-      "comEffectWhiteOut",
-      "comEffectYellowIn",
-      "comPoseLoad",
-      "layerCopy",
-      "switchScreen",
-      "vms",
-      "wait"
-     ],
-     "table_key_calls": [
-      [
-       "oCard",
-       "cursorPositionInit"
-      ],
-      [
-       "oCard",
-       "selectCardNotCancelObj"
-      ],
-      [
-       "oHour",
-       "hourGlassStageCngTo"
-      ]
-     ],
-     "dynamic_reads": 0,
-     "read_sites": 6,
-     "call_sites": 59
-    }
-   }
-  },
-  {
-   "file": "snr_s5_10_s.lua",
-   "proto_path": "main_43",
-   "mechanical": {
-    "selected_as": [
-     "leaf-refusal"
-    ],
-    "n_insns": 227,
-    "nups": 0,
-    "numparams": 4,
-    "level": "L1",
-    "refusal_reason": "reconstruct: register 9 is read again after its staged value was consumed; classification called that definition a temporary",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": true,
-    "probe": {
-     "file_status": "CAP",
-     "file_events": 3001,
-     "dominant_global": null,
-     "dominant_global_events": null
-    },
-    "n_natural_loops": 1,
-    "n_back_edges": 1,
-    "poll_loops": [],
-    "calls_poll_directly": false,
-    "reaches_poll": true,
-    "loop_polls_per_iteration": true,
-    "in_loop_callees_reaching_poll": [
-     "oCard.selectCardNotCancelObj"
-    ],
-    "option_calls": [
-     {
-      "callee": "oCard.selectCardNotCancelObj",
-      "pc": 86,
-      "in_loop": true
-     }
-    ],
-    "channels": [
-     {
-      "path": [
-       {
-        "key": "oCard"
-       },
-       {
-        "key": "selectCardNotCancelObj"
-       },
-       {
-        "call": true
-       }
-      ],
-      "text": "oCard.selectCardNotCancelObj()",
-      "domain": 2,
-      "constants": [],
-      "truth_tested": false
-     }
-    ],
-    "register_comparisons": 1,
-    "input_space": 2,
-    "drivable_within_budget": true,
-    "class": "choice-branch",
-    "class_evidence": "no poll loop; option call oCard.selectCardNotCancelObj at pc 86 (1 option call site(s)); 1 branch channel(s)",
-    "footprint": {
-     "global_reads": [
-      "cGetFileName",
-      "cPlayBGMWrap",
-      "cPlayLoopSeWrap",
-      "cPlayOneshotMusic",
-      "cStopBGMWrap",
-      "cStopLoopSeWrap",
-      "comEffectFadeOut",
-      "comEffectWhiteOut",
-      "comEffectYellowIn",
-      "comPoseLoad",
-      "gameSave",
-      "layerCopy",
-      "layerName",
-      "oCard",
-      "oHour",
-      "switchScreen",
-      "vms",
-      "wait"
-     ],
-     "table_key_reads": [
-      [
-       "gameSave",
-       "ayanoTime"
-      ],
-      [
-       "layerName",
-       "bg1"
-      ],
-      [
-       "layerName",
-       "bg_1_a_0"
-      ],
-      [
-       "oCard",
-       "cursorPositionInit"
-      ],
-      [
-       "oCard",
-       "selectCardNotCancelObj"
-      ],
-      [
-       "oHour",
-       "hourGlassStageCngTo"
-      ]
-     ],
-     "calls": [
-      "cGetFileName",
-      "cPlayBGMWrap",
-      "cPlayLoopSeWrap",
-      "cPlayOneshotMusic",
-      "cStopBGMWrap",
-      "cStopLoopSeWrap",
-      "comEffectFadeOut",
-      "comEffectWhiteOut",
-      "comEffectYellowIn",
-      "comPoseLoad",
-      "layerCopy",
-      "switchScreen",
-      "vms",
-      "wait"
-     ],
-     "table_key_calls": [
-      [
-       "oCard",
-       "cursorPositionInit"
-      ],
-      [
-       "oCard",
-       "selectCardNotCancelObj"
-      ],
-      [
-       "oHour",
-       "hourGlassStageCngTo"
-      ]
-     ],
-     "dynamic_reads": 0,
-     "read_sites": 6,
-     "call_sites": 52
-    }
-   },
-   "observed": {
-    "reviewed_by": "choice-branch-audit",
-    "class_agrees": true,
-    "note": "oCard.selectCardNotCancelObj at pc 86 inside the loop (header 77, back edge 209). Its result is compared at pc 87 against a REGISTER (EQ 0 R8 R1, R1 a parameter), not a constant, which is why the domain falls back to the floor of 2 and register_comparisons is non-zero."
-   }
-  },
-  {
-   "file": "snr_s5_10_s.lua",
    "proto_path": "main_46",
    "mechanical": {
     "selected_as": [
@@ -25540,7 +25092,7 @@
     "refusal_reason": null,
     "refusal_origin": null,
     "shipped": "structured",
-    "hybrid_chunk": true,
+    "hybrid_chunk": false,
     "probe": {
      "file_status": "CAP",
      "file_events": 3001,
@@ -26644,6 +26196,15 @@
   },
   {
    "file": "snr_common.lua",
+   "proto_path": "main_69",
+   "observed": {
+    "reviewed_by": "neither-audit",
+    "class_agrees": true,
+    "note": "comAyanoTimeRefresh, a HUD/plot-status redraw. keyPlaySE at pc 47 is corpus-defined and does not reach a poll."
+   }
+  },
+  {
+   "file": "snr_common.lua",
    "proto_path": "main_74_13",
    "observed": {
     "reviewed_by": "ui-keyloop-audit",
@@ -26694,6 +26255,15 @@
     "reviewed_by": "neither-audit",
     "class_agrees": true,
     "note": "Builds and draws the main-menu screen; called from main_7 pc 13. savedataTitle at pc 4, wait at pc 48."
+   }
+  },
+  {
+   "file": "snr_s5_10_s.lua",
+   "proto_path": "main_43",
+   "observed": {
+    "reviewed_by": "choice-branch-audit",
+    "class_agrees": true,
+    "note": "oCard.selectCardNotCancelObj at pc 86 inside the loop (header 77, back edge 209). Its result is compared at pc 87 against a REGISTER (EQ 0 R8 R1, R1 a parameter), not a constant, which is why the domain falls back to the floor of 2 and register_comparisons is non-zero."
    }
   },
   {

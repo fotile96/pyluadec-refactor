@@ -496,7 +496,7 @@ def test_the_compound_if_population_moved_from_twentyone_shapes_to_one(
     movement is adjudicated rather than assumed.
 
     Re-measured 2026-08-14 after the condition-tree recognizer landed. The one
-    survivor is `snr_common.lua:main_71`, whose refusal
+    leaf survivor is `snr_common.lua:main_71`, whose refusal
     (`else-join out of range` at pc 286) is NOT a condition-representation
     defect: the two tests at 284/286 target 297 and 298, which resolve to
     neither a true exit, a false exit, nor an internal split point, so
@@ -505,6 +505,14 @@ def test_the_compound_if_population_moved_from_twentyone_shapes_to_one(
     410, the exit of a `while true` (header 279, closing JMP 409) that
     `_match_loop` does not recognize; structuring the same `if` WITH
     `break_target=410` succeeds.
+
+    Re-measured 2026-08-15 (M7 task 7): the family is now **2 ledger rows, 1
+    leaf** -- same shape, same pc. `snr_common.lua:main`'s row joined when the
+    skipped-kill veto dissolved its `reconstruct:` reason: the ancestor's
+    certification used to stop at the reconstruction layer before ever
+    reaching this descendant's structure refusal, and with that barrier gone
+    the pc-286 refusal is what its walk now reports. The leaf population,
+    `compound_if_leaves`, and the classes.json agreement below are unchanged.
 
     The other 20 left this family by two different routes and the split is
     asserted, because "no longer `structure:`" is not "certified": **7** reach
@@ -520,8 +528,9 @@ def test_the_compound_if_population_moved_from_twentyone_shapes_to_one(
     rows = _ledger_rows()
     shapes = [r for r in rows
               if (r.get("refusal_reason") or "").startswith("structure:")]
-    assert len(shapes) == 1
-    assert shapes[0]["refusal_reason"] == "structure: pc 286: else-join out of range"
+    assert len(shapes) == 2
+    assert {s["refusal_reason"] for s in shapes} == {
+        "structure: pc 286: else-join out of range"}
     leaves = probe_enum.compound_if_leaves(rows)
     assert leaves == [("snr_common.lua", "main_71")]
     # The derivation and `classes.json` still agree, on the smaller set.
