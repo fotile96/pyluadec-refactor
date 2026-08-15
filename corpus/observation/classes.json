@@ -3,20 +3,20 @@
  "summary": {
   "n_files": 229,
   "n_protos": 1944,
-  "n_candidates": 156,
-  "n_leaf_refusals": 29,
-  "n_non_l3": 40,
+  "n_candidates": 155,
+  "n_leaf_refusals": 28,
+  "n_non_l3": 39,
   "n_cap_files": 132,
   "n_cap_dominants": 132,
   "n_in_both_populations": 5,
   "class_census": {
    "choice-branch": 113,
-   "neither": 34,
+   "neither": 33,
    "ui-keyloop": 9
   },
   "class_census_leaf_refusals": {
    "choice-branch": 5,
-   "neither": 17,
+   "neither": 16,
    "ui-keyloop": 7
   },
   "class_census_cap_dominants": {
@@ -30,8 +30,8 @@
     113
    ],
    "neither": [
-    34,
-    34
+    33,
+    33
    ],
    "ui-keyloop": [
     9,
@@ -61,74 +61,10 @@
    "oCard.selectCardNotCancelObj": "snr_common.lua:main_77_18",
    "oCard.selectCardObj": "snr_common.lua:main_77_17"
   },
-  "n_observed_records": 57,
-  "n_orphan_observations": 7
+  "n_observed_records": 56,
+  "n_orphan_observations": 8
  },
  "candidates": [
-  {
-   "file": "config.lua",
-   "proto_path": "main",
-   "mechanical": {
-    "selected_as": [
-     "leaf-refusal"
-    ],
-    "n_insns": 57,
-    "nups": 0,
-    "numparams": 0,
-    "level": "L1",
-    "refusal_reason": "mismatch: maxstacksize",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": false,
-    "probe": {
-     "file_status": "OK",
-     "file_events": 3,
-     "dominant_global": null,
-     "dominant_global_events": null
-    },
-    "n_natural_loops": 0,
-    "n_back_edges": 0,
-    "poll_loops": [],
-    "calls_poll_directly": false,
-    "reaches_poll": false,
-    "loop_polls_per_iteration": false,
-    "in_loop_callees_reaching_poll": [],
-    "option_calls": [],
-    "channels": [],
-    "register_comparisons": 0,
-    "input_space": 1,
-    "drivable_within_budget": true,
-    "class": "neither",
-    "class_evidence": "no poll loop and no option call; no branch channel",
-    "footprint": {
-     "global_reads": [
-      "msg",
-      "msgQuit",
-      "pageScreen",
-      "playMovie",
-      "run",
-      "runAutoLoad",
-      "runAutoSave",
-      "runListLoad",
-      "runListSave",
-      "switchScreen",
-      "wait",
-      "waitLoading"
-     ],
-     "table_key_reads": [],
-     "calls": [],
-     "table_key_calls": [],
-     "dynamic_reads": 0,
-     "read_sites": 0,
-     "call_sites": 0
-    }
-   },
-   "observed": {
-    "reviewed_by": "neither-audit",
-    "class_agrees": true,
-    "note": "Chunk root; builds the permsPersist/permsUnpersist/config tables. No CALL at all; it stores wait/msg/msgQuit as values, never calls them."
-   }
-  },
   {
    "file": "snr_common.lua",
    "proto_path": "main_24",
@@ -143,7 +79,7 @@
     "refusal_reason": "mismatch: code",
     "refusal_origin": "own",
     "shipped": "fallback",
-    "hybrid_chunk": false,
+    "hybrid_chunk": true,
     "probe": {
      "file_status": "CAP",
      "file_events": 3001,
@@ -194,7 +130,7 @@
     "refusal_reason": "mismatch: code",
     "refusal_origin": "own",
     "shipped": "fallback",
-    "hybrid_chunk": false,
+    "hybrid_chunk": true,
     "probe": {
      "file_status": "CAP",
      "file_events": 3001,
@@ -256,7 +192,7 @@
     "refusal_reason": "mismatch: maxstacksize",
     "refusal_origin": "own",
     "shipped": "fallback",
-    "hybrid_chunk": false,
+    "hybrid_chunk": true,
     "probe": {
      "file_status": "CAP",
      "file_events": 3001,
@@ -327,7 +263,7 @@
     "refusal_reason": "mismatch: code",
     "refusal_origin": "own",
     "shipped": "fallback",
-    "hybrid_chunk": false,
+    "hybrid_chunk": true,
     "probe": {
      "file_status": "CAP",
      "file_events": 3001,
@@ -476,7 +412,7 @@
     "refusal_reason": "reconstruct: register 7 is read again after its staged value was consumed; classification called that definition a temporary",
     "refusal_origin": "own",
     "shipped": "fallback",
-    "hybrid_chunk": false,
+    "hybrid_chunk": true,
     "probe": {
      "file_status": "CAP",
      "file_events": 3001,
@@ -631,7 +567,7 @@
     "refusal_reason": "structure: pc 286: else-join out of range",
     "refusal_origin": "own",
     "shipped": "fallback",
-    "hybrid_chunk": false,
+    "hybrid_chunk": true,
     "probe": {
      "file_status": "CAP",
      "file_events": 3001,
@@ -776,7 +712,7 @@
     "refusal_reason": "mismatch: maxstacksize",
     "refusal_origin": "own",
     "shipped": "fallback",
-    "hybrid_chunk": false,
+    "hybrid_chunk": true,
     "probe": {
      "file_status": "CAP",
      "file_events": 3001,
@@ -842,8 +778,8 @@
     "level": "L3",
     "refusal_reason": null,
     "refusal_origin": null,
-    "shipped": "fallback",
-    "hybrid_chunk": false,
+    "shipped": "structured",
+    "hybrid_chunk": true,
     "probe": {
      "file_status": "CAP",
      "file_events": 3001,
@@ -1020,7 +956,7 @@
     "refusal_reason": "mismatch: maxstacksize",
     "refusal_origin": "own",
     "shipped": "fallback",
-    "hybrid_chunk": false,
+    "hybrid_chunk": true,
     "probe": {
      "file_status": "CAP",
      "file_events": 3001,
@@ -1182,7 +1118,7 @@
     "refusal_reason": "mismatch: code",
     "refusal_origin": "own",
     "shipped": "fallback",
-    "hybrid_chunk": false,
+    "hybrid_chunk": true,
     "probe": {
      "file_status": "CAP",
      "file_events": 3001,
@@ -1240,7 +1176,7 @@
     "refusal_reason": "mismatch: code",
     "refusal_origin": "own",
     "shipped": "fallback",
-    "hybrid_chunk": false,
+    "hybrid_chunk": true,
     "probe": {
      "file_status": "CAP",
      "file_events": 3001,
@@ -1291,7 +1227,7 @@
     "refusal_reason": "mismatch: code",
     "refusal_origin": "own",
     "shipped": "fallback",
-    "hybrid_chunk": false,
+    "hybrid_chunk": true,
     "probe": {
      "file_status": "CAP",
      "file_events": 3001,
@@ -26697,6 +26633,15 @@
   }
  ],
  "orphan_observations": [
+  {
+   "file": "config.lua",
+   "proto_path": "main",
+   "observed": {
+    "reviewed_by": "neither-audit",
+    "class_agrees": true,
+    "note": "Chunk root; builds the permsPersist/permsUnpersist/config tables. No CALL at all; it stores wait/msg/msgQuit as values, never calls them."
+   }
+  },
   {
    "file": "snr_common.lua",
    "proto_path": "main_74_13",

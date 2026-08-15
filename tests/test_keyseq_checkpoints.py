@@ -461,21 +461,52 @@ def test_config_main_circle_gate_and_wait(checkpoint_traces):
 # `oracle.compile_source(mutated)`, so the two traces are byte-equal and only
 # the property can fail -- see the task report.
 #
-# The anchors are `structure.fallback`'s pc-dispatch text, because
-# `snr_common.lua` ships whole-file fallback. Each is asserted unique before
-# use: an anchor that matched nothing would make the injection a no-op and the
-# case would pass while proving nothing. If the file ever ships structured,
-# these assertions fail loudly and the anchors have to be re-derived against
-# the new text; that is the intended failure, not a maintenance accident.
+# Each anchor is asserted unique before use: an anchor that matched nothing
+# would make the injection a no-op and the case would pass while proving
+# nothing. Since M7 task 6 `snr_common.lua` ships HYBRID, so the two
+# checkpoints anchor different text -- OptionMain's territory is the
+# re-emitted structured form, ConfigMain's (the `gate` cases below) still the
+# `__pld_R`/`__pld_pc` pc-dispatch text of the fallback subtree it lives in.
+# If either side's emitter output changes again, these assertions fail loudly
+# and the anchors have to be re-derived against the new text; that is the
+# intended failure, not a maintenance accident.
 #
 # A case may carry MORE than one (anchor, replacement) pair -- the key-polarity
-# swap needs two, because a swap is not a substitution.
+# swap needs two, because a swap is not a substitution. Both of its anchors
+# extend into the arm's first distinguishing body line (the RIGHT arm carries
+# the `5 < ... + 1` increment, the LEFT arm the `- 1 < 1` decrement): after
+# the first edit renames a key, the renamed site still matches the OTHER
+# anchor's pressButton line, and without the body line the second anchor
+# would count 2 and abort (measured, 2026-08-15).
 # --------------------------------------------------------------------------
 
-_CLAMP_UPPER_TEST = (b"if not (5 < __pld_R[10]) then __pld_pc = 105 "
-                     b"else __pld_pc = 106 end\n"
-                     b"elseif __pld_pc == 105 then\n__pld_pc = 109\n"
-                     b"elseif __pld_pc == 106 then\n__pld_R[10] = 5\n")
+# The clamp anchors were re-derived 2026-08-15 (M7 task 6): snr_common
+# flipped whole-file fallback -> HYBRID, so OptionMain's territory now ships
+# structured text and the old `__pld_R`/`__pld_pc` carriers matched nothing.
+# The injected BUG SHAPES are unchanged -- the specs are trace-level.
+_CLAMP_WIDE = (b"local l2_10 = 5 < systemSave[l1_0.optionKey0[l2_1]] + 1 "
+               b"and 5 or systemSave[l1_0.optionKey0[l2_1]] + 1")
+# The wide-clamp line is the uniqueness carrier (`5 < ... + 1` appears once
+# in the chunk); the store + `else` tail alone matches the LEFT arm too.
+_CLAMP_THEN_TAIL = (_CLAMP_WIDE + b"\n"
+                    b"                                l2_8[l2_9] = l2_10\n"
+                    b"                            else\n")
+
+_CLAMP_LEFT = (b"local l2_10 = systemSave[l1_0.optionKey0[l2_1]] - 1 < 1 "
+               b"and 1 or systemSave[l1_0.optionKey0[l2_1]] - 1")
+
+
+def _press_arm(key: bytes, clamp: bytes) -> bytes:
+    """One direction-handler arm: pressButton key, gate, class test, and the
+    arm's own clamp line (the distinguishing carrier -- see the block comment
+    above the injections)."""
+    return (b'if pressButton("' + key + b'") == true then\n'
+            b'                        if l2_2 == false then\n'
+            b'                            if l2_1 == 1 or l2_1 == 5 '
+            b'or l2_1 == 6 then\n'
+            b'                                local l2_8 = systemSave\n'
+            b'                                local l2_9 = l1_0.optionKey0[l2_1]\n'
+            b'                                ' + clamp)
 
 _ACCEPTED_BREAK = (b"elseif __pld_pc == 89 then\n"
                    b"__pld_R[3] = keyPlaySE\n__pld_R[4] = seName\n"
@@ -499,30 +530,39 @@ INJECTIONS = [
     # (id, which property, spec, [(anchor, replacement), ...], failure fragment)
     ("playbook: the 1..5 clamp writes, then the 0..1 clamp overwrites it",
      "clamp", OPTION_CLAMP_SPEC,
-     [(b"elseif __pld_pc == 115 then\n"
-       b"__pld_R[8][__pld_R[9]] = __pld_R[10]\n__pld_pc = 139\n",
-       b"elseif __pld_pc == 115 then\n"
-       b"__pld_R[8][__pld_R[9]] = __pld_R[10]\n__pld_pc = 117\n")],
+     [(_CLAMP_THEN_TAIL,
+       # close the then-arm after the wide clamp's store and run the else
+       # arm's narrow clamp unconditionally right after it (`end do`): for a
+       # wide-class key both stores run and the narrow one overwrites -- the
+       # historical "assign correctly, then unconditionally overwrite". The
+       # old fallback form said the same thing by redirecting pc 115 -> 117;
+       # `if not (wide)` instead of `do` would be a semantic NO-OP (the
+       # else-arm already runs exactly on `not wide`) and dies on the
+       # "the injection changed nothing" assertion below.
+       _CLAMP_WIDE + b"\n"
+       b"                                l2_8[l2_9] = l2_10\n"
+       b"                            end\n"
+       b"                            do\n")],
      "no longer mutually exclusive"),
     ("the wide clamp's bound moves from 5 to 4",
      "clamp", OPTION_CLAMP_SPEC,
-     [(_CLAMP_UPPER_TEST,
-       _CLAMP_UPPER_TEST.replace(b"5 <", b"4 <").replace(b"[10] = 5",
-                                                         b"[10] = 4"))],
+     [(_CLAMP_WIDE,
+       _CLAMP_WIDE.replace(b"5 < ", b"4 < ").replace(b"and 5 or",
+                                                     b"and 4 or"))],
      "pinned at 5 and 2"),
     ("the wide clamp is removed and the value runs away",
      "clamp", OPTION_CLAMP_SPEC,
-     [(b"__pld_R[10] = __pld_R[10] + 1\n"
-       b"if not (5 < __pld_R[10]) then __pld_pc = 105 "
-       b"else __pld_pc = 106 end\n",
-       b"__pld_R[10] = __pld_R[10] + 1\n__pld_pc = 105\n")],
+     [(_CLAMP_WIDE,
+       b"local l2_10 = systemSave[l1_0.optionKey0[l2_1]] + 1")],
      "is not a clamp"),
     # Round 1, from review: this passes every other clamp assertion. The same
     # five rectangles are reached in reverse order and `set()` erases order.
+    # Anchors extend into the arm's clamp line so the two stay distinguishable
+    # mid-swap (see the block comment above).
     ("the two direction keys are swapped",
      "clamp", OPTION_CLAMP_SPEC,
-     [(_POLL_RIGHT, _POLL_RIGHT.replace(b'"RIGHT"', b'"LEFT"')),
-      (_POLL_LEFT, _POLL_LEFT.replace(b'"LEFT"', b'"RIGHT"'))],
+     [(_press_arm(b"RIGHT", _CLAMP_WIDE), _press_arm(b"LEFT", _CLAMP_WIDE)),
+      (_press_arm(b"LEFT", _CLAMP_LEFT), _press_arm(b"RIGHT", _CLAMP_LEFT))],
      "the branch arms have swapped"),
     ("playbook: break promoted to unconditional",
      "gate", CONFIG_GATE_SPEC,

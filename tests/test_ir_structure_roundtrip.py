@@ -116,7 +116,7 @@ def test_roundtrip_preserves_core_opcodes_via_l3():
 # pinned explicitly rather than left implicit, per this repo's "measure,
 # don't assert" convention -- 4 of 22 ship fallback.
 _SCRIPT_SUBSET_LEVELS = {
-    "config.lua": "L1",
+    "config.lua": "L3",  # M7 task 6: dynamic-key constructor fix (was L1)
     "snr_common.lua": "L1",
     "snr_crd_0.lua": "L3",
     "snr_crd_1.lua": "L3",
@@ -144,7 +144,9 @@ _SCRIPT_SUBSET_LEVELS = {
 # Of the four non-`L3` mains above, the two whose chunk ships HYBRID rather
 # than whole-file fallback (measured 2026-08-14, M6 task 12; both were
 # whole-file fallback before it).
-_SUBSET_HYBRID = frozenset({"snr_graphic.lua", "snr_memory.lua"})
+# snr_common joined at M7 task 6 (dynamic-key constructor fix flipped it
+# whole-file fallback -> hybrid; 2026-08-15).
+_SUBSET_HYBRID = frozenset({"snr_graphic.lua", "snr_memory.lua", "snr_common.lua"})
 
 
 def _skip_if_subset_missing(corpus_dir) -> None:

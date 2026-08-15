@@ -307,30 +307,33 @@ def _constructor_field_target(fn: LirFunction, li: LirInstr,
     classification and the reconstruction agree by construction rather than by
     coincidence.
 
-    ## Why `SETTABLE` additionally needs a CONSTANT key
+    ## Why the fold and this exemption must move together
 
-    `_dispatch`'s fold is `op is Op.SETTABLE and a == reg and isk(ri.b)`:
-    `_fold_settable` builds the key with `ConstExpr(constants[indexk(ri.b)])`
-    and has no register-key form. A **dynamic-key** constructor
-    (`{[f()] = 1, [g()] = 2}`, `config.lua`'s main chunk) therefore does NOT
-    fold -- the reconstructor closes the context, materializes the table, and
-    emits each field as its own `t[k] = v` statement, which reads the table
-    once per field for real. Exempting those reads told the classifier the
-    table was a pop-once temporary; the reconstructor then popped it at the
-    first field and raised `register 0 is read again after its staged value
-    was consumed` at the second, taking `config.lua` from a `maxstacksize`
-    mismatch to a reconstruction refusal. Measured, not reasoned: this
-    condition is what keeps that file printable.
+    `_dispatch`'s fold is `op is Op.SETTABLE and a == reg` (keys constant OR
+    register: `_fold_settable` builds `ConstExpr` keys from `isk(B)` and
+    register keys from `_read_reg(ri.b)`). Until M7 task 6 the fold demanded
+    `isk(ri.b)`, and this exemption demanded it too -- a **dynamic-key**
+    constructor (`{[f] = 1, [g] = 2}`, `config.lua`'s main chunk) did not
+    fold, the reconstructor materialized the table and emitted each field as
+    its own `t[k] = v` statement, which reads the table once per field for
+    real; exempting those reads back then told the classifier the table was
+    a pop-once temporary, the reconstructor popped it at the first field and
+    raised `register 0 is read again after its staged value was consumed` at
+    the second. The two conditions therefore agree BY CONSTRUCTION -- the
+    docstring's own invariant -- and M7 task 6 changed both in the same
+    commit: the fold takes register keys, and the exemption follows. The
+    corpus evidence for the pair is `config.lua` flipping whole-file from
+    `mismatch: maxstacksize` to `L3`.
 
     The `c` check keeps the exemption from swallowing a store that reads the
     table in the *value* position too (`t[k] = t`). A constructor cannot
     produce that shape -- its values live above the table -- so declining the
     exemption there costs nothing and keeps the rule's statement true as
     written. **DEFENSIVE, not load-bearing:** measured over the corpus,
-    **0** of 1944 protos contain a `SETTABLE` with `isk(B)` and a register `C`
-    equal to `A`, so nothing here currently depends on it. Kept because the
-    sentence above ("the exemption applies to the table's own slot") is only
-    true as written with it, not because a fixture fails without it.
+    **0** of 1944 protos contain a `SETTABLE` with a register `C` equal to
+    `A`, so nothing here currently depends on it. Kept because the sentence
+    above ("the exemption applies to the table's own slot") is only true as
+    written with it, not because a fixture fails without it.
 
     Being wrong in either direction costs certifications, never correctness:
     the printed source is recompiled and compared field by field before
@@ -338,7 +341,7 @@ def _constructor_field_target(fn: LirFunction, li: LirInstr,
     """
     ri = li.ri
     if ri.op is Op.SETTABLE:
-        if not isk(ri.b) or (not isk(ri.c) and ri.c == ri.a):
+        if not isk(ri.c) and ri.c == ri.a:
             return None
     elif ri.op is not Op.SETLIST:
         return None

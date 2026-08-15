@@ -184,16 +184,22 @@ def test_corpus_probe_detects_a_value_mutation(corpus_dir, decompiled):
     """
     from scripts.probe_global_state import probe
     src = decompiled(corpus_dir / "snr_common.lua").source
-    anchor = b"__pld_R[0] = 195"           # feeds `myCardMax` and a for-limit
+    # The anchor is a top-level numeric literal that reaches a global (the
+    # probe only observes globals the chunk writes). Until M7 task 6 this
+    # was the fallback form `__pld_R[0] = 195` feeding `myCardMax`; the
+    # dynamic-key constructor fix flipped snr_common to a hybrid whose
+    # structured prologue writes `selectItemNo = 1` (unique in the source,
+    # re-derived 2026-08-15).
+    anchor = b"selectItemNo = 1"
     assert src.count(anchor) == 1, (
         "sensitivity anchor no longer unique in snr_common.lua's emitted "
         "source; re-derive it from a top-level numeric literal that reaches "
         "a global (the probe only observes globals the chunk writes)")
     orig = probe((corpus_dir / "snr_common.lua").read_bytes(), is_source=False)
-    mutated = probe(src.replace(anchor, b"__pld_R[0] = 196"), is_source=True)
+    mutated = probe(src.replace(anchor, b"selectItemNo = 2"), is_source=True)
     assert probe(src, is_source=True) == orig
     assert mutated != orig
-    assert "string:myCardMax=196" in mutated
+    assert "string:selectItemNo=2" in mutated
 
 
 def test_corpus_probe_detects_a_different_error(corpus_dir, decompiled):

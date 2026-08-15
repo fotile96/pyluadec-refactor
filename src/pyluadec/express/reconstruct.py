@@ -1192,11 +1192,22 @@ class Reconstructor:
             ctx["hazard"] |= _local_regs_in(item)
 
     def _fold_settable(self, ri) -> None:
-        key = ConstExpr(self.proto.constants[indexk(ri.b)])
+        # Constant keys (`isk(B)`) print as `{k = v}` sugar; REGISTER keys
+        # (`B < 256`, e.g. `{[f] = "a"}` with `f` a global read) are a
+        # constructor's dynamic-key form -- `lparser.c::recfield` reaches the
+        # same `OP_SETTABLE` through `'[' -> yindex`, and the key expression
+        # is whatever staged into that register (M7 task 6; before it the
+        # fold demanded `isk(ri.b)` and dynamic-key tables degraded to
+        # statement assignments, materializing a local the original never
+        # had -- config.lua:main's whole-file fallback).
+        key = (ConstExpr(self.proto.constants[indexk(ri.b)])
+               if isk(ri.b) else self._read_reg(ri.b))
         val = self.rk(ri.c)
         ctx = self._table_ctx_stack[-1]
         ctx["hash"].append((key, val))
         ctx["hazard"] |= _local_regs_in(val)
+        if not isk(ri.b):
+            ctx["hazard"] |= _local_regs_in(key)
 
     def _standalone_setlist(self, li: LirInstr) -> None:
         """SETLIST with no active matching table-ctx (NEWTABLE and its
@@ -1355,7 +1366,7 @@ class Reconstructor:
             if op is Op.SETLIST and a == reg:
                 self._fold_setlist(li)
                 return
-            if op is Op.SETTABLE and a == reg and isk(ri.b):
+            if op is Op.SETTABLE and a == reg:
                 self._fold_settable(ri)
                 return
             fx = li.effects

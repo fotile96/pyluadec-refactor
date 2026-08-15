@@ -169,7 +169,10 @@ def test_observed_records_have_the_reviewed_shape(doc):
 #:   for r in d['candidates'] if 'observed' in r]; \
 #:   print(hashlib.sha256(json.dumps({'observed':obs,'orphans':d.get('orphan_observations',[])}, \
 #:   sort_keys=True,ensure_ascii=True).encode('ascii')).hexdigest())"
-_OBSERVED_DIGEST = "b02cd79fc8a55d10c7aaea694a9e4c07164f3534712859ba25500173dc0285ac"
+# 57 blocks / 7 orphans at the M6 close; 56 / 8 after M7 task 6 certified
+# config.lua:main -- its observation record moved to orphan quarantine
+# (preserved, not lost). Re-derived 2026-08-15 with the command above.
+_OBSERVED_DIGEST = "2cb65f24e80e6cd51d056968832bcb42a1b0829acf528f670867859664cea5fc"
 
 
 def test_the_observed_half_is_pinned_by_digest():
@@ -183,7 +186,7 @@ def test_the_observed_half_is_pinned_by_digest():
     changing a reviewer's note, a `class_agrees` verdict, or the orphan list
     now requires changing this literal in the same commit, which puts the edit
     in the diff as a deliberate act instead of a byte nobody adjudicated.
-    Measured 2026-08-14: 57 observed blocks, 7 orphans.
+    Measured 2026-08-14: 57 observed blocks, 7 orphans; 56 / 8 after M7 task 6 (2026-08-15).
     """
     import hashlib
     doc = json.loads(CLASSES.read_text())
@@ -191,7 +194,7 @@ def test_the_observed_half_is_pinned_by_digest():
             "observed": r["observed"]}
            for r in doc["candidates"] if "observed" in r]
     orphans = doc.get("orphan_observations", [])
-    assert (len(obs), len(orphans)) == (57, 7)
+    assert (len(obs), len(orphans)) == (56, 8)
     blob = json.dumps({"observed": obs, "orphans": orphans},
                       sort_keys=True, ensure_ascii=True)
     assert hashlib.sha256(blob.encode("ascii")).hexdigest() == _OBSERVED_DIGEST, (
@@ -572,8 +575,10 @@ def test_leaf_refusal_rule_agrees_with_an_independent_stubbing_experiment(corpus
 
     # 48 before M6 task 11 closed 20 of the 21 `structure:` shapes (7 to `L3`,
     # 13 to `mismatch:`), then 41 before task 12's constructor/capture
-    # classification fixes lifted one more; re-measured 2026-08-14.
-    assert len(non_l3) == 40, len(non_l3)
+    # classification fixes lifted one more, 40 at the M6 close (2026-08-14);
+    # 39 after M7 task 6's dynamic-key constructor fix certified
+    # config.lua:main (2026-08-15).
+    assert len(non_l3) == 39, len(non_l3)
     checked = 0
     for (f, path), (row, p) in sorted(non_l3.items()):
         kind = row["refusal_reason"].split(":", 1)[0]
