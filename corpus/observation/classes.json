@@ -3,21 +3,21 @@
  "summary": {
   "n_files": 229,
   "n_protos": 1944,
-  "n_candidates": 150,
-  "n_leaf_refusals": 23,
-  "n_non_l3": 33,
+  "n_candidates": 148,
+  "n_leaf_refusals": 19,
+  "n_non_l3": 28,
   "n_cap_files": 132,
   "n_cap_dominants": 132,
-  "n_in_both_populations": 5,
+  "n_in_both_populations": 3,
   "class_census": {
    "choice-branch": 111,
-   "neither": 30,
+   "neither": 28,
    "ui-keyloop": 9
   },
   "class_census_leaf_refusals": {
-   "choice-branch": 3,
-   "neither": 13,
-   "ui-keyloop": 7
+   "choice-branch": 2,
+   "neither": 11,
+   "ui-keyloop": 6
   },
   "class_census_cap_dominants": {
    "choice-branch": 111,
@@ -30,8 +30,8 @@
     111
    ],
    "neither": [
-    30,
-    30
+    28,
+    28
    ],
    "ui-keyloop": [
     9,
@@ -61,8 +61,8 @@
    "oCard.selectCardNotCancelObj": "snr_common.lua:main_77_18",
    "oCard.selectCardObj": "snr_common.lua:main_77_17"
   },
-  "n_observed_records": 52,
-  "n_orphan_observations": 12
+  "n_observed_records": 50,
+  "n_orphan_observations": 14
  },
  "candidates": [
   {
@@ -22162,16 +22162,15 @@
    "proto_path": "main_4",
    "mechanical": {
     "selected_as": [
-     "leaf-refusal",
      "cap-dominant"
     ],
     "n_insns": 482,
     "nups": 9,
     "numparams": 0,
-    "level": "L1",
-    "refusal_reason": "mismatch: code",
-    "refusal_origin": "own",
-    "shipped": "fallback",
+    "level": "L3",
+    "refusal_reason": null,
+    "refusal_origin": null,
+    "shipped": "structured",
     "hybrid_chunk": true,
     "probe": {
      "file_status": "CAP",
@@ -22552,130 +22551,6 @@
    }
   },
   {
-   "file": "snr_novel.lua",
-   "proto_path": "main_2",
-   "mechanical": {
-    "selected_as": [
-     "leaf-refusal"
-    ],
-    "n_insns": 93,
-    "nups": 1,
-    "numparams": 1,
-    "level": "L1",
-    "refusal_reason": "mismatch: code",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": false,
-    "probe": {
-     "file_status": "OK",
-     "file_events": 41,
-     "dominant_global": null,
-     "dominant_global_events": null
-    },
-    "n_natural_loops": 0,
-    "n_back_edges": 0,
-    "poll_loops": [],
-    "calls_poll_directly": false,
-    "reaches_poll": false,
-    "loop_polls_per_iteration": false,
-    "in_loop_callees_reaching_poll": [],
-    "option_calls": [],
-    "channels": [],
-    "register_comparisons": 0,
-    "input_space": 1,
-    "drivable_within_budget": true,
-    "class": "neither",
-    "class_evidence": "no poll loop and no option call; no branch channel",
-    "footprint": {
-     "global_reads": [
-      "layerCopy",
-      "layerPosition"
-     ],
-     "table_key_reads": [],
-     "calls": [
-      "layerCopy",
-      "layerPosition"
-     ],
-     "table_key_calls": [],
-     "dynamic_reads": 9,
-     "read_sites": 32,
-     "call_sites": 6
-    }
-   },
-   "observed": {
-    "reviewed_by": "neither-audit",
-    "class_agrees": true,
-    "note": "Draws the novel index icons; called from main_5 pc 19."
-   }
-  },
-  {
-   "file": "snr_novel.lua",
-   "proto_path": "main_3",
-   "mechanical": {
-    "selected_as": [
-     "leaf-refusal"
-    ],
-    "n_insns": 348,
-    "nups": 1,
-    "numparams": 3,
-    "level": "L1",
-    "refusal_reason": "mismatch: code",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": false,
-    "probe": {
-     "file_status": "OK",
-     "file_events": 41,
-     "dominant_global": null,
-     "dominant_global_events": null
-    },
-    "n_natural_loops": 0,
-    "n_back_edges": 0,
-    "poll_loops": [],
-    "calls_poll_directly": false,
-    "reaches_poll": false,
-    "loop_polls_per_iteration": false,
-    "in_loop_callees_reaching_poll": [],
-    "option_calls": [],
-    "channels": [],
-    "register_comparisons": 0,
-    "input_space": 1,
-    "drivable_within_budget": true,
-    "class": "neither",
-    "class_evidence": "no poll loop and no option call; no branch channel",
-    "footprint": {
-     "global_reads": [
-      "layerClip",
-      "layerCopy",
-      "layerMoveClip",
-      "layerMovePosition",
-      "layerMoveScale",
-      "layerPosition",
-      "layerScale"
-     ],
-     "table_key_reads": [],
-     "calls": [
-      "layerClip",
-      "layerCopy",
-      "layerMoveClip",
-      "layerMovePosition",
-      "layerMoveScale",
-      "layerPosition",
-      "layerScale"
-     ],
-     "table_key_calls": [],
-     "dynamic_reads": 18,
-     "read_sites": 92,
-     "call_sites": 35
-    }
-   },
-   "observed": {
-    "reviewed_by": "neither-audit",
-    "class_agrees": true,
-    "note": "Novel page open/close animation; called from main_4 pc 83."
-   }
-  },
-  {
    "file": "snr_s0_10_f.lua",
    "proto_path": "main_7",
    "mechanical": {
@@ -22894,17 +22769,16 @@
    "proto_path": "main_48",
    "mechanical": {
     "selected_as": [
-     "leaf-refusal",
      "cap-dominant"
     ],
     "n_insns": 826,
     "nups": 48,
     "numparams": 0,
-    "level": "L1",
-    "refusal_reason": "mismatch: code",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": true,
+    "level": "L3",
+    "refusal_reason": null,
+    "refusal_origin": null,
+    "shipped": "structured",
+    "hybrid_chunk": false,
     "probe": {
      "file_status": "CAP",
      "file_events": 3001,
@@ -26089,6 +25963,24 @@
     "reviewed_by": "neither-audit",
     "class_agrees": true,
     "note": "Draws a memory-gallery thumbnail page; called from main_4 pc 35."
+   }
+  },
+  {
+   "file": "snr_novel.lua",
+   "proto_path": "main_2",
+   "observed": {
+    "reviewed_by": "neither-audit",
+    "class_agrees": true,
+    "note": "Draws the novel index icons; called from main_5 pc 19."
+   }
+  },
+  {
+   "file": "snr_novel.lua",
+   "proto_path": "main_3",
+   "observed": {
+    "reviewed_by": "neither-audit",
+    "class_agrees": true,
+    "note": "Novel page open/close animation; called from main_4 pc 83."
    }
   },
   {

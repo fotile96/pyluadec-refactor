@@ -1440,9 +1440,15 @@ def test_a_chunk_that_is_not_fully_l3_cannot_be_granted():
     its shipped fallback text taints `{compare 3, loop 16}`. The `__pld_R` box
     model hides 33 compare sites and invents 13 loop sites.
 
-    The fixture below is a two-statement script-built table, which this
-    pipeline emits as fallback (`mismatch: code`). Its taint is empty and its
-    traces agree, so before the precondition it granted.
+    The fixture below is a one-field literal plus a statement store, which
+    this pipeline still emits as fallback (`mismatch: code`: the fold absorbs
+    the store, changing the NEWTABLE hash hint and dropping the SETTABLE) --
+    the one half of the constructor-hint residual M7 task 9's hint-0 budget
+    gate deliberately leaves folding (a hint of 0 is the only unambiguous
+    "statement-built" verdict; see `_close_table_ctx`). Until task 9 the
+    fixture was the pure statement-built `local t = {} t.x = sys.a`, which
+    now certifies. Its taint is empty and its traces agree, so before the
+    precondition it granted.
     """
     from scripts.probe_keyseq import evaluate, static_refusal
     from pyluadec.ingest import load_bytes
@@ -1450,7 +1456,7 @@ def test_a_chunk_that_is_not_fully_l3_cannot_be_granted():
     src = b"""
 function main()
   pressButton("CIRCLE")
-  local t = {}
+  local t = {seed = 1}
   t.x = sys.a
   if t.x == "x" then hit() else miss() end
 end

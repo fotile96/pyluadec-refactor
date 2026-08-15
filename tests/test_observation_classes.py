@@ -171,10 +171,13 @@ def test_observed_records_have_the_reviewed_shape(doc):
 #:   sort_keys=True,ensure_ascii=True).encode('ascii')).hexdigest())"
 # 57 blocks / 7 orphans at the M6 close; 56 / 8 after M7 task 6, 54 / 10
 # after M7 task 7, 52 / 12 after M7 task 8's staging-span exemption
-# certified two more (snr_graphic:main_2, snr_memory:main_2) -- their
-# observation records moved to orphan quarantine (preserved, not lost).
-# Re-derived 2026-08-15 with the command above.
-_OBSERVED_DIGEST = "002a4fcbe1bf98fe8128c24f8bf0b8bcb372d7fa6f65ea951159c47723956990"
+# certified two more (snr_graphic:main_2, snr_memory:main_2), 50 / 14 after
+# M7 task 9 (2026-08-16: the reaching-definition `>` recogniser and the
+# hint-0 constructor budget gate certified five more candidate shapes --
+# their observation records moved to orphan quarantine (preserved, not
+# lost).
+# Re-derived 2026-08-16 with the command above.
+_OBSERVED_DIGEST = "03a36162aeaee3c631f1b90d9a5fe772ce055343bbc279bf69daddd67550e7de"
 
 
 def test_the_observed_half_is_pinned_by_digest():
@@ -189,7 +192,8 @@ def test_the_observed_half_is_pinned_by_digest():
     now requires changing this literal in the same commit, which puts the edit
     in the diff as a deliberate act instead of a byte nobody adjudicated.
     Measured 2026-08-14: 57 observed blocks, 7 orphans; 56 / 8 after M7
-    task 6, 54 / 10 after task 7, 52 / 12 after task 8 (2026-08-15).
+    task 6, 54 / 10 after task 7, 52 / 12 after task 8, 50 / 14 after
+    task 9 (2026-08-16).
     """
     import hashlib
     doc = json.loads(CLASSES.read_text())
@@ -197,7 +201,7 @@ def test_the_observed_half_is_pinned_by_digest():
             "observed": r["observed"]}
            for r in doc["candidates"] if "observed" in r]
     orphans = doc.get("orphan_observations", [])
-    assert (len(obs), len(orphans)) == (52, 12)
+    assert (len(obs), len(orphans)) == (50, 14)
     blob = json.dumps({"observed": obs, "orphans": orphans},
                       sort_keys=True, ensure_ascii=True)
     assert hashlib.sha256(blob.encode("ascii")).hexdigest() == _OBSERVED_DIGEST, (
@@ -582,8 +586,10 @@ def test_leaf_refusal_rule_agrees_with_an_independent_stubbing_experiment(corpus
     # 39 after M7 task 6's dynamic-key constructor fix certified
     # config.lua:main; 35 after M7 task 7's skipped-kill veto certified the
     # clamp family; 33 after M7 task 8's staging-span exemption certified
-    # snr_graphic:main_2 and snr_memory:main_2 (2026-08-15).
-    assert len(non_l3) == 33, len(non_l3)
+    # snr_graphic:main_2 and snr_memory:main_2 (2026-08-15); 28 after M7
+    # task 9's reaching-definition `>` recogniser and hint-0 constructor
+    # budget gate (2026-08-16).
+    assert len(non_l3) == 28, len(non_l3)
     checked = 0
     for (f, path), (row, p) in sorted(non_l3.items()):
         kind = row["refusal_reason"].split(":", 1)[0]

@@ -110,7 +110,13 @@ def test_uncertified_source_is_never_shipped():
     from pyluadec.ingest import load_bytes
     from pyluadec.pipeline import decompile_chunk
     for src in (_UNSTRUCTURABLE,
-                b"local t = {} t[1] = 2 return t"):
+                # Carrier re-derived at M7 task 9: the previous
+                # `local t = {} t[1] = 2 return t` certifies now (its hint-0
+                # NEWTABLE is recognized as statement-built and printed
+                # statement-for-statement). The hint-1 shape below still
+                # folds its store into the literal, so the recompiled hints
+                # differ and the root stays `L1`.
+                b"local t = {a = 1} t.b = 2 return t"):
         root = load_bytes(oracle.compile_source(src, strip=True))
         # The premise the assertions below rest on, asserted rather than
         # assumed: there is no hybrid for these two, so "not L3" really does
