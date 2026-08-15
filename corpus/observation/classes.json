@@ -3,20 +3,20 @@
  "summary": {
   "n_files": 229,
   "n_protos": 1944,
-  "n_candidates": 152,
-  "n_leaf_refusals": 25,
-  "n_non_l3": 35,
+  "n_candidates": 150,
+  "n_leaf_refusals": 23,
+  "n_non_l3": 33,
   "n_cap_files": 132,
   "n_cap_dominants": 132,
   "n_in_both_populations": 5,
   "class_census": {
    "choice-branch": 111,
-   "neither": 32,
+   "neither": 30,
    "ui-keyloop": 9
   },
   "class_census_leaf_refusals": {
    "choice-branch": 3,
-   "neither": 15,
+   "neither": 13,
    "ui-keyloop": 7
   },
   "class_census_cap_dominants": {
@@ -30,8 +30,8 @@
     111
    ],
    "neither": [
-    32,
-    32
+    30,
+    30
    ],
    "ui-keyloop": [
     9,
@@ -61,8 +61,8 @@
    "oCard.selectCardNotCancelObj": "snr_common.lua:main_77_18",
    "oCard.selectCardObj": "snr_common.lua:main_77_17"
   },
-  "n_observed_records": 54,
-  "n_orphan_observations": 10
+  "n_observed_records": 52,
+  "n_orphan_observations": 12
  },
  "candidates": [
   {
@@ -21404,97 +21404,6 @@
   },
   {
    "file": "snr_graphic.lua",
-   "proto_path": "main_2",
-   "mechanical": {
-    "selected_as": [
-     "leaf-refusal"
-    ],
-    "n_insns": 207,
-    "nups": 6,
-    "numparams": 0,
-    "level": "L1",
-    "refusal_reason": "mismatch: maxstacksize",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": true,
-    "probe": {
-     "file_status": "CAP",
-     "file_events": 3001,
-     "dominant_global": null,
-     "dominant_global_events": null
-    },
-    "n_natural_loops": 1,
-    "n_back_edges": 2,
-    "poll_loops": [],
-    "calls_poll_directly": false,
-    "reaches_poll": false,
-    "loop_polls_per_iteration": false,
-    "in_loop_callees_reaching_poll": [],
-    "option_calls": [],
-    "channels": [
-     {
-      "path": [
-       {
-        "key": "systemSave"
-       },
-       {
-        "key": "cgFlag"
-       },
-       {
-        "dynamic": true
-       }
-      ],
-      "text": "systemSave.cgFlag[*]",
-      "domain": 2,
-      "constants": [
-       "true"
-      ],
-      "truth_tested": false
-     }
-    ],
-    "register_comparisons": 0,
-    "input_space": 2,
-    "drivable_within_budget": true,
-    "class": "neither",
-    "class_evidence": "no poll loop and no option call; 1 branch channel(s)",
-    "footprint": {
-     "global_reads": [
-      "cGetFileName",
-      "layerClip",
-      "layerCopy",
-      "layerLoad",
-      "layerPosition",
-      "layerVisible",
-      "systemSave"
-     ],
-     "table_key_reads": [
-      [
-       "systemSave",
-       "cgFlag"
-      ]
-     ],
-     "calls": [
-      "cGetFileName",
-      "layerClip",
-      "layerCopy",
-      "layerLoad",
-      "layerPosition",
-      "layerVisible"
-     ],
-     "table_key_calls": [],
-     "dynamic_reads": 5,
-     "read_sites": 58,
-     "call_sites": 19
-    }
-   },
-   "observed": {
-    "reviewed_by": "neither-audit",
-    "class_agrees": true,
-    "note": "Draws a CG thumbnail page; called from main_4 pc 31."
-   }
-  },
-  {
-   "file": "snr_graphic.lua",
    "proto_path": "main_3",
    "mechanical": {
     "selected_as": [
@@ -21504,7 +21413,7 @@
     "nups": 5,
     "numparams": 4,
     "level": "L1",
-    "refusal_reason": "mismatch: maxstacksize",
+    "refusal_reason": "reconstruct: register 7 is read again after its staged value was consumed; classification called that definition a temporary",
     "refusal_origin": "own",
     "shipped": "fallback",
     "hybrid_chunk": true,
@@ -22157,99 +22066,6 @@
   },
   {
    "file": "snr_memory.lua",
-   "proto_path": "main_2",
-   "mechanical": {
-    "selected_as": [
-     "leaf-refusal"
-    ],
-    "n_insns": 211,
-    "nups": 6,
-    "numparams": 0,
-    "level": "L1",
-    "refusal_reason": "mismatch: maxstacksize",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": true,
-    "probe": {
-     "file_status": "CAP",
-     "file_events": 3001,
-     "dominant_global": null,
-     "dominant_global_events": null
-    },
-    "n_natural_loops": 1,
-    "n_back_edges": 2,
-    "poll_loops": [],
-    "calls_poll_directly": false,
-    "reaches_poll": false,
-    "loop_polls_per_iteration": false,
-    "in_loop_callees_reaching_poll": [],
-    "option_calls": [],
-    "channels": [
-     {
-      "path": [
-       {
-        "key": "systemSave"
-       },
-       {
-        "key": "memoryFlag"
-       },
-       {
-        "dynamic": true
-       }
-      ],
-      "text": "systemSave.memoryFlag[*]",
-      "domain": 2,
-      "constants": [
-       "true"
-      ],
-      "truth_tested": false
-     }
-    ],
-    "register_comparisons": 0,
-    "input_space": 2,
-    "drivable_within_budget": true,
-    "class": "neither",
-    "class_evidence": "no poll loop and no option call; 1 branch channel(s)",
-    "footprint": {
-     "global_reads": [
-      "cGetFileName",
-      "layerClip",
-      "layerCopy",
-      "layerLoad",
-      "layerPosition",
-      "layerVisible",
-      "switchScreen",
-      "systemSave"
-     ],
-     "table_key_reads": [
-      [
-       "systemSave",
-       "memoryFlag"
-      ]
-     ],
-     "calls": [
-      "cGetFileName",
-      "layerClip",
-      "layerCopy",
-      "layerLoad",
-      "layerPosition",
-      "layerVisible",
-      "switchScreen"
-     ],
-     "table_key_calls": [],
-     "dynamic_reads": 5,
-     "read_sites": 57,
-     "call_sites": 20
-    }
-   },
-   "observed": {
-    "reviewed_by": "neither-audit",
-    "class_agrees": true,
-    "note": "Draws a memory-gallery thumbnail page; called from main_4 pc 35."
-   }
-  },
-  {
-   "file": "snr_memory.lua",
    "proto_path": "main_3",
    "mechanical": {
     "selected_as": [
@@ -22259,7 +22075,7 @@
     "nups": 5,
     "numparams": 4,
     "level": "L1",
-    "refusal_reason": "mismatch: maxstacksize",
+    "refusal_reason": "reconstruct: register 7 is read again after its staged value was consumed; classification called that definition a temporary",
     "refusal_origin": "own",
     "shipped": "fallback",
     "hybrid_chunk": true,
@@ -22746,7 +22562,7 @@
     "nups": 1,
     "numparams": 1,
     "level": "L1",
-    "refusal_reason": "mismatch: maxstacksize",
+    "refusal_reason": "mismatch: code",
     "refusal_origin": "own",
     "shipped": "fallback",
     "hybrid_chunk": false,
@@ -22803,7 +22619,7 @@
     "nups": 1,
     "numparams": 3,
     "level": "L1",
-    "refusal_reason": "mismatch: maxstacksize",
+    "refusal_reason": "mismatch: code",
     "refusal_origin": "own",
     "shipped": "fallback",
     "hybrid_chunk": false,
@@ -26249,12 +26065,30 @@
    }
   },
   {
+   "file": "snr_graphic.lua",
+   "proto_path": "main_2",
+   "observed": {
+    "reviewed_by": "neither-audit",
+    "class_agrees": true,
+    "note": "Draws a CG thumbnail page; called from main_4 pc 31."
+   }
+  },
+  {
    "file": "snr_mainmenu.lua",
    "proto_path": "main_2",
    "observed": {
     "reviewed_by": "neither-audit",
     "class_agrees": true,
     "note": "Builds and draws the main-menu screen; called from main_7 pc 13. savedataTitle at pc 4, wait at pc 48."
+   }
+  },
+  {
+   "file": "snr_memory.lua",
+   "proto_path": "main_2",
+   "observed": {
+    "reviewed_by": "neither-audit",
+    "class_agrees": true,
+    "note": "Draws a memory-gallery thumbnail page; called from main_4 pc 35."
    }
   },
   {

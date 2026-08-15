@@ -592,18 +592,21 @@ def test_corpus_hybrid_invariant_on_one_file(corpus_dir):
 
     One file, not all: this re-compiles the artifact and re-runs
     `compare_protos` over the whole tree. `snr_memory.lua` is chosen because
-    its frontier has three substituted subtrees (measured 2026-08-15, M7 task
-    7), so the antichain logic is exercised rather than assumed. The previous
-    carrier was `snr_s5_10_s.lua` (2 substituted, 98 protos) until M7 task 7
-    certified its substituted clamp rows and the file went fully structured;
-    the two larger multi-substitution hybrids (`snr_graphic.lua`, also 3, and
-    `snr_common.lua`, 41 over 147 protos) cost more for the same coverage."""
+    its frontier has more than one substituted subtree (2 as of M7 task 8,
+    measured 2026-08-15: `main_3` + `main_4`, after the staging-span exemption
+    certified `main_2`; it was 3 at task 7, which is why this file was chosen
+    then), so the antichain logic is exercised rather than assumed. The
+    previous carrier was `snr_s5_10_s.lua` (2 substituted, 98 protos) until
+    M7 task 7 certified its substituted clamp rows and the file went fully
+    structured; the larger multi-substitution hybrids (`snr_graphic.lua`,
+    also 2, and `snr_common.lua`, 41 over 147 protos) cost more for the same
+    coverage."""
     from pyluadec.ingest import load_file
     root = load_file(corpus_dir / "snr_memory.lua")
     outcome = S.emit_certified_chunk(root)
     hc = S.certify_hybrid(root, outcome.certs)
     assert hc is not None
-    assert len(hc.fallback_paths) == 3, sorted(hc.fallback_paths)
+    assert hc.fallback_paths == frozenset({"main_3", "main_4"})
     assert shipping_violations(root, outcome, hc) == []
 
 

@@ -34,6 +34,7 @@ boundary.
 """
 from __future__ import annotations
 
+import bisect
 import struct
 from dataclasses import dataclass
 
@@ -234,6 +235,9 @@ class Reconstructor:
         # feeding an `and`/`or`, so the instruction that computes it must not
         # emit the `local ... = ...` statement `rc` would otherwise ask for.
         self._force_temp: set[int] = set()
+        # Jump-structure view for `_cond_value_stages` (M7 task 8), built
+        # lazily -- most reconstructions never meet a `CondValue`.
+        self._span_view = None
         # Registers whose `env` entry is an UNCONSUMED staged temp expression
         # (as opposed to the `LocalExpr(reg)` placeholder force_materialize
         # leaves behind). Made explicit because classification is now per
@@ -664,9 +668,74 @@ class Reconstructor:
         """
         self._out = []
         expr = self._value_expr(cv.node, cv.target)
-        self.write_reg(cv.target, expr, pc=self._last_target_def(cv))
+        # M7 task 8 (mechanism C, second half): a `CondValue` chain's result
+        # is a REGION-computed merge -- the expression already subsumes every
+        # path through the chain -- so staging it for the consumer to inline
+        # (`g(a and 1 or 2)` -- no `local` at all, the only spelling that
+        # recompiles with the callee in place) is sound whenever the jump
+        # structure from the chain's end to the consumer's read carries no
+        # loop/arm hazard. `_staging_span_ok` with `entry_at_r_ok=True` is
+        # that check: a branch landing exactly ON the read is the chain's own
+        # join, not an outside entry. Without the check (or when it refuses)
+        # the write keeps the walk's grade -- usually materialize, which is
+        # always printable.
+        if self._cond_value_stages(cv):
+            self._force_temp.add(cv.target)
+            try:
+                self.write_reg(cv.target, expr, pc=self._last_target_def(cv))
+            finally:
+                self._force_temp.discard(cv.target)
+        else:
+            self.write_reg(cv.target, expr, pc=self._last_target_def(cv))
         self._finalize_pending()
         return tuple(self._out)
+
+    def _cond_value_stages(self, cv: CondValue) -> bool:
+        """`_staging_span_ok(convergence, first-read-of-target-after-it)` for
+        this chain, with the span view built once per Reconstructor.
+
+        The chain's value is born where every path through it has CONVERGED:
+        one past its last claimed pc, or further out at the furthest target
+        of the chain's own exit jumps (`g(b, a and 1 or 2, b)`: the skip path
+        leaves at pc7 for pc9 while the fall-through tail ends at pc8 -- the
+        convergence is 9). Starting the span at `max(claimed)` alone would
+        count the chain's own exit jump as an "outside entry into the
+        interval" and refuse the shape the rule exists for."""
+        from pyluadec.express.freereg import _staging_span_ok, build_span_view
+        if self._span_view is None:
+            self._span_view = build_span_view(self.fn)
+        hi = max(cv.claimed_pcs)
+        d = hi + 1
+        lo = bisect.bisect_right(self._span_view.branches, (hi, ()))
+        # branches with pc <= hi, i.e. inside-or-before the chain; the chain
+        # occupies a contiguous claim, so bisect on hi bounds them from above
+        # and the scan below only lifts targets PAST the claim.
+        for k in range(lo):
+            pc, succs = self._span_view.branches[k]
+            if pc >= min(cv.claimed_pcs):
+                d = max(d, max(succs))
+        r = self._next_read_after(cv.target, hi)
+        return r is not None and _staging_span_ok(
+            self._span_view, d, r, entry_at_r_ok=True, read_reg=cv.target)
+
+    def _next_read_after(self, reg: int, after: int) -> int | None:
+        """First pc past `after` that reads `reg` (explicitly, or through an
+        `R[a..top)` open range covering it), or None if a WRITE to `reg`
+        comes first (the value dies unreplaced -- staging it would leak an
+        expression no consumer ever pops)."""
+        for pc in sorted(self.fn.instrs):
+            if pc <= after:
+                continue
+            li = self.fn.instrs[pc]
+            ri = li.ri
+            if reg in li.effects.reads:
+                return pc
+            if li.effects.reads_open and reg >= (
+                    ri.a if ri.op is Op.RETURN else ri.a + 1):
+                return pc
+            if reg in li.effects.writes:
+                return None
+        return None
 
     def _last_target_def(self, cv: CondValue) -> int | None:
         """The highest pc in `cv.claimed_pcs` that writes `cv.target`, or None

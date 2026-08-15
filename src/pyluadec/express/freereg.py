@@ -147,6 +147,139 @@ class _Pending:
     bad: bool = False
 
 
+# Hard cap on how far a staged value may reach across basic blocks (see
+# `_staging_span_ok`). Real luac keeps one statement's expression window to a
+# handful of instructions; a span past this bound is not a statement window
+# but unrelated code the pc-linear walk is misreading, and the answer is the
+# budget refusal -- materialize, the safe direction -- never an unbounded
+# scan and never a silent sample.
+_MAX_STAGING_SPAN = 256
+
+
+@dataclass(frozen=True)
+class _SpanView:
+    """Jump-structure summary `_staging_span_ok` needs, built once per
+    function by `build_span_view` (shared with `express/reconstruct.py`).
+
+    `branches` is every instruction whose successors are not exactly the
+    fall-through `(pc + 1,)` -- TEST/EQ/LT/LE, JMP, FORPREP, FORLOOP, TFORLOOP
+    -- sorted by pc, with its successor tuple. `target_srcs` maps each branch
+    target pc to the (min, max) pc of the branches targeting it.
+    `up_moves` maps each upward `MOVE a, b` (a > b) pc to its source `b` --
+    `luaK_exp2nextreg` copies a VLOCAL upward and never a temporary (a
+    temporary already sits at freereg - 1), so such a MOVE is bytecode-level
+    proof its source slot held a named local.
+    """
+    branches: list[tuple[int, tuple[int, ...]]]
+    target_srcs: dict[int, tuple[int, int]]
+    up_moves: dict[int, int]
+
+
+def build_span_view(fn: LirFunction) -> _SpanView:
+    branches: list[tuple[int, tuple[int, ...]]] = []
+    target_srcs: dict[int, list[int]] = {}
+    up_moves: dict[int, int] = {}
+    for pc in sorted(fn.instrs):
+        li = fn.instrs[pc]
+        succs = li.successors
+        if succs == (pc + 1,):
+            if li.ri.op is Op.MOVE and li.ri.a > li.ri.b:
+                up_moves[pc] = li.ri.b
+            continue
+        branches.append((pc, succs))
+        for s in succs:
+            target_srcs.setdefault(s, []).append(pc)
+    return _SpanView(
+        branches=branches,
+        target_srcs={t: (min(srcs), max(srcs))
+                     for t, srcs in target_srcs.items()},
+        up_moves=up_moves)
+
+
+def _staging_span_ok(view: _SpanView, d: int, r: int, *,
+                     entry_at_r_ok: bool, read_reg: int | None = None) -> bool:
+    """True iff a value defined at `d` may stay STAGED (inlined as an
+    expression) at its read at `r` even though `d` and `r` sit in different
+    basic blocks (M7 task 8, mechanism C).
+
+    What the block boundary actually protects -- the two properties
+    `_same_block`'s docstring proves -- is (1) execution counts: a read that
+    runs a different number of times than its definition (loop bodies, loop
+    exits) must not inline the definition's expression; and (2) scope
+    isolation: a pop inside an `open_scope`/`close_scope` region is rolled
+    back, dropping the block's statement. Both are properties of the JUMP
+    STRUCTURE between `d` and `r`, and the four clauses below read them off
+    it:
+
+      * interior branches go FORWARD and land at or before `r` -- an `if`
+        arm's exit jump, a loop header's skip-out and a FORPREP into a loop
+        body all jump PAST a read inside those constructs, which is exactly
+        the arm/loop shape the barrier must keep refusing;
+      * no branch from OUTSIDE `[d, r)` targets strictly inside `(d, r]` --
+        control that reaches the middle without passing `d` makes `r`'s read
+        a phi of values this entry does not carry;
+      * no branch with source at/after `r` targets at/before `d` -- that is
+        a back edge enclosing the interval, i.e. `[d, r]` sits inside a loop
+        (`repeat` bodies have no header skip-out, so the enclosure clause is
+        what catches them);
+      * the span fits `_MAX_STAGING_SPAN` -- the budget refusal.
+
+    Purity is deliberately NOT asked. The original sketch for this rule
+    demanded an effect-free interior under STRICT, but the corpus rows it
+    exists for (`snr_graphic:main_2` et al.) stage a GETUPVAL callee across
+    an LT/CONCAT chain -- impure under STRICT -- so that condition would
+    unlock nothing; and the opposite direction (an unsound staging shipping
+    wrong source) is certification's to catch, not this walk's: the printed
+    text is recompiled and compared field by field, so a staging that
+    misjudges costs an `L1`, never correctness. What the clauses above
+    protect is the L3s that exist today via materialization -- a shape the
+    exemption wrongly un-grades stops certifying and the ratchet sees it.
+
+    A fifth clause refuses the one consumer shape that is bytecode-level
+    PROOF the slot held a named local: `read_reg` is the register the
+    consumer reads, and when the instruction at `r` is an upward `MOVE a, b`
+    with `b == read_reg`, `luaK_exp2nextreg` was copying a VLOCAL into the
+    expression stack -- a temporary is already at `freereg - 1` and never
+    needs the copy (the same fact `_bar_literal_operands`'s MOVE rule keys
+    on, read from the consumer side). Staging such a slot drops its `local`
+    declaration and shifts every later register (`local a = b or c
+    print(a)` recompiles with `a`'s slot never allocated). Both the walk
+    (`_same_block`) and the region path (`cond_value`) pass `read_reg`; the
+    clause is what keeps the exemption from overriding a local verdict the
+    bytecode itself carries.
+
+    `entry_at_r_ok` is the region-computed-merge variant (the only caller:
+    `express/reconstruct.py::cond_value`, for a `CondValue` chain's result).
+    There the "definition" is the whole short-circuit expression, which
+    already merges every path through the chain, so a branch landing exactly
+    ON `r` is not an outside entry but the join the expression subsumes;
+    clause two then excludes only targets strictly inside `(d, r)`. `d` for
+    that caller is the chain's CONVERGENCE pc (see `_cond_value_stages`), and
+    `r == d` is allowed: the empty interior is trivially free of hazards --
+    it is the `g(a and 1 or 2)` shape, where the consuming call sits exactly
+    on the join.
+    """
+    if r < d or r - d > _MAX_STAGING_SPAN:
+        return False
+    if read_reg is not None and view.up_moves.get(r) == read_reg:
+        return False
+    branches = view.branches
+    lo = bisect.bisect_right(branches, (d, (1 << 30,)))
+    hi = bisect.bisect_left(branches, (r, ()))
+    for k in range(lo, hi):
+        pc, succs = branches[k]
+        if not all(pc < s <= r for s in succs):
+            return False
+    tgt_hi = r if entry_at_r_ok else r + 1
+    for t, (mn, mx) in view.target_srcs.items():
+        if d < t < tgt_hi and (mn < d or mx > r):
+            return False
+    for pc, succs in branches:
+        if pc >= r and any(s <= d for s in succs):
+            return False
+    return True
+
+
 def _pending_def(pending: list[_Pending], r: int) -> _Pending | None:
     """The entry `pending` holds for register `r`, or None."""
     for ent in pending:
@@ -185,7 +318,9 @@ def _pending_def(pending: list[_Pending], r: int) -> _Pending | None:
 # auditing the read-counting rules needs to find all of them in one place.
 
 
-def _same_block(block_floor: Callable[[int], int], d: int, r: int) -> bool:
+def _same_block(block_floor: Callable[[int], int], d: int, r: int,
+                span: _SpanView | None = None,
+                read_reg: int | None = None) -> bool:
     """True iff pcs `d` and `r` are in the same CFG basic block.
 
     Barrier 1 of the four (see the section header), and THE control-flow
@@ -247,8 +382,28 @@ def _same_block(block_floor: Callable[[int], int], d: int, r: int) -> bool:
     another -- and the cost of that strictness was measured rather than
     assumed (see the task report). Erring here materializes a named local,
     which is always printable; the alternative is silently dropped code.
+
+    ## The staging-span exemption (M7 task 8, mechanism C)
+
+    `span` (built by `build_span_view`, passed by `stack_discipline`) lets a
+    definition in one block stage for a read in another when the jump
+    structure between them carries neither hazard: all interior branches
+    forward and at-or-before the read, no outside branch into the interval,
+    no back edge enclosing it, span within the budget -- `_staging_span_ok`
+    carries the clause-by-clause argument. That is the shape of luac's
+    `and`/`or` VALUE idiom in operand position (`g(a and 1 or 2)`: callee
+    staged at the head, chain's joins and the consuming call in later
+    blocks), which the strict form forced to materialize `local` -- the
+    extra `MOVE`s of copying a materialized callee back into call position
+    then failed certification on `maxstacksize`. The exemption fires from
+    the read side (`do_read`/`read_open`), so a hand-built caller without a
+    `span` keeps the pre-task-8 behaviour exactly.
     """
-    return block_floor(d) == block_floor(r)
+    if block_floor(d) == block_floor(r):
+        return True
+    return span is not None and _staging_span_ok(span, d, r,
+                                                  entry_at_r_ok=False,
+                                                  read_reg=read_reg)
 
 
 def _renders_as_literal(fn: LirFunction, def_pc: int) -> bool:
@@ -592,6 +747,7 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
     # lists are pc-ascending by construction, which the bisections in the
     # veto helper rely on.
     jmp_list: list[tuple[int, int]] = []    # (pc, successor) per JMP
+    span_view = build_span_view(fn)         # M7 task 8: _same_block's exemption
     reads_at: dict[int, list[int]] = {}     # reg -> its read pcs
     writes_at: dict[int, list[int]] = {}    # reg -> its write pcs
     open_reads: list[tuple[int, int]] = []  # (pc, base) per R[a..top) read
@@ -627,7 +783,8 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
                 # `bad` drives the answer to `local`, the safe direction.
                 if count:
                     ent.n_reads += 1
-                if not _same_block(block_floor, ent.def_pc, at):
+                if not _same_block(block_floor, ent.def_pc, at,
+                                     span=span_view, read_reg=r):
                     ent.bad = True
                 return
         if not known_local(r, at) and not loop_control(r, at):
@@ -691,7 +848,8 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
         for ent in pending:
             if ent.reg >= base:
                 ent.n_reads += 1
-                if not _same_block(block_floor, ent.def_pc, at):
+                if not _same_block(block_floor, ent.def_pc, at,
+                                   span=span_view, read_reg=ent.reg):
                     ent.bad = True
 
     def pop_ge(base: int, kill: LirInstr | None = None) -> None:

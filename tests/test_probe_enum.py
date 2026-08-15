@@ -551,8 +551,14 @@ def test_the_compound_if_population_moved_from_twentyone_shapes_to_one(
         verdicts[key] = r["level"] if r["level"] == "L3" \
             else (r["refusal_reason"] or "").split(":")[0]
     assert sorted(verdicts.values()).count("L3") == 6
-    assert sorted(verdicts.values()).count("mismatch") == 6
+    assert sorted(verdicts.values()).count("mismatch") == 5
     assert sorted(verdicts.values()).count("structure") == 1
+    # Re-measured 2026-08-15 (M7 task 8): `snr_graphic.lua:main` moved from
+    # `mismatch` to `reconstruct` -- the staging-span exemption changed its
+    # printed text, and the isolated verdict is now the reconstruction
+    # refusal rather than the compile-then-mismatch. Same level both ways;
+    # attribution material for M7 task 9.
+    assert sorted(verdicts.values()).count("reconstruct") == 1
 
 
 def test_the_smallest_leaf_refusal_is_identical_over_its_whole_space(
