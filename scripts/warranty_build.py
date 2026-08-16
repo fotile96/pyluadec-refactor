@@ -92,7 +92,7 @@ from loss_sweep import LOSS_PINS  # noqa: E402
 
 from pyluadec.ingest import load_file  # noqa: E402
 from pyluadec.lift.opcodes import Op, decode  # noqa: E402
-from pyluadec.oracle import LuaCompileError  # noqa: E402
+from pyluadec.oracle import LuaCompileError, compile_source  # noqa: E402
 from pyluadec.pipeline import decompile_file, walk_proto_paths  # noqa: E402
 from pyluadec.predcorpus import load_pred_proto  # noqa: E402
 from pyluadec.predrecert import recert_bytes, t_grade  # noqa: E402
@@ -373,12 +373,23 @@ def build_all(corpus_dir: Path, pred_dir: Path):
                             "e": e_grades[p], "l2": None} for p in paths]
 
         finals[name] = text
+        # Footprint (spec §3 / M8 task 1): recompiled-bytecode size of the
+        # SHIPPED text over the original file, both stripped, whole-file
+        # bytes incl. the 12-byte header. Rounded to 4 decimals -- Python's
+        # round on an IEEE quotient of two ints is deterministic across
+        # platforms, and the fixed-point gate compares the recorded value.
+        # An L3 file recompiles field-exact => byte-exact => exactly 1.0;
+        # the M8 campaign-start census measured the non-1.0 set to be
+        # exactly the fallback carriers (7 files).
         rows.append({
             "file": name,
             "selection": selection,
             "ours": {"t_min": ours_grade[0],
                      "t_hist": _hist(ours_t.values(), T_ORDER)},
             "pred": pred_obj,
+            "footprint_ratio": round(
+                len(compile_source(text, strip=True))
+                / orig_path.stat().st_size, 4),
             "occurrences": occurrences,
             "oracle": orc,
         })
@@ -390,6 +401,16 @@ def build_all(corpus_dir: Path, pred_dir: Path):
     warranty_bytes = "".join(
         json.dumps(row) + "\n" for row in rows).encode()
     return warranty_bytes, finals, summary
+
+
+def footprint_ratios() -> dict[str, float]:
+    """`file -> footprint_ratio` read from the COMMITTED warranty artifact
+    (no compiling at test time; the generator records the value). The
+    suite's footprint gate reads this."""
+    rows = [json.loads(line) for line
+            in (REPO_ROOT / "corpus" / "warranty.jsonl").read_text()
+            .splitlines() if line.strip()]
+    return {r["file"]: r["footprint_ratio"] for r in rows}
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -35,13 +35,15 @@ cd "$(dirname "$0")/.."
 # test_loss_sweep.py, 2 in test_predcorpus.py -- and still exits 0.
 : "${PYLUADEC_PRED_CORPUS_DIR:?set it to the predecessor corpus of 229 decompiled .lua sources -- 32 M6 gate tests skip SILENTLY without it}"
 
-# 3669950 = "Merge phase6-m6-cross-corpus", the last merged milestone tip and
-# the M7 branch's fork point. Override with any ref that has a corpus/ledger.jsonl
-# (e.g. 0957364, the M5 tip, eb08890, the M4 tip, or bbe74f6, the M3 tip, for a
-# multi-milestone diff). Updated at the M7 start (task 1): the default had been
-# left at 0957364 through M6's merge. Comparing against the NEWEST merged
-# tip is the stricter reading and is what the line above always claimed to be.
-BASELINE_REF="${1:-3669950}"
+# 72cb6a8 = the M7 milestone tip ("M7 task 12", the branch content of
+# phase7-m7-semantic-warranty-glm53). At the M8 start the master merge had not
+# yet happened (the plan's prerequisite notes it); the M7 branch is a direct
+# descendant of master, so the ledger at 72cb6a8 equals the ledger at any
+# later merge tip -- the ref stays correct after the merge lands. Override
+# with any ref that has a corpus/ledger.jsonl (e.g. 3669950 the M6 merge, or
+# 0957364/eb08890/bbe74f6 for multi-milestone diffs). Updated at the M8 start
+# (task 1): the default had been 3669950 through M7.
+BASELINE_REF="${1:-72cb6a8}"
 # Portability, not style (M5 task 8 round 1). `mktemp -t NAME` is the BSD
 # spelling and works on macOS, but GNU coreutils treats -t's argument as a
 # TEMPLATE and rejects one without trailing X's: src/mktemp.c does
