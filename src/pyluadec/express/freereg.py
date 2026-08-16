@@ -512,6 +512,60 @@ def _bar_literal_operands(fn: LirFunction, li: LirInstr,
             ent.bad = True
 
 
+def _bar_key_staged_below_table(li: LirInstr,
+                                pending: list[_Pending]) -> None:
+    """BARRIER 5 (M7 task 10): a register-keyed index whose KEY is staged
+    BELOW its table was never an inline `t[k]` -- grade the key local.
+
+    `lparser.c`'s every route to a register-keyed `GETTABLE`/`SETTABLE`
+    discharges the TABLE prefix to a register first and parses the key
+    after (`prefixexp`'s `[` arm: `luaK_exp2anyreg(fs, v)` then `yindex`;
+    assignment targets go through the same `prefixexp`; constructor fields
+    store into a table whose base register predates every field). So in
+    bytecode produced by stock 5.1.5 from `prefix[key_expr]`, the key's
+    defining instructions sit strictly AFTER the table's, and the key
+    occupies a HIGHER register. The contrapositive is the barrier: when the
+    key's pending definition predates the table's, the source cannot have
+    been `prefix[key_expr]` -- the author materialized the key first, as
+    its own named local:
+
+        local k = sceneId2aCard.s3s_300_sel    -- key code at pc P
+        ... = prefix[k].suffix                 -- table code at pc > P
+
+    Measured shape (`snr_s3_10_s.lua:main_59`, pcs 745-749): GETGLOBAL/GETTABLE
+    stage the key into R2, then GETGLOBAL/GETTABLE build the prefix into R3,
+    then `GETTABLE 3 3 2` indexes by register. Without this barrier the key
+    definition grades temp (single read), the reconstructor inlines it into
+    the index, and the recompiled instruction stream inverts the two staging
+    orders -- `mismatch: code`, same length, no semantic change (the
+    certification gate, as always, is what kept that from shipping).
+
+    Fires only when BOTH operands are pending (freshly staged, neither a
+    known local): a named-local table with a fresh key is the ordinary
+    `t_local[f(x)]` shape and must keep staging the key, and a named-local
+    key under a fresh table is the ordinary `t[k_local]`. The register-equal
+    case (`t[t]`) is excluded by the strict `<`.
+    """
+    ri = li.ri
+    if ri.op is Op.GETTABLE:
+        table_reg, key = ri.b, ri.c
+    elif ri.op is Op.SETTABLE:
+        table_reg, key = ri.a, ri.b
+    else:
+        return
+    if isk(key):
+        return                                  # constant key: no staging order
+    key_ent = table_ent = None
+    for ent in pending:
+        if ent.reg == key:
+            key_ent = ent
+        elif ent.reg == table_reg:
+            table_ent = ent
+    if key_ent is not None and table_ent is not None \
+            and key_ent.def_pc < table_ent.def_pc:
+        key_ent.bad = True
+
+
 def _constructor_field_target(fn: LirFunction, li: LirInstr,
                               pending: list[_Pending]) -> int | None:
     """The register this instruction reads *without consuming it*, or None.
@@ -927,6 +981,7 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
         op, a, b, c = ri.op, ri.a, ri.b, ri.c
 
         _bar_literal_operands(fn, li, pending)
+        _bar_key_staged_below_table(li, pending)
         uncounted = _constructor_field_target(fn, li, pending)
         for r in sorted(li.effects.reads):
             do_read(r, pc, count=r != uncounted)

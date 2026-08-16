@@ -2062,15 +2062,19 @@ not decorative.
 
 ### What is left, attributed rather than narrated
 
-**The M7 campaign census (2026-08-16, post task 9): 28 non-`L3` rows — 19 own
-refusals + 9 inherited ancestors — every one attributed below.** The campaign
-(Tasks 6–9) took the population from 40 (M6 close) to 28, measured row by row
+**The M7 campaign census (2026-08-16, post task 10): 22 non-`L3` rows — 15 own
+refusals + 7 inherited ancestors — every one attributed below.** The campaign
+(Tasks 6–10) took the population from 40 (M6 close) to 22, measured row by row
 from each task's committed ledger: task 6's dynamic-key constructor fold (−1),
 task 7's skipped-kill clamp veto (−4: three own rows plus their inherited
 root), task 8's staging-span exemption (−2), task 9's reaching-definition `>`
-recogniser (−3) and hint-0 constructor budget gate (−2). `L3` stands at
-**1450/1478 unique (98.1%), 1916/1944 occurrences (98.6%)**; 220 of 229 files
-ship fully structured, 7 hybrid, 2 whole-file fallback.
+recogniser (−3) and hint-0 constructor budget gate (−2), task 10's
+key-staged-below-table barrier (−4: two own rows plus two inherited roots,
+flipping `snr_s3_10_s` and `snr_s4_10_s` whole-file structured) and
+NEWTABLE-position lookahead (−1, `snr_common:main_29`). `L3` stands at
+**1456/1478 unique (98.5%), 1922/1944 occurrences (98.9%)**; 222 of 229 files
+ship fully structured, 5 hybrid, 2 whole-file fallback, and 1880/1944
+occurrences (96.7%) ship structured text.
 
 The clusters, each with its first-divergence evidence (all re-measured
 2026-08-16 with the runbook's canonical wrapper recipe; `orig` is the corpus
@@ -2079,13 +2083,29 @@ bytecode, `cand` our recompiled print):
 | cluster | rows (own) | + inherited | mechanism |
 | --- | --- | --- | --- |
 | K1 | 5 | — | constructor hint ≥ 1: the fold's deliberately ungated half |
-| K2 | 2 | — | hint-0 close position: table `local` lands at first store, not at `NEWTABLE` |
-| O | 2 | 2 | register-key staging order: original materialized the key as a local |
 | C | 1 | 1 | constant-pool interning order (`const[70..73]`) |
 | J | 1 | — | jump-ladder spelling: candidate +13 instructions, first divergence a `JMP` target |
 | M | 5 | 3 | materialization surplus: extra `local`s the original never had (`+code`, `+maxstacksize`) |
 | R | 2 | 2 | `and`/`or` empty alternative re-reads a consumed temp |
 | X | 1 | 1 | `while true` + `break` not recognized (`pc 286`) |
+
+**Closed at task 10** (the spec §5 stop-loss re-scope, ruled with the human
+partner 2026-08-16): cluster **O** — the register-key staging order — by the
+`_bar_key_staged_below_table` barrier in `express/freereg.py`: a register-keyed
+`GETTABLE`/`SETTABLE` whose key's pending definition PREDATES its table
+operand's was never an inline `t[k]`, because stock 5.1.5 discharges the table
+prefix before parsing the key on every parse route; the barrier grades the key
+local, the reconstructor materializes it where the original declared it.
+`snr_s3_10_s:main_59`/`snr_s4_10_s:main_58` + both roots certified. And
+cluster **K2** — the hint-0 close position — by a NEWTABLE-side lookahead: a
+hint-0 `NEWTABLE` whose first toucher is a `SETTABLE` into its register
+materializes `local t = {}` at the `NEWTABLE` itself instead of at the first
+store, restoring the declaration position the original wrote (the open-region
+test in the scan is precise — `reg < base` means the open instruction does not
+touch the register; `snr_common:main_29` needed exactly that, its first store
+sits inside a `for` body past a `VARARG`/open `CALL` based above the table's
+slot). One K2 row, `snr_common:main_77_25`, had certified already at task 9's
+gate.
 
 **K1 — the hint ≥ 1 half of the constructor budget (5 own rows).** The task-9
 budget gate fires only on a decoded hash hint of 0, because every non-zero
@@ -2100,48 +2120,6 @@ maxstacksize 17→18) and `snr_music:main` (hint 4, maxstacksize 24→28; the
 M6 case study below documents this chunk's fold history). Closing these needs
 an exact hint arithmetic under `int2fb` decoding, which the encoding does not
 admit — the attribution *is* the disposition.
-
-**K2 — the hint-0 close position (2 own rows).** `snr_common:main_29` (pc 5:
-orig `NEWTABLE 10 0 0` vs cand `LOADK 10 -2`) and `main_77_25` (pc 5: orig
-`NEWTABLE 3 0 0` vs cand `LOADK 3 -2`), both same-length, maxstack-equal pure
-reorders. The gate materializes `local t = {}` when the first `SETTABLE`
-arrives — the only point at which a statement-built table is distinguishable
-from an empty literal consumed by a call — so any statement the original
-placed *between* the `NEWTABLE` and the first store (here: a key/operand the
-classifier graded local) prints before the table declaration in ours. The
-fix shape (look ahead from the `NEWTABLE` for a first toucher and materialize
-at the `NEWTABLE`'s own position) is known; not taken this milestone — the
-rows were non-`L3` before the gate too (`mismatch: code` at the task-8 close
-as well, measured in that commit's ledger), so the gate changed *which*
-instruction diverges first, not the verdict.
-
-**O — register-key staging order (2 own + 2 inherited).**
-`snr_s3_10_s:main_59` (first divergence pc 745) and `snr_s4_10_s:main_58`
-(pc 1120), plus their roots (`mismatch: code at root/59`, `at root/58`).
-Instruction-level walk, `snr_s3_10_s:main_59`:
-
-```
-745 GETGLOBAL 2 -12     <- the KEY's table (sceneId2aCard), computed FIRST
-746 GETTABLE  2 2 -71   <- key value staged into R2
-747 GETGLOBAL 3 -1      <- the index prefix's table, computed SECOND
-748 GETTABLE  3 3 -13
-749 GETTABLE  3 3 2     <- register-keyed index: reads R2
-```
-
-Stock 5.1.5 emits table-prefix code *before* key code for every inline
-`[expr]` route (`lparser.c` discharges the prefix first in `prefixexp`'s
-`[` arm, in assignment targets, and in constructor fields), so bytecode with
-the key in the *lower* register cannot come from `prefix[sceneId2aCard.s3s_300_sel]`
-— the original source must have materialized the key as a local first
-(`local k = sceneId2aCard.s3s_300_sel` … `prefix[k]`). Our classifier stages
-the key as a temp and folds it into the index, inverting the order. The fix
-(materialize the key when its reaching-def pc precedes the table chain's)
-follows from the same parser argument in the safe direction — it can only
-fire on shapes stock 5.1.5 never produces inline — but it is a new
-classification mechanism with corpus-wide surface (every register-keyed
-`GETTABLE` consults it), and it was **attributed rather than fixed** at the
-M7 stop-loss: at 98.1% `L3` the two rows' marginal value did not buy a new
-mechanism at campaign end. First candidate for the next milestone.
 
 **C — constant-pool order (1 own + 1 inherited).** `snr_story_main:main_3`
 and its root: `const[70]`–`const[73]` mismatch plus jump distances shifted by
@@ -2212,7 +2190,8 @@ and `snr_memory:main_2`; task 9's reaching-definition `_is_stack_temp`
 disjunct closed the `>` recogniser's three rows (`snr_novel:main_2`,
 `snr_novel:main_3`, `snr_memory:main_4` — the M6 clamp-twin of
 `snr_graphic:main_4`) and the hint-0 budget gate closed
-`snr_s1_10_s:main_48` and its root, flipping that file fully structured. The
+`snr_s1_10_s:main_48` and its root, flipping that file fully structured;
+task 10 closed clusters O and K2 (above). The
 M6-era
 subsections below are kept as the measurement history of mechanisms three,
 four and five — their row counts are as of their own dates, not current.
@@ -2417,13 +2396,13 @@ occurrences.
 | --- | --- | --- |
 | `build_sir` accepts the proto's own body | 1477 (99.9%) | 1943 (99.9%) |
 | whole subtree prints (proto **and** every descendant) | 1472 (99.6%) | 1938 (99.7%) |
-| certifies `L3` | **1450 (98.1%)** | **1916 (98.6%)** |
+| certifies `L3` | **1456 (98.5%)** | **1922 (98.9%)** |
 
-(Re-measured 2026-08-16 after M7 task 9. The M6-close figures were 1477 /
-1472 / 1438 (97.3%, 1904 occurrences): the whole M7 campaign — tasks 6–9 —
+(Re-measured 2026-08-16 after M7 task 10. The M6-close figures were 1477 /
+1472 / 1438 (97.3%, 1904 occurrences): the whole M7 campaign — tasks 6–10 —
 moved the third row only, because none of its fixes changes what `build_sir`
 accepts or what prints; the row's per-task path 1438 → 1439 → 1443 → 1445 →
-1450 is measured in each task's committed ledger.)
+1450 → 1456 is measured in each task's committed ledger.)
 
 **The command, because rows 1 and 2 have never named one and row 2 is easy to
 get wrong** (added in task 12 round 1, after a reviewer's reasonable predicate

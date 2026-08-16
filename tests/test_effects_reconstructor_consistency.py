@@ -598,7 +598,15 @@ _UNWRAPPED_BY_DESIGN = frozenset({"_refuse_stale_reference",
                                   # no register expression for the recorder
                                   # to compare against -- the same reason
                                   # `_is_generic_for_iterator` is here.
-                                  "_next_read_after"})
+                                  "_next_read_after",
+                                  # M7 task 10: another static
+                                  # effects-surface scan (which instruction
+                                  # first touches a NEWTABLE's register),
+                                  # deciding the statement-built-table
+                                  # fast path. Same reasoning: a predicate
+                                  # over the instruction stream, never a
+                                  # register-slot touch.
+                                  "_next_touch_is_store_to"})
 
 # `_consume_open(start)` is not in either set: its parameter is a range start
 # rather than a register, and every slot it reads goes through `_read_reg`.

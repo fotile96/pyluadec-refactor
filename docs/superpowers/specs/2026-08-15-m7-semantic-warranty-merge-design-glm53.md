@@ -167,6 +167,20 @@ to leave on the fallback side; if its root-refusal family turns out to be a
 new mechanism class needing more than this milestone, that is a controller
 escalation and re-scope, not a silent stop-loss).
 
+> **Amended 2026-08-16 (human partner, via the escalation clause above;
+> recorded in the overall design's §2 decision table):** the floor is
+> **22 rows + attribution-complete**. The escalation clause fired as
+> designed: the attribution campaign measured the residual at **8 mechanism
+> families**, 7 of whose rows prior decisions already exclude (the int2fb
+> hint encoding, the closed `L3.2` pool-order rung), so ≤10 was unreachable
+> without reopening decided questions. Two known-fix families were fixed
+> first (the key-staged-below-table barrier, the NEWTABLE-position
+> lookahead) taking 28 → 22. The `snr_common` clause is rewritten to the
+> measurement: the file ships **hybrid** with 106 of its 147 occurrences on
+> structured text; the "147 on the fallback side" fear is 41, not 147. The
+> `L3.3` NEWTABLE-hint-masking rung (which would certify the K1 five) is
+> recorded as an M8 candidate, not opened here.
+
 ## 6. pred_repairs under the same criterion
 
 The six files' per-proto grading, from the committed ledger (2026-08-14):

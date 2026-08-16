@@ -241,6 +241,9 @@ class Reconstructor:
         # reg -> its sorted definition pcs (lazily built; feeds
         # `_is_stack_temp`'s reaching-definition disjunct).
         self._defs_by_reg: dict[int, list[int]] | None = None
+        # The function's pcs in ascending order (lazily built; the start
+        # point for `_next_touch_is_store_to`'s forward scan).
+        self._sorted_pcs: list[int] | None = None
         # Registers whose `env` entry is an UNCONSUMED staged temp expression
         # (as opposed to the `LocalExpr(reg)` placeholder force_materialize
         # leaves behind). Made explicit because classification is now per
@@ -1234,6 +1237,38 @@ class Reconstructor:
         return fixed + (expr,)
 
     # ---- table constructor folding ----------------------------------------
+    def _next_touch_is_store_to(self, reg: int, pc: int) -> bool:
+        """Is the first instruction after `pc` that touches `reg` a
+        `SETTABLE` storing INTO `reg`? The statement-built-table half of the
+        constructor budget's position fix (M7 task 10) -- see the NEWTABLE
+        branch of `_dispatch`.
+
+        An open region (`reads_open`/`writes_open`) touches `reg` only at or
+        above its base -- `R[a..top)` / `R[a+1..top)` per opcode -- so an
+        open instruction whose base is ABOVE `reg` does not stop the scan.
+        This is deliberately more precise than `_dispatch`'s ctx close
+        check, which bails on any open flag because the hazard set's extent
+        genuinely is unknowable; here the question is only whether THIS one
+        register lies in the region, and `reg < a` answers it. That
+        precision is load-bearing: `snr_common.lua:main_29`'s statement
+        table (R10, built at pc 5) is first stored to inside a `for` body
+        past a `VARARG 14 0` and an open `CALL 12 0 2` -- both based above
+        R10 -- and the any-open-flag version refused the fast path, emitted
+        the `local l1_10 = {}` at the close instead of at the NEWTABLE, and
+        swapped the declaration order with the counter local the original
+        declared after it (R10/R11 exchanged, 34 instruction diffs).
+        """
+        if self._sorted_pcs is None:
+            self._sorted_pcs = sorted(self.fn.instrs)
+        for p in self._sorted_pcs[bisect.bisect_right(self._sorted_pcs, pc):]:
+            li2 = self.fn.instrs[p]
+            fx = li2.effects
+            if reg in fx.reads or reg in fx.writes:
+                return li2.ri.op is Op.SETTABLE and li2.ri.a == reg
+            if (fx.reads_open or fx.writes_open) and reg >= li2.ri.a:
+                return False
+        return False
+
     def _close_table_ctx(self) -> None:
         """Pop and finalize the innermost pending table constructor.
 
@@ -1484,6 +1519,28 @@ class Reconstructor:
             # TableExpr rather than degrading the outer constructor too.
             if self._table_ctx_stack and self._table_ctx_stack[-1]["reg"] == a:
                 self._close_table_ctx()
+            # A decoded hash hint of 0 whose next touch is a store TO this
+            # register is a statement-built table (see `_close_table_ctx`
+            # for why 0 is the only decidable hint) -- and the store-first
+            # discrimination has a POSITION cost when left to the SETTABLE
+            # branch: materializing there emits `local t = {}` after any
+            # statement the original placed between the NEWTABLE and its
+            # first store (M7 task 10's K2 rows: `local t = {}` at pc 5,
+            # a multi-use key's LOADK at pc 6, the store at pc 7 -- the
+            # close-at-store print ordered the key's `local` first and the
+            # recompile reordered the two statements). Looking ahead from
+            # the NEWTABLE itself and materializing the empty table HERE
+            # puts the declaration exactly where the original put it, and
+            # every subsequent store falls through to `_settable` as an
+            # ordinary indexed assignment. The scan is a straight walk to
+            # the first instruction that touches `a` in ANY way; only a
+            # SETTABLE with `a == reg` qualifies, so an array literal
+            # (hash hint 0, array fields, next touch a SETLIST) keeps its
+            # ctx and folds, and a table consumed as a value (next touch a
+            # read) keeps the pop-once staged `{}` behaviour.
+            if ri.c == 0 and self._next_touch_is_store_to(a, ri.pc):
+                self.force_materialize(a, TableExpr(array=(), hash=()))
+                return
             self._table_ctx_stack.append({"reg": a, "pc": ri.pc, "array": [],
                                           "hash": [], "hazard": frozenset(),
                                           # The literal's own size hints (B =

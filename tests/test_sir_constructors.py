@@ -49,3 +49,80 @@ def test_config_shape_three_tables_certifies():
            b'B = {f = f, g = g, h = h, i = i, j = j, k = k}\n'
            b'C = {m = "disc0:/x.prx", n = "script/y.lua"}\n')
     assert _levels_of(src) == {"main": "L3"}
+
+
+# ---- M7 task 10: the statement-built table's DECLARATION POSITION --------
+#
+# A hint-0 NEWTABLE whose next touch is a store TO its register is a
+# statement-built table (`local t = {}` + stores). Task 9's gate
+# materialized it at the FIRST STORE -- which orders the `local t = {}`
+# after any statement the original placed between the NEWTABLE and that
+# store, and the recompile then swaps the declaration order (and with it
+# every register above the table). Task 10's fast path materializes at the
+# NEWTABLE itself: `local t = {}` lands exactly where the original put it.
+
+def test_statement_table_declares_before_an_intervening_local():
+    # `t` is declared first in the source; `n` is read twice, so it
+    # materializes as its own `local` between the NEWTABLE and the first
+    # store -- the position the close-at-store path used to lose.
+    src = (b"local t = {}\n"
+           b"local n = 0\n"
+           b"t[n] = 1\n"
+           b"t[n] = 2\n"
+           b"return t, n\n")
+    assert _levels_of(src) == {"main": "L3"}
+
+
+def test_statement_table_declares_before_an_open_range():
+    # The snr_common:main_29 shape: the first store sits inside a loop, past
+    # an open `CALL`/`VARARG` whose open region is based ABOVE the table's
+    # register. The lookahead must see through those (reg < base means the
+    # open instruction does not touch the register) and still find the
+    # store; the any-open-flag version of the scan refused here and the
+    # declaration landed at the close, swapping R10/R11.
+    src = (b"local function f(...)\n"
+           b"  local t = {}\n"
+           b"  local n = 0\n"
+           b'  if 0 < select("#", ...) then n = select("#", ...) / 4 end\n'
+           b'  for i = 1, select("#", ...) do t[i] = select(i, ...) end\n'
+           b"  return t, n\n"
+           b"end\n"
+           b"return f\n")
+    assert _levels_of(src) == {"main": "L3", "main_0": "L3"}
+
+
+def test_an_empty_literal_consumed_as_a_value_still_folds():
+    # Narrowness: hint 0 + next touch a READ (the `{}` consumed by the
+    # call) keeps the pop-once staged literal. Materializing here would add
+    # a `local` the original never had and cost the certification. The
+    # carrier is `f({}, 1)` with the result read twice into a multi-value
+    # return, NOT `return f({})` -- the latter compiles to a TAILCALL
+    # against the original's CALL+RETURN and is `L1` for that unrelated
+    # reason (verified before this test was written).
+    src = (b"local x = f({}, 1)\n"
+           b"return x, 2\n")
+    assert _levels_of(src) == {"main": "L3"}
+
+
+def test_neutering_the_lookahead_costs_the_position(monkeypatch):
+    """Neuter proof: without the NEWTABLE-side fast path the
+    intervening-local repro degrades to `L1` (the close-at-store path
+    re-emits the declaration late and the recompile swaps the register
+    pair). Cache cleared across runs -- certification memoizes."""
+    from pyluadec.express import reconstruct
+    from pyluadec.structure.structured import clear_certification_cache
+
+    src = (b"local t = {}\n"
+           b"local n = 0\n"
+           b"t[n] = 1\n"
+           b"t[n] = 2\n"
+           b"return t, n\n")
+    clear_certification_cache()
+    assert _levels_of(src) == {"main": "L3"}
+    monkeypatch.setattr(reconstruct.Reconstructor, "_next_touch_is_store_to",
+                        lambda self, reg, pc: False)
+    clear_certification_cache()
+    assert _levels_of(src) == {"main": "L1"}
+    monkeypatch.undo()
+    clear_certification_cache()
+    assert _levels_of(src) == {"main": "L3"}
