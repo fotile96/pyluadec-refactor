@@ -495,3 +495,53 @@ def test_the_multiple_assignment_residual_really_is_snr_common_main_77_0(corpus_
     src = b"local u0, u1\nreturn function()\nu0, u1 = 1, 0\nend\n"
     mine = load_bytes(compile_source(src, strip=True)).subprotos[0]
     assert compare_protos(target, mine, level=1) == []
+
+
+# ---------------------------------------------------------------------------
+# M8 task 3: the empty-tail alternative re-reading the chain target (the
+# `snr_graphic`/`snr_memory` `main`/`main_3` family -- "register 7 is read
+# again after its staged value was consumed").
+
+def test_empty_tail_reread_clamp_on_staged_chain_certifies():
+    """The corpus geometry, mirrored: A = a CondValue chain whose result is
+    STAGED for its one explicit reader, B = the clamp `x = (9 < x) and 9 or
+    x` whose EMPTY final alternative re-reads x's incoming value with no
+    instruction (invisible to the pc-linear read-count that graded A's
+    definition temp). Before task 3 this refused with exactly the family's
+    message; the fix materializes the incoming value as a local before the
+    chain is built -- the shape the original source has."""
+    src = b"""local function f(a, b, c)
+    local s = 0
+    local x = c and 9 or (a.v - b * 9)
+    x = (9 < x) and 9 or x
+    for i = 1, x, 1 do s = s + i end
+    return s
+end
+f({v = 1}, 2, 3)
+"""
+    _proto, out = _certify(src)
+    assert out.level == "L3", out.reason
+
+
+def test_settable_consumer_of_a_staged_clamp_is_a_recorded_gap():
+    """A DIFFERENT synthetic shape found while building the repro above
+    (recorded, not asserted away): when the clamp chain's consumer is a
+    table store (`t[1] = x = (9 < x) and 9 or x` reading a materialized
+    local -- no staging at all), our emission stages the chain result into
+    a fresh register and recompiles TEST+MOVE where luac discharged
+    TESTSET into the original slot -- `mismatch: code`, caught by
+    certification. Corpus census (2026-08-16): no corpus proto carries
+    this exact shape (the 4 family rows all refuse earlier, at the empty
+    tail); revisit if a campaign row ever names it."""
+    src = b"""local function f(a, b)
+    local t = {}
+    local x = a - b
+    x = (9 < x) and 9 or x
+    t[1] = x
+    return t[1]
+end
+f({v = 1}, 2)
+"""
+    _proto, out = _certify(src)
+    assert out.level == "L1"
+    assert (out.reason or "").startswith("mismatch: code")

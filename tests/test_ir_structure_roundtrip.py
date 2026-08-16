@@ -137,7 +137,9 @@ _SCRIPT_SUBSET_LEVELS = {
     "snr_crd_112.lua": "L3",
     "snr_crd_113.lua": "L3",
     "snr_graphic.lua": "L1",
-    "snr_memory.lua": "L1",
+    # M8 task 3 (2026-08-16): snr_memory's main+main_3 certified (the
+    # empty-tail clamp fix) -- the file is fully structured now.
+    "snr_memory.lua": "L3",
 }
 
 
@@ -146,7 +148,9 @@ _SCRIPT_SUBSET_LEVELS = {
 # whole-file fallback before it).
 # snr_common joined at M7 task 6 (dynamic-key constructor fix flipped it
 # whole-file fallback -> hybrid; 2026-08-15).
-_SUBSET_HYBRID = frozenset({"snr_graphic.lua", "snr_memory.lua", "snr_common.lua"})
+# M8 task 3 (2026-08-16): snr_memory left (fully structured); graphic and
+# common remain hybrid.
+_SUBSET_HYBRID = frozenset({"snr_graphic.lua", "snr_common.lua"})
 
 
 def _skip_if_subset_missing(corpus_dir) -> None:

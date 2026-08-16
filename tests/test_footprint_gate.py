@@ -27,15 +27,16 @@ from scripts.warranty_build import footprint_ratios  # noqa: E402
 WARRANTY = ROOT / "corpus" / "warranty.jsonl"
 LEDGER = ROOT / "corpus" / "ledger.jsonl"
 
-#: Monotone pin, measured at the M8 campaign start (task 1, 2026-08-16):
-#: exactly the 7 fallback carriers, none fully structured yet. A repair
-#: LOWERS a value (or drops the file to 1.0 and out of the dict) -- never
-#: raises one. Update in the same commit as the repair that moved it.
+#: Monotone pin. Campaign start (task 1, 2026-08-16): 7 files. Task 3
+#: (2026-08-16) flipped `snr_memory` fully structured (ratio 1.0 -- left the
+#: dict) and dropped `snr_graphic` 2.3969 -> 1.9509 (main_3 certifies; the
+#: root still inherits main_4's mismatch). A repair LOWERS a value (or drops
+#: the file to 1.0 and out of the dict) -- never raises one. Update in the
+#: same commit as the repair that moved it.
 FOOTPRINT_PIN = {
     "snr_common.lua": 1.3994,
-    "snr_graphic.lua": 2.3969,
+    "snr_graphic.lua": 1.9509,
     "snr_mainmenu.lua": 3.5598,
-    "snr_memory.lua": 1.6231,
     "snr_music.lua": 3.344,
     "snr_novel.lua": 2.8752,
     "snr_story_main.lua": 1.6956,

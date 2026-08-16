@@ -558,8 +558,12 @@ def test_the_compound_if_population_moved_from_twentyone_shapes_to_one(
     assert sorted(verdicts.values()).count("L3") == 8
     # M8 task 2 (2026-08-16): main_71 moved mismatch-ward; the structure
     # count is now 0 and mismatch 4 (was 3 + 1 structure).
-    assert sorted(verdicts.values()).count("mismatch") == 4
+    # M8 task 3 (2026-08-16): snr_graphic:main left `reconstruct` for the
+    # `mismatch: code at root/4` inheritance (main_4); the memory flips
+    # were outside this population, so L3 stays 8 and mismatch is 5.
+    assert sorted(verdicts.values()).count("mismatch") == 5
     assert sorted(verdicts.values()).count("structure") == 0
+    assert sorted(verdicts.values()).count("reconstruct") == 0
     # Re-measured 2026-08-15 (M7 task 8): `snr_graphic.lua:main` moved from
     # `mismatch` to `reconstruct` -- the staging-span exemption changed its
     # printed text, and the isolated verdict is now the reconstruction
@@ -574,7 +578,9 @@ def test_the_compound_if_population_moved_from_twentyone_shapes_to_one(
     # `mismatch: code` -> `L3` -- the key-staged-below-table barrier (its
     # `snr_s3_10_s:main_59` twin left the population at M6 task 11's
     # condition trees, which is why the count moved by one and not two).
-    assert sorted(verdicts.values()).count("reconstruct") == 1
+    # M8 task 3 (2026-08-16): 1 -> 0 -- snr_graphic:main left `reconstruct`
+    # for the `mismatch: code at root/4` inheritance (main_4).
+    assert sorted(verdicts.values()).count("reconstruct") == 0
 
 
 def test_the_smallest_leaf_refusal_is_identical_over_its_whole_space(

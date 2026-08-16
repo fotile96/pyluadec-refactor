@@ -701,6 +701,22 @@ class Reconstructor:
         no longer claims this is proven necessary by any test in the suite.
         """
         self._out = []
+        # M8 task 3: a chain whose FINAL alternative is empty (`x = <cond>
+        # and v or x`, the clamp idiom) re-reads the TARGET's incoming value
+        # with no instruction -- a read the pc-linear classifier cannot see,
+        # which is why it graded the incoming definition temp for its one
+        # EXPLICIT reader (this chain's own gate). If that definition's
+        # staged expression is still pending here, materialize it BEFORE the
+        # chain is built: the gate's operand read would otherwise pop it,
+        # and the empty tail's `_read_reg` would then hit the consumed
+        # guard and refuse. Materializing emits the local the original
+        # source actually had (the register IS a named local there, read on
+        # two paths), and both the gate and the empty tail then read the
+        # same name. Only the pending case is repaired: a value consumed by
+        # an UNRELATED earlier statement keeps refusing (conservative, and
+        # no corpus row needs it).
+        if self._chain_has_empty_tail(cv.node) and cv.target in self._pending:
+            self.force_materialize(cv.target, self.env[cv.target])
         expr = self._value_expr(cv.node, cv.target)
         # M7 task 8 (mechanism C, second half): a `CondValue` chain's result
         # is a REGION-computed merge -- the expression already subsumes every
@@ -723,6 +739,16 @@ class Reconstructor:
             self.write_reg(cv.target, expr, pc=self._last_target_def(cv))
         self._finalize_pending()
         return tuple(self._out)
+
+    @staticmethod
+    def _chain_has_empty_tail(node: VNode) -> bool:
+        """True iff the value chain's final alternative contributes no
+        instructions (`lcode.c:discharge2reg` emits nothing when the operand
+        already sits in the destination) -- an `or x`/`and x` right operand
+        reading the TARGET's incoming value."""
+        while isinstance(node, VAlt):
+            node = node.rest
+        return isinstance(node, VTail) and not node.instrs
 
     def _cond_value_stages(self, cv: CondValue) -> bool:
         """`_staging_span_ok(convergence, first-read-of-target-after-it)` for

@@ -185,5 +185,10 @@ def test_reasons_cluster_into_the_known_causes():
     # class; the recognizer gap itself is closed with synthetic L3 fixtures).
     # The milestone goal "structure: == 0" is real, so this pin now expects
     # only `mismatch` and `reconstruct` until their campaign tasks land.
-    assert {"mismatch", "reconstruct"} <= kinds
+    # M8 task 3 (2026-08-16): the `reconstruct:` family ALSO emptied -- the
+    # empty-tail clamp fix certified 3 of its 4 rows and the fourth
+    # (snr_graphic:main) re-refuses as `mismatch: code at root/4`, the
+    # known main_4 inheritance. Only `mismatch` remains (19 rows).
+    assert kinds == {"mismatch"}
     assert "structure" not in kinds
+    assert "reconstruct" not in kinds

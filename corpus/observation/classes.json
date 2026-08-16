@@ -3,19 +3,19 @@
  "summary": {
   "n_files": 229,
   "n_protos": 1944,
-  "n_candidates": 146,
-  "n_leaf_refusals": 15,
-  "n_non_l3": 22,
+  "n_candidates": 144,
+  "n_leaf_refusals": 13,
+  "n_non_l3": 19,
   "n_cap_files": 132,
   "n_cap_dominants": 132,
   "n_in_both_populations": 1,
   "class_census": {
    "choice-branch": 111,
-   "neither": 27,
+   "neither": 25,
    "ui-keyloop": 8
   },
   "class_census_leaf_refusals": {
-   "neither": 10,
+   "neither": 8,
    "ui-keyloop": 5
   },
   "class_census_cap_dominants": {
@@ -29,8 +29,8 @@
     111
    ],
    "neither": [
-    27,
-    27
+    25,
+    25
    ],
    "ui-keyloop": [
     8,
@@ -60,8 +60,8 @@
    "oCard.selectCardNotCancelObj": "snr_common.lua:main_77_18",
    "oCard.selectCardObj": "snr_common.lua:main_77_17"
   },
-  "n_observed_records": 48,
-  "n_orphan_observations": 16
+  "n_observed_records": 46,
+  "n_orphan_observations": 18
  },
  "candidates": [
   {
@@ -21131,99 +21131,6 @@
   },
   {
    "file": "snr_graphic.lua",
-   "proto_path": "main_3",
-   "mechanical": {
-    "selected_as": [
-     "leaf-refusal"
-    ],
-    "n_insns": 408,
-    "nups": 5,
-    "numparams": 4,
-    "level": "L1",
-    "refusal_reason": "reconstruct: register 7 is read again after its staged value was consumed; classification called that definition a temporary",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": true,
-    "probe": {
-     "file_status": "CAP",
-     "file_events": 3001,
-     "dominant_global": null,
-     "dominant_global_events": null
-    },
-    "n_natural_loops": 3,
-    "n_back_edges": 5,
-    "poll_loops": [],
-    "calls_poll_directly": false,
-    "reaches_poll": false,
-    "loop_polls_per_iteration": false,
-    "in_loop_callees_reaching_poll": [],
-    "option_calls": [],
-    "channels": [
-     {
-      "path": [
-       {
-        "key": "systemSave"
-       },
-       {
-        "key": "cgFlag"
-       },
-       {
-        "dynamic": true
-       }
-      ],
-      "text": "systemSave.cgFlag[*]",
-      "domain": 2,
-      "constants": [
-       "true"
-      ],
-      "truth_tested": false
-     }
-    ],
-    "register_comparisons": 0,
-    "input_space": 2,
-    "drivable_within_budget": true,
-    "class": "neither",
-    "class_evidence": "no poll loop and no option call; 1 branch channel(s)",
-    "footprint": {
-     "global_reads": [
-      "layerClip",
-      "layerCopy",
-      "layerLoad",
-      "layerMovePosition",
-      "layerPosition",
-      "layerVisible",
-      "systemSave",
-      "wait"
-     ],
-     "table_key_reads": [
-      [
-       "systemSave",
-       "cgFlag"
-      ]
-     ],
-     "calls": [
-      "layerClip",
-      "layerCopy",
-      "layerLoad",
-      "layerMovePosition",
-      "layerPosition",
-      "layerVisible",
-      "wait"
-     ],
-     "table_key_calls": [],
-     "dynamic_reads": 17,
-     "read_sites": 102,
-     "call_sites": 34
-    }
-   },
-   "observed": {
-    "reviewed_by": "neither-audit",
-    "class_agrees": true,
-    "note": "CG page-scroll animation; called from main_4 pcs 159/247/297/342."
-   }
-  },
-  {
-   "file": "snr_graphic.lua",
    "proto_path": "main_4",
    "mechanical": {
     "selected_as": [
@@ -21793,99 +21700,6 @@
   },
   {
    "file": "snr_memory.lua",
-   "proto_path": "main_3",
-   "mechanical": {
-    "selected_as": [
-     "leaf-refusal"
-    ],
-    "n_insns": 407,
-    "nups": 5,
-    "numparams": 4,
-    "level": "L1",
-    "refusal_reason": "reconstruct: register 7 is read again after its staged value was consumed; classification called that definition a temporary",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": true,
-    "probe": {
-     "file_status": "CAP",
-     "file_events": 3001,
-     "dominant_global": null,
-     "dominant_global_events": null
-    },
-    "n_natural_loops": 3,
-    "n_back_edges": 5,
-    "poll_loops": [],
-    "calls_poll_directly": false,
-    "reaches_poll": false,
-    "loop_polls_per_iteration": false,
-    "in_loop_callees_reaching_poll": [],
-    "option_calls": [],
-    "channels": [
-     {
-      "path": [
-       {
-        "key": "systemSave"
-       },
-       {
-        "key": "memoryFlag"
-       },
-       {
-        "dynamic": true
-       }
-      ],
-      "text": "systemSave.memoryFlag[*]",
-      "domain": 2,
-      "constants": [
-       "true"
-      ],
-      "truth_tested": false
-     }
-    ],
-    "register_comparisons": 0,
-    "input_space": 2,
-    "drivable_within_budget": true,
-    "class": "neither",
-    "class_evidence": "no poll loop and no option call; 1 branch channel(s)",
-    "footprint": {
-     "global_reads": [
-      "layerClip",
-      "layerCopy",
-      "layerLoad",
-      "layerMovePosition",
-      "layerPosition",
-      "layerVisible",
-      "systemSave",
-      "wait"
-     ],
-     "table_key_reads": [
-      [
-       "systemSave",
-       "memoryFlag"
-      ]
-     ],
-     "calls": [
-      "layerClip",
-      "layerCopy",
-      "layerLoad",
-      "layerMovePosition",
-      "layerPosition",
-      "layerVisible",
-      "wait"
-     ],
-     "table_key_calls": [],
-     "dynamic_reads": 17,
-     "read_sites": 101,
-     "call_sites": 34
-    }
-   },
-   "observed": {
-    "reviewed_by": "neither-audit",
-    "class_agrees": true,
-    "note": "Memory-gallery page-scroll animation; called from main_4 pcs 160/248/300/345."
-   }
-  },
-  {
-   "file": "snr_memory.lua",
    "proto_path": "main_4",
    "mechanical": {
     "selected_as": [
@@ -21898,7 +21712,7 @@
     "refusal_reason": null,
     "refusal_origin": null,
     "shipped": "structured",
-    "hybrid_chunk": true,
+    "hybrid_chunk": false,
     "probe": {
      "file_status": "CAP",
      "file_events": 3001,
@@ -25691,6 +25505,15 @@
    }
   },
   {
+   "file": "snr_graphic.lua",
+   "proto_path": "main_3",
+   "observed": {
+    "reviewed_by": "neither-audit",
+    "class_agrees": true,
+    "note": "CG page-scroll animation; called from main_4 pcs 159/247/297/342."
+   }
+  },
+  {
    "file": "snr_mainmenu.lua",
    "proto_path": "main_2",
    "observed": {
@@ -25706,6 +25529,15 @@
     "reviewed_by": "neither-audit",
     "class_agrees": true,
     "note": "Draws a memory-gallery thumbnail page; called from main_4 pc 35."
+   }
+  },
+  {
+   "file": "snr_memory.lua",
+   "proto_path": "main_3",
+   "observed": {
+    "reviewed_by": "neither-audit",
+    "class_agrees": true,
+    "note": "Memory-gallery page-scroll animation; called from main_4 pcs 160/248/300/345."
    }
   },
   {

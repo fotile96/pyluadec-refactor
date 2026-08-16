@@ -795,8 +795,11 @@ def test_the_printer_arm_is_not_carried_entirely_by_arm_one(corpus_scan):
     # 34 NumericFor until M8 task 2 (2026-08-16): 41 after -- main_71's
     # subtree entered the printing population when the arm-trailing
     # empty-then recognizer fix let `build_sir` accept it (its numeric-for
-    # at pc 413+ now prints). A population figure, not a floor.
-    assert rec.printed_via_frame_by_kind == {"NumericFor": 41, "GenericFor": 3}, (
+    # at pc 413+ now prints). 43/7 after M8 task 3: the empty-tail clamp
+    # fix certified snr_memory's whole file and snr_graphic's main_3, so
+    # their loops print through the structured path in the shipped hybrid
+    # too. A population figure, not a floor.
+    assert rec.printed_via_frame_by_kind == {"NumericFor": 43, "GenericFor": 7}, (
         rec.printed_via_frame_by_kind)
 
 
@@ -822,8 +825,10 @@ chains stage instead of materializing locals)
     """
     rec = corpus_scan["rec"]
     # 966 until M8 task 2 (2026-08-16): 1006 after -- main_71's subtree
-    # (40 CLOSURE sites) prints now; see the NumericFor note above.
-    assert rec.printed_via_arm1_by_kind.get("CLOSURE", 0) == 1006, (
+    # (40 CLOSURE sites) prints now; 1026 after M8 task 3 (snr_memory's
+    # file fully structured + snr_graphic's main_3 subtree prints); see
+    # the NumericFor note above.
+    assert rec.printed_via_arm1_by_kind.get("CLOSURE", 0) == 1026, (
         rec.printed_via_arm1_by_kind.get("CLOSURE"))
     assert "CLOSURE" not in rec.printed_via_frame_by_kind, (
         rec.printed_via_frame_by_kind)

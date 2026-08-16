@@ -617,7 +617,9 @@ def test_corpus_hybrid_invariant_on_one_file(corpus_dir):
     outcome = S.emit_certified_chunk(root)
     hc = S.certify_hybrid(root, outcome.certs)
     assert hc is not None
-    assert hc.fallback_paths == frozenset({"main_3", "main_4"})
+    # M8 task 3 (2026-08-16): main_3 certified (the empty-tail clamp fix),
+    # so snr_graphic's frontier is main_4 alone.
+    assert hc.fallback_paths == frozenset({"main_4"})
     assert shipping_violations(root, outcome, hc) == []
 
 
