@@ -257,31 +257,37 @@ CAPTURE_REUSE_SRC = (b"local a = {x = {p = 1}, y = {q = 2}}\nprint(a.x.p)\n"
                      b"print(a.y.q, f())\n")
 
 
-def test_neutering_the_constant_key_condition_breaks_the_dynamic_key_shape():
-    """The `isk(ri.b)` half of the rule, neutered on its own: the exemption
-    then reaches a constructor `_dispatch` cannot fold, the reconstructor
-    refuses on the second field store, and the chunk stops printing at all.
-    Pins that this condition is load-bearing rather than defensive --
-    `config.lua` is the corpus instance, and it was measured going exactly
-    this way while the rule was being written."""
+def test_neutering_the_register_key_fold_breaks_the_dynamic_key_shape():
+    """M7 task 6 moved the fold (`_dispatch`) and the classifier exemption
+    (`_constructor_field_target`) to register keys TOGETHER -- the docstring
+    invariant is that the two agree by construction. This pins the fold half
+    being load-bearing: with the fold neutered back to constant keys only
+    (the pre-task-6 selectivity) while the exemption keeps granting reads,
+    the classifier grades the table a pop-once temp, the reconstructor pops
+    it at the first field and refuses on the second -- `print_chunk` returns
+    None. `config.lua` is the corpus instance of the pair (it flipped
+    whole-file to `L3` when both moved; M7 task 6)."""
+    from pyluadec.express import reconstruct as rec
+    from pyluadec.lift.opcodes import isk
+
     p = _load(DYNAMIC_KEY_SINGLE_CONSUMER)
     assert print_chunk(p) is not None
-    real = freereg._constructor_field_target
+    real = rec.Reconstructor._fold_settable
 
-    def loose(fn, li, pending):
-        ri = li.ri
-        if ri.op not in (Op.SETTABLE, Op.SETLIST):
-            return None
-        ent = freereg._pending_def(pending, ri.a)
-        if ent is None or fn.instrs[ent.def_pc].ri.op is not Op.NEWTABLE:
-            return None
-        return ri.a
+    def strict_fold(self, ri):
+        if not isk(ri.b):
+            # the pre-M7-task-6 path: close the context and let the generic
+            # reader check re-dispatch this SETTABLE to statement form
+            self._close_table_ctx()
+            self._dispatch(self.fn.instrs[ri.pc])
+            return
+        real(self, ri)
 
     try:
-        freereg._constructor_field_target = loose
+        rec.Reconstructor._fold_settable = strict_fold
         assert print_chunk(p) is None           # ReconstructError, swallowed
     finally:
-        freereg._constructor_field_target = real
+        rec.Reconstructor._fold_settable = real
     assert print_chunk(p) is not None           # restored
 
 

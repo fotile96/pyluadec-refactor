@@ -76,8 +76,10 @@ The printer's *third* register decode -- a `CLOSURE`'s captured `ps.b` -- is
 covered by neither disjunct in the sense of "this row backs this touch": it
 is measured (round-1, 2026-08-12) to pass **exclusively** via the first
 disjunct (Arm 1 already reconciled the same register earlier in the
-function), 907/907 times on the corpus when first measured and 942/942 after
-M6 task 11 widened the printable set, 0 via the frame either time. See "What
+function), 907/907 times on the corpus when first measured, 942/942 after
+M6 task 11 widened the printable set, 942 after M6 task 11 widened the printable
+set, 986 after M7 task 7's clamp fix, 966 after M7 task 8's staging-span
+exemption -- 0 via the frame every time. See "What
 it does NOT assert" for why this decode cannot be reconciled by an
 effects-subset gate at all, and is stated there as an exclusion rather than
 claimed as coverage.
@@ -587,7 +589,24 @@ _WRAPPED_ACCESSORS = frozenset({
 _UNWRAPPED_BY_DESIGN = frozenset({"_refuse_stale_reference",
                                   "declare_loop_vars",
                                   "_is_generic_for_iterator",
-                                  "_is_stack_temp"})
+                                  "_is_stack_temp",
+                                  # M7 task 8: a STATIC scan of
+                                  # `effects.reads`/`writes` to find where a
+                                  # `CondValue` chain's consumer reads its
+                                  # target. It never consults the
+                                  # reconstruction environment, so there is
+                                  # no register expression for the recorder
+                                  # to compare against -- the same reason
+                                  # `_is_generic_for_iterator` is here.
+                                  "_next_read_after",
+                                  # M7 task 10: another static
+                                  # effects-surface scan (which instruction
+                                  # first touches a NEWTABLE's register),
+                                  # deciding the statement-built-table
+                                  # fast path. Same reasoning: a predicate
+                                  # over the instruction stream, never a
+                                  # register-slot touch.
+                                  "_next_touch_is_store_to"})
 
 # `_consume_open(start)` is not in either set: its parameter is a range start
 # rather than a register, and every slot it reads goes through `_read_reg`.
@@ -733,8 +752,10 @@ def test_the_printer_arm_is_not_carried_entirely_by_arm_one(corpus_scan):
     `reg in fr.covered` branch would be dead and the printer's own
     `NumericFor` `A+3` / `GenericFor` `A+3+i` decodes would be unchecked by
     anything. Measured: 31 printed names on this corpus reach text without any
-    reconstructor accessor having touched them first -- `by_kind` breaks down
-    as `{NumericFor: 36, GenericFor: 7}` exactly, pinned below.
+    reconstructor accessor having touched them first -- `by_kind` broke down
+    as `{NumericFor: 36, GenericFor: 7}` through M7 task 7 and is
+    `{NumericFor: 34, GenericFor: 3}` after task 8's staging-span exemption
+    (fewer for-headers stage their bounds through the frame), pinned below.
 
     The counts moved in M5 task 4, from `{NumericFor: 19, GenericFor: 2}` to
     `{NumericFor: 28, GenericFor: 3}`, and again in M6 task 11 to the current
@@ -771,7 +792,7 @@ def test_the_printer_arm_is_not_carried_entirely_by_arm_one(corpus_scan):
     assert rec.printed_via_frame > 0, rec.printed_via_frame
     assert rec.printed_via_arm1 > 0, rec.printed_via_arm1
     assert rec.printed_via_arm1 + rec.printed_via_frame == rec.printed
-    assert rec.printed_via_frame_by_kind == {"NumericFor": 36, "GenericFor": 7}, (
+    assert rec.printed_via_frame_by_kind == {"NumericFor": 34, "GenericFor": 3}, (
         rec.printed_via_frame_by_kind)
 
 
@@ -781,19 +802,22 @@ def test_closures_captured_upvalue_is_covered_by_arm_one_only(corpus_scan):
     The module docstring's earlier claim -- "all four [printer register
     decodes] covered by Arm 2" -- did not reproduce for the `CLOSURE`
     capture decode (`emit/lua.py:287`'s `name_for(ps.b, self.depth)`).
-    Measured: of the 912 corpus calls to `name_for` under a `CLOSURE` frame,
-    all 942 pass via Arm 1 (the register was already reconciled against its
-    own definition site earlier in the enclosing function) and 0 via the
+    Measured: of the corpus calls to `name_for` under a `CLOSURE` frame, all
+    pass via Arm 1 (the register was already reconciled against its own
+    definition site earlier in the enclosing function) and 0 via the
     frame's covered set. (907 before M5 task 4's jpc-threading fix, 912 after
     it, 942 after M6 task 11's condition trees put nine more files through the
-    structured printer -- a population figure, re-measured 2026-08-14, not a
+    structured printer, 986 after M7 task 7's clamp fix, 966 after M7 task 8's
+staging-span exemption (fewer CLOSURE frames print via Arm 1 because more
+chains stage instead of materializing locals)
+    through it -- a population figure, re-measured 2026-08-15, not a
     floor.) Pinned here rather than left as prose so a future
     change that routes some of these through the frame disjunct instead (or
     stops reconciling them via Arm 1 at all) is caught, not re-asserted by
     hand next time someone reads the docstring.
     """
     rec = corpus_scan["rec"]
-    assert rec.printed_via_arm1_by_kind.get("CLOSURE", 0) == 942, (
+    assert rec.printed_via_arm1_by_kind.get("CLOSURE", 0) == 966, (
         rec.printed_via_arm1_by_kind.get("CLOSURE"))
     assert "CLOSURE" not in rec.printed_via_frame_by_kind, (
         rec.printed_via_frame_by_kind)

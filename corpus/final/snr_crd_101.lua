@@ -1,0 +1,32 @@
+local l0_0 = function()
+    cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
+    comPoseLoad("po2_aya_f_1_c")
+    vms(320, "NONVOICE", "【直哉】「サクラさんから受け取った手紙を、家で読む場面」")
+    vms(321, "NONVOICE", "【直哉】「彩野さん、この手紙の部分は――」")
+    comPoseLoad("po2_aya_f_2_e")
+    vms(322, "NONVOICE", "【彩野】「……うん。現実にやりとりしていた手紙……」")
+    cLoadPlaySE(cGetFileName("se", "se_30"), false)
+    oCard.show(cGetFileName("card", "crd_" .. gameSave.fragmentDoCardId .. "_a"), "『サクラからの手紙』のあらすじを作成しました。")
+    comPoseLoad("po2_aya_f_1_c")
+    vms(323, "NONVOICE", "【彩野】「……サクラさんからの手紙は……家の他にも、違う場所でもよく、読んでた……」")
+    vms(324, "NONVOICE", "【彩野】「その展開の事も、ちょっと、考えてみた方がいいかも……しれないね……」")
+    vms(325, "NONVOICE", "【直哉】「うん、わかった……」")
+    comPoseDelete()
+    vms(326, "NONVOICE", "……他の展開……。")
+    vms(327, "NONVOICE", "確かに、この場面は良くない結末……バッドエンドだ。")
+    vms(328, "NONVOICE", "でも、他の場所に行って、物語の展開が変わる……変えられるのだろうか……。")
+    vms(329, "NONVOICE", "これが、現実を元にした物語だとしたら、サクラさんは……。")
+    vms(330, "NONVOICE", "……。")
+    comPoseDelete()
+    if not (gameSave.myCard[gameSave.fragmentDoCardId].hold == 1) then
+        gameSave.myCard[gameSave.fragmentDoCardId].hold = 1
+        comAyanoTimeRefresh()
+    end
+end
+main = function()
+    comSectionCardStart(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
+    l0_0()
+    comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
+    run(cGetFileName("script", "snr_fragment_main"))
+    quit()
+end

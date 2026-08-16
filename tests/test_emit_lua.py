@@ -206,60 +206,36 @@ def test_method_call_prints_colon_sugar(tmp_path):
     assert out[0] == "hi" and out[2] == "world" and len(out) == 3
 
 
-def test_bare_local_decl_has_no_trailing_equals(tmp_path):
+def test_bare_local_decl_has_no_trailing_equals():
     """A LocalDecl with an empty exprs tuple (a bare `local a, b` from a
     mixed multi-result write, see Task 5's report) must print without a
     trailing `=` -- `local a, b = ` is a syntax error. Fault-injection
     target (b).
 
-    Source: a generic `for` whose iterator staging (`CALL` with three result
-    registers) lands on register numbers where one -- the argument slot,
-    materialized as `local l0_2 = l0_0 and {l0_0} or {}` a statement earlier
-    because `_same_block` refuses to stage a value across the `and`/`or`'s
-    jumps -- is already in `declared`. `_emit_multi` then sees a MIXED tuple
-    (one target declared, two fresh) and must bring the fresh ones into scope
-    with a bare `local l0_3` before assigning the whole tuple, because a
-    second `local` of an existing name would shadow rather than assign.
-    Confirmed by inspecting the printed source below: it contains a bare local
-    line with no initialiser.
-
-    This fixture has now been re-derived TWICE, both times because a
-    classification fix stopped the old source reaching the branch, which is
-    worth stating plainly: the mixed branch is reachable only through a
-    register the classifier gets *wrong*, so every improvement to
-    classification is expected to break the fixture rather than the branch.
-    The original source was `local ok, a = f()` with a later use of `a`; that
-    stopped reaching it in M4 task 13 (per-definition classification leaves
-    neither result register declared before the `CALL`). Its replacement used
-    `pairs({x})` after an `if` arm, relying on the table literal being
-    materialized; M6 task 12 stopped materializing constructors, so the
-    `and`/`or` above supplies the still-mis-classified register instead.
-
-    The mixed branch is reached by 0 corpus protos (measured this session by
-    instrumenting `_emit_multi` over every occurrence `emit_certified_chunk`
-    reconstructs on the full 229-file corpus: 12 distinct multi-register call
-    sites, 10 all-fresh, 2 all-declared, 0 mixed). This fixture is therefore
-    a **synthetic pin**, not a corpus-reached shape -- still the right reason
-    to keep it, since the branch is real code with its own failure mode
-    (`local a, b = ` is a syntax error) that nothing else in this suite drives.
-    `f`/`g` return constants, so the observable result is deterministic: `8`,
-    then `1  7` from the one loop iteration.
+    Driven DIRECTLY on the printer since M7 task 8 (2026-08-15), by
+    hand-building the statement. The mixed branch in
+    `express/reconstruct.py` that produces such a decl (`_emit_multi`'s
+    partially-demoted generic-for triple) is reachable only through a
+    register the classifier gets *wrong*, and three classification fixes in
+    a row each broke the previous end-to-end carrier: M4 task 13
+    (per-definition classification killed `local ok, a = f()`), M6 task 12
+    (constructor materialization stopped), M7 task 8 (the `_same_block`
+    staging-span exemption stopped materializing the `and`/`or` iterator
+    argument of `for k, v in pairs(x and {x} or {})`). Each break required
+    re-deriving a source that mis-classifies in a NEW way -- pinning the
+    printer to the classifier's bugs. The branch was measured at 0 corpus
+    occurrences even before task 8 (12 distinct multi-register call sites:
+    10 all-fresh, 2 all-declared, 0 mixed), so the hand-built form is the
+    honest test: it asserts exactly what the branch does, independent of
+    whether any input still reaches it.
     """
-    from pyluadec.emit.lua import print_chunk
-    src = ("function f() return 7 end\n"
-          "function g() return 8 end\n"
-          "local x = f()\n"
-          "if x then local y = g() print(y) end\n"
-          "for k, v in pairs(x and {x} or {}) do print(k, v) end\n")
-    printed = print_chunk(_proto(src, tmp_path))
-    assert printed is not None
-    assert any(line.strip().startswith("local ") and "=" not in line
-              for line in printed.splitlines()), \
-        f"expected a bare (no '=') local decl line in:\n{printed}"
-    for line in printed.splitlines():
-        stripped = line.rstrip()
-        assert not stripped.endswith("="), f"trailing bare '=' in: {line!r}"
-    assert _run(printed, tmp_path).split() == ["8", "1", "7"]
+    from pyluadec.emit.lua import Printer
+    from pyluadec.express.reconstruct import LocalDecl
+    p = Printer.__new__(Printer)
+    p.depth = 0
+    line = p._local_decl(LocalDecl((3,), ()))
+    assert line == "local l0_3"
+    assert not line.rstrip().endswith("=")
 
 
 def test_closure_captures_outer_local_and_returns_it(tmp_path):

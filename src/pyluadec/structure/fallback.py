@@ -80,7 +80,7 @@ def num_lit(k: LuaNumber, *, parenthesize_negative: bool = True) -> str:
     raise EmitError(f"cannot render number payload {k.payload.hex()} losslessly")
 
 
-def str_lit(bs: bytes) -> str:
+def _escape_only(bs: bytes) -> str:
     out = ['"']
     for byte in bs:
         if byte == 0x22:                  # '"'
@@ -91,6 +91,79 @@ def str_lit(bs: bytes) -> str:
             out.append(chr(byte))
         else:
             out.append("\\%03d" % byte)   # 定长三位，避免与后继数字字符粘连
+    out.append('"')
+    return "".join(out)
+
+
+def str_lit(bs: bytes) -> str:
+    """A string constant as a double-quoted Lua literal: readable UTF-8 raw,
+    decimal escapes otherwise.
+
+    ## The red line, and the two amendments this implements
+
+    The standing project rule is that bytecode-derived strings are `bytes`
+    and are never decoded. CLAUDE.md's red-line bullet scopes that: it binds
+    ingest, lift and the comparison layer absolutely, and allows the PRINTING
+    layer a **decision with a fallback** -- print raw when the bytes are
+    reversible UTF-8, decimal-escape otherwise -- because both spellings
+    compile to the same constant and the certification gate adjudicates that
+    they do.
+
+    Two scope revisions, both approved by the human partner as standalone
+    decisions: 2026-08-12 (M5 task 7, then the single site
+    `emit/lua.py::_str_lit`) and **2026-08-15 (M7 task 5): the judgment moved
+    here and `emit/lua.py::_str_lit` became a thin delegate** -- fallback
+    text (whole-file fallback chunks and hybrid-inlined subtrees) printed
+    game text decimal-escaped, and the artifact's whole purpose is
+    translation (`docs/reports/m4-readability.md` named this the single
+    largest readability gap). The move reverses the 2026-08-12 clause "只落
+    在 emit/ / 不得扩大这个口子" by name; the record lives in CLAUDE.md's
+    red-line section and the overall spec's §2 decision table. Nothing under
+    `ingest`, `lift` or `verify` decodes anything, before and after.
+
+    ## The gate
+
+    Three conditions, all of which must hold to print raw:
+
+    1. `bs.decode("utf-8")` succeeds (strict: no overlongs, no surrogates,
+       nothing above U+10FFFF).
+    2. Re-encoding gives back exactly `bs`. **DEFENSIVE**, not a case anyone
+       has produced: Python's strict UTF-8 codec is a bijection on the
+       sequences it accepts (brute-forced over all 1-2 byte sequences and all
+       3-byte sequences with lead E0..F4, 0 mismatches, 2026-08-12). Kept
+       because it is the property that makes the raw form provably
+       byte-exact, and it is one comparison against the rule the amendment
+       rests on.
+    3. The string is not pure ASCII. A pure-ASCII string gains nothing from
+       this path and goes through `_escape_only`, which makes "ASCII output
+       is unchanged" a one-line argument rather than a diff.
+
+    What still gets escaped in the raw form: `"` and `\\` (Lua would
+    misparse them), and every byte below 32 plus DEL. `llex.c::read_string`
+    errors on a raw `\\n`/`\\r` inside a string and treats EOZ as
+    unterminated, so those must not appear literally; every other byte,
+    including every multi-byte UTF-8 continuation, is copied verbatim by the
+    lexer. Lua 5.1's lexer is byte-oriented and has no notion of U+2028 and
+    friends.
+    """
+    try:
+        s = bs.decode("utf-8")
+    except UnicodeDecodeError:
+        return _escape_only(bs)
+    if s.encode("utf-8") != bs or s.isascii():
+        return _escape_only(bs)
+    out = ['"']
+    for ch in s:
+        if ch == '"':
+            out.append('\\"')
+        elif ch == "\\":
+            out.append("\\\\")
+        elif ord(ch) < 32 or ord(ch) == 127:
+            # Same fixed three-digit form `_escape_only` uses, and for the
+            # same reason: `"\\10" "0"` would otherwise read as `\\100`.
+            out.append("\\%03d" % ord(ch))
+        else:
+            out.append(ch)
     out.append('"')
     return "".join(out)
 

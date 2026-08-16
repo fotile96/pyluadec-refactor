@@ -593,20 +593,29 @@ def test_injected_loop_bound_is_caught(corpus_dir, decompiled):
 def test_injected_forloop_bound_is_caught(corpus_dir, decompiled):
     """The same injection against the FORLOOP the fallback emitter writes out
     by hand: turn `__pld_i <= limit` into `__pld_i < limit`, i.e. run the loop
-    one iteration short. snr_memory.lua ships a HYBRID chunk (M6 task 12
-    re-measurement: 4 files are whole-file fallback and 8 more, this one among
-    them, carry fallback-emitted inline functions inside otherwise structured
-    source), so the floor is covered as well as the structured path.
+    one iteration short.
 
-    The register in the anchor is `__pld_R[3]`, not `__pld_R[5]`: task 12's
-    classification change moved which of this file's protos ship fallback at
-    all, and the `[5]` line no longer exists. `_injected` asserts the anchor is
-    unique, which is what caught that -- re-derived, not widened."""
+    Carrier re-derived at M7 task 8 (2026-08-15), and the move is a measured
+    fact about coverage, not just about text: snr_memory.lua carried this
+    since M6 task 12, but its certification of main_2 removed the `[3]`
+    -register loop the anchor named, and NONE of its three surviving
+    fallback for-loops is executed by the probe's drive (all three injected:
+    trace byte-identical -- the substituted functions that contain them are
+    not reached). The scan over every file whose emitted text still contains
+    a fallback FORLOOP found exactly one behaviorally-visible site:
+    snr_music.lua's pc-144 loop. The anchor is the pc-dispatch arm plus the
+    two staging lines, unique in the file; the injection shortens the bound
+    and the trace moves.
+    """
     orig, mutated = _injected(
-        corpus_dir, decompiled, "snr_memory.lua",
-        b"\nif (__pld_s > 0 and __pld_i <= __pld_R[3]) or "
+        corpus_dir, decompiled, "snr_music.lua",
+        b"elseif __pld_pc == 144 then\n"
+        b"do local __pld_s = __pld_R[4] local __pld_i = __pld_R[2] + __pld_s\n"
+        b"if (__pld_s > 0 and __pld_i <= __pld_R[3]) or "
         b"(__pld_s <= 0 and __pld_i >= __pld_R[3]) then\n",
-        b"\nif (__pld_s > 0 and __pld_i < __pld_R[3]) or "
+        b"elseif __pld_pc == 144 then\n"
+        b"do local __pld_s = __pld_R[4] local __pld_i = __pld_R[2] + __pld_s\n"
+        b"if (__pld_s > 0 and __pld_i < __pld_R[3]) or "
         b"(__pld_s <= 0 and __pld_i >= __pld_R[3]) then\n")
     assert mutated != orig
 

@@ -2062,91 +2062,184 @@ not decorative.
 
 ### What is left, attributed rather than narrated
 
-40 non-`L3` shapes remain (41 before this task). The `declared` gate is
-**at least three mechanisms**, and only two of them are closed here. The
-third is `_same_block`: it refuses to stage a value whose consumer sits in
-another basic block, and an `and`/`or` sub-expression puts a jump between a
-staged callee and its `CALL`. One line reproduces it — `g(a and 1 or 2)`
-prints `local l0_0 = g  local l0_1 = a and 1 or 2  l0_0(l0_1)` and fails on
-`maxstacksize` — and it is `snr_common.lua:main_76_2`, the exemplar the task
-brief opened with.
+**The M7 campaign census (2026-08-16, post task 10): 22 non-`L3` rows — 15 own
+refusals + 7 inherited ancestors — every one attributed below.** The campaign
+(Tasks 6–10) took the population from 40 (M6 close) to 22, measured row by row
+from each task's committed ledger: task 6's dynamic-key constructor fold (−1),
+task 7's skipped-kill clamp veto (−4: three own rows plus their inherited
+root), task 8's staging-span exemption (−2), task 9's reaching-definition `>`
+recogniser (−3) and hint-0 constructor budget gate (−2), task 10's
+key-staged-below-table barrier (−4: two own rows plus two inherited roots,
+flipping `snr_s3_10_s` and `snr_s4_10_s` whole-file structured) and
+NEWTABLE-position lookahead (−1, `snr_common:main_29`). `L3` stands at
+**1456/1478 unique (98.5%), 1922/1944 occurrences (98.9%)**; 222 of 229 files
+ship fully structured, 5 hybrid, 2 whole-file fallback, and 1880/1944
+occurrences (96.7%) ship structured text.
 
-Measured attribution, 2026-08-14, by neutering `_same_block` to a tautology
-and re-certifying all 40 (a measurement only; the guard is load-bearing for
-execution-count correctness and its own docstring carries the proof): **6 of
-the 40** certify — `snr_graphic:main_2`, `snr_memory:main_2`,
-`snr_novel:main_2`, `snr_novel:main_3`, `snr_story_main:main_3` and its root.
-So `_same_block` is a real third mechanism but not the dominant one.
+The clusters, each with its first-divergence evidence (all re-measured
+2026-08-16 with the runbook's canonical wrapper recipe; `orig` is the corpus
+bytecode, `cand` our recompiled print):
 
-`snr_common:main_71` (`structure: pc 286: else-join out of range`) is out of
-this family altogether — see the capability-boundary section, which states the
-same mechanism as **measured**. Round 1 of task 12 checked the jump structure
-it rests on (pc 295 is a `JMP` whose only successor is 410, pc 409 is a `JMP`
-back to 279, so 279/410 really are a loop header and its exit) and then wrote
-that "the `_match_loop`/`break_target=410` half is carried from task 11 and is
-unverified at this commit" — which contradicted the other passage and is the
-sentence the M6 final review flagged. **Re-run 2026-08-14, all three in one
-call, ~30s:**
+| cluster | rows (own) | + inherited | mechanism |
+| --- | --- | --- | --- |
+| K1 | 5 | — | constructor hint ≥ 1: the fold's deliberately ungated half |
+| C | 1 | 1 | constant-pool interning order (`const[70..73]`) |
+| J | 1 | — | jump-ladder spelling: candidate +13 instructions, first divergence a `JMP` target |
+| M | 5 | 3 | materialization surplus: extra `local`s the original never had (`+code`, `+maxstacksize`) |
+| R | 2 | 2 | `and`/`or` empty alternative re-reads a consumed temp |
+| X | 1 | 1 | `while true` + `break` not recognized (`pc 286`) |
+
+**Closed at task 10** (the spec §5 stop-loss re-scope, ruled with the human
+partner 2026-08-16): cluster **O** — the register-key staging order — by the
+`_bar_key_staged_below_table` barrier in `express/freereg.py`: a register-keyed
+`GETTABLE`/`SETTABLE` whose key's pending definition PREDATES its table
+operand's was never an inline `t[k]`, because stock 5.1.5 discharges the table
+prefix before parsing the key on every parse route; the barrier grades the key
+local, the reconstructor materializes it where the original declared it.
+`snr_s3_10_s:main_59`/`snr_s4_10_s:main_58` + both roots certified. And
+cluster **K2** — the hint-0 close position — by a NEWTABLE-side lookahead: a
+hint-0 `NEWTABLE` whose first toucher is a `SETTABLE` into its register
+materializes `local t = {}` at the `NEWTABLE` itself instead of at the first
+store, restoring the declaration position the original wrote (the open-region
+test in the scan is precise — `reg < base` means the open instruction does not
+touch the register; `snr_common:main_29` needed exactly that, its first store
+sits inside a `for` body past a `VARARG`/open `CALL` based above the table's
+slot). One K2 row, `snr_common:main_77_25`, had certified already at task 9's
+gate.
+
+**K1 — the hint ≥ 1 half of the constructor budget (5 own rows).** The task-9
+budget gate fires only on a decoded hash hint of 0, because every non-zero
+hint is an `int2fb` bucketed lower bound that cannot be compared against a
+field count exactly (see `_close_table_ctx`). The rows where that deliberate
+gap is the whole story: `snr_common:main_24` (`NEWTABLE 0 0 1` vs `0 0 3` — a
+one-field seed literal plus statement stores, folded into a three-field
+literal), `main_25` (`0 0 2` vs `0 0 3`, same), `main_77` (pc 1: orig
+`NEWTABLE 0 0 1` vs cand `LOADK 0 -1` — the literal placed after a constant
+load), and the two whole-file fallback roots `snr_novel:main` (hint 7,
+maxstacksize 17→18) and `snr_music:main` (hint 4, maxstacksize 24→28; the
+M6 case study below documents this chunk's fold history). Closing these needs
+an exact hint arithmetic under `int2fb` decoding, which the encoding does not
+admit — the attribution *is* the disposition.
+
+**C — constant-pool order (1 own + 1 inherited).** `snr_story_main:main_3`
+and its root: `const[70]`–`const[73]` mismatch plus jump distances shifted by
+the reinterning (`JMP 77` vs `JMP 85` at pc 290, 461 vs 469 instructions).
+Same attribution as the task-8 census: the candidate interns two constants in
+the opposite order from the original (`fileName`/`sysgim`), and every index
+after the swap moves. The closed `L3.2` rung (below) is the standing decision
+not to canonicalize pools.
+
+**J — jump-ladder spelling (1 own).** `snr_graphic:main_4`: candidate is 13
+instructions longer (769 vs 782), first divergence a `JMP` target at pc 355.
+Task 9's `>` fix certified this row's clamp gate (its M6 twin
+`snr_memory:main_4` went `L3`), and what remains is the ladder around it —
+the shape pinned as `WHILE_HEADER_GAP` in `tests/test_sir_condtree.py`
+(`while <a and b>` headers are not yet representable as compound conditions)
+plus the elseif-vs-nested-if spelling each unrecognized rung of the ladder
+pays for. No separate defect claim is made: this is the compound-condition
+residual, measured as a length difference.
+
+**M — materialization surplus (5 own + 3 inherited).**
+`snr_mainmenu:main_7` (+4 instructions, maxstacksize 12→13),
+`snr_common:main_25_4` (90 vs 104 instructions, maxstacksize 8→10, first
+divergence `MOVE 4 0` vs `MOVE 4 2`), `main_76_2` (174 vs 180, 9→11),
+`main_74_18` (first divergence `GETGLOBAL 1 -1` vs `GETGLOBAL 0 -1` — a
+register-numbering shift from one extra live local, maxstacksize 9→8 the
+other way), and `main_77_0` (pc 3: `SETUPVAL 1 1` vs `SETUPVAL 1 0`, a
+register-index shift in the upvalue write). All five are the `declared`-gate
+family the M6 census called mechanisms B/D/E: a definition the walk grades
+local where the original had an expression-stack temp (or vice versa), so our
+print carries one `local` too many and every register above it shifts. The
+inherited companions are the roots `mainmenu:main` (`at root/7`),
+`common:main_74` (`at root/18`) and `common:main_76` (`at root/2`).
+
+**R — the `and`/`or` empty-alternative re-read (2 own + 2 inherited).**
+`snr_memory:main_3` and `snr_graphic:main_3`, plus their roots, refuse at
+`reconstruct: register 7 is read again after its staged value was consumed`.
+Reproduced directly while re-deriving this census (the repro *is* the
+diagnosis): `_print_proto_body` raises in `_value_run`'s empty-run arm —
+`return self._read_reg(reg)` — i.e. one alternative of the short-circuit
+chain contributes no instructions (`lcode.c:discharge2reg` emits nothing when
+the operand already sits in the destination), so its value is the register's
+*incoming* one, which an earlier alternative already popped. This is the
+documented `x = <cond> and 9 or x` shape (`_value_run`'s own docstring cites
+`snr_graphic.lua:main_3` pc 39 for exactly this) meeting the per-definition
+`_consumed` guard: the pc-linear classifier has no control-flow model, so it
+cannot see that two alternatives read *different* definitions of the slot.
+The clamp-family veto (task 7) closed the `TESTSET`-based three rows of this
+family; these two need the empty-alternative half, which is region work, not
+classification work.
+
+**X — the `while true` + `break` gap (1 own + 1 inherited).**
+`snr_common:main_71` (`structure: pc 286: else-join out of range`) and its
+root. Unchanged from the M6 census: the tests at pc 284/286 are a nested
+`if`/`else`, and what actually refuses is the `break` at pc 295 targeting 410,
+the exit of a `while true` (header 279) that `_match_loop` does not
+recognize. Re-verified 2026-08-14: `_structure_if(284, break_target=410)`
+succeeds, `_match_loop(279)` returns `None`.
+
+**The campaign's closed mechanisms** (each with its own commit and tests, so
+only the row arithmetic lives here): task 6's dynamic-key constructor fold
+closed `config.lua`'s whole-file fallback (mechanism G's statement-store
+half); task 7's `_merge_veto_skipped_kill` closed all three `reconstruct:`
+clamp rows (the M6 census's "fourth mechanism" — `snr_common:main_69`,
+`snr_s5_10_s:main_42/43` and their inherited roots, plus the two rows the
+M6 text below still describes in its then-current state); task 8's
+`_staging_span_ok` closed the `_same_block` rows for `snr_graphic:main_2`
+and `snr_memory:main_2`; task 9's reaching-definition `_is_stack_temp`
+disjunct closed the `>` recogniser's three rows (`snr_novel:main_2`,
+`snr_novel:main_3`, `snr_memory:main_4` — the M6 clamp-twin of
+`snr_graphic:main_4`) and the hint-0 budget gate closed
+`snr_s1_10_s:main_48` and its root, flipping that file fully structured;
+task 10 closed clusters O and K2 (above). The
+M6-era
+subsections below are kept as the measurement history of mechanisms three,
+four and five — their row counts are as of their own dates, not current.
+
+### History: the M6-era attribution that the campaign closed from
+
+*Measured 2026-08-14; superseded by the census above on every row it
+names. Kept because the neuter-experiment methodology and the per-mechanism
+arguments are still the reference for re-deriving any of these clusters.*
+
+40 non-`L3` shapes stood at the M6 close. The `declared` gate was shown to
+be **at least three mechanisms**, of which M6 task 12 closed two. The
+third, `_same_block`, refused to stage a value whose consumer sits in
+another basic block — `g(a and 1 or 2)` printed
+`local l0_0 = g  local l0_1 = a and 1 or 2  l0_0(l0_1)` and failed on
+`maxstacksize`; `snr_common.lua:main_76_2` was the exemplar. Neutering
+`_same_block` to a tautology and re-certifying the population moved **6 of
+the 40** (`snr_graphic:main_2`, `snr_memory:main_2`, `snr_novel:main_2`,
+`snr_novel:main_3`, `snr_story_main:main_3` and its root) — a real mechanism,
+not the dominant one. The staging-span exemption (task 8) later closed the
+first two of those six.
+
+The `reconstruct: register N is read again` family was five rows then — two
+inherited ancestors and three own refusals, all one clamp shape:
 
 ```
-_structure_if(284, break_target=410)  -> OK tuple
-_structure_if(284, break_target=None) -> StructureError: pc 286: else-join out of range
-_match_loop(279)                      -> None
+250 SUB      R7 = R7 - R2      <- graded TEMP (its one read is the LT below)
+251 LT       0 R7 K            <- reads R7
+252 JMP      -> 254
+253 LOADK    R7 = K1           <- graded LOCAL (the RK/literal barrier)
+...
+257 SETTABLE R8[K] = R7        <- reads R7 AFTER THE JOIN
 ```
 
-So the capability-boundary passage is the correct one and this half is
-verified, not carried.
-
-### The `reconstruct: register N is read again` family — a fourth mechanism
-
-Five ledger rows, and they are **not** five defects. Measured 2026-08-14:
-
-* **Two are inherited ancestors.** `snr_common:main` carries `main_69`'s
-  message verbatim and `snr_s5_10_s:main` carries `main_42`'s;
-  `observation_classes.refusal_origin`'s `reconstruct` rule classifies both
-  `inherited`, and neither appears in `classes.json`'s candidate set.
-* **Three are own refusals** — `snr_common:main_69` (register 7),
-  `snr_s5_10_s:main_42` (register 11), `snr_s5_10_s:main_43` (register 9) —
-  and all three are the **same shape**, a clamp:
-
-  ```
-  250 SUB      R7 = R7 - R2      <- graded TEMP (its one read is the LT below)
-  251 LT       0 R7 K            <- reads R7
-  252 JMP      -> 254
-  253 LOADK    R7 = K1           <- graded LOCAL (the RK/literal barrier)
-  ...
-  257 SETTABLE R8[K] = R7        <- reads R7 AFTER THE JOIN
-  ```
-
-  (`snr_common:main_69`; `snr_s5_10_s:main_43` is `ADD` at 196 / `LE` 197 /
-  `JMP` 198 / `LOADK` 199 / read at 202+, and `main_42` is the same at
-  232/234/235. Source shape: `local v = a - b  if v < LIM then v = LIM end
-  t.k = v`.) The two verdicts are individually defensible — the `SUB` really
-  is read once before the branch, and the `LOADK` really is disqualified by
-  the RK/literal barrier — but they are **two arms of one conditional value**,
-  and at pc 257 the register holds either. The reconstructor stages the `SUB`,
-  the `LT` pops it, and the post-join read hits
-  `reconstruct.py::_read_reg`'s `_consumed` refusal.
-
-  This is the "no control-flow model" limitation that refusal's own docstring
-  names, and it is a **fourth** mechanism, not `_same_block`'s: `_same_block`
-  is one definition whose single consumer is in another block, this is two
-  definitions on two arms joining before a common consumer. None of the three
-  flips under the `_same_block` neuter above. Closing it needs a region for a
-  statement-level conditional assignment — `regions.CondValue` covers only the
-  `TESTSET`-based `and`/`or` idiom, and there is no `TESTSET` here.
-
-That leaves **31** of the 40 unattributed (40 − 6 `_same_block` − 3 clamp).
-The 31 is a row count and **already includes** the purely inherited
-`... at root/N` rows that will follow whatever their descendants do —
-`m3-backlog.md` §1 states the split as 21 own + 10 inherited = 31. (This
-sentence used to end "plus the 9 purely inherited …", which added them a
-second time; corrected at the M6 final review.)
+Two individually defensible verdicts over **two arms of one conditional
+value**: the `SUB` really is read once before the branch, the `LOADK` really
+is disqualified by the literal barrier, and at pc 257 the register holds
+either. The reconstructor staged the `SUB`, the `LT` popped it, and the
+post-join read hit `_read_reg`'s `_consumed` refusal. Task 7's
+`_merge_veto_skipped_kill` — when the kill a staging veto skipped is itself
+skipped by a later arm, the veto is withdrawn — closed all five rows. What
+remains of this family today is the empty-alternative half (cluster R above),
+a different arm of the same no-control-flow limitation.
 
 ### `snr_music.lua:main` — the M5 diagnosis was right, and is now closed
 
 The task brief named it as a third instance of the constructor-aliasing
-family, from M5's adjudication. That diagnosis **survives**, and this task
+family, from M5's adjudication. That diagnosis **survives**, and M6 task 12
 closed it. Measured 2026-08-14 by printing the chunk at BASE and at HEAD and
 recompiling both:
 
@@ -2161,11 +2254,11 @@ At BASE the printed source opens `local l0_1 = {…}` / `l0_1 = {…}` /
 HEAD they fold into one literal (`local l0_0 = {layerName = {…},
 musicTitle = {…}, …}`) and the instruction count is exactly right.
 
-What is left is a **fifth mechanism, and it is a consequence of closing the
-first**: the outer constructor's context is now held open longer, so the
-`local` for the table is emitted after three later scalar `local`s and every
-register shifts by three (24 → 27 is exactly those three slots). Instrumented
-directly — the reg-0 context opens at pc 1 in both, and closes:
+What was left then was a **fifth mechanism, and a consequence of closing the
+first**: the outer constructor's context was held open longer, so the
+`local` for the table was emitted after three later scalar `local`s and every
+register shifted by three (24 → 27 is exactly those three slots).
+Instrumented directly — the reg-0 context opens at pc 1 in both, and closes:
 
 * at BASE while dispatching **pc 81** (`LOADBOOL` into register 1), because the
   inner tables had been materialized into register 1 and folding them left
@@ -2175,10 +2268,9 @@ directly — the reg-0 context opens at pc 1 in both, and closes:
   **empty**.
 
 So a fold that removes a hazard also removes the thing that used to close the
-context at the right place. It cost nothing here — the row was
-`mismatch: maxstacksize` before and after, and the ratchet shows 0 downgrades
-— but it is a real reordering hazard and it is the reason `snr_music.lua:main`
-did not certify despite its headline defect being fixed.
+context at the right place. The row is still non-`L3` today — as cluster K1
+(maxstacksize 24 → 28 with the hint-4 literal), the deliberately ungated
+half of the constructor budget.
 
 ## Ledger fields added in M3
 
@@ -2304,13 +2396,13 @@ occurrences.
 | --- | --- | --- |
 | `build_sir` accepts the proto's own body | 1477 (99.9%) | 1943 (99.9%) |
 | whole subtree prints (proto **and** every descendant) | 1472 (99.6%) | 1938 (99.7%) |
-| certifies `L3` | **1438 (97.3%)** | **1904 (97.9%)** |
+| certifies `L3` | **1456 (98.5%)** | **1922 (98.9%)** |
 
-(Re-measured 2026-08-14 after M6 task 12. After task 11 the third row was
-1437/1903; the previous figures, at M5 close, were 1465/1931, 1452/1918 and
-1430/1896. Task 12 moved the third row only — the top two are untouched,
-because neither of its two fixes changes what `build_sir` accepts or what
-prints.)
+(Re-measured 2026-08-16 after M7 task 10. The M6-close figures were 1477 /
+1472 / 1438 (97.3%, 1904 occurrences): the whole M7 campaign — tasks 6–10 —
+moved the third row only, because none of its fixes changes what `build_sir`
+accepts or what prints; the row's per-task path 1438 → 1439 → 1443 → 1445 →
+1450 → 1456 is measured in each task's committed ledger.)
 
 **The command, because rows 1 and 2 have never named one and row 2 is easy to
 get wrong** (added in task 12 round 1, after a reviewer's reasonable predicate
@@ -4129,3 +4221,50 @@ Practical division of labour:
   minors → `docs/runbooks/m3-backlog.md`.
 - Readability against the predecessor's shipped output →
   `docs/reports/m4-readability.md`.
+
+## The warranty corpus and the two-factor grade (M7)
+
+`corpus/final/` (229 files, committed, generated) is the merged corpus the
+localization project translates against; `corpus/warranty.jsonl` (one row per
+file) records the per-occurrence two-factor grade and the selection verdict
+that produced it. Both are **whole-cloth generated** by
+`scripts/warranty_build.py --all` (a job: trigger = any ledger/panel/recert
+movement and at close; refuses to write on a pin-table opcode violation or a
+selection error) and regenerate byte-identically
+(`tests/test_warranty.py`, corpus-gated on both env vars). **Authority for
+every number and decision lives in `docs/reports/m7-warranty.md`** — this
+section is a pointer, not a second record.
+
+The grade vocabulary, in one breath each:
+
+- **Factor T** (`predrecert.t_grade`, one place, both sides):
+  `T3` = certified `L3` and ships structured text; `T2` = the hybrid
+  contract compared this proto's own fields; `T-` = **ships fallback text**
+  (shipped-first order, amended 2026-08-16 — a level never outranks a
+  fallback shipment; see the report's §1 addendum for the 703 phantom
+  grades the old order created).
+- **Factor E**: `id` for ours (constructive identity — our text's source
+  bytecode IS the original); for pred, the invariant panel
+  (`corpus/observation/panel.json`) with `wm` (M6 walkthrough + driver
+  validation) replacing the grade of exactly the six repaired protos.
+  Order `id > wm > panel-pass > panel-pinned`; `panel-unpinned`
+  disqualifies the pred side.
+
+Selection (`warranty_build.select`, spec §6): lexicographic `(T, E)`, tie
+→ ours. Two structural facts worth knowing before quoting outcomes:
+**Factor E never decides a selection** (with ours at `id`, pred wins only
+on a strict T advantage — 12 of 36 combinations, pinned as a test), and
+**the merge is degenerate for a diagnosed reason** — pred fails
+re-certification (mechanism F, boilerplate dead locals) in 228/229 files,
+so all 229 files ship ours and `corpus/final/` is byte-identical to our
+own product. The warranty's value is the recorded per-occurrence evidence,
+not the merging.
+
+**Reading a `T-` row**: ours `T-` (64 occurrences) is the M2 floor —
+semantically exact by construction, compileable, L1.5/L1.75-probe-covered
+— while pred `T-` means no positive verification; the schema does not
+distinguish the two (M8 schema candidate, recorded in the generator's
+docstring). **Readability residual**: 52 lines of game dialogue ship as
+`__pld_R[n] = "<Japanese>"` (49 `snr_common`, 2 `snr_story_main`, 1
+`snr_novel`) — encoding-complete but without call context; pinned by
+`tests/test_m7_exit.py`, fix routed to M8.

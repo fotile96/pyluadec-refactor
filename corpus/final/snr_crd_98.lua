@@ -1,0 +1,32 @@
+local l0_0 = function()
+    cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
+    comPoseLoad("po2_aya_f_1_a")
+    vms(3873, "NONVOICE", "【直哉】「インパクトのある、ウワサ――」")
+    vms(3874, "NONVOICE", "【彩野】「そう……私たちは、いつもこんな風に話していたの」")
+    wait(1)
+    comEffectFadeOut(60)
+    wait(1)
+    layerLoad(layerName.event, cGetFileName("event", "eve_56_x"))
+    switchScreen(0, "", 120)
+    wait(120)
+    vms(3875, "NONVOICE", "【彩野】「本当は、サクラさんの病室で――」")
+    cLoadPlaySE(cGetFileName("se", "se_30"), false)
+    oCard.show(cGetFileName("card", "crd_" .. gameSave.fragmentDoCardId .. "_a"), "『インパクトのあるウワサ』のあらすじを作成しました。")
+    vms(3876, "NONVOICE", "【直哉】「アヤノさんは、どうして『インパクトのあるウワサ』を知る必要があったのかな？」")
+    vms(3877, "NONVOICE", "【彩野】「それは、もうすこし物語を読み進めてみれば……わかると思う……」")
+    vms(3878, "NONVOICE", "【直哉】「……うん。わかった――」")
+    wait(1)
+    comEffectFadeOut(60)
+    comPoseDelete()
+    if not (gameSave.myCard[gameSave.fragmentDoCardId].hold == 1) then
+        gameSave.myCard[gameSave.fragmentDoCardId].hold = 1
+        comAyanoTimeRefresh()
+    end
+end
+main = function()
+    comSectionCardStart(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
+    l0_0()
+    comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
+    run(cGetFileName("script", "snr_fragment_main"))
+    quit()
+end

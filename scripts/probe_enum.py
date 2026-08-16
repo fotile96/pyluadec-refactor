@@ -797,9 +797,15 @@ def exhaust(file, proto_path: str, *, jobs: int = 8,
 # the FIRST in enumeration order; `v1` diverges identically.
 EXPECTED_DIVERGENCE: dict[str, tuple[str, bytes, bytes]] = {
     "snr_common.lua:main_81": (
+        # Evidence moved 2026-08-15, M7 task 6: snr_common flipped whole-file
+        # fallback -> HYBRID (dynamic-key constructor fix), so the divergent
+        # side's error names the re-emitted local instead of the fallback box
+        # operand. Same divergence class (nil arithmetic in keyWait under
+        # stub-driven assignments), same assignment, byte-precise per the
+        # instrument's contract.
         "pressButton()=v0",
         b"R|keyWait|attempt to perform arithmetic on a nil value",
-        b"R|keyWait|attempt to perform arithmetic on field '?' (a nil value)"),
+        b"R|keyWait|attempt to perform arithmetic on local 'l1_0' (a nil value)"),
 }
 
 

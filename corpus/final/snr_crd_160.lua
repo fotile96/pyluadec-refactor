@@ -1,0 +1,32 @@
+local l0_0 = function()
+    cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
+    comPoseLoad("po2_aya_f_1_a")
+    vms(1095, "NONVOICE", "【直哉】「ここはサクラさんのメモに興味は持ったけど、結局『下らない』って思った場面だね」")
+    vms(1096, "NONVOICE", "【彩野】「うん、あらすじもこんな感じで、まとめちゃえばいいと思うんだけど……」")
+    cLoadPlaySE(cGetFileName("se", "se_30"), false)
+    oCard.show(cGetFileName("card", "crd_" .. gameSave.fragmentDoCardId .. "_a"), "『下らない、と思った』のあらすじを作成しました。")
+    vms(1097, "NONVOICE", "【直哉】「『……けど』。なにか、気になるところがある？」")
+    comPoseLoad("po2_aya_f_2_e")
+    vms(1098, "NONVOICE", "【彩野】「うん」")
+    vms(1099, "NONVOICE", "【彩野】「言葉を交わしていなくても読み取れる、というのは……まあ、想像だとしても……」")
+    comPoseLoad("po2_aya_f_1_a")
+    vms(1100, "NONVOICE", "【彩野】「次の『あなたが現実から逃げている事も』という所……」")
+    vms(1101, "NONVOICE", "【直哉】「『現実』、つまり現実のユウイチを意図しているのかな……」")
+    vms(1102, "NONVOICE", "【彩野】「そうだとしたら――この物語はユウイチが読むことを意図していた、という事……？」")
+    vms(1103, "NONVOICE", "【直哉】「うーん……どうだろう。『現実から逃げていること』という言葉自体は別にユウイチじゃなくても――」")
+    vms(1104, "NONVOICE", "【直哉】「誰にでも対象となる言葉だから、ユウイチを通して、言葉を伝えているとも考えられるけど……」")
+    comPoseLoad("po2_aya_f_2_d")
+    vms(1105, "NONVOICE", "【彩野】「あ――そうだよね……うん……」")
+    comPoseDelete()
+    if not (gameSave.myCard[gameSave.fragmentDoCardId].hold == 1) then
+        gameSave.myCard[gameSave.fragmentDoCardId].hold = 1
+        comAyanoTimeRefresh()
+    end
+end
+main = function()
+    comSectionCardStart(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
+    l0_0()
+    comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
+    run(cGetFileName("script", "snr_fragment_main"))
+    quit()
+end

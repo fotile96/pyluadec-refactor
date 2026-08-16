@@ -21,6 +21,7 @@ the corpus lacks (it reaches 33 of 38 opcodes).
 """
 from __future__ import annotations
 
+import bisect
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
@@ -31,6 +32,103 @@ from pyluadec.lift.opcodes import OP_SPECS, ArgMode, Fmt, Op, isk
 # the largest constant-table index that fits in an RK operand. Past it
 # `luaK_exp2RK` gives up and loads the constant into a register instead.
 _MAXINDEXRK = 255
+
+
+def _merge_veto_skipped_kill(reg: int, def_pc: int, kill_li: LirInstr,
+                             jmp_list: list[tuple[int, int]],
+                             reads_at: dict[int, list[int]],
+                             writes_at: dict[int, list[int]],
+                             open_reads: list[tuple[int, int]]) -> bool:
+    """Skipped-kill veto (M7 task 7): True iff `kill_li` (a write popping the
+    pending entry for `reg` defined at `def_pc`) does not read `reg` itself
+    -- so the pop is a kill, not an operand consumption -- AND a `JMP`
+    between the definition and the kill jumps past the kill to a point where
+    `reg`'s next tracked mention is a *read*.
+
+    On that taken path the entry's value survives what the pc-linear walk
+    modelled as its death: the single read the walk counted (the condition)
+    did not consume it on every path, so the entry crossed a statement
+    boundary and is a named local, not a temp. This is the half of the
+    clamp/conditional-reassignment family rule B cannot see: the OLD
+    definition (`SUB`/`MOVE`/`GETGLOBAL` staging the initial value) is killed
+    by the then-arm's reassignment, and the walk happily pops it as consumed
+    because the condition read it once.
+
+    Narrow by construction: only writes that do not read the killed register
+    (explicitly, or via an `R[a..top)` open range) can be kills this rule
+    speaks about, and `stack_discipline` only asks it at its generic-write
+    site -- operand-consumption pops (`ADD`'s operands, call arguments,
+    `SETLIST` items) are exempt because the instruction reads what it pops.
+    The `and`/`or` *condition* chains (`if a and b then`) do not fire either:
+    their short-circuit jump lands where the branch decision was already
+    taken, so the next mention of the slot is a fresh staging *write*, not a
+    read. Being wrong here costs certifications, never correctness (the
+    certification gate recompiles everything this grades).
+
+    ## Why there is no symmetric "merge-read" rule (measured, then deleted)
+
+    A second veto was built for the OTHER half of the family -- the arm's own
+    redefinition (`LOADK`/`MOVE`), whose join read is reachable from before
+    it -- and deleted the same day: promote-the-old-definition (this rule)
+    plus `write_reg`'s "`declared` still wins" gate absorbs the whole family
+    end to end. Once the old definition is a named local, the reconstructor
+    has declared the slot, and every later write to it materializes as an
+    assignment regardless of its temp grade, so the join read always has a
+    name. Measured both ways (M7 task 7): with the merge-read veto neutered,
+    all 1944 corpus occurrences certify identically (1909 `L3` both ways) and
+    every synthetic carrier of the family certifies. The shapes it alone
+    could catch -- a pending temp read at a pc reachable from before its own
+    def, with the slot never declared -- real luac cannot produce, because an
+    expression-stack temp never crosses a branch in the first place.
+    """
+    ri = kill_li.ri
+    if reg in kill_li.effects.reads:
+        return False
+    if kill_li.effects.reads_open and reg >= (
+            ri.a if ri.op is Op.RETURN else ri.a + 1):
+        return False
+    kill_pc = ri.pc
+    # `jmp_list` is sorted and strictly increasing on pc (one instruction per
+    # pc), so tuple bisection bounds "JMPs strictly between def and kill".
+    lo = bisect.bisect_right(jmp_list, (def_pc, 1 << 30))
+    hi = bisect.bisect_left(jmp_list, (kill_pc, 0))
+    for k in range(lo, hi):
+        j_pc, succ = jmp_list[k]
+        if succ > kill_pc and _next_mention_is_read(
+                reg, succ, reads_at, writes_at, open_reads):
+            return True
+    return False
+
+
+def _next_mention_is_read(reg: int, from_pc: int,
+                          reads_at: dict[int, list[int]],
+                          writes_at: dict[int, list[int]],
+                          open_reads: list[tuple[int, int]]) -> bool:
+    """True iff `reg`'s first tracked mention at or after `from_pc` is a read
+    (explicit, or an `R[a..top)` open read covering it) rather than a write.
+
+    A write first means the taken path overwrites the slot before anyone sees
+    the old value, so the kill the walk modelled was harmless on that path
+    too and no veto is owed. Mentions are the per-register sorted lists built
+    by `stack_discipline` in one pass; the lookups are bisections.
+
+    A read at the SAME pc as the limiting write counts as a read: every
+    opcode that both reads and writes a register reads the old value first
+    (`ADD A=B=C` with A==B, `FORPREP`'s `R[A] -= R[A+2]`, a CALL overwriting
+    its callee slot with the result) -- there is no write-then-read operand
+    order in the 5.1 instruction set, so the tie resolves to "read".
+    """
+    wl = writes_at.get(reg, [])
+    i = bisect.bisect_left(wl, from_pc)
+    limit = wl[i] if i < len(wl) else None
+    rl = reads_at.get(reg, [])
+    j = bisect.bisect_left(rl, from_pc)
+    if j < len(rl) and (limit is None or rl[j] <= limit):
+        return True
+    lo = bisect.bisect_left(open_reads, (from_pc, -1))
+    hi = bisect.bisect_left(open_reads, (limit, -1)) if limit is not None \
+        else len(open_reads)
+    return any(base <= reg for _, base in open_reads[lo:hi])
 
 
 @dataclass(slots=True)
@@ -47,6 +145,139 @@ class _Pending:
     def_pc: int
     n_reads: int = 0
     bad: bool = False
+
+
+# Hard cap on how far a staged value may reach across basic blocks (see
+# `_staging_span_ok`). Real luac keeps one statement's expression window to a
+# handful of instructions; a span past this bound is not a statement window
+# but unrelated code the pc-linear walk is misreading, and the answer is the
+# budget refusal -- materialize, the safe direction -- never an unbounded
+# scan and never a silent sample.
+_MAX_STAGING_SPAN = 256
+
+
+@dataclass(frozen=True)
+class _SpanView:
+    """Jump-structure summary `_staging_span_ok` needs, built once per
+    function by `build_span_view` (shared with `express/reconstruct.py`).
+
+    `branches` is every instruction whose successors are not exactly the
+    fall-through `(pc + 1,)` -- TEST/EQ/LT/LE, JMP, FORPREP, FORLOOP, TFORLOOP
+    -- sorted by pc, with its successor tuple. `target_srcs` maps each branch
+    target pc to the (min, max) pc of the branches targeting it.
+    `up_moves` maps each upward `MOVE a, b` (a > b) pc to its source `b` --
+    `luaK_exp2nextreg` copies a VLOCAL upward and never a temporary (a
+    temporary already sits at freereg - 1), so such a MOVE is bytecode-level
+    proof its source slot held a named local.
+    """
+    branches: list[tuple[int, tuple[int, ...]]]
+    target_srcs: dict[int, tuple[int, int]]
+    up_moves: dict[int, int]
+
+
+def build_span_view(fn: LirFunction) -> _SpanView:
+    branches: list[tuple[int, tuple[int, ...]]] = []
+    target_srcs: dict[int, list[int]] = {}
+    up_moves: dict[int, int] = {}
+    for pc in sorted(fn.instrs):
+        li = fn.instrs[pc]
+        succs = li.successors
+        if succs == (pc + 1,):
+            if li.ri.op is Op.MOVE and li.ri.a > li.ri.b:
+                up_moves[pc] = li.ri.b
+            continue
+        branches.append((pc, succs))
+        for s in succs:
+            target_srcs.setdefault(s, []).append(pc)
+    return _SpanView(
+        branches=branches,
+        target_srcs={t: (min(srcs), max(srcs))
+                     for t, srcs in target_srcs.items()},
+        up_moves=up_moves)
+
+
+def _staging_span_ok(view: _SpanView, d: int, r: int, *,
+                     entry_at_r_ok: bool, read_reg: int | None = None) -> bool:
+    """True iff a value defined at `d` may stay STAGED (inlined as an
+    expression) at its read at `r` even though `d` and `r` sit in different
+    basic blocks (M7 task 8, mechanism C).
+
+    What the block boundary actually protects -- the two properties
+    `_same_block`'s docstring proves -- is (1) execution counts: a read that
+    runs a different number of times than its definition (loop bodies, loop
+    exits) must not inline the definition's expression; and (2) scope
+    isolation: a pop inside an `open_scope`/`close_scope` region is rolled
+    back, dropping the block's statement. Both are properties of the JUMP
+    STRUCTURE between `d` and `r`, and the four clauses below read them off
+    it:
+
+      * interior branches go FORWARD and land at or before `r` -- an `if`
+        arm's exit jump, a loop header's skip-out and a FORPREP into a loop
+        body all jump PAST a read inside those constructs, which is exactly
+        the arm/loop shape the barrier must keep refusing;
+      * no branch from OUTSIDE `[d, r)` targets strictly inside `(d, r]` --
+        control that reaches the middle without passing `d` makes `r`'s read
+        a phi of values this entry does not carry;
+      * no branch with source at/after `r` targets at/before `d` -- that is
+        a back edge enclosing the interval, i.e. `[d, r]` sits inside a loop
+        (`repeat` bodies have no header skip-out, so the enclosure clause is
+        what catches them);
+      * the span fits `_MAX_STAGING_SPAN` -- the budget refusal.
+
+    Purity is deliberately NOT asked. The original sketch for this rule
+    demanded an effect-free interior under STRICT, but the corpus rows it
+    exists for (`snr_graphic:main_2` et al.) stage a GETUPVAL callee across
+    an LT/CONCAT chain -- impure under STRICT -- so that condition would
+    unlock nothing; and the opposite direction (an unsound staging shipping
+    wrong source) is certification's to catch, not this walk's: the printed
+    text is recompiled and compared field by field, so a staging that
+    misjudges costs an `L1`, never correctness. What the clauses above
+    protect is the L3s that exist today via materialization -- a shape the
+    exemption wrongly un-grades stops certifying and the ratchet sees it.
+
+    A fifth clause refuses the one consumer shape that is bytecode-level
+    PROOF the slot held a named local: `read_reg` is the register the
+    consumer reads, and when the instruction at `r` is an upward `MOVE a, b`
+    with `b == read_reg`, `luaK_exp2nextreg` was copying a VLOCAL into the
+    expression stack -- a temporary is already at `freereg - 1` and never
+    needs the copy (the same fact `_bar_literal_operands`'s MOVE rule keys
+    on, read from the consumer side). Staging such a slot drops its `local`
+    declaration and shifts every later register (`local a = b or c
+    print(a)` recompiles with `a`'s slot never allocated). Both the walk
+    (`_same_block`) and the region path (`cond_value`) pass `read_reg`; the
+    clause is what keeps the exemption from overriding a local verdict the
+    bytecode itself carries.
+
+    `entry_at_r_ok` is the region-computed-merge variant (the only caller:
+    `express/reconstruct.py::cond_value`, for a `CondValue` chain's result).
+    There the "definition" is the whole short-circuit expression, which
+    already merges every path through the chain, so a branch landing exactly
+    ON `r` is not an outside entry but the join the expression subsumes;
+    clause two then excludes only targets strictly inside `(d, r)`. `d` for
+    that caller is the chain's CONVERGENCE pc (see `_cond_value_stages`), and
+    `r == d` is allowed: the empty interior is trivially free of hazards --
+    it is the `g(a and 1 or 2)` shape, where the consuming call sits exactly
+    on the join.
+    """
+    if r < d or r - d > _MAX_STAGING_SPAN:
+        return False
+    if read_reg is not None and view.up_moves.get(r) == read_reg:
+        return False
+    branches = view.branches
+    lo = bisect.bisect_right(branches, (d, (1 << 30,)))
+    hi = bisect.bisect_left(branches, (r, ()))
+    for k in range(lo, hi):
+        pc, succs = branches[k]
+        if not all(pc < s <= r for s in succs):
+            return False
+    tgt_hi = r if entry_at_r_ok else r + 1
+    for t, (mn, mx) in view.target_srcs.items():
+        if d < t < tgt_hi and (mn < d or mx > r):
+            return False
+    for pc, succs in branches:
+        if pc >= r and any(s <= d for s in succs):
+            return False
+    return True
 
 
 def _pending_def(pending: list[_Pending], r: int) -> _Pending | None:
@@ -87,7 +318,9 @@ def _pending_def(pending: list[_Pending], r: int) -> _Pending | None:
 # auditing the read-counting rules needs to find all of them in one place.
 
 
-def _same_block(block_floor: Callable[[int], int], d: int, r: int) -> bool:
+def _same_block(block_floor: Callable[[int], int], d: int, r: int,
+                span: _SpanView | None = None,
+                read_reg: int | None = None) -> bool:
     """True iff pcs `d` and `r` are in the same CFG basic block.
 
     Barrier 1 of the four (see the section header), and THE control-flow
@@ -149,8 +382,28 @@ def _same_block(block_floor: Callable[[int], int], d: int, r: int) -> bool:
     another -- and the cost of that strictness was measured rather than
     assumed (see the task report). Erring here materializes a named local,
     which is always printable; the alternative is silently dropped code.
+
+    ## The staging-span exemption (M7 task 8, mechanism C)
+
+    `span` (built by `build_span_view`, passed by `stack_discipline`) lets a
+    definition in one block stage for a read in another when the jump
+    structure between them carries neither hazard: all interior branches
+    forward and at-or-before the read, no outside branch into the interval,
+    no back edge enclosing it, span within the budget -- `_staging_span_ok`
+    carries the clause-by-clause argument. That is the shape of luac's
+    `and`/`or` VALUE idiom in operand position (`g(a and 1 or 2)`: callee
+    staged at the head, chain's joins and the consuming call in later
+    blocks), which the strict form forced to materialize `local` -- the
+    extra `MOVE`s of copying a materialized callee back into call position
+    then failed certification on `maxstacksize`. The exemption fires from
+    the read side (`do_read`/`read_open`), so a hand-built caller without a
+    `span` keeps the pre-task-8 behaviour exactly.
     """
-    return block_floor(d) == block_floor(r)
+    if block_floor(d) == block_floor(r):
+        return True
+    return span is not None and _staging_span_ok(span, d, r,
+                                                  entry_at_r_ok=False,
+                                                  read_reg=read_reg)
 
 
 def _renders_as_literal(fn: LirFunction, def_pc: int) -> bool:
@@ -259,6 +512,60 @@ def _bar_literal_operands(fn: LirFunction, li: LirInstr,
             ent.bad = True
 
 
+def _bar_key_staged_below_table(li: LirInstr,
+                                pending: list[_Pending]) -> None:
+    """BARRIER 5 (M7 task 10): a register-keyed index whose KEY is staged
+    BELOW its table was never an inline `t[k]` -- grade the key local.
+
+    `lparser.c`'s every route to a register-keyed `GETTABLE`/`SETTABLE`
+    discharges the TABLE prefix to a register first and parses the key
+    after (`prefixexp`'s `[` arm: `luaK_exp2anyreg(fs, v)` then `yindex`;
+    assignment targets go through the same `prefixexp`; constructor fields
+    store into a table whose base register predates every field). So in
+    bytecode produced by stock 5.1.5 from `prefix[key_expr]`, the key's
+    defining instructions sit strictly AFTER the table's, and the key
+    occupies a HIGHER register. The contrapositive is the barrier: when the
+    key's pending definition predates the table's, the source cannot have
+    been `prefix[key_expr]` -- the author materialized the key first, as
+    its own named local:
+
+        local k = sceneId2aCard.s3s_300_sel    -- key code at pc P
+        ... = prefix[k].suffix                 -- table code at pc > P
+
+    Measured shape (`snr_s3_10_s.lua:main_59`, pcs 745-749): GETGLOBAL/GETTABLE
+    stage the key into R2, then GETGLOBAL/GETTABLE build the prefix into R3,
+    then `GETTABLE 3 3 2` indexes by register. Without this barrier the key
+    definition grades temp (single read), the reconstructor inlines it into
+    the index, and the recompiled instruction stream inverts the two staging
+    orders -- `mismatch: code`, same length, no semantic change (the
+    certification gate, as always, is what kept that from shipping).
+
+    Fires only when BOTH operands are pending (freshly staged, neither a
+    known local): a named-local table with a fresh key is the ordinary
+    `t_local[f(x)]` shape and must keep staging the key, and a named-local
+    key under a fresh table is the ordinary `t[k_local]`. The register-equal
+    case (`t[t]`) is excluded by the strict `<`.
+    """
+    ri = li.ri
+    if ri.op is Op.GETTABLE:
+        table_reg, key = ri.b, ri.c
+    elif ri.op is Op.SETTABLE:
+        table_reg, key = ri.a, ri.b
+    else:
+        return
+    if isk(key):
+        return                                  # constant key: no staging order
+    key_ent = table_ent = None
+    for ent in pending:
+        if ent.reg == key:
+            key_ent = ent
+        elif ent.reg == table_reg:
+            table_ent = ent
+    if key_ent is not None and table_ent is not None \
+            and key_ent.def_pc < table_ent.def_pc:
+        key_ent.bad = True
+
+
 def _constructor_field_target(fn: LirFunction, li: LirInstr,
                               pending: list[_Pending]) -> int | None:
     """The register this instruction reads *without consuming it*, or None.
@@ -307,30 +614,33 @@ def _constructor_field_target(fn: LirFunction, li: LirInstr,
     classification and the reconstruction agree by construction rather than by
     coincidence.
 
-    ## Why `SETTABLE` additionally needs a CONSTANT key
+    ## Why the fold and this exemption must move together
 
-    `_dispatch`'s fold is `op is Op.SETTABLE and a == reg and isk(ri.b)`:
-    `_fold_settable` builds the key with `ConstExpr(constants[indexk(ri.b)])`
-    and has no register-key form. A **dynamic-key** constructor
-    (`{[f()] = 1, [g()] = 2}`, `config.lua`'s main chunk) therefore does NOT
-    fold -- the reconstructor closes the context, materializes the table, and
-    emits each field as its own `t[k] = v` statement, which reads the table
-    once per field for real. Exempting those reads told the classifier the
-    table was a pop-once temporary; the reconstructor then popped it at the
-    first field and raised `register 0 is read again after its staged value
-    was consumed` at the second, taking `config.lua` from a `maxstacksize`
-    mismatch to a reconstruction refusal. Measured, not reasoned: this
-    condition is what keeps that file printable.
+    `_dispatch`'s fold is `op is Op.SETTABLE and a == reg` (keys constant OR
+    register: `_fold_settable` builds `ConstExpr` keys from `isk(B)` and
+    register keys from `_read_reg(ri.b)`). Until M7 task 6 the fold demanded
+    `isk(ri.b)`, and this exemption demanded it too -- a **dynamic-key**
+    constructor (`{[f] = 1, [g] = 2}`, `config.lua`'s main chunk) did not
+    fold, the reconstructor materialized the table and emitted each field as
+    its own `t[k] = v` statement, which reads the table once per field for
+    real; exempting those reads back then told the classifier the table was
+    a pop-once temporary, the reconstructor popped it at the first field and
+    raised `register 0 is read again after its staged value was consumed` at
+    the second. The two conditions therefore agree BY CONSTRUCTION -- the
+    docstring's own invariant -- and M7 task 6 changed both in the same
+    commit: the fold takes register keys, and the exemption follows. The
+    corpus evidence for the pair is `config.lua` flipping whole-file from
+    `mismatch: maxstacksize` to `L3`.
 
     The `c` check keeps the exemption from swallowing a store that reads the
     table in the *value* position too (`t[k] = t`). A constructor cannot
     produce that shape -- its values live above the table -- so declining the
     exemption there costs nothing and keeps the rule's statement true as
     written. **DEFENSIVE, not load-bearing:** measured over the corpus,
-    **0** of 1944 protos contain a `SETTABLE` with `isk(B)` and a register `C`
-    equal to `A`, so nothing here currently depends on it. Kept because the
-    sentence above ("the exemption applies to the table's own slot") is only
-    true as written with it, not because a fixture fails without it.
+    **0** of 1944 protos contain a `SETTABLE` with a register `C` equal to
+    `A`, so nothing here currently depends on it. Kept because the sentence
+    above ("the exemption applies to the table's own slot") is only true as
+    written with it, not because a fixture fails without it.
 
     Being wrong in either direction costs certifications, never correctness:
     the printed source is recompiled and compared field by field before
@@ -338,7 +648,7 @@ def _constructor_field_target(fn: LirFunction, li: LirInstr,
     """
     ri = li.ri
     if ri.op is Op.SETTABLE:
-        if not isk(ri.b) or (not isk(ri.c) and ri.c == ri.a):
+        if not isk(ri.c) and ri.c == ri.a:
             return None
     elif ri.op is not Op.SETLIST:
         return None
@@ -486,6 +796,28 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
     def_verdict: dict[tuple[int, int], bool] = {}
     last_def: dict[int, int] = {}           # reg -> pc of its most recent push
 
+    # The skipped-kill veto (M7 task 7) needs jump and per-register mention
+    # tables. Built in one pass over the same `ordered` walk below -- the
+    # lists are pc-ascending by construction, which the bisections in the
+    # veto helper rely on.
+    jmp_list: list[tuple[int, int]] = []    # (pc, successor) per JMP
+    span_view = build_span_view(fn)         # M7 task 8: _same_block's exemption
+    reads_at: dict[int, list[int]] = {}     # reg -> its read pcs
+    writes_at: dict[int, list[int]] = {}    # reg -> its write pcs
+    open_reads: list[tuple[int, int]] = []  # (pc, base) per R[a..top) read
+    for pc in ordered:
+        li0 = fn.instrs[pc]
+        ri0 = li0.ri
+        if ri0.op is Op.JMP:
+            jmp_list.append((pc, li0.successors[0]))
+        for r in li0.effects.reads:
+            reads_at.setdefault(r, []).append(pc)
+        for r in li0.effects.writes:
+            writes_at.setdefault(r, []).append(pc)
+        if li0.effects.reads_open:
+            open_reads.append((pc, ri0.a if ri0.op is Op.RETURN
+                               else ri0.a + 1))
+
     def mark(reg: int, ok: bool) -> None:
         verdict[reg] = verdict.get(reg, True) and ok
 
@@ -505,7 +837,8 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
                 # `bad` drives the answer to `local`, the safe direction.
                 if count:
                     ent.n_reads += 1
-                if not _same_block(block_floor, ent.def_pc, at):
+                if not _same_block(block_floor, ent.def_pc, at,
+                                     span=span_view, read_reg=r):
                     ent.bad = True
                 return
         if not known_local(r, at) and not loop_control(r, at):
@@ -569,13 +902,25 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
         for ent in pending:
             if ent.reg >= base:
                 ent.n_reads += 1
-                if not _same_block(block_floor, ent.def_pc, at):
+                if not _same_block(block_floor, ent.def_pc, at,
+                                   span=span_view, read_reg=ent.reg):
                     ent.bad = True
 
-    def pop_ge(base: int) -> None:
+    def pop_ge(base: int, kill: LirInstr | None = None) -> None:
         while pending and pending[-1].reg >= base:
             ent = pending.pop()
             ok = ent.n_reads == 1 and not ent.bad
+            if ok and kill is not None and _merge_veto_skipped_kill(
+                    ent.reg, ent.def_pc, kill, jmp_list, reads_at,
+                    writes_at, open_reads):
+                # Skipped-kill veto (M7 task 7): a branch jumps past this
+                # kill to a read of the slot, so the value is live on that
+                # path and the definition is a named local. Only the generic
+                # -write site below passes `kill`; every other pop is an
+                # operand consumption or a statement boundary and keeps the
+                # None default.
+                ent.bad = True
+                ok = False
             mark(ent.reg, ok)
             mark_def(ent.def_pc, ent.reg, ok)
 
@@ -636,6 +981,7 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
         op, a, b, c = ri.op, ri.a, ri.b, ri.c
 
         _bar_literal_operands(fn, li, pending)
+        _bar_key_staged_below_table(li, pending)
         uncounted = _constructor_field_target(fn, li, pending)
         for r in sorted(li.effects.reads):
             do_read(r, pc, count=r != uncounted)
@@ -671,7 +1017,7 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
         else:
             writes = sorted(li.effects.writes)
             if writes:
-                pop_ge(writes[0])
+                pop_ge(writes[0], kill=li)
                 if named_local(writes[0], pc):
                     promote_all()                  # assignment to a named local
                 else:

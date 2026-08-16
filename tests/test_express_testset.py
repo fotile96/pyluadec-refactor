@@ -104,6 +104,14 @@ CASES = [
     b"local b, c = 1, 2 for i = 1, 3 do local a = b or c print(a) end",         # for body
     b"local b, c = 1, 2 if b then local a = b or c print(a) end",              # if arm
     b"local function m(p, q) local a = p or q return a end print(m(1))",       # closure
+    # Moved from UNCLAIMED at M7 task 7 (2026-08-15): the upvalue-operand
+    # TEST/JMP variant of `or`, refused "one layer earlier" since this table
+    # was written, is the conditional-reassignment family the skipped-kill
+    # veto in `express/freereg.py` now grades local (`return b or c` prints
+    # as `local l1_0 = b  if l1_0 then l1_0 = c end  return l1_0` inside the
+    # closure -- bytecode-identical). This table's contract is that a
+    # widening moves rows deliberately; this is that move.
+    b"local b, c = 1, 2 local function m() return b or c end print(m())",
 ]
 
 # Shapes this task deliberately does NOT claim, with the reason. Each is
@@ -115,11 +123,12 @@ UNCLAIMED = [
     # certify today, and not because of anything here -- it prints
     # `local l0_0 = f  l0_0 = l0_0()` for `local x = f()`, the extra-MOVE /
     # call-binding register-classification cluster that is M4 Task 13's.
+    # Still L1 after M7 task 7 (measured 2026-08-15, `mismatch: code`): the
+    # then-arm RHS is a register-staged expression (NEWTABLE), and the if-form
+    #'s local materialization shifts later staging -- only the expression
+    # form recompiles identically, and `CondValue` still does not open on a
+    # bare TEST. See tests/test_sir_condassign.py's known-gap test.
     b"local x = f() or {} print(x)",
-    # Same TEST-variant shape reached through upvalues; refused one layer
-    # earlier ("temp register 0 read before it was staged"). Verified
-    # unchanged by this task: it behaves identically at HEAD~ (2026-08-11).
-    b"local b, c = 1, 2 local function m() return b or c end print(m())",
 ]
 
 

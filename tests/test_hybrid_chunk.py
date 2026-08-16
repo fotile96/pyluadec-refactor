@@ -557,8 +557,7 @@ mixed = function(p, q) local r = (p or q) == 1 a = b return r end
 # Corpus arm.
 # --------------------------------------------------------------------------
 
-HYBRID_FILES = ("snr_s1_10_s.lua", "snr_s3_10_s.lua", "snr_s4_10_s.lua",
-                "snr_s5_10_s.lua", "snr_story_main.lua")
+HYBRID_FILES = ("snr_story_main.lua",)
 
 
 def test_corpus_hybrid_files_ship_hybrid(corpus_dir, decompiled):
@@ -573,7 +572,26 @@ def test_corpus_hybrid_files_ship_hybrid(corpus_dir, decompiled):
     conditions were representable, so the file now ships fully structured and
     left this tuple. `snr_story_main.lua` stayed hybrid but its frontier
     halved, from 2 substituted functions to 1 (`main_1` certified, the other
-    did not) -- see `SENTINELS_PER_FILE`."""
+    did not) -- see `SENTINELS_PER_FILE`.
+
+    And again at M7 task 7 (2026-08-15): five became four. `snr_s5_10_s.lua`'s
+    substituted `main_42`/`main_43` were two of the three clamp rows the
+    skipped-kill veto in `express/freereg.py` certified, so the file ships
+    fully structured (measured: 88 protos, 0 substituted) and left this
+    tuple.
+
+    And at M7 task 9 (2026-08-16): four became three (`snr_s1_10_s.lua`
+    left, its `main_48` certified by the hint-0 constructor budget gate).
+    And at task 10, three became one: `snr_s3_10_s.lua` and `snr_s4_10_s.lua`
+    both left -- the key-staged-below-table barrier in `express/freereg.py`
+    certified `snr_s3_10_s:main_59` and `snr_s4_10_s:main_58`, each file's
+    only substituted function. The full hybrid population is now five files
+    (measured 2026-08-16: snr_common 6 substitutions -- `main_24`, `main_25`,
+    `main_71`, `main_74_18`, `main_76_2`, `main_77`; snr_graphic 2;
+    snr_mainmenu 1; snr_memory 1; snr_story_main 1); this tuple tracks
+    `snr_story_main.lua` as the small remaining member --
+    `snr_graphic` carries its own coverage below in
+    `test_corpus_hybrid_invariant_on_one_file`."""
     for name in HYBRID_FILES:
         res = decompiled(corpus_dir / name)
         assert res.hybrid is True, name
@@ -584,17 +602,22 @@ def test_corpus_hybrid_files_ship_hybrid(corpus_dir, decompiled):
 def test_corpus_hybrid_invariant_on_one_file(corpus_dir):
     """The full `shipping_violations` check on a real corpus hybrid.
 
-    One file, not six: this re-compiles the artifact and re-runs
-    `compare_protos` over a 98-proto tree, and the suite has a 45s ceiling.
-    `snr_s5_10_s.lua` is chosen because it is the only corpus hybrid with more
-    than one substituted subtree, so the frontier logic is exercised rather
-    than assumed."""
+    One file, not all: this re-compiles the artifact and re-runs
+    `compare_protos` over the whole tree. `snr_graphic.lua` is chosen because
+    its frontier has more than one substituted subtree (measured 2026-08-16:
+    `main_3` + `main_4`), so the antichain logic is exercised rather than
+    assumed, and it is the CHEAPEST such file (6 protos; `snr_common.lua`
+    has 7 substitutions over 147 protos). Carrier history: `snr_s5_10_s.lua`
+    (2 substituted, 98 protos) until M7 task 7; then `snr_memory.lua` -- 3
+    substitutions at task 7, 2 at task 8 -- until M7 task 9's
+    reaching-definition `>` recogniser certified its `main_4`, leaving a
+    single-substitution frontier unfit for this test's purpose."""
     from pyluadec.ingest import load_file
-    root = load_file(corpus_dir / "snr_s5_10_s.lua")
+    root = load_file(corpus_dir / "snr_graphic.lua")
     outcome = S.emit_certified_chunk(root)
     hc = S.certify_hybrid(root, outcome.certs)
     assert hc is not None
-    assert len(hc.fallback_paths) == 2, sorted(hc.fallback_paths)
+    assert hc.fallback_paths == frozenset({"main_3", "main_4"})
     assert shipping_violations(root, outcome, hc) == []
 
 
@@ -603,33 +626,27 @@ def test_corpus_hybrid_invariant_on_one_file(corpus_dir):
 # --------------------------------------------------------------------------
 
 # Substituted functions per hybrid file (the frontier's size), measured
-# 2026-08-12. Pinned so the reach measurement below cannot silently start
-# injecting nothing.
-SENTINELS_PER_FILE = {
-    "snr_s1_10_s.lua": 1, "snr_s3_10_s.lua": 1,
-    "snr_s4_10_s.lua": 1, "snr_s5_10_s.lua": 2, "snr_story_main.lua": 1,
-}
+# 2026-08-16; `snr_s5_10_s.lua` (2) left the population at M7 task 7,
+# `snr_s1_10_s.lua` (1) at task 9, and `snr_s3_10_s.lua`/`snr_s4_10_s.lua`
+# (1 each) at task 10 -- all by certifying. Pinned so the reach measurement
+# below cannot silently start injecting nothing.
+SENTINELS_PER_FILE = {"snr_story_main.lua": 1}
 
 # The files whose substituted code each standing probe EXECUTES, measured
 # 2026-08-12 (round 1) by the test below. This is the honest scope of the
-# claim "the probes are the semantic gate for the hybrid boundary": they gate
-# it on 4 of the 5 files and on neither the fifth.
+# claim "the probes are the semantic gate for the hybrid boundary".
 #
-# `snr_s5_10_s.lua`: the run hits the 3000-event cap before the invocation
-# loop reaches the code that calls `main_42`/`main_43`. It is also the file
-# `test_corpus_hybrid_invariant_on_one_file` picks, so it is doubly the least
-# covered of the set.
-#
-# Re-measured 2026-08-14 (M6 task 11), and the numerator did not move: the
-# same four files move under the sentinel and the same one does not.
-# `snr_fragment_main.lua` -- the OTHER unreached file, whose substituted
-# `main_1` was a chunk local nothing the invocation loop could call -- has
-# left the population entirely by certifying, so the unreached set went from
-# two of six to one of five without any probe getting better.
+# `snr_s5_10_s.lua` used to be the one file of the tuple the behaviour probe
+# never reached (the run hit the 3000-event cap before the invocation loop
+# got to `main_42`/`main_43`); it left the population at M7 task 7 by
+# certifying, the same exit `snr_fragment_main.lua` took at M6 task 11,
+# `snr_s1_10_s.lua` took at task 9 and `snr_s3_10_s.lua`/`snr_s4_10_s.lua`
+# took at task 10 -- four times now the unreached set shrank by a member
+# leaving, not by a probe getting better. Re-measured at M7 task 10
+# (2026-08-16): the one tracked hybrid moves under the behaviour sentinel,
+# none under global-state.
 PROBE_REACH_GLOBAL_STATE: frozenset[str] = frozenset()
-PROBE_REACH_BEHAVIOUR = frozenset({
-    "snr_s1_10_s.lua", "snr_s3_10_s.lua", "snr_s4_10_s.lua",
-    "snr_story_main.lua"})
+PROBE_REACH_BEHAVIOUR = frozenset({"snr_story_main.lua"})
 
 
 def test_probe_reach_of_the_substituted_code(corpus_dir, monkeypatch):

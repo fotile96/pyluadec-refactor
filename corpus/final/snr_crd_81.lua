@@ -1,0 +1,33 @@
+local l0_0 = function()
+    cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
+    comPoseLoad("po2_aya_f_1_a")
+    vms(3549, "NONVOICE", "【直哉】「この物語も、やっぱりアヤノさんが主人公みたいだね」")
+    comPoseLoad("po2_aya_f_2_a")
+    vms(3550, "NONVOICE", "【彩野】「『この物語も』ってことは、他の物語でもそうだったの？」")
+    vms(3551, "NONVOICE", "【直哉】「うん。これまでにセクション１、セクション２の『物語』があったんだけど――」")
+    vms(3552, "NONVOICE", "【直哉】「どれも、主人公はアヤノさんだったんだ」")
+    comPoseLoad("po2_aya_f_1_a")
+    vms(3553, "NONVOICE", "【彩野】「ふむ……そうなんだ」")
+    vms(3554, "NONVOICE", "【直哉】「物語が複数の主人公から構成される事――アヤノさん以外が主人公になり得ることもあるかと思っていたけど……」")
+    vms(3555, "NONVOICE", "【直哉】「この様子だと、無いのかな？」")
+    vms(3556, "NONVOICE", "【彩野】「うーん……。どうだろう……」")
+    comPoseLoad("po2_aya_f_2_e")
+    vms(3557, "NONVOICE", "【彩野】「……」")
+    vms(3558, "NONVOICE", "【直哉】「あ！ ごめん、考えさせちゃって……」")
+    vms(3559, "NONVOICE", "【彩野】「ううん……自分の事だから」")
+    vms(3560, "NONVOICE", "【彩野】「……はっきりしなくて、ごめんね」")
+    cLoadPlaySE(cGetFileName("se", "se_30"), false)
+    oCard.show(cGetFileName("card", "crd_" .. gameSave.fragmentDoCardId .. "_a"), "『セクション３：アヤノ』のあらすじを作成しました。")
+    comPoseDelete()
+    if not (gameSave.myCard[gameSave.fragmentDoCardId].hold == 1) then
+        gameSave.myCard[gameSave.fragmentDoCardId].hold = 1
+        comAyanoTimeRefresh()
+    end
+end
+main = function()
+    comSectionCardStart(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
+    l0_0()
+    comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
+    run(cGetFileName("script", "snr_fragment_main"))
+    quit()
+end

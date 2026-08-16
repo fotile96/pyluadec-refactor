@@ -206,16 +206,23 @@ def test_nested_wrapper_path_certifies_unstripped_original():
 # changed", not as a silent loss of coverage for the mechanism itself.
 @pytest.mark.parametrize("src,invented", [
     (b"repeat f() until g()", "(LocVar(name=None, startpc=4, endpc=6),)"),
-    (b"return a and b or c", "(LocVar(name=None, startpc=7, endpc=8),)"),
 ])
 def test_stricter_gate_refuses_reconstructions_that_invent_a_local(src, invented):
-    """These two certified `L3` rung 1 before this task and are refused now.
+    """These certified `L3` rung 1 before this task and are refused now.
 
     The original declares no locals; our structured print declares one (for
-    `repeat`'s condition value, and for the `and`/`or` chain's result). The
-    instruction stream is unaffected -- `luac` would have used the same
-    register either way -- so the ONLY evidence of the difference is the
-    locvar the old gate threw away.
+    `repeat`'s condition value). The instruction stream is unaffected --
+    `luac` would have used the same register either way -- so the ONLY
+    evidence of the difference is the locvar the old gate threw away.
+
+    `return a and b or c` was the second parametrization until M7 task 8
+    (2026-08-15): the staging-span exemption let `cond_value` hand the
+    chain's result straight to the `return`, the print is now
+    `return a and b or c` verbatim, no local is invented, and the stricter
+    gate correctly certifies it -- the reconstruction improved past the
+    fixture, which is the honest exit for this table's members (same exit
+    the repeat case will take if a future task reconstructs the `until`
+    condition without materializing it).
     """
     from pyluadec.emit.lua import print_chunk
     orig = _proto(src, strip=False)

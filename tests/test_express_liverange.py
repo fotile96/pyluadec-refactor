@@ -152,6 +152,13 @@ LOCAL_CASES = [
      b"print(h('aaa'))", [b"bbb"]),
     (b"local function h(p) local n = p n = tostring(n) return n end print(h(5))",
      [b"5"]),
+    # Promoted from KNOWN_RESIDUAL at M7 task 9 (2026-08-16, per that list's
+    # own instruction): a hint-0 NEWTABLE is statement-built (a literal
+    # pre-counts every field and `int2fb(1)` is already 1, so hint 0 admits
+    # no literal fields), so the task-9 fold gate materializes the table at
+    # its first store instead of folding the store into a `{k = s}` literal
+    # -- which is also what the original source said, and it certifies.
+    (b"local s = 'v' local t = {} t.k = s print(t.k)", [b"v"]),
 ]
 
 # Same direction, but the ORIGINAL program does not terminate, so only the
@@ -355,12 +362,19 @@ KNOWN_RESIDUAL = [
     # (The `_emit_multi` entry that used to lead this list -- a generic `for`
     # over `pairs(t)` printing `local l0_1, l0_2, l0_3 = pairs(l0_0)` -- was
     # closed by M5 task 5 and promoted, per this test's own instruction, to
-    # `tests/test_express_residual.py::GENERIC_FOR_ITERATOR`.)
+    # `tests/test_express_residual.py::GENERIC_FOR_ITERATOR`. The
+    # NEWTABLE-hint entry that then led it -- `local t = {}` + `t.k = s`
+    # folding into `{k = s}` -- was closed by M7 task 9's hint-0 budget gate
+    # and promoted to `LOCAL_CASES` above, 2026-08-16.)
     #
-    # NEWTABLE's size hints. The constructor fold turns a following
-    # `t.k = s` statement into `{["k"] = s}`, so the recompiled NEWTABLE
-    # carries a hash-size hint of 1 where the original had 0.
-    b"local s = 'v' local t = {} t.k = s print(t.k)",
+    # NEWTABLE's size hints, the residual half: hint >= 1 (a literal PLUS
+    # statement stores). The fold still absorbs the stores into the literal,
+    # so the recompiled NEWTABLE carries a different hash hint and no
+    # SETTABLE. Deliberately not gated: the int2fb encoding makes every
+    # non-zero hint a bucketed lower bound that cannot be compared against
+    # a field count exactly (see `_close_table_ctx`). The hint-0 half moved
+    # up to LOCAL_CASES.
+    b"local t = {a = 1} t.b = 2 return t",
 ]
 
 

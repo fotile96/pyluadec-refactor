@@ -34,6 +34,7 @@ boundary.
 """
 from __future__ import annotations
 
+import bisect
 import struct
 from dataclasses import dataclass
 
@@ -234,6 +235,15 @@ class Reconstructor:
         # feeding an `and`/`or`, so the instruction that computes it must not
         # emit the `local ... = ...` statement `rc` would otherwise ask for.
         self._force_temp: set[int] = set()
+        # Jump-structure view for `_cond_value_stages` (M7 task 8), built
+        # lazily -- most reconstructions never meet a `CondValue`.
+        self._span_view = None
+        # reg -> its sorted definition pcs (lazily built; feeds
+        # `_is_stack_temp`'s reaching-definition disjunct).
+        self._defs_by_reg: dict[int, list[int]] | None = None
+        # The function's pcs in ascending order (lazily built; the start
+        # point for `_next_touch_is_store_to`'s forward scan).
+        self._sorted_pcs: list[int] | None = None
         # Registers whose `env` entry is an UNCONSUMED staged temp expression
         # (as opposed to the `LocalExpr(reg)` placeholder force_materialize
         # leaves behind). Made explicit because classification is now per
@@ -401,8 +411,36 @@ class Reconstructor:
         -- they are the two rules in this class that consult the register
         classification to decide the SHAPE of the source luac saw, not merely
         how to render a value.
+
+        ## The reaching-definition disjunct (M7 task 9)
+
+        The `(pc, reg)` key above is a DEFINITION site, so for a read operand
+        it only ever fires when the same pc both defines and reads the slot
+        (an `ADD A=B` reading itself). The question this predicate actually
+        serves -- was this operand pushed onto the expression stack? -- is a
+        question about the value REACHING the read, so the third disjunct
+        consults the reaching definition: the last def of `reg` at or before
+        `pc`, graded per definition. This is what let the `>` recogniser fire
+        on `snr_graphic.lua:main_4`'s clamp gate (`u5 + 3 > u6 - (u7 - 1) *
+        9`): both reaching defs are arithmetic results (temps), but the
+        whole-register `rc.temps` verdict for those slots is dragged local by
+        UNRELATED definitions elsewhere in the function, and the wrong `<`
+        spelling reordered the operands' staging -- which reordered the
+        upvalue captures, which shifted every later `GETUPVAL` index. The
+        undecidable gaps stay undecidable: a reaching def graded local still
+        fails the gate, `(local, local)` and friends are untouched.
         """
-        return reg in self.rc.temps or (pc, reg) in self.rc.temp_defs
+        if reg in self.rc.temps or (pc, reg) in self.rc.temp_defs:
+            return True
+        if self._defs_by_reg is None:
+            defs: dict[int, list[int]] = {}
+            for dpc in sorted(self.fn.instrs):
+                for r in self.fn.instrs[dpc].effects.writes:
+                    defs.setdefault(r, []).append(dpc)
+            self._defs_by_reg = defs
+        dl = self._defs_by_reg.get(reg, ())
+        j = bisect.bisect_right(dl, pc) - 1
+        return j >= 0 and (dl[j], reg) in self.rc.temp_defs
 
     def _max_const_index_before(self, pc: int) -> int:
         """The largest constant-table index any instruction BEFORE `pc`
@@ -664,9 +702,74 @@ class Reconstructor:
         """
         self._out = []
         expr = self._value_expr(cv.node, cv.target)
-        self.write_reg(cv.target, expr, pc=self._last_target_def(cv))
+        # M7 task 8 (mechanism C, second half): a `CondValue` chain's result
+        # is a REGION-computed merge -- the expression already subsumes every
+        # path through the chain -- so staging it for the consumer to inline
+        # (`g(a and 1 or 2)` -- no `local` at all, the only spelling that
+        # recompiles with the callee in place) is sound whenever the jump
+        # structure from the chain's end to the consumer's read carries no
+        # loop/arm hazard. `_staging_span_ok` with `entry_at_r_ok=True` is
+        # that check: a branch landing exactly ON the read is the chain's own
+        # join, not an outside entry. Without the check (or when it refuses)
+        # the write keeps the walk's grade -- usually materialize, which is
+        # always printable.
+        if self._cond_value_stages(cv):
+            self._force_temp.add(cv.target)
+            try:
+                self.write_reg(cv.target, expr, pc=self._last_target_def(cv))
+            finally:
+                self._force_temp.discard(cv.target)
+        else:
+            self.write_reg(cv.target, expr, pc=self._last_target_def(cv))
         self._finalize_pending()
         return tuple(self._out)
+
+    def _cond_value_stages(self, cv: CondValue) -> bool:
+        """`_staging_span_ok(convergence, first-read-of-target-after-it)` for
+        this chain, with the span view built once per Reconstructor.
+
+        The chain's value is born where every path through it has CONVERGED:
+        one past its last claimed pc, or further out at the furthest target
+        of the chain's own exit jumps (`g(b, a and 1 or 2, b)`: the skip path
+        leaves at pc7 for pc9 while the fall-through tail ends at pc8 -- the
+        convergence is 9). Starting the span at `max(claimed)` alone would
+        count the chain's own exit jump as an "outside entry into the
+        interval" and refuse the shape the rule exists for."""
+        from pyluadec.express.freereg import _staging_span_ok, build_span_view
+        if self._span_view is None:
+            self._span_view = build_span_view(self.fn)
+        hi = max(cv.claimed_pcs)
+        d = hi + 1
+        lo = bisect.bisect_right(self._span_view.branches, (hi, ()))
+        # branches with pc <= hi, i.e. inside-or-before the chain; the chain
+        # occupies a contiguous claim, so bisect on hi bounds them from above
+        # and the scan below only lifts targets PAST the claim.
+        for k in range(lo):
+            pc, succs = self._span_view.branches[k]
+            if pc >= min(cv.claimed_pcs):
+                d = max(d, max(succs))
+        r = self._next_read_after(cv.target, hi)
+        return r is not None and _staging_span_ok(
+            self._span_view, d, r, entry_at_r_ok=True, read_reg=cv.target)
+
+    def _next_read_after(self, reg: int, after: int) -> int | None:
+        """First pc past `after` that reads `reg` (explicitly, or through an
+        `R[a..top)` open range covering it), or None if a WRITE to `reg`
+        comes first (the value dies unreplaced -- staging it would leak an
+        expression no consumer ever pops)."""
+        for pc in sorted(self.fn.instrs):
+            if pc <= after:
+                continue
+            li = self.fn.instrs[pc]
+            ri = li.ri
+            if reg in li.effects.reads:
+                return pc
+            if li.effects.reads_open and reg >= (
+                    ri.a if ri.op is Op.RETURN else ri.a + 1):
+                return pc
+            if reg in li.effects.writes:
+                return None
+        return None
 
     def _last_target_def(self, cv: CondValue) -> int | None:
         """The highest pc in `cv.claimed_pcs` that writes `cv.target`, or None
@@ -1134,6 +1237,38 @@ class Reconstructor:
         return fixed + (expr,)
 
     # ---- table constructor folding ----------------------------------------
+    def _next_touch_is_store_to(self, reg: int, pc: int) -> bool:
+        """Is the first instruction after `pc` that touches `reg` a
+        `SETTABLE` storing INTO `reg`? The statement-built-table half of the
+        constructor budget's position fix (M7 task 10) -- see the NEWTABLE
+        branch of `_dispatch`.
+
+        An open region (`reads_open`/`writes_open`) touches `reg` only at or
+        above its base -- `R[a..top)` / `R[a+1..top)` per opcode -- so an
+        open instruction whose base is ABOVE `reg` does not stop the scan.
+        This is deliberately more precise than `_dispatch`'s ctx close
+        check, which bails on any open flag because the hazard set's extent
+        genuinely is unknowable; here the question is only whether THIS one
+        register lies in the region, and `reg < a` answers it. That
+        precision is load-bearing: `snr_common.lua:main_29`'s statement
+        table (R10, built at pc 5) is first stored to inside a `for` body
+        past a `VARARG 14 0` and an open `CALL 12 0 2` -- both based above
+        R10 -- and the any-open-flag version refused the fast path, emitted
+        the `local l1_10 = {}` at the close instead of at the NEWTABLE, and
+        swapped the declaration order with the counter local the original
+        declared after it (R10/R11 exchanged, 34 instruction diffs).
+        """
+        if self._sorted_pcs is None:
+            self._sorted_pcs = sorted(self.fn.instrs)
+        for p in self._sorted_pcs[bisect.bisect_right(self._sorted_pcs, pc):]:
+            li2 = self.fn.instrs[p]
+            fx = li2.effects
+            if reg in fx.reads or reg in fx.writes:
+                return li2.ri.op is Op.SETTABLE and li2.ri.a == reg
+            if (fx.reads_open or fx.writes_open) and reg >= li2.ri.a:
+                return False
+        return False
+
     def _close_table_ctx(self) -> None:
         """Pop and finalize the innermost pending table constructor.
 
@@ -1149,6 +1284,34 @@ class Reconstructor:
         _stable_ref -- still gets a real LocalDecl/Assign here, because
         write_reg defers to force_materialize whenever the register isn't a
         trustworthy rc.temps member.
+
+        ## The hash-hint budget (M7 task 9)
+
+        A literal `{k = v, ...}` compiles to `NEWTABLE` carrying the literal's
+        own hash-entry count as its C hint -- `lparser.c` pre-counts every
+        field, constant- AND dynamic-keyed alike -- then one `SETTABLE` per
+        field. A STATEMENT-built table -- `local t = {}` then `t.k = v` --
+        compiles to `NEWTABLE` with hint 0 and looks identical from the
+        `SETTABLE`s alone, so folding every field into a `{...}` literal
+        silently rewrites one into the other and fails certification on the
+        recompiled hint (the `class`-keyed tables of `snr_s1/s3/s4_10_s`'s
+        scene boilerplate are exactly this: hint 0, five fields).
+
+        The budget is enforced at FOLD time in `_dispatch`'s SETTABLE branch,
+        not by splitting here: a split at close time emits the literal late
+        (the context lingers until its consumer) and reorders the statement
+        stream -- the measured failure had the folded constants staged ahead
+        of the table statement. And the comparison is deliberately only
+        against ZERO: the hint is `int2fb`-encoded and the lifter decodes it
+        to the bucket's LOWER bound, so any value past 7 is inexact (a
+        15-field literal decodes to 14) and a count-based gate would cut real
+        literals mid-field -- the first version of this fix did exactly that
+        and cost a whole file its hybrid product (snr_common, ~105 structured
+        occurrences, caught by re-running the corpus BETWEEN fixes rather
+        than only against the milestone baseline). Zero is the one value with
+        no ambiguity: a literal has at least one field and `int2fb(1) == 1`,
+        so hint 0 proves no literal fields exist and every `SETTABLE` against
+        it is a statement store.
         """
         if not self._table_ctx_stack:
             return
@@ -1192,11 +1355,22 @@ class Reconstructor:
             ctx["hazard"] |= _local_regs_in(item)
 
     def _fold_settable(self, ri) -> None:
-        key = ConstExpr(self.proto.constants[indexk(ri.b)])
+        # Constant keys (`isk(B)`) print as `{k = v}` sugar; REGISTER keys
+        # (`B < 256`, e.g. `{[f] = "a"}` with `f` a global read) are a
+        # constructor's dynamic-key form -- `lparser.c::recfield` reaches the
+        # same `OP_SETTABLE` through `'[' -> yindex`, and the key expression
+        # is whatever staged into that register (M7 task 6; before it the
+        # fold demanded `isk(ri.b)` and dynamic-key tables degraded to
+        # statement assignments, materializing a local the original never
+        # had -- config.lua:main's whole-file fallback).
+        key = (ConstExpr(self.proto.constants[indexk(ri.b)])
+               if isk(ri.b) else self._read_reg(ri.b))
         val = self.rk(ri.c)
         ctx = self._table_ctx_stack[-1]
         ctx["hash"].append((key, val))
         ctx["hazard"] |= _local_regs_in(val)
+        if not isk(ri.b):
+            ctx["hazard"] |= _local_regs_in(key)
 
     def _standalone_setlist(self, li: LirInstr) -> None:
         """SETLIST with no active matching table-ctx (NEWTABLE and its
@@ -1345,8 +1519,35 @@ class Reconstructor:
             # TableExpr rather than degrading the outer constructor too.
             if self._table_ctx_stack and self._table_ctx_stack[-1]["reg"] == a:
                 self._close_table_ctx()
+            # A decoded hash hint of 0 whose next touch is a store TO this
+            # register is a statement-built table (see `_close_table_ctx`
+            # for why 0 is the only decidable hint) -- and the store-first
+            # discrimination has a POSITION cost when left to the SETTABLE
+            # branch: materializing there emits `local t = {}` after any
+            # statement the original placed between the NEWTABLE and its
+            # first store (M7 task 10's K2 rows: `local t = {}` at pc 5,
+            # a multi-use key's LOADK at pc 6, the store at pc 7 -- the
+            # close-at-store print ordered the key's `local` first and the
+            # recompile reordered the two statements). Looking ahead from
+            # the NEWTABLE itself and materializing the empty table HERE
+            # puts the declaration exactly where the original put it, and
+            # every subsequent store falls through to `_settable` as an
+            # ordinary indexed assignment. The scan is a straight walk to
+            # the first instruction that touches `a` in ANY way; only a
+            # SETTABLE with `a == reg` qualifies, so an array literal
+            # (hash hint 0, array fields, next touch a SETLIST) keeps its
+            # ctx and folds, and a table consumed as a value (next touch a
+            # read) keeps the pop-once staged `{}` behaviour.
+            if ri.c == 0 and self._next_touch_is_store_to(a, ri.pc):
+                self.force_materialize(a, TableExpr(array=(), hash=()))
+                return
             self._table_ctx_stack.append({"reg": a, "pc": ri.pc, "array": [],
-                                          "hash": [], "hazard": frozenset()})
+                                          "hash": [], "hazard": frozenset(),
+                                          # The literal's own size hints (B =
+                                          # array, C = hash), decoded by the
+                                          # lifter; the fold budget -- see
+                                          # `_close_table_ctx`.
+                                          "hint_c": ri.c})
             return
 
         if self._table_ctx_stack:
@@ -1355,8 +1556,32 @@ class Reconstructor:
             if op is Op.SETLIST and a == reg:
                 self._fold_setlist(li)
                 return
-            if op is Op.SETTABLE and a == reg and isk(ri.b):
-                self._fold_settable(ri)
+            if op is Op.SETTABLE and a == reg:
+                if ctx["hint_c"] > 0:
+                    self._fold_settable(ri)
+                    return
+                # A NEWTABLE whose decoded hash hint is ZERO was built by
+                # statements -- a literal pre-counts every field (constant
+                # and dynamic keys alike, `lparser.c`), and `int2fb(1)` is
+                # already 1, so a hint of 0 admits no literal fields at all.
+                # The decoded hint is int2fb-encoded (a bucketed lower bound
+                # for tables past 7 fields -- a 15-field literal decodes to
+                # 14), so NO other value can be compared against a field
+                # count exactly; this branch deliberately fires only on the
+                # one unambiguous case and leaves every hint >= 1 folding
+                # exactly as before. The close MATERIALIZES (never stages):
+                # a statement-built table is re-referenced by construction --
+                # every store plus every later read -- and a staged
+                # pop-once `{}` would be consumed by the first store's own
+                # table read, leaving the next reference nothing to pop
+                # (`local t = {} t[1] = 2 return t` refused exactly so
+                # before the force was added).
+                ctx2 = self._table_ctx_stack.pop()
+                self.force_materialize(
+                    ctx2["reg"],
+                    TableExpr(array=tuple(ctx2["array"]),
+                              hash=tuple(ctx2["hash"])))
+                self._dispatch(li)
                 return
             fx = li.effects
             # Close (materializing the table with its array/hash items AS

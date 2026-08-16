@@ -496,7 +496,7 @@ def test_the_compound_if_population_moved_from_twentyone_shapes_to_one(
     movement is adjudicated rather than assumed.
 
     Re-measured 2026-08-14 after the condition-tree recognizer landed. The one
-    survivor is `snr_common.lua:main_71`, whose refusal
+    leaf survivor is `snr_common.lua:main_71`, whose refusal
     (`else-join out of range` at pc 286) is NOT a condition-representation
     defect: the two tests at 284/286 target 297 and 298, which resolve to
     neither a true exit, a false exit, nor an internal split point, so
@@ -505,6 +505,14 @@ def test_the_compound_if_population_moved_from_twentyone_shapes_to_one(
     410, the exit of a `while true` (header 279, closing JMP 409) that
     `_match_loop` does not recognize; structuring the same `if` WITH
     `break_target=410` succeeds.
+
+    Re-measured 2026-08-15 (M7 task 7): the family is now **2 ledger rows, 1
+    leaf** -- same shape, same pc. `snr_common.lua:main`'s row joined when the
+    skipped-kill veto dissolved its `reconstruct:` reason: the ancestor's
+    certification used to stop at the reconstruction layer before ever
+    reaching this descendant's structure refusal, and with that barrier gone
+    the pc-286 refusal is what its walk now reports. The leaf population,
+    `compound_if_leaves`, and the classes.json agreement below are unchanged.
 
     The other 20 left this family by two different routes and the split is
     asserted, because "no longer `structure:`" is not "certified": **7** reach
@@ -520,8 +528,9 @@ def test_the_compound_if_population_moved_from_twentyone_shapes_to_one(
     rows = _ledger_rows()
     shapes = [r for r in rows
               if (r.get("refusal_reason") or "").startswith("structure:")]
-    assert len(shapes) == 1
-    assert shapes[0]["refusal_reason"] == "structure: pc 286: else-join out of range"
+    assert len(shapes) == 2
+    assert {s["refusal_reason"] for s in shapes} == {
+        "structure: pc 286: else-join out of range"}
     leaves = probe_enum.compound_if_leaves(rows)
     assert leaves == [("snr_common.lua", "main_71")]
     # The derivation and `classes.json` still agree, on the smaller set.
@@ -541,9 +550,24 @@ def test_the_compound_if_population_moved_from_twentyone_shapes_to_one(
         r = by_key[key]
         verdicts[key] = r["level"] if r["level"] == "L3" \
             else (r["refusal_reason"] or "").split(":")[0]
-    assert sorted(verdicts.values()).count("L3") == 6
-    assert sorted(verdicts.values()).count("mismatch") == 6
+    assert sorted(verdicts.values()).count("L3") == 8
+    assert sorted(verdicts.values()).count("mismatch") == 3
     assert sorted(verdicts.values()).count("structure") == 1
+    # Re-measured 2026-08-15 (M7 task 8): `snr_graphic.lua:main` moved from
+    # `mismatch` to `reconstruct` -- the staging-span exemption changed its
+    # printed text, and the isolated verdict is now the reconstruction
+    # refusal rather than the compile-then-mismatch. Same level both ways;
+    # attribution material for M7 task 9.
+    # Re-measured 2026-08-16 (M7 task 9): `snr_memory.lua:main_4` moved
+    # `mismatch: code` -> `L3` -- the reaching-definition `>` recogniser
+    # fired on its clamp gate (the M6 "same defect, same shape" twin of
+    # `snr_graphic.lua:main_4`, which itself stays `mismatch: code` on the
+    # key-staging-order residual).
+    # Re-measured 2026-08-16 (M7 task 10): `snr_s4_10_s.lua:main_58` moved
+    # `mismatch: code` -> `L3` -- the key-staged-below-table barrier (its
+    # `snr_s3_10_s:main_59` twin left the population at M6 task 11's
+    # condition trees, which is why the count moved by one and not two).
+    assert sorted(verdicts.values()).count("reconstruct") == 1
 
 
 def test_the_smallest_leaf_refusal_is_identical_over_its_whole_space(

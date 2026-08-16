@@ -95,22 +95,25 @@ def test_printable_but_shape_mismatched_chunk_is_l1(tmp_path):
     is the test that exercises the certify_l3 *comparison* path rather than
     the print_chunk-returns-None early-out.
 
-    `local t = {} t[1] = 2 return t` prints as `local l0_0 = {[1] = 2}`.
-    That is semantically identical and it compiles, but it is not the same
-    bytecode: `NEWTABLE` carries array/hash size *hints* derived from the
-    literal the parser saw, so a table built empty and then indexed differs
-    from one built with the field inline -- `NEWTABLE 0 0 0` versus
-    `NEWTABLE 0 0 1`. Nothing downstream of this module can recover which of
-    the two the author wrote, which makes it a stable example of "printable,
-    semantically right, still not certified".
+    `local t = {a = 1} t.b = 2 return t` prints as `local l0_0 = {a = 1, b
+    = 2}`. That is semantically identical and it compiles, but it is not the
+    same bytecode: `NEWTABLE` carries array/hash size *hints* derived from
+    the literal the parser saw (`C = 1` here) and the original has one
+    statement store besides, so a one-field literal plus a store differs
+    from the two-field literal -- `NEWTABLE 0 0 1` + `SETTABLE` versus
+    `NEWTABLE 0 0 2` and no store. Nothing downstream of this module can
+    recover which of the two the author wrote, which makes it a stable
+    example of "printable, semantically right, still not certified".
 
-    Until M3 task 8 this test used `local a = 1 local b = 2 print(a + b)`,
-    which no longer serves: with the freereg-based register classification
-    that source now certifies L3 (as the task-8 brief's own pipeline test
-    expects it to).
+    This is the third carrier (recorded): until M3 task 8 the test used
+    `local a = 1 local b = 2 print(a + b)` (freereg classification made it
+    L3); until M7 task 9 it used `local t = {} t[1] = 2 return t`, whose
+    hint-0 `NEWTABLE` the task-9 fold gate now recognizes as statement-built
+    -- it materializes at the first store and prints statement-for-statement,
+    which certifies L3.
     """
     from pyluadec.structure.structured import certify_proto
-    c = certify_proto(_proto("local t = {} t[1] = 2 return t", tmp_path),
+    c = certify_proto(_proto("local t = {a = 1} t.b = 2 return t", tmp_path),
                       is_chunk_root=True)
     assert c.level == "L1" and c.rung is None and c.mismatches != ()
 
@@ -125,10 +128,13 @@ def test_printable_but_uncertified_chunk_falls_back_to_semantic_state_machine(tm
     test in this file that actually exercises the "root printed fine but
     didn't certify -> still must fall back" branch of emit_certified_chunk,
     rather than the "didn't even print" branch every other fallback test
-    here takes.
+    here takes. Carrier re-derived at M7 task 9 together with its sibling
+    above (the previous `local t = {} t[1] = 2 return t` now certifies: its
+    hint-0 NEWTABLE is recognized as statement-built by the task-9 fold
+    gate).
     """
     from pyluadec.structure.structured import emit_certified_chunk
-    root = _proto("local t = {} t[1] = 2 return t", tmp_path)
+    root = _proto("local t = {a = 1} t.b = 2 return t", tmp_path)
     out = emit_certified_chunk(root)
     assert out.certs["main"].level == "L1"
     assert b"__pld_pc" in out.source
@@ -359,13 +365,18 @@ def test_refusal_and_rejection_carry_distinguishable_reasons(tmp_path):
     assert refused.level == "L1"
     assert refused.reason.startswith("structure: "), refused.reason
 
-    rejected = certify_proto(_proto("local t = {} t[1] = 2 return t", tmp_path),
-                             is_chunk_root=True)
+    rejected = certify_proto(
+        _proto("local t = {a = 1} t.b = 2 return t", tmp_path),
+        is_chunk_root=True)
     assert rejected.level == "L1"
-    # `NEWTABLE`'s array/hash size hints differ -> the first mismatch is on
-    # `code`. The field NAME is the whole reason: the mismatch's `a`/`b`
-    # reprs hold the actual instruction words and constants, which are
-    # bytecode-derived payload and must not reach the committed ledger.
+    # `NEWTABLE`'s array/hash size hints differ and the literal absorbs the
+    # store's `SETTABLE` -> the first mismatch is on `code` (carrier
+    # re-derived at M7 task 9; the previous `local t = {} t[1] = 2 return t`
+    # certifies now -- its hint-0 NEWTABLE is recognized as statement-built
+    # by the task-9 fold gate). The field NAME is the whole reason: the
+    # mismatch's `a`/`b` reprs hold the actual instruction words and
+    # constants, which are bytecode-derived payload and must not reach the
+    # committed ledger.
     assert rejected.reason == "mismatch: code", rejected.reason
     assert repr(rejected.mismatches[0].a) not in rejected.reason
 
@@ -442,40 +453,53 @@ def test_nested_refusal_also_carries_a_reason(tmp_path):
     assert c.reason.startswith("structure: ") or c.reason.startswith("reconstruct: "), c.reason
 
 
-def test_table_constructor_fold_reorders_statements_but_cannot_ship(tmp_path):
-    """A real, pre-existing evaluation-order defect in the constructor fold,
-    pinned as the census entry it is (M4 task 6; the defect predates M4 task
-    13 -- verified against `dec39c5`-era behaviour by the task 13 reviewer).
+def test_table_constructor_statement_build_does_not_reorder(tmp_path):
+    """The constructor fold's evaluation-order behaviour, re-pinned at M7
+    task 9 (2026-08-16) because the defect this file carried until then is
+    FIXED for the one class of table the fix can decide.
 
-    `express.reconstruct` folds a table's later field assignments back into
-    its constructor, and prints the constructor at the position of the LAST
-    folded assignment. Any effectful statement that stood between the first
-    folded item and that position is therefore printed BEFORE that item is
-    evaluated. Measured here: the original prints `1 x 2`, the structured
-    print prints `x 1 2`.
+    History (the fixture is unchanged): `express.reconstruct` used to fold a
+    table's later field assignments back into its constructor and print the
+    constructor at the position of the LAST folded assignment, so any
+    effectful statement between two folded items printed before the first
+    item was evaluated -- the original printed `1 x 2`, the structured print
+    `x 1 2`. M4 task 6 pinned that as an unshippable defect ("when someone
+    fixes it, the `!=` starts failing, which is the intended notification" --
+    it fired at task 9). The hint-0 budget gate recognizes a `NEWTABLE`
+    whose decoded hash hint is 0 as a statement-built table (`local t = {}`
+    then `t.k = v`; a literal pre-counts every field, constant- and
+    dynamic-keyed alike, and `int2fb(1)` is already 1, so hint 0 admits no
+    literal fields at all), materializes it at its FIRST store, and leaves
+    every later store a statement -- statement-for-statement faithful.
 
-    Two things this test asserts, and one it deliberately does not:
+    What is asserted now, both directions:
 
-    * the reordering is real and observable (the two stdouts differ);
-    * it is UNSHIPPABLE. Note the reasoning, which M5 task 12 had to correct:
-      a root that misses `L3` no longer implies the fallback chunk ships, since
-      M5 task 6 put a hybrid tier in between. Measured on this fixture
-      2026-08-13: `certs == {"main": "L1", "main_0": "L3"}`, `out.hybrid` is
-      **False** and `out.fallback_paths == {"main", "main_0"}` -- i.e.
-      `certify_hybrid` was tried and returned `None`, because the defect is in
-      the ROOT's own `code` (`refusal_reason` is `mismatch: code`) and a hybrid
-      can only substitute descendants. So the whole-chunk fallback ships and
-      its stdout matches the original exactly. This is the whole point of the
-      certification gate: a reconstruction bug can only ever cost L3 rate,
-      never correctness.
-    * it does NOT assert the reordering is fixed. When someone does fix it,
-      the `!=` below starts failing, which is the intended notification.
+    * the printed chunk's stdout equals the original's exactly (evaluation
+      order preserved -- this is the old `!=` inverted into the guard that
+      the fix regresses loudly);
+    * the chunk now CERTIFIES `L3` at rung 0 (measured 2026-08-16: both
+      `main` and `main_0`), where before the fix the root missed on
+      `mismatch: code` and the whole-chunk state machine shipped -- the
+      certification gate's standing guarantee that the defect could only
+      ever cost L3 rate, never correctness.
 
-    (The brief's own one-liner repro, `local t = {} print(1)`, does reorder
-    the statements -- the `local` moves after the `print` -- but is NOT
-    observable: the only statement that moves there is a pure `NEWTABLE`.
-    Making the divergence observable needs two folded items straddling an
-    effectful statement, which is what this fixture is.)
+    Scope of the fix, deliberately narrow: the gate fires only on hint 0.
+    A hint >= 1 table (a literal plus later statement stores) still folds --
+    the int2fb encoding makes every non-zero hint a bucketed lower bound
+    that cannot be compared against a field count exactly -- and for that
+    class the residual lives on, pinned by
+    `test_printable_but_shape_mismatched_chunk_is_l1`'s carrier, which is
+    exactly a hint-1 shape. Its residual is the hint/`SETTABLE` shape
+    mismatch, not observable order: within a folded literal the fold
+    preserves relative order, so luac evaluates items in source order
+    either way.
+
+    (The brief's own one-liner repro, `local t = {} print(1)`, moves the
+    `local` after the `print` in the OLD folder but is not observable -- the
+    only statement that moves is a pure `NEWTABLE`. Making divergence
+    observable needs two folded items straddling an effectful statement,
+    which is what this fixture is; under the gate the fixture's table never
+    folds at all.)
     """
     from pyluadec import oracle
     from pyluadec.emit.lua import print_chunk
@@ -494,12 +518,12 @@ def test_table_constructor_fold_reorders_statements_but_cannot_ship(tmp_path):
     original_out = oracle.run_bytes(src.encode(), is_source=True).stdout
     printed_out = oracle.run_bytes(printed.encode(), is_source=True).stdout
     assert original_out == b"1\nx\n2\n1\t2\n"
-    assert printed_out == b"x\n1\n2\n1\t2\n"
-    assert printed_out != original_out              # ...wrongly
+    assert printed_out == original_out              # ...faithfully
 
     out = emit_certified_chunk(root)
-    assert out.certs["main"].level == "L1"          # ...and does not certify
-    assert b"__pld_pc" in out.source                # ...so the fallback ships
+    assert out.certs["main"].level == "L3"          # ...and certifies
+    assert out.certs["main_0"].level == "L3"
+    assert b"__pld_pc" not in out.source            # ...so structured ships
     assert oracle.run_bytes(out.source, is_source=True).stdout == original_out
 
 
