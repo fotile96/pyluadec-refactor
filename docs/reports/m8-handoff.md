@@ -86,12 +86,26 @@ Of the six over-budget files, only `snr_music` (3.34×) and `snr_novel`
 (needs the bundle in 3.1, i.e. needs partner approval). So exit criterion
 3's feasibility rests on those two rows.
 
-There is a live tension worth surfacing to the partner **now**:
-`snr_music` carries **no translatable text**, so if its bundle is refused
-it lands cleanly in the spec §1 stop-loss — but that leaves **3.34× in the
-shipped corpus**, contradicting the 1.5× ceiling the same partner set. One
-of the two has to give, and it is better decided in the open than at Task
-10.
+There is a live tension here: `snr_music` carries **no translatable
+text**, so if its bundle is refused it lands cleanly in the spec §1
+stop-loss — but that leaves **3.34× in the shipped corpus**,
+contradicting the 1.5× ceiling the same partner set.
+
+**PARTNER RULING (2026-08-16): try the rung bundle first; reach for the
+stop-loss only if the active path stops making progress.** So the order
+for `snr_music:main` is: (1) byte-exact emitter attempts, per spec §2's
+byte-exact-first discipline, for both halves (pool order and the
+maxstack-below-original slack); (2) if either is genuinely unreachable,
+build the parser-direction argument and petition the **bundle** (§3.1) —
+a petition that carries both halves, because neither certifies the row
+alone; (3) the §1 stop-loss is the last resort, not the cheap exit, and
+taking it requires reporting what was attempted and why it stopped.
+The same order applies to `snr_novel:main`, whose half is emitter-side
+and therefore should not need step 2 at all.
+
+Do **not** read this ruling as "the stop-loss is withdrawn": it stands as
+written in spec §1, and `snr_music` still satisfies its text-free clause.
+What the ruling withdraws is the option of *starting* there.
 
 ### 3.3 Report rows and shipped-fallback occurrences as the primary metric
 
