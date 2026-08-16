@@ -4268,3 +4268,36 @@ docstring). **Readability residual**: 52 lines of game dialogue ship as
 `__pld_R[n] = "<Japanese>"` (49 `snr_common`, 2 `snr_story_main`, 1
 `snr_novel`) — encoding-complete but without call context; pinned by
 `tests/test_m7_exit.py`, fix routed to M8.
+
+### The M8 campaign census (tasks 2–3 landed; tasks 4–5 Step-1 measured)
+
+**State after M8 tasks 2+3 (2026-08-16, `927fbcd`): 19 non-`L3` rows — 13
+own + 6 inherited — ALL `mismatch:`** (the `structure:` and `reconstruct:`
+families are extinct: task 2's arm-trailing empty-then recognizer fix took
+`main_71` + root past `build_sir`; task 3's empty-tail clamp fix certified
+`snr_memory`'s whole file and `snr_graphic:main_3`). `L3` **1459/1478
+(98.7%) / 1882/1944 occurrences**; **223 fully structured / 4 hybrid /
+2 whole-file fallback**; ratchet vs `72cb6a8`: 3 upgrades, 0 downgrades.
+
+**The tasks 4+5 Step-1 census, measured 2026-08-16** (first divergence per
+own row, exact-wrapper recompile; the reason field alone names only the
+FIRST mismatch — the full field lists below come from
+`ProtoCert.mismatches`):
+
+| rows (own) | first divergence | mechanism family |
+|---|---|---|
+| `main_25` pc1, `main_24` pc1, `main_71` pc7 | `NEWTABLE` hash-hint C differs (2v3, 1v3, 10v0) | **K1 hint-position** — constructor literal vs statement-build choice |
+| `main_77` pc1, `snr_novel:main` pc1 | `NEWTABLE` vs `LOADK` ordering (+ pool reorder) | **constructor layout** — ours builds statement-first, orig literal-first |
+| `snr_story_main:main_3` pc290, `snr_graphic:main_4` pc355 | JMP offsets + 8/13 extra instrs (+ pool reorder) | **expression layout** — statement-order divergence cascading |
+| `main_77_0` pc3 | `SETUPVAL` B=1 vs B=0 (5-instr proto) | the documented `u0, u1 = 1, 0` multiple-assignment residual (`tests/test_express_residual.py`) |
+| `mainmenu:main_7`, `main_25_4`, `main_76_2` | extra `MOVE`s (+4/+14/+6), maxstack above orig | **materialization surplus (M)** — callee/arg reuse slots materialized where orig staged (`local l1_3 = layerClip; l1_3(l1_4, ...)` vs direct call) |
+| `main_74_18`, `snr_music:main` | maxstack BELOW orig **plus** code/pool co-mismatches (58-item pool reorder on music) | slack + pool order — **no maxstacksize-only rung can certify either row** |
+
+**A plan hypothesis corrected by measurement**: the M8 plan's table read the
+8 maxstacksize rows as "K1 (5) + dead-slack"; the measured split is
+M-family 3 + slack-with-co-mismatch 2, and the K1 rows live among the
+`mismatch: code` population (hint is a code field). Consequence for Task 6:
+**no single rung alone certifies any remaining row** — the L3.2 pool-order
+rung would pair with music:main's maxstacksize clause, and K1 needs the
+L3.3 hint rung; the M-family and layout rows are emitter-side work, not
+rung work.
