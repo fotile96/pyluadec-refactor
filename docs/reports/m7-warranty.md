@@ -70,6 +70,47 @@ mechanisms C/D/E combined. The decision (continue repair campaign including
 this mechanism and re-measure; ship verbatim residue; or re-scope) is the
 partner's; recorded here and in the milestone decision log.
 
+### Addendum (2026-08-16, Task 11 round 1): the T-grade mapping's order was
+### wrong, and §1's rate with it
+
+Task 2's `t_grade` ladder checked `L3` first, so a proto that individually
+certified but **shipped fallback text** (whole-file fallback or a
+hybrid-replaced subtree) graded `T3`. Spec §2 grades "how faithful is THE
+SHIPPED TEXT" and defines `T-` as "shipped verbatim without certification
+(fallback text, ...)" — the state machine was never the text any
+`certify_l3` run verified. Flipped to shipped-first in
+`src/pyluadec/predrecert.py` (dated amendment in its docstring; the order
+pin test rewritten). Re-measured rate under the corrected mapping:
+
+```
+recert: T3 10/1944, T2 3/1944, T- 1931/1944  (229 files, 15.90s)
+recert rate (T3+T2)/total: 0.0067
+```
+
+The collapse from 0.3683 is the honest number: the task 2 §1 table's 713
+`T3` included **703 phantom grades** — descendants that certify individually
+inside chunks that fall to whole-file fallback, whose structured text is
+never emitted. The mechanism diagnosis (boilerplate dead locals → root
+`mismatch: maxstacksize` → whole-file fallback) is unchanged and explains
+the corrected shape too: only 13 occurrences anywhere ship structured pred
+text, and only `config.lua`'s pred side (1 occurrence) is all-`T3`.
+
+File-level selection is invariant to the order (measured both ways: 222
+ours-`T3` minima + 7 ours-`T-` minima), so nothing in §3's outcomes depends
+on this amendment — it exists because the warranty's per-occurrence records
+must not overclaim shipped text (49 our-side occurrences and the pred-side
+analog would have).
+
+**Go/no-go disposition (2026-08-16).** With the corrected rate at 0.0067 —
+far below the 0.70 policy line — the human partner instructed Task 11 to
+proceed (this session). The consequence is arithmetic, not discretionary:
+a pred side needs `t_min` above `T-` to beat anything (ours' `E = id` wins
+every tie), and only `config.lua`'s pred side qualifies — where ours ties
+`T3` and wins on `E`. All 229 files select ours (§3). The `*-verbatim`
+residue is **empty, structurally**: an ungradable pred side is ineligible,
+so a pred side that wins always has a `RecertOutcome.source` to ship
+(`*-recert`), and a `T-` pred side can never win.
+
 ## §2. Panel corpus run + adjudication (task 4, 2026-08-15)
 
 `scripts/invariant_panel.py --all` over all 229 files / 1944 pairs
@@ -136,3 +177,90 @@ that caught it is the one this task built.
   formal-verification earmark (the panel is M7's Factor-E instrument).
 - The job (regeneration + adjudication) is out-of-suite with the four
   conditions in the CLI docstring.
+
+## §3. Selection outcomes (task 11, 2026-08-16)
+
+`scripts/warranty_build.py --all` (job; trigger in its docstring — any
+ledger/panel/recert movement and at close): **22.84 s**, one `decompile_file`
++ one `recert_bytes` per file, linear in files. Committed artifacts:
+`corpus/warranty.jsonl` (188 KB, 229 rows) + `corpus/final/` (229 files,
+3.7 MB). Both regenerate byte-identically
+(`tests/test_warranty.py::test_warranty_artifacts_are_a_reproducible_fixed_
+point`, corpus-gated on both env vars, one shared ~17 s build per module —
+the `panel_scan` precedent; a tamper-neuter proves the gate reads the
+artifact).
+
+### The selection table
+
+**All 229 files select `ours`.** The distribution is not close:
+
+| | ours side | pred side |
+|---|---|---|
+| file-level `t_min` | 222 × `T3`, 7 × `T-` | 1 × `T3` (`config.lua`), 228 × `T-` |
+| occurrences | T3 1873 / T2 7 / T- 64 | ships nothing |
+| shipped `e` | `id` × 1944 | (n/a) |
+
+The seven files whose ours side is not fully structured (5 hybrid:
+`snr_common`, `snr_graphic`, `snr_mainmenu`, `snr_memory`, `snr_story_main`;
+2 whole-file fallback: `snr_music`, `snr_novel`) all contest and all lose on
+Factor T before E is reached — their pred sides are `t_min = T-` (the
+corrected mapping: no pred chunk outside `config.lua` ships structured text,
+§1 addendum), and five are additionally unpinned-disqualified
+(`snr_music` 3, `snr_novel` 3, `snr_common` 80, `snr_graphic` 3,
+`snr_mainmenu` 5, `snr_memory` 3, `snr_story_main` 1 unpinned rows).
+`config.lua`'s pred side is the only `T3` minimum and loses the tie to
+ours' `E = id` (and carries 1 unpinned row regardless).
+
+### The spec §6 worked consequences, checked against reality
+
+- "217 fully-structured files stay ours" — reality: **222** (the repair
+  campaign moved 5 more files to fully structured since the spec was
+  written).
+- "the six `pred_repairs` files favoured on their repaired protos **until
+  our side closes the corresponding mechanisms**" — the campaign closed
+  them: every repaired-proto file now ships ours, and the warranty records
+  the pred side's `wm` marks anyway (`snr_music` `main_3`;
+  `snr_common` `main_75`/`main_76_2`; `snr_mainmenu` `main_7`;
+  `snr_graphic` `main_4`; `snr_memory` `main_4`).
+- The `*-verbatim` residue: **empty, structurally** (§1 addendum) — named
+  here with its refusal reason per the plan; there is no file whose
+  selection is `pred-verbatim` or `pred_repaired-verbatim`, and the
+  generator's dead branch for them is documented in its module docstring.
+
+### The standing pin-table opcode check (spec §7 / agenda 6)
+
+`tests/test_pin_opcodes.py` (corpus-gated, both env vars): every
+`O<n> OPNAME` / `P<n> OPNAME` pair in `PRED_PINS`/`LOSS_PINS` — **62 pairs**
+(26 PRED + 36 LOSS) — decodes to the named opcode at 1-based pc `n` in the
+resolved proto of the respective corpus. Proto context resolves through the
+LOSS pin key, the PRED evidence tuple's leading `main_X code=`, and
+in-note `main_X:` markers. Three tamper neuters prove the net catches the
+defect class it exists for: an off-by-one pc, a wrong opcode name, and a
+side swap (O→P). The generator runs the same assertion before writing and
+refuses on any violation (`PinOpcodeError`).
+
+### Readability of the shipped corpus (spec §4 acceptance, measured)
+
+Over `corpus/final/`: **17727 of 17727 non-ASCII string literals present as
+raw UTF-8 (fraction 1.0000)**. The `doScriptScene` idiom ships as the
+global-comparison shape (`if doScriptScene == "s6f-10" then`) with Japanese
+arguments raw (`l0_0(doScriptScene, "オープニング")`, `snr_s1_10_s.lua`);
+measured, the `doScriptScene` carriers are the fully-structured `snr_crd_*`/
+`snr_s*` files and **none of the 7 files still shipping fallback text
+references `doScriptScene` at all** — so the spec's "in whichever files
+still ship any fallback text" spot-check instantiates, on this corpus, as
+"wherever the sites are". Task 12 formalizes the ≥ 0.99 exit floor.
+
+### Gates and suite cost
+
+- Suite: **1168 passed in 76.76 s** (was 1150 / ~57 s; +18 tests). The
+  +19.8 s is the warranty fixed-point build (~17 s, shared module fixture)
+  plus the pin-opcode arms (~3 s) — all attributable to the
+  formal-verification earmark (the warranty is M7's Factor-T/E instrument
+  and its fixed point).
+- `./scripts/ratchet_job.sh` (baseline `3669950`): **PASSED** — 18
+  upgrades, 0 downgrades (all from tasks 6–10's committed repairs; task 11
+  moved the ledger not at all — `git diff corpus/ledger.jsonl` empty).
+- Panel + recert jobs re-run at task start per their triggers: panel fixed
+  point holds (217 pins / 316 unpinned); recert rate 0.3683 under the old
+  mapping, 0.0067 corrected (§1 addendum).

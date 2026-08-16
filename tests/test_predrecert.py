@@ -39,14 +39,19 @@ def test_t_grade_mapping_is_the_stated_function():
     assert all(r is None for r in out.reasons.values())
 
 
-def test_t_grade_mapping_t3_takes_precedence_over_fallback_flag():
-    # The mapping is a case ladder in one order: L3 wins even if a hypothetical
-    # fallback flag were set, T2 is "not L3 but shipped structured", T- is
-    # shipped fallback. This test pins the ORDER by driving the pure mapper
-    # directly -- it needs no corpus.
+def test_t_grade_mapping_t_minus_takes_precedence_over_level():
+    # The mapping is a case ladder in one order: a fallback SHIPMENT is T-
+    # whatever the proto's own level said, because Factor T grades the
+    # shipped text and the fallback state machine was never the subject of
+    # a certify_l3 run (spec §2's T- bullet: "shipped verbatim without
+    # certification (fallback text, ...)" -- see the order amendment dated
+    # 2026-08-16 in predrecert's module docstring; Task 2's original ladder
+    # checked L3 first and overclaimed exactly this overlap). T2 is "not L3
+    # but shipped structured". This test pins the ORDER by driving the pure
+    # mapper directly -- it needs no corpus.
     m = predrecert.t_grade
     assert m(level="L3", shipped_fallback=False) == "T3"
-    assert m(level="L3", shipped_fallback=True) == "T3"  # L3 is checked first
+    assert m(level="L3", shipped_fallback=True) == "T-"  # shipment beats level
     assert m(level="L1", shipped_fallback=False) == "T2"
     assert m(level="L1", shipped_fallback=True) == "T-"
 

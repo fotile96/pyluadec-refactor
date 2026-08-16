@@ -26,10 +26,25 @@ which is the claim Factor T actually makes.
 **T-grade mapping** (one place, ``t_grade``): ``T3`` iff the proto certified
 ``L3``; ``T2`` iff it missed ``L3`` but shipped structured text (the hybrid
 contract compared this proto's own fields field-exactly); ``T-`` iff it
-shipped fallback text. The case order is part of the contract: ``L3`` is
-checked first, so a level beats the shipped flag when both are present
-(``shipped_fallback`` and ``level != "L3"`` are not the same predicate --
-`pipeline.DecompileResult` documents the two directions they come apart).
+shipped fallback text. The case order is part of the contract: ``shipped_
+fallback`` is checked FIRST, so a fallback shipment beats the level when both
+are present. Spec §2 grades "how faithful is THE SHIPPED TEXT" and defines
+``T-`` as "shipped verbatim without certification (fallback text, ...)" --
+a proto that individually certified but lives inside a whole-file fallback
+or a hybrid-replaced subtree ships the state machine, not the text its
+``certify_l3`` run verified, and must not grade ``T3`` (measured at the Task 11
+tree: 49 our-side occurrences and the pred-side analog would have
+overclaimed; file-level minima are unchanged by the order, so selection is
+invariant -- the flip is about record honesty, not outcomes).
+
+**Order amendment (2026-08-16, Task 11 round 1).** Task 2 originally shipped
+the opposite order ("L3 is checked first"), pinned by its own test. That
+order contradicts the spec's T- bullet for exactly the overlap population
+above; flipped here with the pin rewritten, and §1 of
+``docs/reports/m7-warranty.md`` carries the re-measured rate under the
+corrected mapping. ``shipped_fallback`` and ``level != "L3"`` remain
+distinct predicates -- `pipeline.DecompileResult` documents the two
+directions they come apart.
 """
 from __future__ import annotations
 
@@ -59,12 +74,17 @@ class RecertOutcome:
 
 
 def t_grade(level: str | None, shipped_fallback: bool) -> str:
-    """The stated mapping, as one case ladder. ``L3`` is checked first."""
+    """The stated mapping, as one case ladder. ``shipped_fallback`` first.
+
+    A fallback shipment is ``T-`` whatever the proto's own certification
+    said -- the shipped text is the state machine, not the text any
+    ``certify_l3`` run verified (spec §2's T- bullet; see the module
+    docstring's order amendment for why this direction changed)."""
+    if shipped_fallback:
+        return "T-"
     if level == "L3":
         return "T3"
-    if not shipped_fallback:
-        return "T2"
-    return "T-"
+    return "T2"
 
 
 def recert_bytes(source: bytes) -> RecertOutcome:
