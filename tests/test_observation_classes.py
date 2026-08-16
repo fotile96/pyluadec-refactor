@@ -619,4 +619,8 @@ def test_leaf_refusal_rule_agrees_with_an_independent_stubbing_experiment(corpus
     # task 7's clamp fix, 4 again after M7 task 8 moved snr_graphic/memory's
     # ancestor+ sibling rows from `mismatch:` to `reconstruct:` refusals
     # (still L1 either way; 2026-08-15) -- plus the 2 `structure:` rows.
-    assert checked == 6, checked
+    # M8 task 2 (2026-08-16): the 2 `structure:` rows (main_71 + root) left
+    # the print-refusal population -- build_sir accepts them now and the
+    # refusal moved to `mismatch: code` (constructor-layout class), so the
+    # stubbed print legitimately succeeds on them.
+    assert checked == 4, checked

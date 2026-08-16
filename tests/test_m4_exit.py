@@ -179,4 +179,11 @@ def test_reasons_cluster_into_the_known_causes():
     assert kinds <= {k.rstrip(": ") for k in REASON_KINDS}
     # Both residual families are present today. If one ever empties, that is a
     # real (good) change and this line is the place to record it.
-    assert {"structure", "mismatch"} <= kinds
+    # M8 task 2 (2026-08-16): the `structure:` family emptied -- the last two
+    # rows (`snr_common:main_71` + its root) now pass `build_sir` and refuse
+    # at certification instead (`mismatch: code`, the constructor-layout
+    # class; the recognizer gap itself is closed with synthetic L3 fixtures).
+    # The milestone goal "structure: == 0" is real, so this pin now expects
+    # only `mismatch` and `reconstruct` until their campaign tasks land.
+    assert {"mismatch", "reconstruct"} <= kinds
+    assert "structure" not in kinds
