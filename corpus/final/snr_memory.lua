@@ -64,526 +64,82 @@ local l0_12 = function()
     layerPosition(l0_0.layerNumber.cursor, l0_0.cursorX[1], l0_0.cursorY[1])
     switchScreen(0, "", 60)
 end
-local l0_13 = function(__pld_p0, __pld_p1, __pld_p2, __pld_p3)
-local __pld_ord = {l0_0, l0_7, l0_10, l0_11, l0_8}
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-__pld_R[0] = __pld_p0
-__pld_R[1] = __pld_p1
-__pld_R[2] = __pld_p2
-__pld_R[3] = __pld_p3
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[4] = 0
-__pld_R[5] = 0
-__pld_R[6] = layerLoad
-__pld_R[7] = l0_0
-__pld_R[7] = __pld_R[7]["layerNumber"]
-__pld_R[7] = __pld_R[7]["key"]
-__pld_R[8] = ""
-__pld_R[6](__pld_R[7], __pld_R[8])
-__pld_R[6] = layerLoad
-__pld_R[7] = l0_0
-__pld_R[7] = __pld_R[7]["layerNumber"]
-__pld_R[7] = __pld_R[7]["key"]
-__pld_R[7] = __pld_R[7] + 1
-__pld_R[8] = ""
-__pld_R[6](__pld_R[7], __pld_R[8])
-__pld_R[6] = l0_7
-__pld_R[7] = __pld_R[3] * 9
-__pld_R[6] = __pld_R[6] - __pld_R[7]
-if not (__pld_R[6] < 0) then __pld_pc = 20 else __pld_pc = 21 end
-elseif __pld_pc == 20 then
-__pld_pc = 27
-elseif __pld_pc == 21 then
-__pld_R[6] = l0_7
-__pld_R[7] = __pld_R[3] - 1
-__pld_R[7] = __pld_R[7] * 9
-__pld_R[6] = __pld_R[6] - __pld_R[7]
-if __pld_R[6] then __pld_pc = 26 else __pld_pc = 27 end
-elseif __pld_pc == 26 then
-__pld_pc = 28
-elseif __pld_pc == 27 then
-__pld_R[6] = 9
-__pld_pc = 28
-elseif __pld_pc == 28 then
-if not (__pld_R[0] == 0) then __pld_pc = 29 else __pld_pc = 30 end
-elseif __pld_pc == 29 then
-__pld_pc = 33
-elseif __pld_pc == 30 then
-__pld_R[7] = 9
-if __pld_R[7] then __pld_pc = 32 else __pld_pc = 33 end
-elseif __pld_pc == 32 then
-__pld_pc = 36
-elseif __pld_pc == 33 then
-__pld_R[7] = l0_7
-__pld_R[8] = __pld_R[3] * 9
-__pld_R[7] = __pld_R[7] - __pld_R[8]
-__pld_pc = 36
-elseif __pld_pc == 36 then
-if not (9 < __pld_R[7]) then __pld_pc = 37 else __pld_pc = 38 end
-elseif __pld_pc == 37 then
-__pld_pc = 41
-elseif __pld_pc == 38 then
-__pld_R[8] = 9
-do local __pld_t = __pld_R[8] if __pld_t then __pld_R[7] = __pld_t __pld_pc = 40 else __pld_pc = 41 end end
-elseif __pld_pc == 40 then
-__pld_pc = 41
-elseif __pld_pc == 41 then
-__pld_R[8] = 1
-__pld_R[9] = __pld_R[7]
-__pld_R[10] = 1
-do
-local __pld_i = __pld_tonumber(__pld_R[8]) if __pld_i == nil then __pld_error("'for' initial value must be a number") end
-local __pld_l = __pld_tonumber(__pld_R[9]) if __pld_l == nil then __pld_error("'for' limit must be a number") end
-local __pld_s = __pld_tonumber(__pld_R[10]) if __pld_s == nil then __pld_error("'for' step must be a number") end
-__pld_R[8] = __pld_i - __pld_s __pld_R[9] = __pld_l __pld_R[10] = __pld_s
-end
-__pld_pc = 97
-elseif __pld_pc == 45 then
-if not (__pld_R[0] == 0) then __pld_pc = 46 else __pld_pc = 47 end
-elseif __pld_pc == 46 then
-__pld_pc = 70
-elseif __pld_pc == 47 then
-__pld_R[12] = layerMovePosition
-__pld_R[13] = l0_0
-__pld_R[13] = __pld_R[13]["layerNumber"]
-__pld_R[13] = __pld_R[13]["mask"]
-__pld_R[13] = __pld_R[13] + __pld_R[11]
-__pld_R[14] = __pld_R[4] * 130
-__pld_R[14] = __pld_R[14] - 480
-__pld_R[15] = __pld_R[5] * 73
-__pld_R[15] = 50 + __pld_R[15]
-__pld_R[16] = 20
-__pld_R[12](__pld_R[13], __pld_R[14], __pld_R[15], __pld_R[16])
-__pld_R[12] = layerMovePosition
-__pld_R[13] = l0_0
-__pld_R[13] = __pld_R[13]["layerNumber"]
-__pld_R[13] = __pld_R[13]["thumbnail"]
-__pld_R[13] = __pld_R[13] + __pld_R[11]
-__pld_R[14] = __pld_R[4] * 130
-__pld_R[14] = __pld_R[14] - 480
-__pld_R[15] = __pld_R[5] * 73
-__pld_R[15] = 50 + __pld_R[15]
-__pld_R[16] = 20
-__pld_R[12](__pld_R[13], __pld_R[14], __pld_R[15], __pld_R[16])
-__pld_pc = 92
-elseif __pld_pc == 70 then
-__pld_R[12] = layerMovePosition
-__pld_R[13] = l0_0
-__pld_R[13] = __pld_R[13]["layerNumber"]
-__pld_R[13] = __pld_R[13]["mask"]
-__pld_R[13] = __pld_R[13] + __pld_R[11]
-__pld_R[14] = __pld_R[4] * 130
-__pld_R[14] = __pld_R[14] + 480
-__pld_R[15] = __pld_R[5] * 73
-__pld_R[15] = 50 + __pld_R[15]
-__pld_R[16] = 20
-__pld_R[12](__pld_R[13], __pld_R[14], __pld_R[15], __pld_R[16])
-__pld_R[12] = layerMovePosition
-__pld_R[13] = l0_0
-__pld_R[13] = __pld_R[13]["layerNumber"]
-__pld_R[13] = __pld_R[13]["thumbnail"]
-__pld_R[13] = __pld_R[13] + __pld_R[11]
-__pld_R[14] = __pld_R[4] * 130
-__pld_R[14] = __pld_R[14] + 480
-__pld_R[15] = __pld_R[5] * 73
-__pld_R[15] = 50 + __pld_R[15]
-__pld_R[16] = 20
-__pld_R[12](__pld_R[13], __pld_R[14], __pld_R[15], __pld_R[16])
-__pld_pc = 92
-elseif __pld_pc == 92 then
-__pld_R[4] = __pld_R[4] + 1
-if not (3 <= __pld_R[4]) then __pld_pc = 94 else __pld_pc = 95 end
-elseif __pld_pc == 94 then
-__pld_pc = 97
-elseif __pld_pc == 95 then
-__pld_R[4] = 0
-__pld_R[5] = __pld_R[5] + 1
-__pld_pc = 97
-elseif __pld_pc == 97 then
-do local __pld_s = __pld_R[10] local __pld_i = __pld_R[8] + __pld_s
-if (__pld_s > 0 and __pld_i <= __pld_R[9]) or (__pld_s <= 0 and __pld_i >= __pld_R[9]) then
-__pld_R[8] = __pld_i __pld_R[11] = __pld_i __pld_pc = 45
-else __pld_pc = 98 end end
-elseif __pld_pc == 98 then
-if not (__pld_R[0] == 0) then __pld_pc = 99 else __pld_pc = 100 end
-elseif __pld_pc == 99 then
-__pld_pc = 114
-elseif __pld_pc == 100 then
-__pld_R[8] = layerMovePosition
-__pld_R[9] = l0_0
-__pld_R[9] = __pld_R[9]["layerNumber"]
-__pld_R[9] = __pld_R[9]["cursor"]
-__pld_R[10] = l0_0
-__pld_R[10] = __pld_R[10]["cursorX"]
-__pld_R[10] = __pld_R[10][__pld_R[1]]
-__pld_R[10] = __pld_R[10] - 480
-__pld_R[11] = l0_0
-__pld_R[11] = __pld_R[11]["cursorY"]
-__pld_R[11] = __pld_R[11][__pld_R[1]]
-__pld_R[12] = 20
-__pld_R[8](__pld_R[9], __pld_R[10], __pld_R[11], __pld_R[12])
-__pld_pc = 127
-elseif __pld_pc == 114 then
-__pld_R[8] = layerMovePosition
-__pld_R[9] = l0_0
-__pld_R[9] = __pld_R[9]["layerNumber"]
-__pld_R[9] = __pld_R[9]["cursor"]
-__pld_R[10] = l0_0
-__pld_R[10] = __pld_R[10]["cursorX"]
-__pld_R[10] = __pld_R[10][__pld_R[1]]
-__pld_R[10] = __pld_R[10] + 480
-__pld_R[11] = l0_0
-__pld_R[11] = __pld_R[11]["cursorY"]
-__pld_R[11] = __pld_R[11][__pld_R[1]]
-__pld_R[12] = 20
-__pld_R[8](__pld_R[9], __pld_R[10], __pld_R[11], __pld_R[12])
-__pld_pc = 127
-elseif __pld_pc == 127 then
-__pld_R[8] = wait
-__pld_R[9] = 20
-__pld_R[8](__pld_R[9])
-__pld_R[8] = l0_10
-__pld_R[9] = 25
-__pld_R[10] = 460
-__pld_R[11] = 2
-if not (__pld_R[3] < 10) then __pld_pc = 135 else __pld_pc = 136 end
-elseif __pld_pc == 135 then
-__pld_pc = 141
-elseif __pld_pc == 136 then
-__pld_R[12] = "0"
-__pld_R[13] = __pld_R[3]
-__pld_R[12] = __pld_R[12] .. __pld_R[13]
-if __pld_R[12] then __pld_pc = 140 else __pld_pc = 141 end
-elseif __pld_pc == 140 then
-__pld_pc = 142
-elseif __pld_pc == 141 then
-__pld_R[12] = __pld_R[3]
-__pld_pc = 142
-elseif __pld_pc == 142 then
-__pld_R[8](__pld_R[9], __pld_R[10], __pld_R[11], __pld_R[12])
-__pld_R[8] = 1
-__pld_R[9] = __pld_R[7]
-__pld_R[10] = 1
-do
-local __pld_i = __pld_tonumber(__pld_R[8]) if __pld_i == nil then __pld_error("'for' initial value must be a number") end
-local __pld_l = __pld_tonumber(__pld_R[9]) if __pld_l == nil then __pld_error("'for' limit must be a number") end
-local __pld_s = __pld_tonumber(__pld_R[10]) if __pld_s == nil then __pld_error("'for' step must be a number") end
-__pld_R[8] = __pld_i - __pld_s __pld_R[9] = __pld_l __pld_R[10] = __pld_s
-end
-__pld_pc = 161
-elseif __pld_pc == 147 then
-__pld_R[12] = layerLoad
-__pld_R[13] = l0_0
-__pld_R[13] = __pld_R[13]["layerNumber"]
-__pld_R[13] = __pld_R[13]["mask"]
-__pld_R[13] = __pld_R[13] + __pld_R[11]
-__pld_R[14] = ""
-__pld_R[12](__pld_R[13], __pld_R[14])
-__pld_R[12] = layerLoad
-__pld_R[13] = l0_0
-__pld_R[13] = __pld_R[13]["layerNumber"]
-__pld_R[13] = __pld_R[13]["thumbnail"]
-__pld_R[13] = __pld_R[13] + __pld_R[11]
-__pld_R[14] = ""
-__pld_R[12](__pld_R[13], __pld_R[14])
-__pld_pc = 161
-elseif __pld_pc == 161 then
-do local __pld_s = __pld_R[10] local __pld_i = __pld_R[8] + __pld_s
-if (__pld_s > 0 and __pld_i <= __pld_R[9]) or (__pld_s <= 0 and __pld_i >= __pld_R[9]) then
-__pld_R[8] = __pld_i __pld_R[11] = __pld_i __pld_pc = 147
-else __pld_pc = 162 end end
-elseif __pld_pc == 162 then
-__pld_R[4] = 0
-__pld_R[5] = 0
-__pld_R[8] = 1
-__pld_R[9] = __pld_R[6]
-__pld_R[10] = 1
-do
-local __pld_i = __pld_tonumber(__pld_R[8]) if __pld_i == nil then __pld_error("'for' initial value must be a number") end
-local __pld_l = __pld_tonumber(__pld_R[9]) if __pld_l == nil then __pld_error("'for' limit must be a number") end
-local __pld_s = __pld_tonumber(__pld_R[10]) if __pld_s == nil then __pld_error("'for' step must be a number") end
-__pld_R[8] = __pld_i - __pld_s __pld_R[9] = __pld_l __pld_R[10] = __pld_s
-end
-__pld_pc = 280
-elseif __pld_pc == 168 then
-__pld_R[12] = layerCopy
-__pld_R[13] = l0_0
-__pld_R[13] = __pld_R[13]["layerNumber"]
-__pld_R[13] = __pld_R[13]["mask"]
-__pld_R[13] = __pld_R[13] + __pld_R[11]
-__pld_R[14] = l0_0
-__pld_R[14] = __pld_R[14]["layerName"]
-__pld_R[14] = __pld_R[14]["graphic_02_a"]
-__pld_R[12](__pld_R[13], __pld_R[14])
-__pld_R[12] = systemSave
-__pld_R[12] = __pld_R[12]["memoryFlag"]
-__pld_R[13] = l0_0
-__pld_R[13] = __pld_R[13]["memoryNumber"]
-__pld_R[13] = __pld_R[13][__pld_R[3]]
-__pld_R[13] = __pld_R[13][__pld_R[11]]
-__pld_R[12] = __pld_R[12][__pld_R[13]]
-if not (__pld_R[12] == true) then __pld_pc = 185 else __pld_pc = 186 end
-elseif __pld_pc == 185 then
-__pld_pc = 206
-elseif __pld_pc == 186 then
-__pld_R[12] = layerCopy
-__pld_R[13] = l0_0
-__pld_R[13] = __pld_R[13]["layerNumber"]
-__pld_R[13] = __pld_R[13]["thumbnail"]
-__pld_R[13] = __pld_R[13] + __pld_R[11]
-__pld_R[14] = l0_0
-__pld_R[14] = __pld_R[14]["layerName"]
-__pld_R[15] = l0_0
-__pld_R[15] = __pld_R[15]["thumbnailName"]
-__pld_R[15] = __pld_R[15][__pld_R[3]]
-__pld_R[14] = __pld_R[14][__pld_R[15]]
-__pld_R[12](__pld_R[13], __pld_R[14])
-__pld_R[12] = l0_11
-__pld_R[13] = l0_0
-__pld_R[13] = __pld_R[13]["layerNumber"]
-__pld_R[13] = __pld_R[13]["thumbnail"]
-__pld_R[13] = __pld_R[13] + __pld_R[11]
-__pld_R[14] = __pld_R[4]
-__pld_R[15] = __pld_R[5]
-__pld_R[12](__pld_R[13], __pld_R[14], __pld_R[15])
-__pld_pc = 206
-elseif __pld_pc == 206 then
-if not (__pld_R[0] == 0) then __pld_pc = 207 else __pld_pc = 208 end
-elseif __pld_pc == 207 then
-__pld_pc = 231
-elseif __pld_pc == 208 then
-__pld_R[12] = layerPosition
-__pld_R[13] = l0_0
-__pld_R[13] = __pld_R[13]["layerNumber"]
-__pld_R[13] = __pld_R[13]["mask"]
-__pld_R[13] = __pld_R[13] + __pld_R[11]
-__pld_R[14] = __pld_R[4] * 130
-__pld_R[14] = 30 + __pld_R[14]
-__pld_R[14] = __pld_R[14] + 480
-__pld_R[15] = __pld_R[5] * 73
-__pld_R[15] = 50 + __pld_R[15]
-__pld_R[12](__pld_R[13], __pld_R[14], __pld_R[15])
-__pld_R[12] = layerPosition
-__pld_R[13] = l0_0
-__pld_R[13] = __pld_R[13]["layerNumber"]
-__pld_R[13] = __pld_R[13]["thumbnail"]
-__pld_R[13] = __pld_R[13] + __pld_R[11]
-__pld_R[14] = __pld_R[4] * 130
-__pld_R[14] = 30 + __pld_R[14]
-__pld_R[14] = __pld_R[14] + 480
-__pld_R[15] = __pld_R[5] * 73
-__pld_R[15] = 50 + __pld_R[15]
-__pld_R[12](__pld_R[13], __pld_R[14], __pld_R[15])
-__pld_pc = 253
-elseif __pld_pc == 231 then
-__pld_R[12] = layerPosition
-__pld_R[13] = l0_0
-__pld_R[13] = __pld_R[13]["layerNumber"]
-__pld_R[13] = __pld_R[13]["mask"]
-__pld_R[13] = __pld_R[13] + __pld_R[11]
-__pld_R[14] = __pld_R[4] * 130
-__pld_R[14] = 30 + __pld_R[14]
-__pld_R[14] = __pld_R[14] - 480
-__pld_R[15] = __pld_R[5] * 73
-__pld_R[15] = 50 + __pld_R[15]
-__pld_R[12](__pld_R[13], __pld_R[14], __pld_R[15])
-__pld_R[12] = layerPosition
-__pld_R[13] = l0_0
-__pld_R[13] = __pld_R[13]["layerNumber"]
-__pld_R[13] = __pld_R[13]["thumbnail"]
-__pld_R[13] = __pld_R[13] + __pld_R[11]
-__pld_R[14] = __pld_R[4] * 130
-__pld_R[14] = 30 + __pld_R[14]
-__pld_R[14] = __pld_R[14] - 480
-__pld_R[15] = __pld_R[5] * 73
-__pld_R[15] = 50 + __pld_R[15]
-__pld_R[12](__pld_R[13], __pld_R[14], __pld_R[15])
-__pld_pc = 253
-elseif __pld_pc == 253 then
-__pld_R[12] = layerMovePosition
-__pld_R[13] = l0_0
-__pld_R[13] = __pld_R[13]["layerNumber"]
-__pld_R[13] = __pld_R[13]["mask"]
-__pld_R[13] = __pld_R[13] + __pld_R[11]
-__pld_R[14] = __pld_R[4] * 130
-__pld_R[14] = 30 + __pld_R[14]
-__pld_R[15] = __pld_R[5] * 73
-__pld_R[15] = 50 + __pld_R[15]
-__pld_R[16] = 20
-__pld_R[12](__pld_R[13], __pld_R[14], __pld_R[15], __pld_R[16])
-__pld_R[12] = layerMovePosition
-__pld_R[13] = l0_0
-__pld_R[13] = __pld_R[13]["layerNumber"]
-__pld_R[13] = __pld_R[13]["thumbnail"]
-__pld_R[13] = __pld_R[13] + __pld_R[11]
-__pld_R[14] = __pld_R[4] * 130
-__pld_R[14] = 30 + __pld_R[14]
-__pld_R[15] = __pld_R[5] * 73
-__pld_R[15] = 50 + __pld_R[15]
-__pld_R[16] = 20
-__pld_R[12](__pld_R[13], __pld_R[14], __pld_R[15], __pld_R[16])
-__pld_R[4] = __pld_R[4] + 1
-if not (3 <= __pld_R[4]) then __pld_pc = 277 else __pld_pc = 278 end
-elseif __pld_pc == 277 then
-__pld_pc = 280
-elseif __pld_pc == 278 then
-__pld_R[4] = 0
-__pld_R[5] = __pld_R[5] + 1
-__pld_pc = 280
-elseif __pld_pc == 280 then
-do local __pld_s = __pld_R[10] local __pld_i = __pld_R[8] + __pld_s
-if (__pld_s > 0 and __pld_i <= __pld_R[9]) or (__pld_s <= 0 and __pld_i >= __pld_R[9]) then
-__pld_R[8] = __pld_i __pld_R[11] = __pld_i __pld_pc = 168
-else __pld_pc = 281 end end
-elseif __pld_pc == 281 then
-if not (__pld_R[0] == 0) then __pld_pc = 282 else __pld_pc = 283 end
-elseif __pld_pc == 282 then
-__pld_pc = 309
-elseif __pld_pc == 283 then
-__pld_R[8] = layerPosition
-__pld_R[9] = l0_0
-__pld_R[9] = __pld_R[9]["layerNumber"]
-__pld_R[9] = __pld_R[9]["cursor"]
-__pld_R[10] = l0_0
-__pld_R[10] = __pld_R[10]["cursorX"]
-__pld_R[10] = __pld_R[10][__pld_R[2]]
-__pld_R[10] = __pld_R[10] + 480
-__pld_R[11] = l0_0
-__pld_R[11] = __pld_R[11]["cursorY"]
-__pld_R[11] = __pld_R[11][__pld_R[2]]
-__pld_R[12] = 20
-__pld_R[8](__pld_R[9], __pld_R[10], __pld_R[11], __pld_R[12])
-__pld_R[8] = layerMovePosition
-__pld_R[9] = l0_0
-__pld_R[9] = __pld_R[9]["layerNumber"]
-__pld_R[9] = __pld_R[9]["cursor"]
-__pld_R[10] = l0_0
-__pld_R[10] = __pld_R[10]["cursorX"]
-__pld_R[10] = __pld_R[10][__pld_R[2]]
-__pld_R[11] = l0_0
-__pld_R[11] = __pld_R[11]["cursorY"]
-__pld_R[11] = __pld_R[11][__pld_R[2]]
-__pld_R[12] = 20
-__pld_R[8](__pld_R[9], __pld_R[10], __pld_R[11], __pld_R[12])
-__pld_pc = 334
-elseif __pld_pc == 309 then
-__pld_R[8] = layerPosition
-__pld_R[9] = l0_0
-__pld_R[9] = __pld_R[9]["layerNumber"]
-__pld_R[9] = __pld_R[9]["cursor"]
-__pld_R[10] = l0_0
-__pld_R[10] = __pld_R[10]["cursorX"]
-__pld_R[10] = __pld_R[10][__pld_R[2]]
-__pld_R[10] = __pld_R[10] - 480
-__pld_R[11] = l0_0
-__pld_R[11] = __pld_R[11]["cursorY"]
-__pld_R[11] = __pld_R[11][__pld_R[2]]
-__pld_R[12] = 20
-__pld_R[8](__pld_R[9], __pld_R[10], __pld_R[11], __pld_R[12])
-__pld_R[8] = layerMovePosition
-__pld_R[9] = l0_0
-__pld_R[9] = __pld_R[9]["layerNumber"]
-__pld_R[9] = __pld_R[9]["cursor"]
-__pld_R[10] = l0_0
-__pld_R[10] = __pld_R[10]["cursorX"]
-__pld_R[10] = __pld_R[10][__pld_R[2]]
-__pld_R[11] = l0_0
-__pld_R[11] = __pld_R[11]["cursorY"]
-__pld_R[11] = __pld_R[11][__pld_R[2]]
-__pld_R[12] = 20
-__pld_R[8](__pld_R[9], __pld_R[10], __pld_R[11], __pld_R[12])
-__pld_pc = 334
-elseif __pld_pc == 334 then
-__pld_R[8] = layerVisible
-__pld_R[9] = l0_0
-__pld_R[9] = __pld_R[9]["layerNumber"]
-__pld_R[9] = __pld_R[9]["mask"]
-__pld_R[9] = __pld_R[9] + __pld_R[1]
-__pld_R[10] = true
-__pld_R[8](__pld_R[9], __pld_R[10])
-__pld_R[8] = layerVisible
-__pld_R[9] = l0_0
-__pld_R[9] = __pld_R[9]["layerNumber"]
-__pld_R[9] = __pld_R[9]["mask"]
-__pld_R[9] = __pld_R[9] + __pld_R[2]
-__pld_R[10] = false
-__pld_R[8](__pld_R[9], __pld_R[10])
-__pld_R[8] = wait
-__pld_R[9] = 20
-__pld_R[8](__pld_R[9])
-if __pld_R[3] == 1 then __pld_pc = 352 else __pld_pc = 353 end
-elseif __pld_pc == 352 then
-__pld_pc = 377
-elseif __pld_pc == 353 then
-__pld_R[8] = layerCopy
-__pld_R[9] = l0_0
-__pld_R[9] = __pld_R[9]["layerNumber"]
-__pld_R[9] = __pld_R[9]["key"]
-__pld_R[10] = l0_0
-__pld_R[10] = __pld_R[10]["layerName"]
-__pld_R[10] = __pld_R[10]["graphic_06_a"]
-__pld_R[8](__pld_R[9], __pld_R[10])
-__pld_R[8] = layerClip
-__pld_R[9] = l0_0
-__pld_R[9] = __pld_R[9]["layerNumber"]
-__pld_R[9] = __pld_R[9]["key"]
-__pld_R[10] = 0
-__pld_R[11] = 0
-__pld_R[12] = 12
-__pld_R[13] = 18
-__pld_R[8](__pld_R[9], __pld_R[10], __pld_R[11], __pld_R[12], __pld_R[13])
-__pld_R[8] = layerPosition
-__pld_R[9] = l0_0
-__pld_R[9] = __pld_R[9]["layerNumber"]
-__pld_R[9] = __pld_R[9]["key"]
-__pld_R[10] = 5
-__pld_R[11] = 130
-__pld_R[8](__pld_R[9], __pld_R[10], __pld_R[11])
-__pld_pc = 377
-elseif __pld_pc == 377 then
-__pld_R[8] = l0_8
-if not (__pld_R[3] < __pld_R[8]) then __pld_pc = 379 else __pld_pc = 380 end
-elseif __pld_pc == 379 then
-__pld_pc = 407
-elseif __pld_pc == 380 then
-__pld_R[8] = layerCopy
-__pld_R[9] = l0_0
-__pld_R[9] = __pld_R[9]["layerNumber"]
-__pld_R[9] = __pld_R[9]["key"]
-__pld_R[9] = __pld_R[9] + 1
-__pld_R[10] = l0_0
-__pld_R[10] = __pld_R[10]["layerName"]
-__pld_R[10] = __pld_R[10]["graphic_05_a"]
-__pld_R[8](__pld_R[9], __pld_R[10])
-__pld_R[8] = layerClip
-__pld_R[9] = l0_0
-__pld_R[9] = __pld_R[9]["layerNumber"]
-__pld_R[9] = __pld_R[9]["key"]
-__pld_R[9] = __pld_R[9] + 1
-__pld_R[10] = 0
-__pld_R[11] = 0
-__pld_R[12] = 12
-__pld_R[13] = 18
-__pld_R[8](__pld_R[9], __pld_R[10], __pld_R[11], __pld_R[12], __pld_R[13])
-__pld_R[8] = layerPosition
-__pld_R[9] = l0_0
-__pld_R[9] = __pld_R[9]["layerNumber"]
-__pld_R[9] = __pld_R[9]["key"]
-__pld_R[9] = __pld_R[9] + 1
-__pld_R[10] = 463
-__pld_R[11] = 130
-__pld_R[8](__pld_R[9], __pld_R[10], __pld_R[11])
-__pld_pc = 407
-elseif __pld_pc == 407 then
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
+local l0_13 = function(l1_0, l1_1, l1_2, l1_3)
+    local l1_4 = 0
+    local l1_5 = 0
+    layerLoad(l0_0.layerNumber.key, "")
+    layerLoad(l0_0.layerNumber.key + 1, "")
+    local l1_6 = l0_7 - l1_3 * 9 < 0 and l0_7 - (l1_3 - 1) * 9 or 9
+    local l1_7 = l1_0 == 0 and 9 or l0_7 - l1_3 * 9
+    l1_7 = 9 < l1_7 and 9 or l1_7
+    for l1_11 = 1, l1_7, 1 do
+        if l1_0 == 0 then
+            layerMovePosition(l0_0.layerNumber.mask + l1_11, l1_4 * 130 - 480, 50 + l1_5 * 73, 20)
+            layerMovePosition(l0_0.layerNumber.thumbnail + l1_11, l1_4 * 130 - 480, 50 + l1_5 * 73, 20)
+        else
+            layerMovePosition(l0_0.layerNumber.mask + l1_11, l1_4 * 130 + 480, 50 + l1_5 * 73, 20)
+            layerMovePosition(l0_0.layerNumber.thumbnail + l1_11, l1_4 * 130 + 480, 50 + l1_5 * 73, 20)
+        end
+        l1_4 = l1_4 + 1
+        if l1_4 >= 3 then
+            l1_4 = 0
+            l1_5 = l1_5 + 1
+        end
+    end
+    if l1_0 == 0 then
+        layerMovePosition(l0_0.layerNumber.cursor, l0_0.cursorX[l1_1] - 480, l0_0.cursorY[l1_1], 20)
+    else
+        layerMovePosition(l0_0.layerNumber.cursor, l0_0.cursorX[l1_1] + 480, l0_0.cursorY[l1_1], 20)
+    end
+    wait(20)
+    l0_10(25, 460, 2, l1_3 < 10 and "0" .. l1_3 or l1_3)
+    for l1_11 = 1, l1_7, 1 do
+        layerLoad(l0_0.layerNumber.mask + l1_11, "")
+        layerLoad(l0_0.layerNumber.thumbnail + l1_11, "")
+    end
+    l1_4 = 0
+    l1_5 = 0
+    for l1_11 = 1, l1_6, 1 do
+        layerCopy(l0_0.layerNumber.mask + l1_11, l0_0.layerName.graphic_02_a)
+        if systemSave.memoryFlag[l0_0.memoryNumber[l1_3][l1_11]] == true then
+            layerCopy(l0_0.layerNumber.thumbnail + l1_11, l0_0.layerName[l0_0.thumbnailName[l1_3]])
+            l0_11(l0_0.layerNumber.thumbnail + l1_11, l1_4, l1_5)
+        end
+        if l1_0 == 0 then
+            layerPosition(l0_0.layerNumber.mask + l1_11, 30 + l1_4 * 130 + 480, 50 + l1_5 * 73)
+            layerPosition(l0_0.layerNumber.thumbnail + l1_11, 30 + l1_4 * 130 + 480, 50 + l1_5 * 73)
+        else
+            layerPosition(l0_0.layerNumber.mask + l1_11, 30 + l1_4 * 130 - 480, 50 + l1_5 * 73)
+            layerPosition(l0_0.layerNumber.thumbnail + l1_11, 30 + l1_4 * 130 - 480, 50 + l1_5 * 73)
+        end
+        layerMovePosition(l0_0.layerNumber.mask + l1_11, 30 + l1_4 * 130, 50 + l1_5 * 73, 20)
+        layerMovePosition(l0_0.layerNumber.thumbnail + l1_11, 30 + l1_4 * 130, 50 + l1_5 * 73, 20)
+        l1_4 = l1_4 + 1
+        if 3 <= l1_4 then
+            l1_4 = 0
+            l1_5 = l1_5 + 1
+        end
+    end
+    if l1_0 == 0 then
+        layerPosition(l0_0.layerNumber.cursor, l0_0.cursorX[l1_2] + 480, l0_0.cursorY[l1_2], 20)
+        layerMovePosition(l0_0.layerNumber.cursor, l0_0.cursorX[l1_2], l0_0.cursorY[l1_2], 20)
+    else
+        layerPosition(l0_0.layerNumber.cursor, l0_0.cursorX[l1_2] - 480, l0_0.cursorY[l1_2], 20)
+        layerMovePosition(l0_0.layerNumber.cursor, l0_0.cursorX[l1_2], l0_0.cursorY[l1_2], 20)
+    end
+    layerVisible(l0_0.layerNumber.mask + l1_1, true)
+    layerVisible(l0_0.layerNumber.mask + l1_2, false)
+    wait(20)
+    if not (l1_3 == 1) then
+        layerCopy(l0_0.layerNumber.key, l0_0.layerName.graphic_06_a)
+        layerClip(l0_0.layerNumber.key, 0, 0, 12, 18)
+        layerPosition(l0_0.layerNumber.key, 5, 130)
+    end
+    if l1_3 < l0_8 then
+        layerCopy(l0_0.layerNumber.key + 1, l0_0.layerName.graphic_05_a)
+        layerClip(l0_0.layerNumber.key + 1, 0, 0, 12, 18)
+        layerPosition(l0_0.layerNumber.key + 1, 463, 130)
+    end
 end
 main = function()
     memoryFlag = true
