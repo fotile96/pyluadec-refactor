@@ -1,0 +1,31 @@
+local l0_0 = function()
+    cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
+    comPoseLoad("po2_aya_f_1_a")
+    vms(1674, "NONVOICE", "【直哉】「失われた夢の物語……ノートのタイトル、だね」")
+    vms(1675, "NONVOICE", "【直哉】「でも、この先は……」")
+    comPoseLoad("po2_aya_f_2_e")
+    vms(1676, "NONVOICE", "【彩野】「うん……良くない、結末……」")
+    vms(1677, "NONVOICE", "【彩野】「……」")
+    comPoseLoad("po2_aya_f_1_a")
+    vms(1678, "NONVOICE", "【彩野】「直哉くん、このノートなんだけど……」")
+    vms(1679, "NONVOICE", "【彩野】「タイトル、これじゃ無いような気がする。確かに私、昔こんな感じの本を読んだような気もするけど……」")
+    comPoseLoad("po2_aya_f_1_c")
+    vms(1680, "NONVOICE", "【彩野】「でも、ノートのタイトルでは無いと思う」")
+    vms(1681, "NONVOICE", "【直哉】「……そっか。それじゃあ、もう一度、考えてみた方がよいかもしれないね」")
+    comPoseLoad("po2_aya_f_1_a")
+    vms(1682, "NONVOICE", "【彩野】「うん……」")
+    cLoadPlaySE(cGetFileName("se", "se_30"), false)
+    oCard.show(cGetFileName("card", "crd_" .. gameSave.fragmentDoCardId .. "_a"), "『失われた夢の物語』のあらすじを作成しました。")
+    comPoseDelete()
+    if not (gameSave.myCard[gameSave.fragmentDoCardId].hold == 1) then
+        gameSave.myCard[gameSave.fragmentDoCardId].hold = 1
+        comAyanoTimeRefresh()
+    end
+end
+main = function()
+    comSectionCardStart(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
+    l0_0()
+    comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
+    run(cGetFileName("script", "snr_fragment_main"))
+    quit()
+end

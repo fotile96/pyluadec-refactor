@@ -1,0 +1,3 @@
+permsPersist = {[run] = "run", [wait] = "wait", [waitLoading] = "waitLoading", [msg] = "msg", [msgQuit] = "msgQuit", [pageScreen] = "pageScreen", [switchScreen] = "switchScreen", [runListLoad] = "runListLoad", [runListSave] = "runListSave", [runAutoLoad] = "runAutoLoad", [runAutoSave] = "runAutoSave", [playMovie] = "playMovie"}
+permsUnpersist = {run = run, wait = wait, waitLoading = waitLoading, msg = msg, msgQuit = msgQuit, pageScreen = pageScreen, switchScreen = switchScreen, runListLoad = runListLoad, runListSave = runListSave, runAutoLoad = runAutoLoad, runAutoSave = runAutoSave, playMovie = playMovie}
+config = {libfontModule = "disc0:/PSP_GAME/USRDIR/module/libfont.prx", bootScript = "script/snr_common.lua"}

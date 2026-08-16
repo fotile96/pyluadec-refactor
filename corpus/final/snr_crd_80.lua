@@ -1,0 +1,33 @@
+local l0_0 = function()
+    cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
+    comPoseLoad("po2_aya_f_1_a")
+    vms(3536, "NONVOICE", "【直哉】「彩野さ――」")
+    vms(3537, "NONVOICE", "【彩野】「この場面で、ユウイチとユカリ先生が口づけしている所をアヤノが目撃してるんだね」")
+    vms(3538, "NONVOICE", "【直哉】「あ、う、うん。そんな感じだけど……」")
+    vms(3539, "NONVOICE", "【彩野】「あらすじカードを作ってもらっていい？」")
+    vms(3540, "NONVOICE", "【直哉】「で、でも……」")
+    comPoseLoad("po2_aya_f_1_c")
+    vms(3541, "NONVOICE", "【彩野】「この場面のあらすじはそれだけなの」")
+    vms(3542, "NONVOICE", "【彩野】「……直哉くん」")
+    vms(3543, "NONVOICE", "【彩野】「お願い。カードをつくって」")
+    vms(3544, "NONVOICE", "【直哉】「……」")
+    cLoadPlaySE(cGetFileName("se", "se_30"), false)
+    oCard.show(cGetFileName("card", "crd_" .. gameSave.fragmentDoCardId .. "_a"), "『口づけ』のあらすじを作成しました。")
+    vms(3545, "NONVOICE", "【直哉】「……彩野さん」")
+    vms(3546, "NONVOICE", "【彩野】「ごめんなさい」")
+    comPoseDelete()
+    vms(3547, "NONVOICE", "このお話はもうこれで終わりにしましょう、と、伝えるかのように彩野さんは首を横に振り――")
+    vms(3548, "NONVOICE", "口を開くことがなかった。")
+    comPoseDelete()
+    if not (gameSave.myCard[gameSave.fragmentDoCardId].hold == 1) then
+        gameSave.myCard[gameSave.fragmentDoCardId].hold = 1
+        comAyanoTimeRefresh()
+    end
+end
+main = function()
+    comSectionCardStart(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
+    l0_0()
+    comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
+    run(cGetFileName("script", "snr_fragment_main"))
+    quit()
+end

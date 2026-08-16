@@ -1,0 +1,30 @@
+local l0_0 = function()
+    cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
+    comPoseLoad("po2_aya_f_1_a")
+    vms(2563, "NONVOICE", "【彩野】「この場面は……」")
+    vms(2564, "NONVOICE", "【直哉】「アヤノさんが、ユウイチに対して好意を抱いている事をサクラさんが確認する場面、だね」")
+    vms(2565, "NONVOICE", "【直哉】「なにか、他に確認したいことはある？」")
+    comPoseLoad("po2_aya_f_1_c")
+    vms(2566, "NONVOICE", "【彩野】「あ……うん。大丈夫だと思う……それだけで」")
+    vms(2567, "NONVOICE", "【直哉】「じゃあ、このままカードにまとめちゃうね」")
+    vms(2568, "NONVOICE", "【彩野】「でも……」")
+    comPoseLoad("po2_aya_f_2_e")
+    vms(2569, "NONVOICE", "【彩野】「……」")
+    comPoseLoad("po2_aya_f_1_a")
+    vms(2570, "NONVOICE", "【彩野】「ううん。ごめんなさい。直哉くん。カードにまとめて貰っていい？」")
+    vms(2571, "NONVOICE", "【直哉】「……うん」")
+    cLoadPlaySE(cGetFileName("se", "se_30"), false)
+    oCard.show(cGetFileName("card", "crd_" .. gameSave.fragmentDoCardId .. "_a"), "『ユウイチとの仲』のあらすじを作成しました。")
+    comPoseDelete()
+    if not (gameSave.myCard[gameSave.fragmentDoCardId].hold == 1) then
+        gameSave.myCard[gameSave.fragmentDoCardId].hold = 1
+        comAyanoTimeRefresh()
+    end
+end
+main = function()
+    comSectionCardStart(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
+    l0_0()
+    comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
+    run(cGetFileName("script", "snr_fragment_main"))
+    quit()
+end

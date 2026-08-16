@@ -1,0 +1,41 @@
+local l0_0 = function()
+    cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
+    comPoseLoad("po2_aya_f_1_a")
+    vms(931, "NONVOICE", "【直哉】「セクション４は、主人公がユウイチ……」")
+    vms(932, "NONVOICE", "【直哉】「ユウイチが……」")
+    vms(933, "NONVOICE", "これまでセクション１、２、３と『物語』を聞いてきた。")
+    vms(934, "NONVOICE", "すべてが『アヤノ』さんが主人公だったから、この物語はアヤノさん視点の物語と思っていたのだけど。")
+    vms(935, "NONVOICE", "ユウイチが物語の主人公になることもあったのか。")
+    vms(936, "NONVOICE", "【直哉】「彩野さん、ユウイチがここで出てきたんだけど、「アヤノさん」、「ユウイチ」さらに他の人が主人公になる可能性って、あるのかな？」")
+    comPoseLoad("po2_aya_f_1_c")
+    vms(937, "NONVOICE", "【彩野】「ごめんね、そこまでは……」")
+    vms(938, "NONVOICE", "【彩野】「カードの組み合わせを見ながら、『昔これを書いていたかも』っていうのを、思い出してる――」")
+    comPoseLoad("po2_aya_f_2_e")
+    vms(939, "NONVOICE", "【彩野】「もしかしたら、私、『思い出してる』つもりで『つくってる』のかもしれないんだけど……」")
+    vms(940, "NONVOICE", "【彩野】「それが今の所の、『できること』のいっぱいいっぱいで」")
+    comPoseLoad("po2_aya_f_1_c")
+    vms(941, "NONVOICE", "【彩野】「先のことまでは、わからなくて……」")
+    vms(942, "NONVOICE", "【直哉】「そうだよね……ごめんね」")
+    vms(943, "NONVOICE", "【彩野】「ううん。私のほうこそ……」")
+    cLoadPlaySE(cGetFileName("se", "se_30"), false)
+    oCard.show(cGetFileName("card", "crd_" .. gameSave.fragmentDoCardId .. "_a"), "『セクション４：ユウイチ』のあらすじを作成しました。")
+    comPoseDelete()
+    vms(944, "NONVOICE", "ユウイチ、か……。")
+    if not (gameSave.myCard[gameSave.fragmentDoCardId].hold == 1) then
+        gameSave.myCard[gameSave.fragmentDoCardId].hold = 1
+        comAyanoTimeRefresh()
+    end
+end
+main = function()
+    comSectionCardStart(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
+    if gameSave.myCard[149].hold == -1 then
+        oCard.mesNot()
+        comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
+        run(cGetFileName("script", "snr_fragment_main"))
+        quit()
+    end
+    l0_0()
+    comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
+    run(cGetFileName("script", "snr_fragment_main"))
+    quit()
+end
