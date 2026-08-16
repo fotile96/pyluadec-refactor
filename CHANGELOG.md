@@ -1,5 +1,67 @@
 # Changelog
 
+## 2026-08-16 — M7: certified best-of merge with a two-factor warranty
+
+- **Deliverables.** `corpus/final/` — the 229-file merged corpus the
+  localization project translates against — and `corpus/warranty.jsonl`,
+  a per-occurrence two-factor grade (Factor T: text fidelity to its source
+  bytecode, `T3`/`T2`/`T-`; Factor E: source equivalence to the original,
+  `id`/`wm`/`panel-*`) plus the per-file selection verdict. Both are
+  generated whole by `scripts/warranty_build.py`, committed, and
+  byte-identical on regeneration (suite-gated on both corpus env vars).
+- **All 229 files select ours.** The merge is degenerate, and the reason
+  is stated precisely: pred loses on *re-certifiability through our own
+  pipeline* (mechanism F — the predecessor's boilerplate dead locals fail
+  the root `maxstacksize` comparison in 228/229 files), not on semantics.
+  Factor E never decides a selection (exhaustively: pred wins only on a
+  strict Factor-T advantage; pinned as a test); its decisive role is the
+  `panel-unpinned > 0` eligibility veto.
+- **The repair campaign moved the ledger to its best state**:
+  `L3` 1456/1478 unique (98.5%) / 1922/1944 occurrences (97.9%); 222 files
+  fully structured / 5 hybrid / 2 whole-file fallback; 18 upgrades, 0
+  downgrades vs the M6 merge baseline `3669950`. The 22-row residual is
+  attributed row-by-row in the runbook (8 mechanism clusters; new in M7:
+  the clamp-family classification veto, the staging-span exemption, the
+  dynamic-key constructor fold, reaching-def stack-temp generalization,
+  the hint-0 constructor budget, the key-stage barrier, NEWTABLE-position
+  lookahead).
+- **The pred re-certification rate is 0.0067 under the corrected T
+  mapping.** Task 11 amended `t_grade` to shipped-first (a fallback
+  shipment is `T-` whatever the proto's own level — spec §2's definition),
+  correcting 703 phantom pred `T3` grades and 49 of ours; file-level
+  selection is invariant to the order. The §3 go/no-go line fired at both
+  0.3683 (old mapping) and 0.0067; the partner disposition to proceed is
+  recorded in the spec's decision table.
+- **The invariant panel** (two-sided `LOSS_KINDS` + per-proto fingerprint
+  + a new `constant_values` family) graded all 1944 pred-vs-original
+  pairs: 1411 pass / 217 pinned / 316 unpinned; the six M6 defect protos
+  all flag and are pinned; the repaired files carry `wm` for exactly the
+  six repaired protos, verified to differ from upstream on semantic
+  fields in those protos only.
+- **The standing pin-table opcode gate** (M7 agenda 6): every
+  `O<n> OPNAME` / `P<n> OPNAME` pair in `PRED_PINS`/`LOSS_PINS` — 62 —
+  decodes at 1-based pc in the resolved proto of the respective corpus;
+  the generator refuses to write on any violation, and three tamper
+  neuters prove the net.
+- **Readability**: the encoding half of the spec §4 acceptance is
+  complete — 17727/17727 non-ASCII string literals in `corpus/final/`
+  present as raw UTF-8 (the task 5 red-line revision). The call-context
+  half is pinned as a recorded residual: 52 lines of game dialogue ship
+  as `__pld_R[n] = "<Japanese>"` (49 `snr_common`, 2 `snr_story_main`, 1
+  `snr_novel`); the census is pinned by test and the fix routed to M8.
+- **The warranty's known limitation, recorded**: one `T-` symbol covers
+  two different guarantees (ours: the M2 fallback floor, semantically
+  exact by construction; pred: nothing verified) — an M8 schema candidate.
+- Suite 1174 passed, 73.6–75.7 s over three runs (task 11's +19.8 s is
+  the warranty fixed point, attribution corrected at close after the
+  controller review caught an unmeasured split); `ratchet_job.sh` exit 0
+  with both corpus vars. The controller review's two Important findings
+  (the false "no doScriptScene references" sentence, generalized from a
+  truncated grep; the unmeasured cost split) were re-measured, corrected
+  in place, and converted into pinned tests — the milestone's recurring
+  defect class caught once more, this time before anything shipped on top
+  of it.
+
 ## 2026-08-14 — M6: cross-corpus validation, and six defects in shipped software
 
 - **The headline is not a rate. It is six defects found in software that

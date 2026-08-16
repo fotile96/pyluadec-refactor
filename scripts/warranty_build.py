@@ -52,6 +52,18 @@ Red line: this module emits committed artifacts but never puts corpus
 bytes into diagnostics -- violation messages are side/pc/opcode/proto-path
 only; the final/ texts are the selected side's decompiler output verbatim.
 
+**One symbol, two guarantees (recorded limitation, task 12).** ``T-`` in
+``warranty.jsonl`` means different things per side: OUR ``T-`` is the M2
+floor -- the fallback state machine, semantically exact by construction
+(38/38 opcode differential tests), compileable, and covered by the
+L1.5/L1.75 probes -- while PRED ``T-`` means "no positive verification at
+all". The schema does not distinguish them (a spec §2 consequence,
+faithfully implemented); a reader inferring "no evidence" from our 64
+``{"t": "T-", "e": "id"}`` occurrences would understate the strongest
+constructive guarantee this project ships. Splitting the symbol is an M8
+schema candidate, recorded in the milestone close-out, not done here --
+it would churn the committed artifact without moving any selection.
+
 **Job conditions** (the out-of-suite four -- full generation is a job, the
 suite keeps only ``tests/test_warranty.py``'s selection-rule and
 fixed-point arms): home = this script; trigger = **any ledger, panel or
@@ -126,11 +138,20 @@ def select(ours: tuple[str, str] | None,
            pred: tuple[str, str, int] | None) -> str:
     """The selection rule as a pure function (spec §6 verbatim).
 
-    ``ours`` is ``(t_min, e_min)`` -- ``e_min`` is ``"id"`` on a green
-    tree but graded, not hardcoded, so the rule stays total. ``pred`` is
-    ``(t_min, e_min, unpinned_count)``. Either side may be ``None`` (no
-    grade -> ineligible); a pred side with ``unpinned > 0`` is likewise
+    ``ours`` is ``(t_min, e_min)``; ``pred`` is ``(t_min, e_min,
+    unpinned_count)``. Either side may be ``None`` (no grade ->
+    ineligible); a pred side with ``unpinned > 0`` is likewise
     ineligible. Returns ``"ours"`` | ``"pred"``; ties go to ours.
+
+    Ours' ``e_min`` is ``"id"`` **by construction** (spec §2: our text's
+    source bytecode IS the original) -- `build_all` passes the constant,
+    and that is the correct shape; what this function does NOT do is
+    special-case the ours side internally, so the rule stays total if a
+    caller ever grades ours differently. Exhaustively (task 12, pinned in
+    `tests/test_m7_exit.py`): over all 36 grade combinations with ours at
+    ``e = id``, pred wins in exactly 12 -- every one a STRICT Factor-T
+    advantage. Factor E never decides a selection; its entire decisive
+    role is the ``unpinned > 0`` eligibility veto.
     """
     pred_eligible = pred is not None and pred[2] == 0
     ours_eligible = ours is not None

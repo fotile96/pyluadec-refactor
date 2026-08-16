@@ -436,3 +436,31 @@ Phase 6 已完成。计划 13 个任务，实际执行 11 个（**T9/T10 取消�
 
 **「散文断言了没人量过的行为」**——M5 的 task 8/9 各花四轮；M6 有 **9 个 `fix:` 提交（8 轮复审 + 1 轮计划外修复）**，而**每一轮的主题就是上一轮写下的假句子**，commit 标题本身即证据：task 2「strip-mode asymmetry」、task 4「loops are headers」、task 5「two false sentences」、task 7「a false headline mechanism」、task 8「a misattributed verdict」、task 11「a tautology sold as evidence」、task 12「a false convergence story in five places, a wrong axiom citation」——最后这条是**公理层的错误引用**，也是这类缺陷能造成的最大伤害。本里程碑另有一类同形错误：**用一个为别的用途构造的投影去给自己做预算**（`classes.json` 的 `input_space` 把字符串常量塌成 `"str"`，于是 1152 与真实的 23616 差 20 倍）。写任何行为性句子之前先量它，包括没有测试断言的那些；最高级词（唯一 / 总是 / 从不 / 全部 / 完整 / 停止）每出现一次都要么有一次测量，要么改写。**文档是这类缺陷活得最久的地方。**
 
+
+## Phase 7（M7：certified best-of merge + two-factor warranty）现状
+
+Phase 7 已完成（12 个任务 + task 12 收口轮吸收 controller review 的两 Important / 三 Minor，全部实测处置）。**warranty 链的全部证据与决定的权威是 `docs/reports/m7-warranty.md`**（§1 recert rate 与 T 映射修订、§3 选择结果与两条结构性事实、§4 收口数字）；选择规则 / T-E 词表 / 生成器 job 条件的权威是 `scripts/warranty_build.py` 的 docstring 与 `docs/runbooks/structured-pipeline.md` 末节「The warranty corpus and the two-factor grade (M7)」；**尚未完成的工作在 `docs/runbooks/m3-backlog.md` 末尾的「M8 agenda」**。本节只给定位与速查。
+
+### 交付物（均为整体生成、入库、再生成字节不变、套件把门）
+
+- **`corpus/final/`**（229 文件，3.7 MB）：本地化工程要翻译的合并语料。**229/229 全选我方**——合并是退化的，且退化原因已说准：pred 输在**经我方管线的可重认证性**（机制 F：前作每作用域样板死局部变量→根 `maxstacksize` 失配→整文件回退，228/229 文件），不是语义质量判决；结论另由独立理由支撑（我方 fallback 语义精确、pred 有 6 个已确认 M6 缺陷）。`*-verbatim` 残差结构性为空（无等级即不资格）。
+- **`corpus/warranty.jsonl`**（229 行 / 1944 处 occurrence 双因子逐格）：Factor T（`predrecert.t_grade`，**shipped-first 顺序**——2026-08-16 修订，发 fallback 文本即 T-，纠正了 task 2 L3-first 造成的 703 个 pred + 49 个我方幻影 T3；文件级选择两种顺序同分布，修订是记录诚实）；Factor E（我方恒 `id`；pred = panel 判决 + 六个修复 proto 的 `wm`；`panel-unpinned>0` 取消资格）。**两个结构性事实**（穷举钉在 `tests/test_m7_exit.py`）：Factor E 从不判别选择（36 组合中 pred 仅 12 胜、全为严格 T 优）；task 4 裁决欠账因选择结果失效结清、欠账人群零行出货。
+- 生成器 `scripts/warranty_build.py --all`（job，触发条件在 docstring）；写盘前先跑 **pin 表 opcode 常驻门**（吸收 M7 agenda 6：`PRED_PINS`/`LOSS_PINS` 全部 62 对 `O<n>/P<n>` 解码核对，proto 上下文经 LOSS 键 / PRED evidence 前缀 / note 内 `main_X:` 标记解析；三个 tamper neuter 证明能抓差一 pc / 错 opcode / 侧翻）。
+
+### 修复战役（tasks 6–10，对照 M6 合并基线 `3669950`：18 升 0 降）
+
+`L3` **1456/1478（98.5%）/ 1922/1944（97.9%）**；产物 **222 全结构化 / 5 hybrid / 2 整文件 fallback**（snr_music、snr_novel）；117 处 occurrence fallback→structured。收口残差 **22 行 = 15 自身 + 7 继承**，逐行归因在 runbook「What is left」（8 个机制族；地板按 partner 裁决重设为 22 + attribution-complete，决策行在 overall-design §2）。机制 D（clamp）经一个分类否决关闭；机制 C（`_same_block`）经 staging-span 豁免关 2/6 行；机制 G（动态键构造器折叠）让 config.lua 整文件翻 L3；task 9/10 的 reaching-def 泛化与 hint-0 构造预算、键序屏障、NEWTABLE 位置前视各关一族。**K1 的 5 行 = L3.3 rung（NEWTABLE 提示位遮蔽）M8 候选**。
+
+### 可读性：两个分句、两种命运
+
+编码分句达标：`corpus/final/` **17727/17727 非 ASCII 字面量原样 UTF-8（1.0000）**（task 5 红线二次修订的交付）。**调用语境分句未达标且被钉死而非豁免**：fallback 子树里 **52 行游戏台词**以 `__pld_R[n] = "<日文>"` 出货（snr_common 49、snr_story_main 2、snr_novel 1；controller review 数 49、收口复查多出 3 行），`tests/test_m7_exit.py` 钉死普查防静默增长，**修复路由 M8**（M8 量级，收口轮不开工）。task 12 顺带修正了 §3 里从截断 grep 外推的假句子（「7 个 fallback 文件都不引用 doScriptScene」——子串口径实为 8 处引用；直接调用形式 `doScriptScene("…")` 全语料 0 处）与一个未测量就写的计时拆分（pin 臂实测 0.08s、warranty 不动点 22.47s standalone，非「~17s + ~3s」）。
+
+### 收口数字（2026-08-16，三次实测）
+
+- 套件 **1174 passed，73.60 / 74.71 / 75.73s**（+6 个 env-free 出口门 0.14s）；`ratchet_job.sh` exit 0（18 升 / 0 降 / 24 差分用例全绿）。task 11 新增 19.8s 全部归因形式化验证拨款，拆分已按实测改正。
+- pred recert rate **0.0067**（修正映射后；§3 go/no-go 0.70 线触发，partner 裁决继续，决策行在 overall-design §2）；panel 1411 pass / 217 pinned / 316 unpinned，不动点保持。
+- **warranty 的 `T-` 单符号双语义**（我方 = M2 地板的构造性保证，pred = 无验证，schema 不可辨）：记入生成器 docstring 与报告，**M8 schema 候选**——拆分会 churn 已提交产物而不动任何选择。
+
+### 本里程碑再次应验的老教训
+
+Task 11 的 §3 用**截断的 grep 输出**外推出「零引用」、用**没测过的拆分**写了计时归属——两处都被 controller review 抓到。前者正是 M6 总结过的「散文断言了没人量过的行为」在 M7 的复发；修复方式同款：实测改写 + 把口径本身变成钉子测试。**grep 的输出是被管道截断的，结论不是。**

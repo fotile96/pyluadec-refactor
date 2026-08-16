@@ -6,11 +6,13 @@ at the close of M3 it absorbed M3's own deferred findings, and at the close of
 M4 it absorbed M4's, for the same reason. It is an agenda, not a plan — plans
 get written with `superpowers:writing-plans` when the milestone begins.
 
-**Reading order.** The "M4 agenda" and "M5 agenda" sections below are now
+**Reading order.** The "M4 agenda" through "M7 agenda" sections below are now
 *records*: their items are marked DONE / CLOSED / SWEPT with the task that
 closed them, and the entries kept verbatim underneath contain retracted claims
-that must not be re-derived. **What is still open is the "M6 agenda" section at
-the very end of this file.** Start there.
+that must not be re-derived. **What is still open is the "M8 agenda" section at
+the very end of this file.** Start there. (This note pointed at the M6 agenda
+from the M5 close until the M7 close noticed — two milestone closes is long
+enough for a reading-order pointer to rot; fixed 2026-08-16.)
 
 **File name.** It is still `m3-backlog.md` because three milestones of
 cross-references point at that path; renaming it would break more than it would
@@ -2681,6 +2683,26 @@ Linux gate first.
 
 # M7 agenda
 
+**CLOSED OUT at the M7 wrap (task 12, 2026-08-14 written, 2026-08-16 closed).
+What is still open lives in the "M8 agenda" section at the end of this
+file** — this section keeps its record, including the parts M7 did not touch,
+but it is no longer the place to read for what is next. Per-item disposition,
+each linked to the heading below:
+
+| # | item | disposition at the M7 wrap |
+|---|---|---|
+| 1 | the reconstruction residual (40 rows, five mechanisms) | **IS the M7 §5 campaign** — closed to **22 rows + attribution-complete** (tasks 6–10: `L3` 1456/1478 = 98.5%, 222/5/2 products, 18 upgrades / 0 downgrades vs `3669950`). Floor re-set to the measured census by the human partner (spec §2 decision row, 2026-08-16); K1's 5 rows → the L3.3 rung, an M8 candidate |
+| 2 | corpus-wide L2, the four taint gaps, the truncation residue | **untouched by M7** → M8 agenda 5 |
+| 3 | `next`/`pairs` iteration order | **untouched** → M8 agenda 5 |
+| 4 | probe hardening (wire format) | **untouched** → M8 agenda 5 |
+| 5 | `StructureError` does not name its proto | **untouched** — the campaign attributed its 22 rows through the census instead; the affordance itself remains open → M8 agenda 5 |
+| 6 | the engineering-debt set | **the pin-table opcode checker bullet is CLOSED** as a standing corpus-gated gate (`tests/test_pin_opcodes.py` + the generator's pre-write assertion, 62 pairs, three tamper neuters — task 11); the ratchet-baseline bullet CLOSED (task 1 moved the default to `3669950`); the suite-time ordering question and the rest **untouched** → M8 agenda 5 |
+| 7 | M1's Linux x86_64 verification | **still outstanding** — flagged again → M8 agenda 5 |
+| 8 | the Class-1 instrument's corpus-wide run | **untouched by M7** (non-goal §9) → M8 agenda 5 |
+| 9 | the Class-2 (UI poll loop) prototype | **untouched** (design note only) → M8 agenda 5 |
+| 10 | what the cross-corpus adjudication left open | **consumed as warranty rows** (spec §12): the 6+1 defect protos pin in the panel, `wm` carries the repairs, the four unwalked `snr_common` paths remain bounded by the swept fields (their panel verdicts recorded), and the two bytecode-unsolvable premises are inherited by the warranty's documented blindness list |
+| 11 | the provocations never started | **untouched** → M8 agenda 5 |
+
 Written at the M6 wrap (task 13, 2026-08-14). Same conventions as the M4, M5
 and M6 agendas above: **open unless the heading says otherwise**, numbered so
 items can be cited, numbering is **not** a priority order, and **every figure
@@ -2924,3 +2946,96 @@ decision (spec §2) named the GPU proposer as the plugin surface's only real
 customer. If one of these starts, the registry question re-opens *with an
 actual interface to design against*, which was the whole point of retiring it
 rather than building it speculatively.
+
+# M8 agenda
+
+Written at the M7 wrap (task 12, 2026-08-16). Same conventions as every
+agenda above: open unless a heading says otherwise, numbering is not a
+priority order, and every figure was measured at the M7 closing tree
+(`docs/reports/m7-warranty.md` §4 has the provenance) — re-derive before
+relying on any of them.
+
+**Starting state, measured 2026-08-16.** `L3` **1456/1478 unique (98.5%) /
+1922/1944 occurrences (97.9%)**; **222 files fully structured / 5 hybrid /
+2 whole-file fallback** (`snr_music`, `snr_novel`); 1880/1944 occurrences
+ship structured text. Suite **1174 tests, 73.60–75.73 s** ×3 (macOS 15.2 /
+Apple M4 arm64) against the ~120 s formal-verification earmark;
+`ratchet_job.sh` exit 0 vs baseline `3669950` (**18 upgraded, 0
+downgraded** — when M8 opens, move the default to the M7 merge tip).
+`corpus/final/` + `corpus/warranty.jsonl` are the shipped warranty
+artifacts (229/229 selections ours; pred recert rate 0.0067 corrected).
+
+## 1. The 52-line box-model dialogue residual (the §4 call-context half)
+
+`corpus/final/` ships game dialogue inside the fallback state machine as
+`__pld_R[n] = "<Japanese>"` — **52 lines: `snr_common` 49, `snr_story_main`
+2, `snr_novel` 1** (controller review counted 49; the closing re-census
+found the three it missed). Encoding is done (17727/17727 raw UTF-8);
+call context is not — a translator cannot tell who says a line or which
+branch it lives in. The census is pinned by
+`tests/test_m7_exit.py::test_m7_exit_box_model_game_text_is_a_pinned_
+residual` so it cannot grow silently. **The fix — promoting box-model
+string constants into readable call shape (or otherwise giving the 52
+lines a readable carrier in fallback-emitted subtrees) — is M8-scale work
+by the controller review's ruling (2026-08-16) and was deliberately not
+started in the closing round.** Same-file context for scoping:
+`snr_common`'s structured part already carries 346 further non-ASCII lines
+in readable form, so the fix targets the lines' actual carriers — the
+hybrid-replaced subtrees (51 of the 52: `snr_common` 49, `snr_story_main`
+2) and `snr_novel`'s whole-file fallback (1; `snr_music`, the other
+whole-file fallback, contributes none). Any fix must keep the fallback
+differential tests and the certification gates green — the box model is
+the M2 floor's semantic core, and readability must not be bought by
+weakening what makes those 52 lines the most strongly-guaranteed text in
+the corpus.
+
+## 2. The `T-` duality: one symbol, two guarantees
+
+`warranty.jsonl` cannot distinguish OUR `T-` (the M2 floor — semantically
+exact by construction, compileable, L1.5/L1.75-probed; 64 occurrences ship
+it) from PRED `T-` (no positive verification). Recorded in the generator's
+module docstring and `docs/reports/m7-warranty.md` §3; a schema split
+(e.g. `T≈` for the floor) would churn the committed artifact without
+moving any selection — worth doing only if the warranty grows a consumer
+that reads grades programmatically.
+
+## 3. The L3.3 rung: NEWTABLE hint-position masking (K1's 5 rows)
+
+The largest attributed cluster the M7 campaign left: constructor folds
+where luac's array-size hint lands on the wrong side of a re-emitted
+constructor. Certifying them needs a new normalization rung (compare
+NEWTABLE hints modulo masking), which **changes certification-gate
+comparison semantics and therefore requires its own review round +
+`LADDER_VERSION` bump** — explicitly deferred by the task 10 partner
+ruling. The sanity argument for the rung must live with the rung (the
+`_strip_lineinfo` precedent). 5 rows + their inherited ancestors.
+
+## 4. Mechanism F: pred boilerplate dead locals (if re-certifiability ever matters)
+
+Diagnosed at instruction level (M7 task 2, `docs/reports/m7-warranty.md`
+§1): the predecessor emits `local f, v1, v2` in every scope, so pred
+recompilation carries 1–2 dead locals per proto and fails the root
+`maxstacksize` comparison in 228/229 files — the entire reason the merge
+is degenerate. **Not a defect in our pipeline.** Fixing it (e.g. a
+normalization that ignores dead-local maxstacksize slack, or re-emitting
+dead locals) is only worth anything if a future milestone wants the pred
+side re-certifiable — e.g. to make a future merge non-degenerate or to
+grade pred text arithmetically. The phantom-grade lesson applies: any such
+change re-measures through the corrected shipped-first mapping.
+
+## 5. Carried unmodified from the M7 agenda
+
+Items 2, 3, 4, 5 (the `StructureError` affordance), 6 (the suite-time
+ordering question and the remaining engineering-debt bullets), 7 (**M1's
+Linux x86_64 verification — still the only exit criterion half-satisfied
+since 2026-08-10**), 8 (Class-1 corpus-wide run), 9 (Class-2 prototype),
+11 (the provocations). Full text in the M7 agenda section above; none was
+amended by M7.
+
+## 6. Housekeeping observed at the wrap
+
+- `ratchet_job.sh`'s default baseline still points at `3669950` (M6 merge
+  tip) — move it when M8 opens (the task 1 precedent).
+- The backlog file-head reading-order pointer had rotted for two
+  milestone closes before the M7 wrap fixed it (2026-08-16); if M8 appends
+  an agenda, update the pointer in the same commit.

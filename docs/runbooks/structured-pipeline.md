@@ -4221,3 +4221,50 @@ Practical division of labour:
   minors → `docs/runbooks/m3-backlog.md`.
 - Readability against the predecessor's shipped output →
   `docs/reports/m4-readability.md`.
+
+## The warranty corpus and the two-factor grade (M7)
+
+`corpus/final/` (229 files, committed, generated) is the merged corpus the
+localization project translates against; `corpus/warranty.jsonl` (one row per
+file) records the per-occurrence two-factor grade and the selection verdict
+that produced it. Both are **whole-cloth generated** by
+`scripts/warranty_build.py --all` (a job: trigger = any ledger/panel/recert
+movement and at close; refuses to write on a pin-table opcode violation or a
+selection error) and regenerate byte-identically
+(`tests/test_warranty.py`, corpus-gated on both env vars). **Authority for
+every number and decision lives in `docs/reports/m7-warranty.md`** — this
+section is a pointer, not a second record.
+
+The grade vocabulary, in one breath each:
+
+- **Factor T** (`predrecert.t_grade`, one place, both sides):
+  `T3` = certified `L3` and ships structured text; `T2` = the hybrid
+  contract compared this proto's own fields; `T-` = **ships fallback text**
+  (shipped-first order, amended 2026-08-16 — a level never outranks a
+  fallback shipment; see the report's §1 addendum for the 703 phantom
+  grades the old order created).
+- **Factor E**: `id` for ours (constructive identity — our text's source
+  bytecode IS the original); for pred, the invariant panel
+  (`corpus/observation/panel.json`) with `wm` (M6 walkthrough + driver
+  validation) replacing the grade of exactly the six repaired protos.
+  Order `id > wm > panel-pass > panel-pinned`; `panel-unpinned`
+  disqualifies the pred side.
+
+Selection (`warranty_build.select`, spec §6): lexicographic `(T, E)`, tie
+→ ours. Two structural facts worth knowing before quoting outcomes:
+**Factor E never decides a selection** (with ours at `id`, pred wins only
+on a strict T advantage — 12 of 36 combinations, pinned as a test), and
+**the merge is degenerate for a diagnosed reason** — pred fails
+re-certification (mechanism F, boilerplate dead locals) in 228/229 files,
+so all 229 files ship ours and `corpus/final/` is byte-identical to our
+own product. The warranty's value is the recorded per-occurrence evidence,
+not the merging.
+
+**Reading a `T-` row**: ours `T-` (64 occurrences) is the M2 floor —
+semantically exact by construction, compileable, L1.5/L1.75-probe-covered
+— while pred `T-` means no positive verification; the schema does not
+distinguish the two (M8 schema candidate, recorded in the generator's
+docstring). **Readability residual**: 52 lines of game dialogue ship as
+`__pld_R[n] = "<Japanese>"` (49 `snr_common`, 2 `snr_story_main`, 1
+`snr_novel`) — encoding-complete but without call context; pinned by
+`tests/test_m7_exit.py`, fix routed to M8.
