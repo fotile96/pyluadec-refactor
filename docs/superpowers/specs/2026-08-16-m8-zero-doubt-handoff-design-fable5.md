@@ -22,6 +22,21 @@
 >   a migration guide for Zndnovel rather than surface compatibility (§4);
 >   fallback is tolerable for text-free protos only within the footprint
 >   budget (§1).
+> - **Rev 2 (glm-5.3 cross-review, 2026-08-16)**: the review re-ran the
+>   22-row breakdown (8/8/4/2 reproduced), the footprint ratios (all five
+>   reproduced; corpus-wide, the ≠1.00× file set is exactly the
+>   fallback-carrier set, 1:1), and every Zndnovel citation (`380a577`,
+>   162 `tr_line` files, 16749/17220, the stage-1 rename tools, the
+>   bilingual experiment's artifact `LST_stage3_output_bilingual_test.ini`).
+>   Fixed here: the stop-loss/exit-1 granularity mismatch (§1/§5, its one
+>   substantive finding — the hybrid-subtree shape made the mismatch
+>   reachable on this corpus); the stale `snr_novel` exemplar (§1,
+>   re-verified: the row is root `main`, not `main_2`); the footprint
+>   instrument's strip/length convention (§3); the §4.3 red-line row
+>   promoted to an explicit implementation-time partner gate. Its two
+>   positive observations are adopted in §2/§3; the heap anecdote's
+>   provenance stands as recorded per the partner's instruction (oral
+>   report, 2026-08-16 — no in-repo record exists, none claimed).
 
 ## 0. Problem
 
@@ -71,7 +86,7 @@ Baseline (re-verified 2026-08-16 at `72cb6a8`; re-derive at task start):
 
 | reason | rows | known clusters (M7 task 9/10 attribution) |
 |---|---|---|
-| `mismatch: code` | 8 | constant-pool order (`snr_story_main:main_3` const[70] `fileName`/`sysgim` class); expression layout (`snr_novel:main_2` pc-69 ADD-vs-GETUPVAL class) |
+| `mismatch: code` | 8 | constant-pool order (`snr_story_main:main_3` const[70] `fileName`/`sysgim` class); expression layout (`snr_novel:main` — the root; an earlier draft cited `main_2`, which task 9 already certified) |
 | `mismatch: maxstacksize` | 8 | K1 NEWTABLE hint-position masking (5 rows, M8 agenda 3); dead-slack residue |
 | `reconstruct: register … read again` | 4 | task-8-linked staging refusals (`snr_graphic`/`snr_memory` `main`/`main_3` family) |
 | `structure: pc 286: else-join out of range` | 2 | `snr_common:main_71` `while true` recognizer gap + its inherited ancestor |
@@ -107,9 +122,15 @@ licensed exceptions.**
    still only lower the rate, never ship wrong code).
 
 **Stop-loss**: any row still non-`L3` at close must be (a) attributed with
-a named attempt record, (b) shipping fallback only if its proto carries no
-translatable text (constant census: zero non-ASCII string constants and
-zero `vms`-family call targets), and (c) inside the §3 footprint budget.
+a named attempt record, (b) **at occurrence granularity**: every occurrence
+that ships fallback — including every occurrence inside a hybrid-replaced
+subtree — must belong to a proto carrying no translatable text (constant
+census: zero non-ASCII string constants and zero `vms`-family call
+targets), and (c) inside the §3 footprint budget. The granularity matters
+and rev 2 fixed it: a refusing ancestor with no text of its own drags its
+*descendants* into the fallback inline, and on this corpus those
+descendants do carry dialogue (`snr_common`'s hybrid frontier is exactly
+this shape) — a proto-granular clause would pass while exit 1 fails.
 Expected count: 0; the stop-loss exists so the milestone fails loudly
 rather than quietly if a cluster resists.
 
@@ -129,7 +150,26 @@ the arithmetic, not by adding probes.
 New instrument, cheap (one `compile_source` per file, memoized oracle):
 per-file **`footprint_ratio` = len(recompiled bytecode of shipped text) /
 len(original bytecode)**, recorded as a new field in `corpus/warranty.jsonl`
-rows.
+rows. **Convention pinned (rev 2, the strip-trap class M6/M7 each paid for
+once): both sides are stripped** — the recompile uses
+`compile_source(…, strip=True)` and the original corpus is already
+stripped, so neither side's length includes debug sections; both lengths
+are whole-file bytes including the 12-byte header. An unstripped recompile
+would lift every structured file off the 1.00× baseline by its debug-段
+length and the gate would measure the wrong thing.
+
+Two facts the gate's arithmetic rests on, both measured (rev 2 adopting
+the cross-review's observations):
+
+- **The anticipated §2 rungs do not move bytecode length**: constant-pool
+  reorder is a permutation (same count), the NEWTABLE hint and
+  maxstacksize are fixed-width fields — so a file certified through any of
+  them is still exactly 1.00×. "Expected end state 1.00× everywhere"
+  survives the licensing path.
+- **Corpus-wide, the ≠1.00× file set equals the fallback-carrier set,
+  1:1** (all 229 files measured, cross-review 2026-08-16) — the footprint
+  gate and the ratchet really do fire together on a fallback regression;
+  "two gates" is measurement, not inference.
 
 - **Exit gate (partner-set, 2026-08-16): every file ≤ 1.5×.** The expected
   end state after track 1 is 1.00× everywhere (an `L3` file's recompiled
@@ -209,6 +249,14 @@ read from the Zndnovel tree at its commit `380a577`:
    outputs against the committed `analysis/` snapshots; the guide reports
    the diff shape (identical / benign-formatting / needs-adaptation, per
    tool) so "controlled modification surface" is a measured claim.
+6. **The backfill path** (adopted from the cross-review's suggestion): one
+   section describing how translated text replaces originals in
+   `corpus/final/` keyed by `vms` message ID and recompiles — with a
+   **smoke verification run from this repo** (substitute one string
+   constant via the inventory key, recompile with the oracle, assert the
+   proto tree still matches modulo that constant). This is interface
+   documentation for Zndnovel's future self-built backfill component, not
+   a tool we ship.
 
 ### 4.3 The text-unit inventory (new generated artifact)
 
@@ -221,10 +269,15 @@ prefix, voice ID, and call context.
 **Red-line consideration (explicit, because this artifact contains game
 text)**: this is a *product output* in the same class as `corpus/final/` —
 game text rendered through the same reversible-UTF-8 presentation judgment
-(`str_lit`), not a diagnostic. The bytes red line's prohibition on corpus
-content in diagnostics/pins/committed *analysis* artifacts is untouched;
-the spec's §2 decision table gains a row naming this artifact class as
-sanctioned output. Generation is a fixed point (regeneration
+(the existing `structure/fallback.py::str_lit` body; **no new judgment
+site opens**), not a diagnostic. The bytes red line's prohibition on
+corpus content in diagnostics/pins/committed *analysis* artifacts is
+untouched. What does open is a **new sanctioned-output artifact class**,
+and per the M7 task-5 precedent that is an **implementation-time partner
+gate**: the implementing task's Step 0 presents the overall-design §2
+decision-table row for approval before any generation code is written —
+approval of this spec does not carry it implicitly (rev 2, adopting the
+cross-review's flag). Generation is a fixed point (regeneration
 byte-identical), gated like the other artifacts.
 
 ## 5. Exit criteria (floors below expected values)
