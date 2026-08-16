@@ -2,6 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **READ FIRST — controller handoff**: `docs/reports/m8-handoff.md`
+> (2026-08-16). It carries M7's final-review findings routed into M8, the
+> verified tree state, **three corrections to this plan** (Task 6's
+> petition unit, the ≤1.5× gate's collapse to two named rows, the primary
+> metric), and one committed number to fix. Tasks 1–3 are already done;
+> the handoff records what reproduced.
+
 **Goal:** Close the 22 non-`L3` rows so every text-carrying occurrence ships
 structured (fallback → 0 expected), gate the shipped corpus's recompiled
 footprint at ≤ 1.5× per file, and deliver the readability layer (semantic
