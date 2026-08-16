@@ -3039,3 +3039,35 @@ amended by M7.
 - The backlog file-head reading-order pointer had rotted for two
   milestone closes before the M7 wrap fixed it (2026-08-16); if M8 appends
   an agenda, update the pointer in the same commit.
+
+## 7. Carried in from M7's final whole-branch review (2026-08-16)
+
+The independent review seat ran after M7 closed and after M8 tasks 1–3
+landed; its verdict was **merge, no Critical, nothing requiring a rewrite
+of M7 commits** (merged as `0d39272`). Its **seven Important findings are
+fix-forward work inside M8** and are enumerated with their measurements in
+`docs/reports/m7-warranty.md` §5. Headline order, as the review ranked it:
+
+1. **IMP-2** — the mechanism-F attribution ("228/229 fail the root
+   maxstacksize comparison") is **163/229**; six committed sites carry it,
+   and it is the sentence the merge deliverable's honesty argument rests
+   on. Correct all six.
+2. **IMP-1** — `test_m7_exit_readability_floor` is a tautology (escaped
+   literals are skipped before the denominator, so the ratio is
+   identically 1.0). A gate that cannot fail is this repo's stated worst
+   case; fix by counting escaped non-ASCII into the denominator.
+3. **IMP-3 / IMP-7** — occurrence-`L3` is 98.9%, published as 97.9% in four
+   documents; plus five panel/census arithmetic errors including a false
+   "had certified already at task 9's gate" whose paragraph then sums to
+   −17 against an actual −18.
+4. **IMP-4 / IMP-5 / IMP-6** — three guards not proven load-bearing by
+   anything in the tree; the pin-opcode gate covers 62 of 203 pc
+   references; the `unpinned > 0` veto is inert (deleting it regenerates a
+   byte-identical warranty).
+
+**Sequencing note for future milestones**: M8 opened on an unreviewed,
+unmerged M7. Nothing was harmed this time — every finding was fix-forward
+— but the review's own disposition had to reason about five M8 commits
+sitting on top of the range it was auditing. The M8 plan's prerequisite
+section says to merge first; it was written for exactly this reason and
+was not followed.
