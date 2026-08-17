@@ -2956,7 +2956,7 @@ priority order, and every figure was measured at the M7 closing tree
 relying on any of them.
 
 **Starting state, measured 2026-08-16.** `L3` **1456/1478 unique (98.5%) /
-1922/1944 occurrences (97.9%)**; **222 files fully structured / 5 hybrid /
+1922/1944 occurrences (98.9%)**; **222 files fully structured / 5 hybrid /
 2 whole-file fallback** (`snr_music`, `snr_novel`); 1880/1944 occurrences
 ship structured text. Suite **1174 tests, 73.60–75.73 s** ×3 (macOS 15.2 /
 Apple M4 arm64) against the ~120 s formal-verification earmark;
@@ -3015,7 +3015,9 @@ ruling. The sanity argument for the rung must live with the rung (the
 Diagnosed at instruction level (M7 task 2, `docs/reports/m7-warranty.md`
 §1): the predecessor emits `local f, v1, v2` in every scope, so pred
 recompilation carries 1–2 dead locals per proto and fails the root
-`maxstacksize` comparison in 228/229 files — the entire reason the merge
+`maxstacksize` comparison for 163 of 229 roots (71%; 58 more fail on
+`code` at equal maxstacksize, 7 refuse at structure/reconstruct, 1 clean —
+all 228 fail re-certification) — the dominant reason the merge
 is degenerate. **Not a defect in our pipeline.** Fixing it (e.g. a
 normalization that ignores dead-local maxstacksize slack, or re-emitting
 dead locals) is only worth anything if a future milestone wants the pred

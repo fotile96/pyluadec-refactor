@@ -4254,9 +4254,10 @@ Selection (`warranty_build.select`, spec §6): lexicographic `(T, E)`, tie
 → ours. Two structural facts worth knowing before quoting outcomes:
 **Factor E never decides a selection** (with ours at `id`, pred wins only
 on a strict T advantage — 12 of 36 combinations, pinned as a test), and
-**the merge is degenerate for a diagnosed reason** — pred fails
-re-certification (mechanism F, boilerplate dead locals) in 228/229 files,
-so all 229 files ship ours and `corpus/final/` is byte-identical to our
+**the merge is degenerate for a diagnosed reason** — 228/229 pred roots
+fail re-certification, 163 of them (71%) on mechanism F (boilerplate dead
+locals failing the root `maxstacksize` comparison), so all 229 files ship
+ours and `corpus/final/` is byte-identical to our
 own product. The warranty's value is the recorded per-occurrence evidence,
 not the merging.
 
@@ -4276,8 +4277,11 @@ own + 6 inherited — ALL `mismatch:`** (the `structure:` and `reconstruct:`
 families are extinct: task 2's arm-trailing empty-then recognizer fix took
 `main_71` + root past `build_sir`; task 3's empty-tail clamp fix certified
 `snr_memory`'s whole file and `snr_graphic:main_3`). `L3` **1459/1478
-(98.7%) / 1882/1944 occurrences**; **223 fully structured / 4 hybrid /
-2 whole-file fallback**; ratchet vs `72cb6a8`: 3 upgrades, 0 downgrades.
+unique (98.7%) / 1925/1944 occurrences (99.0%)** — shipped-structured
+occurrences are a DIFFERENT quantity, **1882/1944** (do not conflate the
+two; IMP-3/§4's word collision); products **223 fully structured / 4
+hybrid / 2 whole-file fallback**; ratchet vs `72cb6a8`: 3 upgrades, 0
+downgrades.
 
 **The tasks 4+5 Step-1 census, measured 2026-08-16** (first divergence per
 own row, exact-wrapper recompile; the reason field alone names only the

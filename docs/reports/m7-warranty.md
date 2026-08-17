@@ -344,15 +344,23 @@ selection), not a closing-round change.
 - **The merge is degenerate, and the reason should be quoted precisely.**
   `corpus/final/` is byte-identical to our own product (229/229 selections
   ours, verified per-file against `decompile_file().source`). Pred did not
-  lose on semantics — it lost on **re-certifiability**: the predecessor's
-  boilerplate dead locals (mechanism F, §1) fail the root `maxstacksize`
-  comparison in 228 of 229 files, which is a diagnosed, plausibly-benign
-  cause, not a quality verdict on pred's text. The honest headline is "our
-  criterion measures re-certifiability through our own pipeline; pred fails
-  it 99.3 % for one diagnosed reason" — the conclusion still stands on
+  lose on semantics — it lost on **re-certifiability**: 228 of 229 pred
+  roots fail re-certification, and the diagnosed mechanism F (boilerplate
+  dead locals failing the root `maxstacksize` comparison, §1) accounts for
+  **163 of them (71 %)** — 58 more roots fail on `code` with *equal*
+  maxstacksize (not mechanism F; unattributed), 7 refuse at the
+  structure/reconstruct layer, and 1 re-certifies clean. A diagnosed,
+  plausibly-benign majority cause, not a quality verdict on pred's text.
+  The honest headline is "our criterion measures re-certifiability through
+  our own pipeline; pred fails it everywhere, 71 % of that for one
+  diagnosed reason" — the conclusion still stands on
   independent grounds (our fallback is semantically exact; pred carries the
   six confirmed M6 defects), but "the distribution is not close" (an
   earlier sentence here) read like a quality judgment and is withdrawn.
+  (An earlier revision of this paragraph said mechanism F "fails the root
+  maxstacksize comparison in 228 of 229 files" — an attribution wrong by
+  ~4×, caught by the final whole-branch review as IMP-2 and corrected here
+  with the census above, 2026-08-16.)
 
 ### Independent verification at close (controller review 2026-08-16 + this round)
 
@@ -383,7 +391,7 @@ shipped / non-`L3` strictly < 40 (**measured 22**) / raw-UTF-8 floor
 never-decides pinned.
 
 **The repair campaign's ledger** (vs the M6 merge baseline `3669950`):
-`L3` **1456/1478 unique (98.5%) / 1922/1944 occurrences (97.9%)** (M6 close
+`L3` **1456/1478 unique (98.5%) / 1922/1944 occurrences (98.9%)** (M6 close
 97.3% / 97.9%); products **222 fully structured / 5 hybrid / 2 whole-file
 fallback** (M6 close 217/8/4); **18 upgrades, 0 downgrades** on the
 ratchet; 117 occurrences moved fallback → structured. The 22-row residual:
