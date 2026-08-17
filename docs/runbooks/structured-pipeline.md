@@ -4321,8 +4321,27 @@ the callee to the call base — one `MOVE` per site, four sites in main_7
 local there: the condition reads `u1.library` via two SEPARATE defs
 (190/194, each read once by its own compare), and the callee is a direct
 global call. Scope release does not help (`local`, reassign and call sit
-in the SAME if-arm). The open question for the fix: which condition-path
-read serves two differently-defined register defs from one tree position
-and chooses materialization — the answer is the entry point for the next
-session; the honest spelling likely keeps BOTH reads inline (two defs,
-two reads, byte-exact) rather than materializing.
+in the SAME if-arm). **Solved to the last link (same campaign, next round —
+measurement-first, two hypotheses died on the way):** NOT the condition
+tree (its `cond_operand` pops inline), NOT `_named_local` (all three
+disjuncts false at the four sites, instrumented), NOT the plain
+mention-list half of the skipped-kill veto (the JMP@197 successor's next
+r8 mention is a WRITE at 468, read only at 469). The firing path is
+`_merge_veto_skipped_kill`'s **open-read clause**: the inter-site region
+[253, 468) holds four `CALL`-style `R[5..top)` open reads (pcs
+385/405/425/445, base 5) and no r8 write, so the model cannot exclude
+that the killed value survives to become an open-call argument -- the
+veto fires, (195,8) grades local, the condition operand materializes,
+and `write_reg`'s declared-wins then materializes the arm's callee
+through the same slot (`l1_8 = layerMoveAlpha; l1_8(...)`) for the +1
+MOVE per site. Whether the open call's runtime top ever reaches r8 is
+statically undecidable in general -- this is the veto's documented
+conservatism, not a bug in it. The design question for the fix: the
+ORIGINAL's condition operand was dead at its compare and r8 FREED for
+the callee (freereg reuse), while our `declared` is whole-function and
+`close_scope` cannot see the release (same arm). Candidate directions:
+(a) couple `declared` release to the freereg model's statement-boundary
+drain (the discipline already knows the slot re-became stack), or
+(b) prove the open reads' top < 9 from the callee-side emission and
+narrow the clause. Both are design changes to load-bearing guards --
+own review round each, not a campaign afternoon.
