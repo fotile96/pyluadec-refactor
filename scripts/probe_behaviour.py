@@ -257,9 +257,14 @@ def first_difference(orig: bytes, dec: bytes) -> tuple[int, bytes, bytes]:
 #   Both traces are 1711 B and the first difference is at line 15 (measured
 #   2026-08-14); the digests below are what the gate compares.
 EXPECTED_DIVERGENCE: dict[str, tuple[str, str]] = {
-    "snr_novel.lua": (
-        "c775a17abfde34516d15cd004bc5cbcbf077aa6cf57268d6585ea1c8f7f3938e",
-        "ee55f8495596f1514c4124a9fcc6eaf6038557ca0304dd1d8e6c20df76aeddd4"),
+    # M8 tasks-4/5 campaign (2026-08-16): snr_novel's pin CONVERGED and was
+    # deleted -- the constructor position fix ships the file's literal with
+    # its real hash hint (`NEWTABLE 1 0 23` + 29 SETTABLEs, not a bare `{}`
+    # grown by rehash), so the node array and the `pairs()` order now match
+    # the original. The runtime evidence for backlog item 5 (table internal
+    # layout) on THIS file is gone; the backlog item itself stays open for
+    # whatever else may surface it. adjudicate_pins reports converged pins
+    # as `gone` and fails the gate; deletion is forced.
 }
 
 

@@ -29,16 +29,16 @@ LEDGER = ROOT / "corpus" / "ledger.jsonl"
 
 #: Monotone pin. Campaign start (task 1, 2026-08-16): 7 files. Task 3
 #: (2026-08-16) flipped `snr_memory` fully structured (ratio 1.0 -- left the
-#: dict) and dropped `snr_graphic` 2.3969 -> 1.9509 (main_3 certifies; the
-#: root still inherits main_4's mismatch). A repair LOWERS a value (or drops
-#: the file to 1.0 and out of the dict) -- never raises one. Update in the
-#: same commit as the repair that moved it.
+#: dict) and dropped `snr_graphic` 2.3969 -> 1.9509. The tasks-4/5 campaign
+#: (2026-08-16, the deferred-constructor position fix) flipped BOTH remaining
+#: whole-file fallback files -- `snr_music` (3.344) and `snr_novel` (2.8752)
+#: -- to 1.0; **zero whole-file fallback files remain**. A repair LOWERS a
+#: value (or drops the file to 1.0 and out of the dict) -- never raises one.
+#: Update in the same commit as the repair that moved it.
 FOOTPRINT_PIN = {
     "snr_common.lua": 1.3994,
     "snr_graphic.lua": 1.9509,
     "snr_mainmenu.lua": 3.5598,
-    "snr_music.lua": 3.344,
-    "snr_novel.lua": 2.8752,
     "snr_story_main.lua": 1.6956,
 }
 

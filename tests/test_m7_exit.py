@@ -168,8 +168,11 @@ def test_m7_exit_box_model_game_text_is_a_pinned_residual():
         for m in pat.finditer(f.read_bytes()):
             if any(b > 127 for b in m.group()):
                 counts[f.name] += 1
+    # M8 tasks-4/5 campaign (2026-08-16): snr_novel's single line left the
+    # census -- the file is fully structured now (the deferred-constructor
+    # position fix).
     assert dict(counts) == {
-        "snr_common.lua": 49, "snr_story_main.lua": 2, "snr_novel.lua": 1}
+        "snr_common.lua": 49, "snr_story_main.lua": 2}
 
 
 def test_m7_exit_factor_e_never_decides_a_selection():

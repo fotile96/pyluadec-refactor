@@ -176,7 +176,7 @@ def test_observed_records_have_the_reviewed_shape(doc):
 # lookahead certified snr_common:main_29 -- their observation records moved
 # to orphan quarantine (preserved, not lost).
 # Re-derived 2026-08-16 with the command above.
-_OBSERVED_DIGEST = "f9efb42adfaa8ea62564a40069fc2d803a0ec83c39781d526cbf75f0fc3c21db"  # M8 task 3: the snr_memory main/main_3
+_OBSERVED_DIGEST = "0c01b8480ac0363a20a91b3274d3a528916c0d6bb8857fae0afb7314ef16976f"  # M8 tasks-4/5: 45/19 (see above)
 # observations moved to the orphan quarantine when those protos certified (48/16
 # -> 46/18); their reviewed content is carried verbatim.
 
@@ -205,8 +205,10 @@ def test_the_observed_half_is_pinned_by_digest():
     # M8 task 3 (2026-08-16): 46 / 18 -- the snr_memory main/main_3 rows
     # left the candidate set entirely (certified), so their two reviewed
     # observations moved to the orphan quarantine rather than being edited
-    # or dropped.
-    assert (len(obs), len(orphans)) == (46, 18)
+    # or dropped. M8 tasks-4/5 (2026-08-16): 45 / 19 -- snr_novel:main
+    # certified (the constructor position fix) and its observation moved
+    # to the quarantine likewise.
+    assert (len(obs), len(orphans)) == (45, 19)
     blob = json.dumps({"observed": obs, "orphans": orphans},
                       sort_keys=True, ensure_ascii=True)
     assert hashlib.sha256(blob.encode("ascii")).hexdigest() == _OBSERVED_DIGEST, (
@@ -598,8 +600,9 @@ def test_leaf_refusal_rule_agrees_with_an_independent_stubbing_experiment(corpus
     # `structure:` and `reconstruct:` families emptied; every remaining row
     # is a `mismatch:` -- and with no print refusals left, `checked` below
     # is 0 and this test's per-row equivalence is vacuous until a new
-    # print-refusal family appears).
-    assert len(non_l3) == 19, len(non_l3)
+    # print-refusal family appears); 17 after the M8 tasks-4/5 constructor
+    # position fix certified snr_novel:main and snr_music:main.
+    assert len(non_l3) == 17, len(non_l3)
     checked = 0
     for (f, path), (row, p) in sorted(non_l3.items()):
         kind = row["refusal_reason"].split(":", 1)[0]

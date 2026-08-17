@@ -545,3 +545,74 @@ f({v = 1}, 2)
     _proto, out = _certify(src)
     assert out.level == "L1"
     assert (out.reason or "").startswith("mismatch: code")
+
+
+# ---------------------------------------------------------------------------
+# M8 (tasks 4/5 campaign): the deferred-constructor position bug
+# (`snr_novel:main` -- the whole-file row; one row held 15 occurrences).
+
+def test_constructor_deferred_behind_local_decl_certifies():
+    """A pending table-constructor ctx stays open until the table's first
+    read, so a `local` statement the original placed AFTER the constructor
+    used to emit FIRST -- the deferred `local t = {...}` landed behind it,
+    and the recompile assigned the table the wrong register (declaration
+    order IS register order), diverging every instruction downstream (the
+    `snr_novel:main` shape: first divergence NEWTABLE r0 vs LOADK r1).
+    Fix: an instruction whose write would MATERIALIZE (write_reg's own
+    temp/local predicate) cannot belong to the constructor's interior, so
+    every open ctx closes in position before it dispatches."""
+    src = b"""local t = {a = {x = 1, y = 2, z = 3}, b = 2, c = 3}
+local p = 0
+local q = 1
+for i = 1, q do p = p + t.a.x end
+return p
+"""
+    _proto, out = _certify(src)
+    assert out.level == "L3", out.reason
+
+
+def test_constructor_position_minimal_certifies():
+    src = b"""local t = {a = 1, b = 2}
+local p = 0
+return t.a + p
+"""
+    _proto, out = _certify(src)
+    assert out.level == "L3", out.reason
+
+
+def test_constructor_item_staging_still_folds_across_temps():
+    """The guard must NOT close the ctx on item-staging writes: dynamic
+    keys and array items stage temp-classified registers between the
+    NEWTABLE and its SETTABLE/SETLIST (the M7 dynamic-key fold). Both
+    shapes still certify after the interception."""
+    src = b"""local k = "x"
+local t = {[k] = 1, y = 2}
+local p = 0
+return t.y + p
+"""
+    _proto, out = _certify(src)
+    assert out.level == "L3", out.reason
+    src2 = b"""local t = {3, 4}
+local p = 0
+return t[1] + p
+"""
+    _proto2, out2 = _certify(src2)
+    assert out2.level == "L3", out2.reason
+
+
+def test_mixed_literal_with_array_and_trailing_local_is_a_recorded_gap():
+    """A pre-existing gap found while writing the fold-preservation test
+    (recorded, not asserted away): mixing a dynamic hash key, a nested
+    array literal AND a trailing array item in one constructor fails
+    certification BOTH before and after the M8 position fix (before:
+    `mismatch: maxstacksize`; after: `mismatch: code` -- the position fix
+    changed which field diverges first, not the outcome). Corpus census:
+    no remaining row names this shape. Revisit if a campaign row does."""
+    src = b"""local k = "x"
+local t = {[k] = 1, y = 2, {3, 4}, k}
+local p = 0
+return t.y + p
+"""
+    _proto, out = _certify(src)
+    assert out.level == "L1"
+    assert (out.reason or "").startswith("mismatch:")

@@ -1649,7 +1649,52 @@ class Reconstructor:
                 self._dispatch(li)
                 return
 
+        if self._table_ctx_stack and self._write_would_materialize(li):
+            # M8 (the `snr_novel:main` position bug): a pending constructor
+            # ctx stays open until the table's first read, so a statement
+            # the original placed AFTER the constructor -- here, the `local
+            # p = 0` / `local q = 1` scalars -- dispatched through to
+            # _dispatch_simple and emitted FIRST; the deferred `local t =
+            # {...}` then landed behind them, and the recompile assigned
+            # the table the wrong register (declaration order IS register
+            # order), diverging every instruction downstream. The
+            # discriminator is the same one write_reg keys on: item staging
+            # writes temp-classified registers (silent, ctx stays open --
+            # the dynamic-key constructor fold depends on that), while a
+            # write to a register this definition does NOT grade temp (or
+            # to an already-declared local) emits a real statement -- and a
+            # real statement cannot belong to the constructor's interior,
+            # so the constructor is over: close every open ctx in
+            # position, then dispatch. Hint-0 store-first tables are NOT
+            # this path's business -- the NEWTABLE-side lookahead already
+            # materializes them at the NEWTABLE itself, and closing a
+            # store-first ctx HERE would go through write_reg's staging
+            # arm, whose pop-once `{}` the first store's own table read
+            # consumes (`tests/test_express_keystage.py`'s both-pending
+            # fixture refuses exactly so). Limitation, recorded: a
+            # statement-writing instruction whose registers are all
+            # temp-classified (a bare CALL expression statement) still
+            # slips past and misorders the same way -- no corpus row
+            # carries that shape.
+            while self._table_ctx_stack:
+                self._close_table_ctx()
+            self._dispatch(li)
+            return
+
         self._dispatch_simple(li)
+
+    def _write_would_materialize(self, li: LirInstr) -> bool:
+        """True iff dispatching `li` would append a real statement via
+        `write_reg`'s materialize arm (or a reassignment of a declared
+        local) -- the write_reg predicate, asked of an instruction before
+        it runs."""
+        for reg in li.effects.writes:
+            if reg in self.declared:
+                return True
+            if not (reg in self.rc.temps
+                    or (li.ri.pc, reg) in self.rc.temp_defs):
+                return True
+        return False
 
     def _dispatch_simple(self, li: LirInstr) -> None:
         ri = li.ri

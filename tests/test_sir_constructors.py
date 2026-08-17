@@ -106,17 +106,27 @@ def test_an_empty_literal_consumed_as_a_value_still_folds():
 
 def test_neutering_the_lookahead_costs_the_position(monkeypatch):
     """Neuter proof: without the NEWTABLE-side fast path the
-    intervening-local repro degrades to `L1` (the close-at-store path
-    re-emits the declaration late and the recompile swaps the register
-    pair). Cache cleared across runs -- certification memoizes."""
+    intervening-TEMP repro degrades to `L1` (the ctx-close path stages the
+    store-first table through write_reg, whose pop-once `{}` the first
+    store's own table read consumes, and the re-read refuses). Cache
+    cleared across runs -- certification memoizes.
+
+    Re-derived at the M8 tasks-4/5 campaign (2026-08-16): the original
+    fixture (`local n = 0` with n read TWICE -- a LOCAL-classified
+    intervener) is now ABSORBED by `_write_would_materialize`'s
+    interception, which closes in position without the fast path; corpus
+    neuter measured 0 ledger rows either way. The lookahead stays
+    load-bearing for the TEMP-key intervener (`t[f(n)] = 1`, n read once
+    -- nothing materializes between NEWTABLE and store, so only the
+    lookahead can put the declaration in position), which is the fixture
+    below."""
     from pyluadec.express import reconstruct
     from pyluadec.structure.structured import clear_certification_cache
 
     src = (b"local t = {}\n"
            b"local n = 0\n"
-           b"t[n] = 1\n"
-           b"t[n] = 2\n"
-           b"return t, n\n")
+           b"t[f(n)] = 1\n"
+           b"return t\n")
     clear_certification_cache()
     assert _levels_of(src) == {"main": "L3"}
     monkeypatch.setattr(reconstruct.Reconstructor, "_next_touch_is_store_to",

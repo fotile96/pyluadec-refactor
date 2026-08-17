@@ -3,19 +3,19 @@
  "summary": {
   "n_files": 229,
   "n_protos": 1944,
-  "n_candidates": 144,
-  "n_leaf_refusals": 13,
-  "n_non_l3": 19,
+  "n_candidates": 142,
+  "n_leaf_refusals": 11,
+  "n_non_l3": 17,
   "n_cap_files": 132,
   "n_cap_dominants": 132,
   "n_in_both_populations": 1,
   "class_census": {
    "choice-branch": 111,
-   "neither": 25,
+   "neither": 23,
    "ui-keyloop": 8
   },
   "class_census_leaf_refusals": {
-   "neither": 8,
+   "neither": 6,
    "ui-keyloop": 5
   },
   "class_census_cap_dominants": {
@@ -29,8 +29,8 @@
     111
    ],
    "neither": [
-    25,
-    25
+    23,
+    23
    ],
    "ui-keyloop": [
     8,
@@ -60,8 +60,8 @@
    "oCard.selectCardNotCancelObj": "snr_common.lua:main_77_18",
    "oCard.selectCardObj": "snr_common.lua:main_77_17"
   },
-  "n_observed_records": 46,
-  "n_orphan_observations": 18
+  "n_observed_records": 45,
+  "n_orphan_observations": 19
  },
  "candidates": [
   {
@@ -21862,52 +21862,6 @@
   },
   {
    "file": "snr_music.lua",
-   "proto_path": "main",
-   "mechanical": {
-    "selected_as": [
-     "leaf-refusal"
-    ],
-    "n_insns": 99,
-    "nups": 0,
-    "numparams": 0,
-    "level": "L1",
-    "refusal_reason": "mismatch: maxstacksize",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": false,
-    "probe": {
-     "file_status": "CAP",
-     "file_events": 3001,
-     "dominant_global": null,
-     "dominant_global_events": null
-    },
-    "n_natural_loops": 0,
-    "n_back_edges": 0,
-    "poll_loops": [],
-    "calls_poll_directly": false,
-    "reaches_poll": false,
-    "loop_polls_per_iteration": false,
-    "in_loop_callees_reaching_poll": [],
-    "option_calls": [],
-    "channels": [],
-    "register_comparisons": 0,
-    "input_space": 1,
-    "drivable_within_budget": true,
-    "class": "neither",
-    "class_evidence": "no poll loop and no option call; no branch channel",
-    "footprint": {
-     "global_reads": [],
-     "table_key_reads": [],
-     "calls": [],
-     "table_key_calls": [],
-     "dynamic_reads": 0,
-     "read_sites": 0,
-     "call_sites": 0
-    }
-   }
-  },
-  {
-   "file": "snr_music.lua",
    "proto_path": "main_3",
    "mechanical": {
     "selected_as": [
@@ -21919,7 +21873,7 @@
     "level": "L3",
     "refusal_reason": null,
     "refusal_origin": null,
-    "shipped": "fallback",
+    "shipped": "structured",
     "hybrid_chunk": false,
     "probe": {
      "file_status": "CAP",
@@ -22011,84 +21965,6 @@
     "reviewed_by": "ui-keyloop-audit",
     "class_agrees": true,
     "note": "Music gallery / BGM player. Loop pcs 12-368, 6 poll CALLs, exit pc 331 only when a TFORLOOP scan over selectFlag finds nothing."
-   }
-  },
-  {
-   "file": "snr_novel.lua",
-   "proto_path": "main",
-   "mechanical": {
-    "selected_as": [
-     "leaf-refusal"
-    ],
-    "n_insns": 145,
-    "nups": 0,
-    "numparams": 0,
-    "level": "L1",
-    "refusal_reason": "mismatch: code",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": false,
-    "probe": {
-     "file_status": "OK",
-     "file_events": 41,
-     "dominant_global": null,
-     "dominant_global_events": null
-    },
-    "n_natural_loops": 1,
-    "n_back_edges": 2,
-    "poll_loops": [],
-    "calls_poll_directly": false,
-    "reaches_poll": false,
-    "loop_polls_per_iteration": false,
-    "in_loop_callees_reaching_poll": [],
-    "option_calls": [],
-    "channels": [
-     {
-      "path": [
-       {
-        "key": "systemSave"
-       },
-       {
-        "key": "novelGetFlag"
-       },
-       {
-        "dynamic": true
-       }
-      ],
-      "text": "systemSave.novelGetFlag[*]",
-      "domain": 2,
-      "constants": [
-       "true"
-      ],
-      "truth_tested": false
-     }
-    ],
-    "register_comparisons": 0,
-    "input_space": 2,
-    "drivable_within_budget": true,
-    "class": "neither",
-    "class_evidence": "no poll loop and no option call; 1 branch channel(s)",
-    "footprint": {
-     "global_reads": [
-      "systemSave"
-     ],
-     "table_key_reads": [
-      [
-       "systemSave",
-       "novelGetFlag"
-      ]
-     ],
-     "calls": [],
-     "table_key_calls": [],
-     "dynamic_reads": 3,
-     "read_sites": 7,
-     "call_sites": 0
-    }
-   },
-   "observed": {
-    "reviewed_by": "neither-audit",
-    "class_agrees": true,
-    "note": "Chunk root; builds the novel layer/index/title tables. No CALL."
    }
   },
   {
@@ -25538,6 +25414,15 @@
     "reviewed_by": "neither-audit",
     "class_agrees": true,
     "note": "Memory-gallery page-scroll animation; called from main_4 pcs 160/248/300/345."
+   }
+  },
+  {
+   "file": "snr_novel.lua",
+   "proto_path": "main",
+   "observed": {
+    "reviewed_by": "neither-audit",
+    "class_agrees": true,
+    "note": "Chunk root; builds the novel layer/index/title tables. No CALL."
    }
   },
   {
