@@ -4609,2520 +4609,581 @@ end
 systemConfig = SystemConfig.new()
 ObjectCard = {}
 ObjectCard.new = function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {[0]=true, [1]=true, [2]=true}, 0
-__pld_R[0] = {}
-__pld_R[1] = {}
-__pld_R[2] = {}
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0].v = {}
-__pld_R[1].v = layerName
-__pld_R[1].v = __pld_R[1].v["card1"]
-__pld_R[0].v["layerNo"] = __pld_R[1].v
-__pld_R[1].v = 1
-__pld_R[2].v = 0
-__pld_R[3] = (function(__pld_U) return function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0] = 1
-__pld_R[1] = 0
-__pld_U[1].v = __pld_R[1]
-__pld_U[0].v = __pld_R[0]
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({[0]=__pld_R[1], [1]=__pld_R[2]})
-__pld_R[0].v["cursorPositionInit"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function(__pld_p0, __pld_p1)
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-__pld_R[0] = __pld_p0
-__pld_R[1] = __pld_p1
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[2] = __pld_R[0]
-__pld_R[3] = string
-__pld_R[3] = __pld_R[3]["gsub"]
-__pld_R[4] = __pld_R[2]
-__pld_R[5] = "card/crd_"
-__pld_R[6] = ""
-__pld_R[3] = __pld_R[3](__pld_R[4], __pld_R[5], __pld_R[6])
-__pld_R[2] = __pld_R[3]
-__pld_R[3] = string
-__pld_R[3] = __pld_R[3]["gsub"]
-__pld_R[4] = __pld_R[2]
-__pld_R[5] = "_a.gim"
-__pld_R[6] = ""
-__pld_R[3] = __pld_R[3](__pld_R[4], __pld_R[5], __pld_R[6])
-__pld_R[2] = __pld_R[3]
-__pld_R[2] = 18000 + __pld_R[2]
-__pld_R[3] = layerLoad
-__pld_R[4] = __pld_U[0].v
-__pld_R[4] = __pld_R[4]["layerNo"]
-__pld_R[5] = __pld_R[0]
-__pld_R[3](__pld_R[4], __pld_R[5])
-__pld_R[3] = layerAlpha
-__pld_R[4] = __pld_U[0].v
-__pld_R[4] = __pld_R[4]["layerNo"]
-__pld_R[5] = 0
-__pld_R[3](__pld_R[4], __pld_R[5])
-__pld_R[3] = layerPosition
-__pld_R[4] = __pld_U[0].v
-__pld_R[4] = __pld_R[4]["layerNo"]
-__pld_R[5] = (-400)
-__pld_R[6] = 40
-__pld_R[3](__pld_R[4], __pld_R[5], __pld_R[6])
-__pld_R[3] = layerMovePosition
-__pld_R[4] = __pld_U[0].v
-__pld_R[4] = __pld_R[4]["layerNo"]
-__pld_R[5] = 130
-__pld_R[6] = 40
-__pld_R[7] = 30
-__pld_R[3](__pld_R[4], __pld_R[5], __pld_R[6], __pld_R[7])
-__pld_R[3] = layerMoveAlpha
-__pld_R[4] = __pld_U[0].v
-__pld_R[4] = __pld_R[4]["layerNo"]
-__pld_R[5] = 100
-__pld_R[6] = 30
-__pld_R[3](__pld_R[4], __pld_R[5], __pld_R[6])
-__pld_R[3] = wait
-__pld_R[4] = 30
-__pld_R[3](__pld_R[4])
-__pld_R[3] = vms
-__pld_R[4] = __pld_R[2]
-__pld_R[5] = "NONVOICE"
-__pld_R[6] = __pld_R[1]
-__pld_R[3](__pld_R[4], __pld_R[5], __pld_R[6])
-__pld_R[3] = layerMovePosition
-__pld_R[4] = __pld_U[0].v
-__pld_R[4] = __pld_R[4]["layerNo"]
-__pld_R[5] = 480
-__pld_R[6] = 40
-__pld_R[7] = 30
-__pld_R[3](__pld_R[4], __pld_R[5], __pld_R[6], __pld_R[7])
-__pld_R[3] = layerMoveAlpha
-__pld_R[4] = __pld_U[0].v
-__pld_R[4] = __pld_R[4]["layerNo"]
-__pld_R[5] = 0
-__pld_R[6] = 30
-__pld_R[3](__pld_R[4], __pld_R[5], __pld_R[6])
-__pld_R[3] = wait
-__pld_R[4] = 30
-__pld_R[3](__pld_R[4])
-__pld_R[3] = layerLoad
-__pld_R[4] = __pld_U[0].v
-__pld_R[4] = __pld_R[4]["layerNo"]
-__pld_R[5] = ""
-__pld_R[3](__pld_R[4], __pld_R[5])
-__pld_R[3] = switchScreen
-__pld_R[4] = 0
-__pld_R[5] = ""
-__pld_R[6] = 30
-__pld_R[3](__pld_R[4], __pld_R[5], __pld_R[6])
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({[0]=__pld_R[0]})
-__pld_R[0].v["show"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function(__pld_p0)
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-__pld_R[0] = __pld_p0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[1] = layerLoad
-__pld_R[2] = __pld_U[0].v
-__pld_R[2] = __pld_R[2]["layerNo"]
-__pld_R[3] = __pld_R[0]
-__pld_R[1](__pld_R[2], __pld_R[3])
-__pld_R[1] = layerAlpha
-__pld_R[2] = __pld_U[0].v
-__pld_R[2] = __pld_R[2]["layerNo"]
-__pld_R[3] = 0
-__pld_R[1](__pld_R[2], __pld_R[3])
-__pld_R[1] = layerPosition
-__pld_R[2] = __pld_U[0].v
-__pld_R[2] = __pld_R[2]["layerNo"]
-__pld_R[3] = 270
-__pld_R[4] = 10
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = layerMovePosition
-__pld_R[2] = __pld_U[0].v
-__pld_R[2] = __pld_R[2]["layerNo"]
-__pld_R[3] = 270
-__pld_R[4] = 30
-__pld_R[5] = 20
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4], __pld_R[5])
-__pld_R[1] = layerMoveAlpha
-__pld_R[2] = __pld_U[0].v
-__pld_R[2] = __pld_R[2]["layerNo"]
-__pld_R[3] = 100
-__pld_R[4] = 20
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = wait
-__pld_R[2] = 20
-__pld_R[1](__pld_R[2])
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({[0]=__pld_R[0]})
-__pld_R[0].v["showMiniIn"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0] = layerMovePosition
-__pld_R[1] = __pld_U[0].v
-__pld_R[1] = __pld_R[1]["layerNo"]
-__pld_R[2] = 270
-__pld_R[3] = 40
-__pld_R[4] = 20
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[0] = layerMoveAlpha
-__pld_R[1] = __pld_U[0].v
-__pld_R[1] = __pld_R[1]["layerNo"]
-__pld_R[2] = 0
-__pld_R[3] = 20
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = wait
-__pld_R[1] = 20
-__pld_R[0](__pld_R[1])
-__pld_R[0] = layerLoad
-__pld_R[1] = __pld_U[0].v
-__pld_R[1] = __pld_R[1]["layerNo"]
-__pld_R[2] = ""
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = switchScreen
-__pld_R[1] = 0
-__pld_R[2] = ""
-__pld_R[3] = 30
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({[0]=__pld_R[0]})
-__pld_R[0].v["showMiniOut"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function(__pld_p0)
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-__pld_R[0] = __pld_p0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[1] = layerLoad
-__pld_R[2] = __pld_U[0].v
-__pld_R[2] = __pld_R[2]["layerNo"]
-__pld_R[3] = __pld_R[0]
-__pld_R[1](__pld_R[2], __pld_R[3])
-__pld_R[1] = layerAlpha
-__pld_R[2] = __pld_U[0].v
-__pld_R[2] = __pld_R[2]["layerNo"]
-__pld_R[3] = 0
-__pld_R[1](__pld_R[2], __pld_R[3])
-__pld_R[1] = layerPosition
-__pld_R[2] = __pld_U[0].v
-__pld_R[2] = __pld_R[2]["layerNo"]
-__pld_R[3] = 130
-__pld_R[4] = 110
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = layerMovePosition
-__pld_R[2] = __pld_U[0].v
-__pld_R[2] = __pld_R[2]["layerNo"]
-__pld_R[3] = 130
-__pld_R[4] = 130
-__pld_R[5] = 10
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4], __pld_R[5])
-__pld_R[1] = layerMoveAlpha
-__pld_R[2] = __pld_U[0].v
-__pld_R[2] = __pld_R[2]["layerNo"]
-__pld_R[3] = 100
-__pld_R[4] = 10
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = wait
-__pld_R[2] = 10
-__pld_R[1](__pld_R[2])
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({[0]=__pld_R[0]})
-__pld_R[0].v["showRouteDetailIn"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0] = layerMovePosition
-__pld_R[1] = __pld_U[0].v
-__pld_R[1] = __pld_R[1]["layerNo"]
-__pld_R[2] = 130
-__pld_R[3] = 130
-__pld_R[4] = 5
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[0] = layerMoveAlpha
-__pld_R[1] = __pld_U[0].v
-__pld_R[1] = __pld_R[1]["layerNo"]
-__pld_R[2] = 0
-__pld_R[3] = 5
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = wait
-__pld_R[1] = 5
-__pld_R[0](__pld_R[1])
-__pld_R[0] = layerLoad
-__pld_R[1] = __pld_U[0].v
-__pld_R[1] = __pld_R[1]["layerNo"]
-__pld_R[2] = ""
-__pld_R[0](__pld_R[1], __pld_R[2])
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({[0]=__pld_R[0]})
-__pld_R[0].v["showRouteDetailOut"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0] = layerCopy
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = layerName
-__pld_R[2] = __pld_R[2]["effectWhite"]
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerVisible
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = false
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = wait
-__pld_R[1] = 1
-__pld_R[0](__pld_R[1])
-__pld_R[0] = keyPlaySE
-__pld_R[1] = seName
-__pld_R[1] = __pld_R[1]["viewCard"]
-__pld_R[0](__pld_R[1])
-__pld_R[0] = layerVisible
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = true
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerBlend
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = "ADD"
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerScale
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 100
-__pld_R[3] = 100
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = layerRotate
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[3] = 0
-__pld_R[4] = 0
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[0] = layerMoveAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 80
-__pld_R[3] = 30
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = layerMoveScale
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[3] = 0
-__pld_R[4] = 30
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[0] = layerMovePosition
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[3] = 80
-__pld_R[4] = 30
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[0] = layerMoveRotate
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[3] = 0
-__pld_R[4] = 150
-__pld_R[5] = 30
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3], __pld_R[4], __pld_R[5])
-__pld_R[0] = wait
-__pld_R[1] = 90
-__pld_R[0](__pld_R[1])
-__pld_R[0] = keyPlaySE
-__pld_R[1] = seName
-__pld_R[1] = __pld_R[1]["arrowKey"]
-__pld_R[0](__pld_R[1])
-__pld_R[0] = layerScale
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 100
-__pld_R[3] = 100
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = layerAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 5
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerRotate
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[3] = 0
-__pld_R[4] = 0
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[0] = layerPosition
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[3] = 0
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = layerMoveAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[3] = 60
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = wait
-__pld_R[1] = 60
-__pld_R[0](__pld_R[1])
-__pld_R[0] = keyPlaySE
-__pld_R[1] = seName
-__pld_R[1] = __pld_R[1]["arrowKey"]
-__pld_R[0](__pld_R[1])
-__pld_R[0] = layerAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 10
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerMoveAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[3] = 60
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = wait
-__pld_R[1] = 60
-__pld_R[0](__pld_R[1])
-__pld_R[0] = keyPlaySE
-__pld_R[1] = seName
-__pld_R[1] = __pld_R[1]["arrowKey"]
-__pld_R[0](__pld_R[1])
-__pld_R[0] = layerAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 5
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerMoveAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[3] = 60
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = wait
-__pld_R[1] = 60
-__pld_R[0](__pld_R[1])
-__pld_R[0] = wait
-__pld_R[1] = 1
-__pld_R[0](__pld_R[1])
-__pld_R[0] = layerLoad
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = ""
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = switchScreen
-__pld_R[1] = 0
-__pld_R[2] = ""
-__pld_R[3] = 1
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = wait
-__pld_R[1] = 1
-__pld_R[0](__pld_R[1])
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({})
-__pld_R[0].v["cardNgAnim"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0] = comPoseLoad
-__pld_R[1] = "po2_aya_f_2_e"
-__pld_R[0](__pld_R[1])
-__pld_R[0] = math
-__pld_R[0] = __pld_R[0]["random"]
-__pld_R[1] = 1
-__pld_R[2] = 3
-__pld_R[0] = __pld_R[0](__pld_R[1], __pld_R[2])
-if not (__pld_R[0] == 1) then __pld_pc = 10 else __pld_pc = 11 end
-elseif __pld_pc == 10 then
-__pld_pc = 31
-elseif __pld_pc == 11 then
-__pld_R[1] = vms
-__pld_R[2] = 60
-__pld_R[3] = "AYA00000"
-__pld_R[4] = "【彩野】「ごめんなさい……直哉くん……」"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = vms
-__pld_R[2] = 61
-__pld_R[3] = "AYA00010"
-__pld_R[4] = "【彩野】「今私たちが持っているカードでは、この場面をつくること、難しそう……」"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = vms
-__pld_R[2] = 62
-__pld_R[3] = "NAO00000"
-__pld_R[4] = "【直哉】「そうなんだ……」"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = vms
-__pld_R[2] = 63
-__pld_R[3] = "NONVOICE"
-__pld_R[4] = "……。"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_pc = 31
-elseif __pld_pc == 31 then
-if not (__pld_R[0] == 2) then __pld_pc = 32 else __pld_pc = 33 end
-elseif __pld_pc == 32 then
-__pld_pc = 58
-elseif __pld_pc == 33 then
-__pld_R[1] = vms
-__pld_R[2] = 64
-__pld_R[3] = "AYA00020"
-__pld_R[4] = "【彩野】「あ……直哉くん……」"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = vms
-__pld_R[2] = 65
-__pld_R[3] = "NAO00010"
-__pld_R[4] = "【直哉】「ん、どうかした？」"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = vms
-__pld_R[2] = 66
-__pld_R[3] = "AYA00030"
-__pld_R[4] = "【彩野】「カードの種類、もしかしたら足りないかも」"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = vms
-__pld_R[2] = 67
-__pld_R[3] = "NAO00020"
-__pld_R[4] = "【直哉】「僕たちの今持っているカードだと、『あらすじ』がつくれない、ということかな？」"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = vms
-__pld_R[2] = 68
-__pld_R[3] = "NONVOICE"
-__pld_R[4] = "彩野さんはこくんと頷く。"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_pc = 58
-elseif __pld_pc == 58 then
-if not (__pld_R[0] == 3) then __pld_pc = 59 else __pld_pc = 60 end
-elseif __pld_pc == 59 then
-__pld_pc = 90
-elseif __pld_pc == 60 then
-__pld_R[1] = vms
-__pld_R[2] = 69
-__pld_R[3] = "AYA00040"
-__pld_R[4] = "【彩野】「うーん……」"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = vms
-__pld_R[2] = 70
-__pld_R[3] = "NONVOICE"
-__pld_R[4] = "彩野さんは眉間に皺を寄せている。"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = vms
-__pld_R[2] = 71
-__pld_R[3] = "NAO00030"
-__pld_R[4] = "【直哉】「なにかあった？」"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = vms
-__pld_R[2] = 72
-__pld_R[3] = "AYA00050"
-__pld_R[4] = "【彩野】「この場面のあらすじを考えているんだけど、浮かばなくて」"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = vms
-__pld_R[2] = 73
-__pld_R[3] = "NAO00040"
-__pld_R[4] = "【直哉】「そっか。もうちょっとカードを集めてみた方がいいかも」"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = vms
-__pld_R[2] = 74
-__pld_R[3] = "AYA00060"
-__pld_R[4] = "【彩野】「うん……ごめんね」"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_pc = 90
-elseif __pld_pc == 90 then
-__pld_R[1] = vms
-__pld_R[2] = 75
-__pld_R[3] = "NONVOICE"
-__pld_R[4] = "この場面をまとめるには、手持ちのカードが足りないみたいだ。"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = vms
-__pld_R[2] = 76
-__pld_R[3] = "NONVOICE"
-__pld_R[4] = "新しいカードを集めてみよう。"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = comPoseDelete
-__pld_R[1]()
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({})
-__pld_R[0].v["mesNot"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0] = comPoseLoad
-__pld_R[1] = "po2_aya_f_2_e"
-__pld_R[0](__pld_R[1])
-__pld_R[0] = vms
-__pld_R[1] = 77
-__pld_R[2] = "AYA00040"
-__pld_R[3] = "【彩野】「うーん……」"
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = vms
-__pld_R[1] = 78
-__pld_R[2] = "NONVOICE"
-__pld_R[3] = "アヤノさんは眉間に皺を寄せている。"
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = vms
-__pld_R[1] = 79
-__pld_R[2] = "NONVOICE"
-__pld_R[3] = "……。"
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = vms
-__pld_R[1] = 80
-__pld_R[2] = "NONVOICE"
-__pld_R[3] = "……。彩野さんはカードをじっと目にしたまま動かない。"
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = vms
-__pld_R[1] = 81
-__pld_R[2] = "NONVOICE"
-__pld_R[3] = "この場面を進行させるには、手持ちのカードが足りないようだ。"
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = vms
-__pld_R[1] = 82
-__pld_R[2] = "NONVOICE"
-__pld_R[3] = "他の場面を展開させて、新しいカードを手に入れる必要があるかもしれない。"
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = comPoseDelete
-__pld_R[0]()
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({})
-__pld_R[0].v["mesNot2"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0] = systemConfig
-__pld_R[0] = __pld_R[0]["unsetConfigButton"]
-__pld_R[0]()
-__pld_R[0] = comPoseLoad
-__pld_R[1] = "po2_aya_f_1_a"
-__pld_R[0](__pld_R[1])
-__pld_R[0] = __pld_U[0].v
-__pld_R[0] = __pld_R[0]["cardNgAnim"]
-__pld_R[0]()
-__pld_R[0] = comPoseLoad
-__pld_R[1] = "po2_aya_f_1_c"
-__pld_R[0](__pld_R[1])
-__pld_R[0] = math
-__pld_R[0] = __pld_R[0]["random"]
-__pld_R[1] = 1
-__pld_R[2] = 3
-__pld_R[0] = __pld_R[0](__pld_R[1], __pld_R[2])
-if not (__pld_R[0] == 1) then __pld_pc = 19 else __pld_pc = 20 end
-elseif __pld_pc == 19 then
-__pld_pc = 30
-elseif __pld_pc == 20 then
-__pld_R[1] = vms
-__pld_R[2] = 83
-__pld_R[3] = "AYA00070"
-__pld_R[4] = "【彩野】「ごめんなさい、直哉くん……。何も浮かばないの」"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = vms
-__pld_R[2] = 84
-__pld_R[3] = "NONVOICE"
-__pld_R[4] = "彩野さんはカードを見ると、残念そうに首を横に振った。"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_pc = 30
-elseif __pld_pc == 30 then
-if not (__pld_R[0] == 2) then __pld_pc = 31 else __pld_pc = 32 end
-elseif __pld_pc == 31 then
-__pld_pc = 47
-elseif __pld_pc == 32 then
-__pld_R[1] = vms
-__pld_R[2] = 85
-__pld_R[3] = "AYA00080"
-__pld_R[4] = "【彩野】「…………」"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = vms
-__pld_R[2] = 86
-__pld_R[3] = "NONVOICE"
-__pld_R[4] = "彩野さんは僕からカードを受け取ると、じっとそれを見ている。"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = vms
-__pld_R[2] = 87
-__pld_R[3] = "AYA00090"
-__pld_R[4] = "【彩野】「……ごめんなさい。ちょっと、違うかも」"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_pc = 47
-elseif __pld_pc == 47 then
-if not (__pld_R[0] == 3) then __pld_pc = 48 else __pld_pc = 49 end
-elseif __pld_pc == 48 then
-__pld_pc = 64
-elseif __pld_pc == 49 then
-__pld_R[1] = vms
-__pld_R[2] = 88
-__pld_R[3] = "AYA00100"
-__pld_R[4] = "【彩野】「このカードは……うーん」"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = vms
-__pld_R[2] = 89
-__pld_R[3] = "NONVOICE"
-__pld_R[4] = "彩野さんはしばらく考え込んだあと、僕の目を見ていった。"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = vms
-__pld_R[2] = 90
-__pld_R[3] = "AYA00110"
-__pld_R[4] = "【彩野】「直哉くん……他のカードを見せて貰っていい？」"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_pc = 64
-elseif __pld_pc == 64 then
-__pld_R[1] = vms
-__pld_R[2] = 91
-__pld_R[3] = "NONVOICE"
-__pld_R[4] = "どうやら渡すべきカードはこれでは無いようだ。"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = systemConfig
-__pld_R[1] = __pld_R[1]["setConfigButton"]
-__pld_R[1]()
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({[0]=__pld_R[0]})
-__pld_R[0].v["mesNG"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0] = systemConfig
-__pld_R[0] = __pld_R[0]["unsetConfigButton"]
-__pld_R[0]()
-__pld_R[0] = comPoseLoad
-__pld_R[1] = "po2_aya_f_1_a"
-__pld_R[0](__pld_R[1])
-__pld_R[0] = __pld_U[0].v
-__pld_R[0] = __pld_R[0]["cardNgAnim"]
-__pld_R[0]()
-__pld_R[0] = comPoseLoad
-__pld_R[1] = "po2_aya_f_2_e"
-__pld_R[0](__pld_R[1])
-__pld_R[0] = math
-__pld_R[0] = __pld_R[0]["random"]
-__pld_R[1] = 1
-__pld_R[2] = 3
-__pld_R[0] = __pld_R[0](__pld_R[1], __pld_R[2])
-if not (__pld_R[0] == 1) then __pld_pc = 19 else __pld_pc = 20 end
-elseif __pld_pc == 19 then
-__pld_pc = 30
-elseif __pld_pc == 20 then
-__pld_R[1] = vms
-__pld_R[2] = 92
-__pld_R[3] = "AYA00120"
-__pld_R[4] = "【彩野】「やっぱり……。浮かばないみたい。ごめんなさい」"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = vms
-__pld_R[2] = 93
-__pld_R[3] = "NONVOICE"
-__pld_R[4] = "彩野さんはうつむきがちに言った。"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_pc = 30
-elseif __pld_pc == 30 then
-if not (__pld_R[0] == 2) then __pld_pc = 31 else __pld_pc = 32 end
-elseif __pld_pc == 31 then
-__pld_pc = 42
-elseif __pld_pc == 32 then
-__pld_R[1] = vms
-__pld_R[2] = 94
-__pld_R[3] = "AYA00130"
-__pld_R[4] = "【彩野】「ごめんなさい……考えがまとまらなくて」"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = vms
-__pld_R[2] = 95
-__pld_R[3] = "NONVOICE"
-__pld_R[4] = "彩野さんは目を伏せていった。"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_pc = 42
-elseif __pld_pc == 42 then
-if not (__pld_R[0] == 3) then __pld_pc = 43 else __pld_pc = 44 end
-elseif __pld_pc == 43 then
-__pld_pc = 54
-elseif __pld_pc == 44 then
-__pld_R[1] = vms
-__pld_R[2] = 96
-__pld_R[3] = "AYA00140"
-__pld_R[4] = "【彩野】「ごめんなさい……このカードはイメージしてたのとは違う感じがする」"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = vms
-__pld_R[2] = 97
-__pld_R[3] = "NONVOICE"
-__pld_R[4] = "彩野さんはカードをそっと元の場所に戻した。"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_pc = 54
-elseif __pld_pc == 54 then
-__pld_R[1] = vms
-__pld_R[2] = 98
-__pld_R[3] = "NONVOICE"
-__pld_R[4] = "……違うカードを渡してみよう。"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = systemConfig
-__pld_R[1] = __pld_R[1]["setConfigButton"]
-__pld_R[1]()
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({[0]=__pld_R[0]})
-__pld_R[0].v["mesNG2"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0] = math
-__pld_R[0] = __pld_R[0]["random"]
-__pld_R[1] = 1
-__pld_R[2] = 3
-__pld_R[0] = __pld_R[0](__pld_R[1], __pld_R[2])
-if not (__pld_R[0] == 1) then __pld_pc = 7 else __pld_pc = 8 end
-elseif __pld_pc == 7 then
-__pld_pc = 13
-elseif __pld_pc == 8 then
-__pld_R[1] = vms
-__pld_R[2] = 99
-__pld_R[3] = "AYA00150"
-__pld_R[4] = "【彩野】「ありがとう」"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_pc = 13
-elseif __pld_pc == 13 then
-if not (__pld_R[0] == 2) then __pld_pc = 14 else __pld_pc = 15 end
-elseif __pld_pc == 14 then
-__pld_pc = 20
-elseif __pld_pc == 15 then
-__pld_R[1] = vms
-__pld_R[2] = 100
-__pld_R[3] = "AYA00160"
-__pld_R[4] = "【彩野】「ありがとう、直哉くん」"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_pc = 20
-elseif __pld_pc == 20 then
-if not (__pld_R[0] == 3) then __pld_pc = 21 else __pld_pc = 22 end
-elseif __pld_pc == 21 then
-__pld_pc = 27
-elseif __pld_pc == 22 then
-__pld_R[1] = vms
-__pld_R[2] = 101
-__pld_R[3] = "AYA00170"
-__pld_R[4] = "【彩野】「ありがとう」"
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_pc = 27
-elseif __pld_pc == 27 then
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({})
-__pld_R[0].v["mesAnswer"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0] = vms
-__pld_R[1] = 102
-__pld_R[2] = "NONVOICE"
-__pld_R[3] = "○このあらすじより『前の場面のあらすじ』が作成されていません。_rあらすじは物語の先頭から順番に作成する必要があります。"
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = wait
-__pld_R[1] = 5
-__pld_R[0](__pld_R[1])
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({})
-__pld_R[0].v["mesNotStoryLine"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0] = vms
-__pld_R[1] = 103
-__pld_R[2] = "NONVOICE"
-__pld_R[3] = "カード選択を中止しました。"
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = wait
-__pld_R[1] = 5
-__pld_R[0](__pld_R[1])
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({})
-__pld_R[0].v["cancelCard"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0] = systemConfig
-__pld_R[0] = __pld_R[0]["unsetConfigButton"]
-__pld_R[0]()
-__pld_R[0] = comPoseLoad
-__pld_R[1] = "po2_aya_f_1_a"
-__pld_R[0](__pld_R[1])
-__pld_R[0] = wait
-__pld_R[1] = 1
-__pld_R[0](__pld_R[1])
-__pld_R[0] = layerCopy
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose4"]
-__pld_R[2] = layerName
-__pld_R[2] = __pld_R[2]["bg_1_a_0"]
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerCopy
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = layerName
-__pld_R[2] = __pld_R[2]["effectWhite"]
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerVisible
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose4"]
-__pld_R[2] = false
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerVisible
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = false
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = wait
-__pld_R[1] = 1
-__pld_R[0](__pld_R[1])
-__pld_R[0] = keyPlaySE
-__pld_R[1] = seName
-__pld_R[1] = __pld_R[1]["viewCard"]
-__pld_R[0](__pld_R[1])
-__pld_R[0] = layerVisible
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = true
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerBlend
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = "ADD"
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerScale
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 100
-__pld_R[3] = 100
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = layerRotate
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[3] = 0
-__pld_R[4] = 0
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[0] = layerMoveAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 80
-__pld_R[3] = 30
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = layerMoveScale
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[3] = 0
-__pld_R[4] = 30
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[0] = layerMoveRotate
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[3] = 0
-__pld_R[4] = 100
-__pld_R[5] = 30
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3], __pld_R[4], __pld_R[5])
-__pld_R[0] = wait
-__pld_R[1] = 90
-__pld_R[0](__pld_R[1])
-__pld_R[0] = keyPlaySE
-__pld_R[1] = seName
-__pld_R[1] = __pld_R[1]["arrowKey"]
-__pld_R[0](__pld_R[1])
-__pld_R[0] = layerScale
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 100
-__pld_R[3] = 100
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = layerRotate
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[3] = 0
-__pld_R[4] = 0
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[0] = layerAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 5
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerMoveAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[3] = 60
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = wait
-__pld_R[1] = 60
-__pld_R[0](__pld_R[1])
-__pld_R[0] = keyPlaySE
-__pld_R[1] = seName
-__pld_R[1] = __pld_R[1]["arrowKey"]
-__pld_R[0](__pld_R[1])
-__pld_R[0] = layerAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 10
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerMoveAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[3] = 60
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = wait
-__pld_R[1] = 60
-__pld_R[0](__pld_R[1])
-__pld_R[0] = keyPlaySE
-__pld_R[1] = seName
-__pld_R[1] = __pld_R[1]["getCard"]
-__pld_R[0](__pld_R[1])
-__pld_R[0] = layerVisible
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose4"]
-__pld_R[2] = true
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerVisible
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = true
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerScale
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose4"]
-__pld_R[2] = 100
-__pld_R[3] = 100
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = layerAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose4"]
-__pld_R[2] = 100
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 80
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerMoveScale
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose4"]
-__pld_R[2] = 110
-__pld_R[3] = 110
-__pld_R[4] = 50
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[0] = layerMoveAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose4"]
-__pld_R[2] = 0
-__pld_R[3] = 50
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = layerMoveAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[3] = 30
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = wait
-__pld_R[1] = 60
-__pld_R[0](__pld_R[1])
-__pld_R[0] = layerLoad
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose4"]
-__pld_R[2] = ""
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerLoad
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = ""
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = switchScreen
-__pld_R[1] = 0
-__pld_R[2] = ""
-__pld_R[3] = 1
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = wait
-__pld_R[1] = 1
-__pld_R[0](__pld_R[1])
-__pld_R[0] = systemConfig
-__pld_R[0] = __pld_R[0]["setConfigButton"]
-__pld_R[0]()
-__pld_R[0] = comPoseLoad
-__pld_R[1] = "po2_aya_f_1_b"
-__pld_R[0](__pld_R[1])
-__pld_R[0] = __pld_U[0].v
-__pld_R[0] = __pld_R[0]["mesAnswer"]
-__pld_R[0]()
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({[0]=__pld_R[0]})
-__pld_R[0].v["cardAnswerTrue"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0] = systemConfig
-__pld_R[0] = __pld_R[0]["unsetConfigButton"]
-__pld_R[0]()
-__pld_R[0] = comPoseLoad
-__pld_R[1] = "po2_aya_f_1_a"
-__pld_R[0](__pld_R[1])
-__pld_R[0] = wait
-__pld_R[1] = 1
-__pld_R[0](__pld_R[1])
-__pld_R[0] = layerCopy
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose4"]
-__pld_R[2] = layerName
-__pld_R[2] = __pld_R[2]["bg_1_a_0"]
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerCopy
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = layerName
-__pld_R[2] = __pld_R[2]["effectWhite"]
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerVisible
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose4"]
-__pld_R[2] = false
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerVisible
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = false
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = wait
-__pld_R[1] = 1
-__pld_R[0](__pld_R[1])
-__pld_R[0] = keyPlaySE
-__pld_R[1] = seName
-__pld_R[1] = __pld_R[1]["viewCard"]
-__pld_R[0](__pld_R[1])
-__pld_R[0] = layerVisible
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = true
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerBlend
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = "ADD"
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerScale
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 100
-__pld_R[3] = 100
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = layerRotate
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[3] = 0
-__pld_R[4] = 0
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[0] = layerMoveAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 80
-__pld_R[3] = 30
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = layerMoveScale
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[3] = 0
-__pld_R[4] = 30
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[0] = layerMoveRotate
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[3] = 0
-__pld_R[4] = 100
-__pld_R[5] = 30
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3], __pld_R[4], __pld_R[5])
-__pld_R[0] = wait
-__pld_R[1] = 90
-__pld_R[0](__pld_R[1])
-__pld_R[0] = keyPlaySE
-__pld_R[1] = seName
-__pld_R[1] = __pld_R[1]["arrowKey"]
-__pld_R[0](__pld_R[1])
-__pld_R[0] = layerScale
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 100
-__pld_R[3] = 100
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = layerRotate
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[3] = 0
-__pld_R[4] = 0
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[0] = layerAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 5
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerMoveAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[3] = 60
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = wait
-__pld_R[1] = 60
-__pld_R[0](__pld_R[1])
-__pld_R[0] = keyPlaySE
-__pld_R[1] = seName
-__pld_R[1] = __pld_R[1]["arrowKey"]
-__pld_R[0](__pld_R[1])
-__pld_R[0] = layerAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 10
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerMoveAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[3] = 60
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = wait
-__pld_R[1] = 60
-__pld_R[0](__pld_R[1])
-__pld_R[0] = keyPlaySE
-__pld_R[1] = seName
-__pld_R[1] = __pld_R[1]["getCard"]
-__pld_R[0](__pld_R[1])
-__pld_R[0] = layerVisible
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose4"]
-__pld_R[2] = true
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerVisible
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = true
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerScale
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose4"]
-__pld_R[2] = 100
-__pld_R[3] = 100
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = layerAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose4"]
-__pld_R[2] = 100
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 80
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerMoveScale
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose4"]
-__pld_R[2] = 110
-__pld_R[3] = 110
-__pld_R[4] = 50
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[0] = layerMoveAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose4"]
-__pld_R[2] = 0
-__pld_R[3] = 50
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = layerMoveAlpha
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = 0
-__pld_R[3] = 30
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = wait
-__pld_R[1] = 60
-__pld_R[0](__pld_R[1])
-__pld_R[0] = layerLoad
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose4"]
-__pld_R[2] = ""
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerLoad
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["pose5"]
-__pld_R[2] = ""
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = switchScreen
-__pld_R[1] = 0
-__pld_R[2] = ""
-__pld_R[3] = 1
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = wait
-__pld_R[1] = 1
-__pld_R[0](__pld_R[1])
-__pld_R[0] = systemConfig
-__pld_R[0] = __pld_R[0]["setConfigButton"]
-__pld_R[0]()
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({})
-__pld_R[0].v["cardAnswerNonvoiceTrue"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0] = ""
-__pld_R[1] = nowPlayBgmFileName
-if __pld_R[1] == "" then __pld_pc = 4 else __pld_pc = 5 end
-elseif __pld_pc == 4 then
-__pld_pc = 6
-elseif __pld_pc == 5 then
-__pld_R[0] = nowPlayBgmFileName
-__pld_pc = 6
-elseif __pld_pc == 6 then
-__pld_R[1] = cStopBGMWrap
-__pld_R[2] = 0
-__pld_R[1](__pld_R[2])
-__pld_R[1] = wait
-__pld_R[2] = 60
-__pld_R[1](__pld_R[2])
-__pld_R[1] = cPlayOneshotMusic
-__pld_R[2] = cGetFileName
-__pld_R[3] = "mus"
-__pld_R[4] = "mus_1"
-do 
-local __pld_rs = __pld_pack(__pld_R[2](__pld_R[3], __pld_R[4]))
-for __pld_i = 1, __pld_rs.n do __pld_set(__pld_R, __pld_B, 2 + __pld_i - 1, __pld_rs[__pld_i]) end
-__pld_top = 2 + __pld_rs.n end
-do local __pld_t, __pld_n = {}, __pld_top - 2 for __pld_i = 1, __pld_n do __pld_t[__pld_i] = __pld_get(__pld_R, __pld_B, 2 + __pld_i - 1) end __pld_R[1](__pld_unpack(__pld_t, 1, __pld_n)) end
-__pld_R[1] = comEffectYellowIn
-__pld_R[2] = 120
-__pld_R[1](__pld_R[2])
-__pld_R[1] = wait
-__pld_R[2] = 260
-__pld_R[1](__pld_R[2])
-if __pld_R[0] == "" then __pld_pc = 25 else __pld_pc = 26 end
-elseif __pld_pc == 25 then
-__pld_pc = 29
-elseif __pld_pc == 26 then
-__pld_R[1] = cPlayBGMWrap
-__pld_R[2] = __pld_R[0]
-__pld_R[1](__pld_R[2])
-__pld_pc = 29
-elseif __pld_pc == 29 then
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({})
-__pld_R[0].v["viewAnswer"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0] = advPart
-__pld_R[1] = false
-__pld_R[0](__pld_R[1])
-__pld_R[0] = wait
-__pld_R[1] = 1
-__pld_R[0](__pld_R[1])
-__pld_R[0] = pageScreen
-__pld_R[1] = 1
-__pld_R[0](__pld_R[1])
-__pld_R[0] = __pld_U[0].v
-__pld_R[0] = __pld_R[0]["cardModeInit"]
-__pld_R[0]()
-__pld_R[0] = myCardMax
-__pld_R[0] = __pld_R[0] + 1
-__pld_R[1] = myCardMax
-__pld_R[1] = __pld_R[1] + 2
-__pld_R[2] = __pld_U[0].v
-__pld_R[2] = __pld_R[2]["cardModeSet"]
-__pld_R[3] = __pld_R[0]
-__pld_R[4] = __pld_R[1]
-__pld_R[2] = __pld_R[2](__pld_R[3], __pld_R[4])
-__pld_R[3] = __pld_U[0].v
-__pld_R[3] = __pld_R[3]["cardModeSelect"]
-__pld_R[4] = __pld_R[2]
-__pld_R[5] = __pld_R[0]
-__pld_R[6] = __pld_R[1]
-__pld_R[7] = 0
-__pld_R[3] = __pld_R[3](__pld_R[4], __pld_R[5], __pld_R[6], __pld_R[7])
-__pld_R[4] = __pld_U[0].v
-__pld_R[4] = __pld_R[4]["cardModeExit"]
-__pld_R[4]()
-__pld_R[4] = pageScreen
-__pld_R[5] = 0
-__pld_R[4](__pld_R[5])
-__pld_R[4] = wait
-__pld_R[5] = 1
-__pld_R[4](__pld_R[5])
-__pld_R[4] = advPart
-__pld_R[5] = true
-__pld_R[4](__pld_R[5])
-if not (__pld_R[3] == (-1)) then __pld_pc = 42 else __pld_pc = 43 end
-elseif __pld_pc == 42 then
-__pld_pc = 45
-elseif __pld_pc == 43 then
-return __pld_R[3]
-elseif __pld_pc == 44 then
-__pld_pc = 48
-elseif __pld_pc == 45 then
-__pld_R[4] = __pld_R[2][__pld_R[3]]
-__pld_R[4] = __pld_R[4]["cid"]
-return __pld_R[4]
-elseif __pld_pc == 48 then
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({[0]=__pld_R[0]})
-__pld_R[0].v["selectCardObj"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0] = advPart
-__pld_R[1] = false
-__pld_R[0](__pld_R[1])
-__pld_R[0] = wait
-__pld_R[1] = 1
-__pld_R[0](__pld_R[1])
-__pld_R[0] = pageScreen
-__pld_R[1] = 1
-__pld_R[0](__pld_R[1])
-__pld_R[0] = __pld_U[0].v
-__pld_R[0] = __pld_R[0]["cardModeNotCancelInit"]
-__pld_R[0]()
-__pld_R[0] = myCardMax
-__pld_R[0] = __pld_R[0] + 1
-__pld_R[1] = myCardMax
-__pld_R[1] = __pld_R[1] + 2
-__pld_R[2] = __pld_U[0].v
-__pld_R[2] = __pld_R[2]["cardModeSet"]
-__pld_R[3] = __pld_R[0]
-__pld_R[4] = __pld_R[1]
-__pld_R[2] = __pld_R[2](__pld_R[3], __pld_R[4])
-__pld_R[3] = __pld_U[0].v
-__pld_R[3] = __pld_R[3]["cardModeSelect"]
-__pld_R[4] = __pld_R[2]
-__pld_R[5] = __pld_R[0]
-__pld_R[6] = __pld_R[1]
-__pld_R[7] = 2
-__pld_R[3] = __pld_R[3](__pld_R[4], __pld_R[5], __pld_R[6], __pld_R[7])
-__pld_R[4] = __pld_U[0].v
-__pld_R[4] = __pld_R[4]["cardModeExit"]
-__pld_R[4]()
-__pld_R[4] = pageScreen
-__pld_R[5] = 0
-__pld_R[4](__pld_R[5])
-__pld_R[4] = wait
-__pld_R[5] = 1
-__pld_R[4](__pld_R[5])
-__pld_R[4] = advPart
-__pld_R[5] = true
-__pld_R[4](__pld_R[5])
-if not (__pld_R[3] == (-1)) then __pld_pc = 42 else __pld_pc = 43 end
-elseif __pld_pc == 42 then
-__pld_pc = 45
-elseif __pld_pc == 43 then
-return __pld_R[3]
-elseif __pld_pc == 44 then
-__pld_pc = 48
-elseif __pld_pc == 45 then
-__pld_R[4] = __pld_R[2][__pld_R[3]]
-__pld_R[4] = __pld_R[4]["cid"]
-return __pld_R[4]
-elseif __pld_pc == 48 then
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({[0]=__pld_R[0]})
-__pld_R[0].v["selectCardNotCancelObj"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0] = pageScreen
-__pld_R[1] = 1
-__pld_R[0](__pld_R[1])
-__pld_R[0] = __pld_U[0].v
-__pld_R[0] = __pld_R[0]["cardModeInit"]
-__pld_R[0]()
-__pld_R[0] = myCardMax
-__pld_R[0] = __pld_R[0] + 1
-__pld_R[1] = myCardMax
-__pld_R[1] = __pld_R[1] + 2
-__pld_R[2] = __pld_U[0].v
-__pld_R[2] = __pld_R[2]["cardModeSet"]
-__pld_R[3] = __pld_R[0]
-__pld_R[4] = __pld_R[1]
-__pld_R[2] = __pld_R[2](__pld_R[3], __pld_R[4])
-__pld_R[3] = __pld_U[0].v
-__pld_R[3] = __pld_R[3]["cardModeSelect"]
-__pld_R[4] = __pld_R[2]
-__pld_R[5] = __pld_R[0]
-__pld_R[6] = __pld_R[1]
-__pld_R[7] = 1
-__pld_R[3](__pld_R[4], __pld_R[5], __pld_R[6], __pld_R[7])
-__pld_R[3] = __pld_U[0].v
-__pld_R[3] = __pld_R[3]["cardModeExit"]
-__pld_R[3]()
-__pld_R[3] = pageScreen
-__pld_R[4] = 0
-__pld_R[3](__pld_R[4])
-__pld_R[3] = wait
-__pld_R[4] = 1
-__pld_R[3](__pld_R[4])
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({[0]=__pld_R[0]})
-__pld_R[0].v["checkCard"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function(__pld_p0, __pld_p1, __pld_p2)
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-__pld_R[0] = __pld_p0
-__pld_R[1] = __pld_p1
-__pld_R[2] = __pld_p2
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[3] = plotTitle
-__pld_R[3] = __pld_R[3][__pld_R[0]]
-__pld_R[4] = cardIDFlag
-if not (__pld_R[4] == true) then __pld_pc = 5 else __pld_pc = 6 end
-elseif __pld_pc == 5 then
-__pld_pc = 11
-elseif __pld_pc == 6 then
-__pld_R[4] = "（"
-__pld_R[5] = __pld_R[0]
-__pld_R[6] = "）"
-__pld_R[7] = __pld_R[3]
-__pld_R[3] = __pld_R[4] .. __pld_R[5] .. __pld_R[6] .. __pld_R[7]
-__pld_pc = 11
-elseif __pld_pc == 11 then
-__pld_R[4] = string
-__pld_R[4] = __pld_R[4]["gsub"]
-__pld_R[5] = __pld_R[3]
-__pld_R[6] = "\010"
-__pld_R[7] = ""
-__pld_R[4] = __pld_R[4](__pld_R[5], __pld_R[6], __pld_R[7])
-__pld_R[3] = __pld_R[4]
-__pld_R[4] = cfontPrint
-__pld_R[5] = 0
-__pld_R[6] = __pld_R[1]
-__pld_R[7] = __pld_R[2]
-__pld_R[8] = 16777215
-__pld_R[9] = 6684672
-__pld_R[10] = __pld_R[3]
-__pld_R[4](__pld_R[5], __pld_R[6], __pld_R[7], __pld_R[8], __pld_R[9], __pld_R[10])
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({})
-__pld_R[0].v["drawSceneName"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0] = wait
-__pld_R[1] = 1
-__pld_R[0](__pld_R[1])
-__pld_R[0] = fontClear
-__pld_R[0]()
-__pld_R[0] = layerCopy
-__pld_R[1] = 0
-__pld_R[2] = backLayerName
-__pld_R[2] = __pld_R[2]["sys_11_a"]
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerAlpha
-__pld_R[1] = 0
-__pld_R[2] = 0
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = myCardMax
-__pld_R[0] = __pld_R[0] + 3
-__pld_R[1] = layerCopy
-__pld_R[2] = __pld_R[0]
-__pld_R[3] = backLayerName
-__pld_R[3] = __pld_R[3]["sys_11_e"]
-__pld_R[1](__pld_R[2], __pld_R[3])
-__pld_R[1] = layerPosition
-__pld_R[2] = __pld_R[0]
-__pld_R[3] = 412
-__pld_R[4] = 253
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = layerAlpha
-__pld_R[2] = __pld_R[0]
-__pld_R[3] = 0
-__pld_R[1](__pld_R[2], __pld_R[3])
-__pld_R[1] = layerMoveAlpha
-__pld_R[2] = 0
-__pld_R[3] = 100
-__pld_R[4] = 20
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = layerMoveAlpha
-__pld_R[2] = __pld_R[0]
-__pld_R[3] = 100
-__pld_R[4] = 20
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = wait
-__pld_R[2] = 20
-__pld_R[1](__pld_R[2])
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({})
-__pld_R[0].v["cardModeInit"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0] = wait
-__pld_R[1] = 1
-__pld_R[0](__pld_R[1])
-__pld_R[0] = fontClear
-__pld_R[0]()
-__pld_R[0] = layerCopy
-__pld_R[1] = 0
-__pld_R[2] = backLayerName
-__pld_R[2] = __pld_R[2]["sys_11_a"]
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerAlpha
-__pld_R[1] = 0
-__pld_R[2] = 0
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = layerMoveAlpha
-__pld_R[1] = 0
-__pld_R[2] = 100
-__pld_R[3] = 20
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = wait
-__pld_R[1] = 20
-__pld_R[0](__pld_R[1])
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({})
-__pld_R[0].v["cardModeNotCancelInit"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0] = 0
-__pld_R[1] = 200
-__pld_R[2] = 1
-do
-local __pld_i = __pld_tonumber(__pld_R[0]) if __pld_i == nil then __pld_error("'for' initial value must be a number") end
-local __pld_l = __pld_tonumber(__pld_R[1]) if __pld_l == nil then __pld_error("'for' limit must be a number") end
-local __pld_s = __pld_tonumber(__pld_R[2]) if __pld_s == nil then __pld_error("'for' step must be a number") end
-__pld_R[0] = __pld_i - __pld_s __pld_R[1] = __pld_l __pld_R[2] = __pld_s
-end
-__pld_pc = 10
-elseif __pld_pc == 5 then
-__pld_R[4] = layerMoveAlpha
-__pld_R[5] = __pld_R[3]
-__pld_R[6] = 0
-__pld_R[7] = 60
-__pld_R[4](__pld_R[5], __pld_R[6], __pld_R[7])
-__pld_pc = 10
-elseif __pld_pc == 10 then
-do local __pld_s = __pld_R[2] local __pld_i = __pld_R[0] + __pld_s
-if (__pld_s > 0 and __pld_i <= __pld_R[1]) or (__pld_s <= 0 and __pld_i >= __pld_R[1]) then
-__pld_R[0] = __pld_i __pld_R[3] = __pld_i __pld_pc = 5
-else __pld_pc = 11 end end
-elseif __pld_pc == 11 then
-__pld_R[0] = wait
-__pld_R[1] = 60
-__pld_R[0](__pld_R[1])
-__pld_R[0] = fontClear
-__pld_R[0]()
-__pld_R[0] = 0
-__pld_R[1] = 200
-__pld_R[2] = 1
-do
-local __pld_i = __pld_tonumber(__pld_R[0]) if __pld_i == nil then __pld_error("'for' initial value must be a number") end
-local __pld_l = __pld_tonumber(__pld_R[1]) if __pld_l == nil then __pld_error("'for' limit must be a number") end
-local __pld_s = __pld_tonumber(__pld_R[2]) if __pld_s == nil then __pld_error("'for' step must be a number") end
-__pld_R[0] = __pld_i - __pld_s __pld_R[1] = __pld_l __pld_R[2] = __pld_s
-end
-__pld_pc = 24
-elseif __pld_pc == 20 then
-__pld_R[4] = layerLoad
-__pld_R[5] = __pld_R[3]
-__pld_R[6] = ""
-__pld_R[4](__pld_R[5], __pld_R[6])
-__pld_pc = 24
-elseif __pld_pc == 24 then
-do local __pld_s = __pld_R[2] local __pld_i = __pld_R[0] + __pld_s
-if (__pld_s > 0 and __pld_i <= __pld_R[1]) or (__pld_s <= 0 and __pld_i >= __pld_R[1]) then
-__pld_R[0] = __pld_i __pld_R[3] = __pld_i __pld_pc = 20
-else __pld_pc = 25 end end
-elseif __pld_pc == 25 then
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({})
-__pld_R[0].v["cardModeExit"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function(__pld_p0, __pld_p1, __pld_p2, __pld_p3)
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-__pld_R[0] = __pld_p0
-__pld_R[1] = __pld_p1
-__pld_R[2] = __pld_p2
-__pld_R[3] = __pld_p3
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[4] = __pld_U[0].v
-__pld_R[5] = __pld_U[1].v
-__pld_R[5] = __pld_R[5] * 15
-__pld_R[4] = __pld_R[4] + __pld_R[5]
-__pld_R[5] = __pld_U[0].v
-__pld_R[6] = __pld_U[1].v
-__pld_R[7] = __pld_R[4]
-__pld_R[8] = false
-__pld_R[9] = false
-__pld_R[10] = 0
-__pld_R[11] = 260
-__pld_R[12] = 1
-__pld_R[13] = 1
-__pld_pc = 14
-elseif __pld_pc == 14 then
-if not (__pld_R[8] == false) then __pld_pc = 15 else __pld_pc = 16 end
-elseif __pld_pc == 15 then
-__pld_pc = 129
-elseif __pld_pc == 16 then
-if __pld_R[3] == 2 then __pld_pc = 17 else __pld_pc = 18 end
-elseif __pld_pc == 17 then
-__pld_pc = 33
-elseif __pld_pc == 18 then
-__pld_R[14] = pressButton
-__pld_R[15] = "CROSS"
-__pld_R[14] = __pld_R[14](__pld_R[15])
-if not (__pld_R[14] == true) then __pld_pc = 22 else __pld_pc = 23 end
-elseif __pld_pc == 22 then
-__pld_pc = 32
-elseif __pld_pc == 23 then
-if not (__pld_R[13] == 0) then __pld_pc = 24 else __pld_pc = 25 end
-elseif __pld_pc == 24 then
-__pld_pc = 33
-elseif __pld_pc == 25 then
-__pld_R[14] = keyPlaySE
-__pld_R[15] = seName
-__pld_R[15] = __pld_R[15]["cross"]
-__pld_R[14](__pld_R[15])
-__pld_R[4] = (-1)
-__pld_pc = 340
-elseif __pld_pc == 31 then
-__pld_pc = 33
-elseif __pld_pc == 32 then
-__pld_R[13] = 0
-__pld_pc = 33
-elseif __pld_pc == 33 then
-__pld_R[14] = __pld_U[0].v
-if __pld_R[5] == __pld_R[14] then __pld_pc = 35 else __pld_pc = 36 end
-elseif __pld_pc == 35 then
-__pld_pc = 37
-elseif __pld_pc == 36 then
-__pld_R[5] = __pld_U[0].v
-__pld_pc = 37
-elseif __pld_pc == 37 then
-__pld_R[14] = __pld_U[1].v
-if __pld_R[6] == __pld_R[14] then __pld_pc = 39 else __pld_pc = 40 end
-elseif __pld_pc == 39 then
-__pld_pc = 41
-elseif __pld_pc == 40 then
-__pld_R[6] = __pld_U[1].v
-__pld_pc = 41
-elseif __pld_pc == 41 then
-__pld_R[14] = pressButton
-__pld_R[15] = "RIGHT"
-__pld_R[14] = __pld_R[14](__pld_R[15])
-if not (__pld_R[14] == true) then __pld_pc = 45 else __pld_pc = 46 end
-elseif __pld_pc == 45 then
-__pld_pc = 50
-elseif __pld_pc == 46 then
-__pld_R[14] = __pld_U[0].v
-__pld_R[14] = __pld_R[14] + 1
-__pld_U[0].v = __pld_R[14]
-__pld_R[8] = true
-__pld_pc = 50
-elseif __pld_pc == 50 then
-__pld_R[14] = pressButton
-__pld_R[15] = "LEFT"
-__pld_R[14] = __pld_R[14](__pld_R[15])
-if not (__pld_R[14] == true) then __pld_pc = 54 else __pld_pc = 55 end
-elseif __pld_pc == 54 then
-__pld_pc = 59
-elseif __pld_pc == 55 then
-__pld_R[14] = __pld_U[0].v
-__pld_R[14] = __pld_R[14] - 1
-__pld_U[0].v = __pld_R[14]
-__pld_R[8] = true
-__pld_pc = 59
-elseif __pld_pc == 59 then
-__pld_R[14] = pressButton
-__pld_R[15] = "DOWN"
-__pld_R[14] = __pld_R[14](__pld_R[15])
-if not (__pld_R[14] == true) then __pld_pc = 63 else __pld_pc = 64 end
-elseif __pld_pc == 63 then
-__pld_pc = 68
-elseif __pld_pc == 64 then
-__pld_R[14] = __pld_U[1].v
-__pld_R[14] = __pld_R[14] + 1
-__pld_U[1].v = __pld_R[14]
-__pld_R[8] = true
-__pld_pc = 68
-elseif __pld_pc == 68 then
-__pld_R[14] = pressButton
-__pld_R[15] = "UP"
-__pld_R[14] = __pld_R[14](__pld_R[15])
-if not (__pld_R[14] == true) then __pld_pc = 72 else __pld_pc = 73 end
-elseif __pld_pc == 72 then
-__pld_pc = 77
-elseif __pld_pc == 73 then
-__pld_R[14] = __pld_U[1].v
-__pld_R[14] = __pld_R[14] - 1
-__pld_U[1].v = __pld_R[14]
-__pld_R[8] = true
-__pld_pc = 77
-elseif __pld_pc == 77 then
-__pld_R[14] = __pld_U[0].v
-if not (15 < __pld_R[14]) then __pld_pc = 79 else __pld_pc = 80 end
-elseif __pld_pc == 79 then
-__pld_pc = 90
-elseif __pld_pc == 80 then
-__pld_R[14] = 1
-__pld_U[0].v = __pld_R[14]
-__pld_R[14] = __pld_U[1].v
-__pld_R[14] = __pld_R[14] + 1
-__pld_U[1].v = __pld_R[14]
-__pld_R[14] = __pld_U[1].v
-if not (12 < __pld_R[14]) then __pld_pc = 87 else __pld_pc = 88 end
-elseif __pld_pc == 87 then
-__pld_pc = 90
-elseif __pld_pc == 88 then
-__pld_R[14] = 0
-__pld_U[1].v = __pld_R[14]
-__pld_pc = 90
-elseif __pld_pc == 90 then
-__pld_R[14] = __pld_U[0].v
-if not (__pld_R[14] < 1) then __pld_pc = 92 else __pld_pc = 93 end
-elseif __pld_pc == 92 then
-__pld_pc = 103
-elseif __pld_pc == 93 then
-__pld_R[14] = 15
-__pld_U[0].v = __pld_R[14]
-__pld_R[14] = __pld_U[1].v
-__pld_R[14] = __pld_R[14] - 1
-__pld_U[1].v = __pld_R[14]
-__pld_R[14] = __pld_U[1].v
-if not (__pld_R[14] < 0) then __pld_pc = 100 else __pld_pc = 101 end
-elseif __pld_pc == 100 then
-__pld_pc = 103
-elseif __pld_pc == 101 then
-__pld_R[14] = 12
-__pld_U[1].v = __pld_R[14]
-__pld_pc = 103
-elseif __pld_pc == 103 then
-__pld_R[14] = __pld_U[1].v
-if not (12 < __pld_R[14]) then __pld_pc = 105 else __pld_pc = 106 end
-elseif __pld_pc == 105 then
-__pld_pc = 116
-elseif __pld_pc == 106 then
-__pld_R[14] = 0
-__pld_U[1].v = __pld_R[14]
-__pld_R[14] = __pld_U[0].v
-__pld_R[14] = __pld_R[14] + 1
-__pld_U[0].v = __pld_R[14]
-__pld_R[14] = __pld_U[0].v
-if not (15 < __pld_R[14]) then __pld_pc = 113 else __pld_pc = 114 end
-elseif __pld_pc == 113 then
-__pld_pc = 116
-elseif __pld_pc == 114 then
-__pld_R[14] = 1
-__pld_U[0].v = __pld_R[14]
-__pld_pc = 116
-elseif __pld_pc == 116 then
-__pld_R[14] = __pld_U[1].v
-if not (__pld_R[14] < 0) then __pld_pc = 118 else __pld_pc = 119 end
-elseif __pld_pc == 118 then
-__pld_pc = 129
-elseif __pld_pc == 119 then
-__pld_R[14] = 12
-__pld_U[1].v = __pld_R[14]
-__pld_R[14] = __pld_U[0].v
-__pld_R[14] = __pld_R[14] - 1
-__pld_U[0].v = __pld_R[14]
-__pld_R[14] = __pld_U[0].v
-if not (__pld_R[14] < 1) then __pld_pc = 126 else __pld_pc = 127 end
-elseif __pld_pc == 126 then
-__pld_pc = 129
-elseif __pld_pc == 127 then
-__pld_R[14] = 15
-__pld_U[0].v = __pld_R[14]
-__pld_pc = 129
-elseif __pld_pc == 129 then
-if not (__pld_R[8] == false) then __pld_pc = 130 else __pld_pc = 131 end
-elseif __pld_pc == 130 then
-__pld_pc = 177
-elseif __pld_pc == 131 then
-if __pld_R[3] == 1 then __pld_pc = 132 else __pld_pc = 133 end
-elseif __pld_pc == 132 then
-__pld_pc = 177
-elseif __pld_pc == 133 then
-__pld_R[14] = pressButton
-__pld_R[15] = "CIRCLE"
-__pld_R[14] = __pld_R[14](__pld_R[15])
-if not (__pld_R[14] == true) then __pld_pc = 137 else __pld_pc = 138 end
-elseif __pld_pc == 137 then
-__pld_pc = 176
-elseif __pld_pc == 138 then
-if not (__pld_R[12] == 0) then __pld_pc = 139 else __pld_pc = 140 end
-elseif __pld_pc == 139 then
-__pld_pc = 177
-elseif __pld_pc == 140 then
-__pld_R[14] = __pld_R[0][__pld_R[4]]
-__pld_R[14] = __pld_R[14]["visible"]
-if not (__pld_R[14] == true) then __pld_pc = 143 else __pld_pc = 144 end
-elseif __pld_pc == 143 then
-__pld_pc = 177
-elseif __pld_pc == 144 then
-__pld_R[14] = keyPlaySE
-__pld_R[15] = seName
-__pld_R[15] = __pld_R[15]["circle"]
-__pld_R[14](__pld_R[15])
-__pld_R[14] = layerVisible
-__pld_R[15] = __pld_R[1]
-__pld_R[16] = false
-__pld_R[14](__pld_R[15], __pld_R[16])
-__pld_R[14] = layerMovePosition
-__pld_R[15] = __pld_R[4]
-__pld_R[16] = 260
-__pld_R[17] = (-100)
-__pld_R[18] = 50
-__pld_R[14](__pld_R[15], __pld_R[16], __pld_R[17], __pld_R[18])
-__pld_R[14] = layerMoveRotate
-__pld_R[15] = __pld_R[4]
-__pld_R[16] = 0
-__pld_R[17] = (-100)
-__pld_R[18] = 360
-__pld_R[19] = 50
-__pld_R[14](__pld_R[15], __pld_R[16], __pld_R[17], __pld_R[18], __pld_R[19])
-__pld_R[14] = layerMoveScale
-__pld_R[15] = __pld_R[4]
-__pld_R[16] = 200
-__pld_R[17] = 200
-__pld_R[18] = 50
-__pld_R[14](__pld_R[15], __pld_R[16], __pld_R[17], __pld_R[18])
-__pld_R[14] = wait
-__pld_R[15] = 60
-__pld_R[14](__pld_R[15])
-__pld_pc = 340
-elseif __pld_pc == 175 then
-__pld_pc = 177
-elseif __pld_pc == 176 then
-__pld_R[12] = 0
-__pld_pc = 177
-elseif __pld_pc == 177 then
-if not (__pld_R[8] == true) then __pld_pc = 178 else __pld_pc = 179 end
-elseif __pld_pc == 178 then
-__pld_pc = 263
-elseif __pld_pc == 179 then
-__pld_R[14] = fontClear
-__pld_R[14]()
-__pld_R[14] = __pld_U[0].v
-__pld_R[15] = __pld_U[1].v
-__pld_R[15] = __pld_R[15] * 15
-__pld_R[4] = __pld_R[14] + __pld_R[15]
-__pld_R[14] = keyPlaySE
-__pld_R[15] = seName
-__pld_R[15] = __pld_R[15]["arrowKey"]
-__pld_R[14](__pld_R[15])
-__pld_R[14] = layerLoad
-__pld_R[15] = __pld_R[2]
-__pld_R[16] = ""
-__pld_R[14](__pld_R[15], __pld_R[16])
-__pld_R[10] = 0
-__pld_R[14] = __pld_R[0][__pld_R[4]]
-__pld_R[14] = __pld_R[14]["visible"]
-if not (__pld_R[14] == true) then __pld_pc = 197 else __pld_pc = 198 end
-elseif __pld_pc == 197 then
-__pld_pc = 223
-elseif __pld_pc == 198 then
-__pld_R[14] = __pld_U[2].v
-__pld_R[14] = __pld_R[14]["drawSceneName"]
-__pld_R[15] = __pld_R[0][__pld_R[4]]
-__pld_R[15] = __pld_R[15]["cid"]
-__pld_R[16] = 10
-__pld_R[17] = 253
-__pld_R[14](__pld_R[15], __pld_R[16], __pld_R[17])
-__pld_R[14] = layerCopy
-__pld_R[15] = __pld_R[4]
-__pld_R[16] = backLayerName
-__pld_R[16] = __pld_R[16]["sys_11_c"]
-__pld_R[14](__pld_R[15], __pld_R[16])
-__pld_R[14] = layerClip
-__pld_R[15] = __pld_R[4]
-__pld_R[16] = __pld_R[0][__pld_R[4]]
-__pld_R[16] = __pld_R[16]["x"]
-__pld_R[17] = __pld_R[0][__pld_R[4]]
-__pld_R[17] = __pld_R[17]["y"]
-__pld_R[18] = __pld_R[0][__pld_R[4]]
-__pld_R[18] = __pld_R[18]["x"]
-__pld_R[18] = __pld_R[18] + 26
-__pld_R[19] = __pld_R[0][__pld_R[4]]
-__pld_R[19] = __pld_R[19]["y"]
-__pld_R[19] = __pld_R[19] + 15
-__pld_R[14](__pld_R[15], __pld_R[16], __pld_R[17], __pld_R[18], __pld_R[19])
-__pld_pc = 223
-elseif __pld_pc == 223 then
-__pld_R[14] = __pld_R[6] * 15
-__pld_R[7] = __pld_R[5] + __pld_R[14]
-__pld_R[14] = layerCopy
-__pld_R[15] = __pld_R[7]
-__pld_R[16] = backLayerName
-__pld_R[16] = __pld_R[16]["sys_11_b"]
-__pld_R[14](__pld_R[15], __pld_R[16])
-__pld_R[14] = layerClip
-__pld_R[15] = __pld_R[7]
-__pld_R[16] = __pld_R[0][__pld_R[7]]
-__pld_R[16] = __pld_R[16]["x"]
-__pld_R[17] = __pld_R[0][__pld_R[7]]
-__pld_R[17] = __pld_R[17]["y"]
-__pld_R[18] = __pld_R[0][__pld_R[7]]
-__pld_R[18] = __pld_R[18]["x"]
-__pld_R[18] = __pld_R[18] + 26
-__pld_R[19] = __pld_R[0][__pld_R[7]]
-__pld_R[19] = __pld_R[19]["y"]
-__pld_R[19] = __pld_R[19] + 15
-__pld_R[14](__pld_R[15], __pld_R[16], __pld_R[17], __pld_R[18], __pld_R[19])
-__pld_R[14] = __pld_R[0][__pld_R[7]]
-__pld_R[14] = __pld_R[14]["visible"]
-if __pld_R[14] == true then __pld_pc = 246 else __pld_pc = 247 end
-elseif __pld_pc == 246 then
-__pld_pc = 251
-elseif __pld_pc == 247 then
-__pld_R[14] = layerVisible
-__pld_R[15] = __pld_R[7]
-__pld_R[16] = false
-__pld_R[14](__pld_R[15], __pld_R[16])
-__pld_pc = 251
-elseif __pld_pc == 251 then
-__pld_R[14] = layerPosition
-__pld_R[15] = __pld_R[1]
-__pld_R[16] = __pld_R[0][__pld_R[4]]
-__pld_R[16] = __pld_R[16]["x"]
-__pld_R[17] = __pld_R[0][__pld_R[4]]
-__pld_R[17] = __pld_R[17]["y"]
-__pld_R[17] = __pld_R[17] - 2
-__pld_R[14](__pld_R[15], __pld_R[16], __pld_R[17])
-__pld_R[14] = wait
-__pld_R[15] = 2
-__pld_R[14](__pld_R[15])
-__pld_R[8] = false
-__pld_pc = 263
-elseif __pld_pc == 263 then
-__pld_R[14] = __pld_R[0][__pld_R[4]]
-__pld_R[14] = __pld_R[14]["visible"]
-if not (__pld_R[14] == true) then __pld_pc = 266 else __pld_pc = 267 end
-elseif __pld_pc == 266 then
-__pld_pc = 288
-elseif __pld_pc == 267 then
-if not (__pld_R[10] <= 5) then __pld_pc = 268 else __pld_pc = 269 end
-elseif __pld_pc == 268 then
-__pld_pc = 288
-elseif __pld_pc == 269 then
-if not (5 <= __pld_R[10]) then __pld_pc = 270 else __pld_pc = 271 end
-elseif __pld_pc == 270 then
-__pld_pc = 281
-elseif __pld_pc == 271 then
-__pld_R[14] = layerLoadAsync
-__pld_R[15] = 1
-__pld_R[16] = __pld_R[2]
-__pld_R[17] = "card/crd_"
-__pld_R[18] = __pld_R[0][__pld_R[4]]
-__pld_R[18] = __pld_R[18]["cid"]
-__pld_R[19] = "_a.gim"
-__pld_R[17] = __pld_R[17] .. __pld_R[18] .. __pld_R[19]
-__pld_R[14](__pld_R[15], __pld_R[16], __pld_R[17])
-__pld_R[9] = true
-__pld_pc = 281
-elseif __pld_pc == 281 then
-__pld_R[14] = __pld_R[10] + 1
-if not (6 < __pld_R[14]) then __pld_pc = 283 else __pld_pc = 284 end
-elseif __pld_pc == 283 then
-__pld_pc = 287
-elseif __pld_pc == 284 then
-__pld_R[14] = 6
-do local __pld_t = __pld_R[14] if __pld_t then __pld_R[10] = __pld_t __pld_pc = 286 else __pld_pc = 287 end end
-elseif __pld_pc == 286 then
-__pld_pc = 288
-elseif __pld_pc == 287 then
-__pld_R[10] = __pld_R[10] + 1
-__pld_pc = 288
-elseif __pld_pc == 288 then
-if not (__pld_R[9] == true) then __pld_pc = 289 else __pld_pc = 290 end
-elseif __pld_pc == 289 then
-__pld_pc = 336
-elseif __pld_pc == 290 then
-__pld_R[14] = layerIsLoad
-__pld_R[15] = __pld_R[2]
-__pld_R[14] = __pld_R[14](__pld_R[15])
-if not (__pld_R[14] == true) then __pld_pc = 294 else __pld_pc = 295 end
-elseif __pld_pc == 294 then
-__pld_pc = 336
-elseif __pld_pc == 295 then
-__pld_R[14] = layerVisible
-__pld_R[15] = __pld_R[2]
-__pld_R[16] = true
-__pld_R[14](__pld_R[15], __pld_R[16])
-__pld_R[14] = __pld_R[0][__pld_R[4]]
-__pld_R[14] = __pld_R[14]["x"]
-if not (220 < __pld_R[14]) then __pld_pc = 302 else __pld_pc = 303 end
-elseif __pld_pc == 302 then
-__pld_pc = 315
-elseif __pld_pc == 303 then
-__pld_R[14] = layerPosition
-__pld_R[15] = __pld_R[2]
-__pld_R[16] = 10
-__pld_R[17] = 90
-__pld_R[14](__pld_R[15], __pld_R[16], __pld_R[17])
-__pld_R[14] = layerMovePosition
-__pld_R[15] = __pld_R[2]
-__pld_R[16] = 10
-__pld_R[17] = 100
-__pld_R[18] = 5
-__pld_R[14](__pld_R[15], __pld_R[16], __pld_R[17], __pld_R[18])
-__pld_pc = 326
-elseif __pld_pc == 315 then
-__pld_R[14] = layerPosition
-__pld_R[15] = __pld_R[2]
-__pld_R[16] = 260
-__pld_R[17] = 90
-__pld_R[14](__pld_R[15], __pld_R[16], __pld_R[17])
-__pld_R[14] = layerMovePosition
-__pld_R[15] = __pld_R[2]
-__pld_R[16] = 260
-__pld_R[17] = 100
-__pld_R[18] = 5
-__pld_R[14](__pld_R[15], __pld_R[16], __pld_R[17], __pld_R[18])
-__pld_pc = 326
-elseif __pld_pc == 326 then
-__pld_R[14] = layerAlpha
-__pld_R[15] = __pld_R[2]
-__pld_R[16] = 0
-__pld_R[14](__pld_R[15], __pld_R[16])
-__pld_R[14] = layerMoveAlpha
-__pld_R[15] = __pld_R[2]
-__pld_R[16] = 100
-__pld_R[17] = 5
-__pld_R[14](__pld_R[15], __pld_R[16], __pld_R[17])
-__pld_R[9] = false
-__pld_pc = 336
-elseif __pld_pc == 336 then
-__pld_R[14] = wait
-__pld_R[15] = 2
-__pld_R[14](__pld_R[15])
-__pld_pc = 14
-elseif __pld_pc == 340 then
-return __pld_R[4]
-elseif __pld_pc == 341 then
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({[0]=__pld_R[1], [1]=__pld_R[2], [2]=__pld_R[0]})
-__pld_R[0].v["cardModeSelect"] = __pld_R[3]
-__pld_R[3] = (function(__pld_U) return function(__pld_p0, __pld_p1)
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-__pld_R[0] = __pld_p0
-__pld_R[1] = __pld_p1
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[2] = __pld_U[0].v
-__pld_R[3] = __pld_U[1].v
-__pld_R[3] = __pld_R[3] * 15
-__pld_R[2] = __pld_R[2] + __pld_R[3]
-__pld_R[3] = {}
-__pld_R[4] = 1
-__pld_R[5] = 1
-__pld_R[6] = 1
-__pld_R[7] = myCardMax
-__pld_R[8] = 1
-do
-local __pld_i = __pld_tonumber(__pld_R[6]) if __pld_i == nil then __pld_error("'for' initial value must be a number") end
-local __pld_l = __pld_tonumber(__pld_R[7]) if __pld_l == nil then __pld_error("'for' limit must be a number") end
-local __pld_s = __pld_tonumber(__pld_R[8]) if __pld_s == nil then __pld_error("'for' step must be a number") end
-__pld_R[6] = __pld_i - __pld_s __pld_R[7] = __pld_l __pld_R[8] = __pld_s
-end
-__pld_pc = 92
-elseif __pld_pc == 12 then
-__pld_R[10] = 0
-if not (__pld_R[4] <= 5) then __pld_pc = 14 else __pld_pc = 15 end
-elseif __pld_pc == 14 then
-__pld_pc = 19
-elseif __pld_pc == 15 then
-__pld_R[11] = __pld_R[4] - 1
-__pld_R[11] = __pld_R[11] * 30
-__pld_R[10] = __pld_R[11] + 13
-__pld_pc = 28
-elseif __pld_pc == 19 then
-if not (__pld_R[4] <= 10) then __pld_pc = 20 else __pld_pc = 21 end
-elseif __pld_pc == 20 then
-__pld_pc = 25
-elseif __pld_pc == 21 then
-__pld_R[11] = __pld_R[4] - 1
-__pld_R[11] = __pld_R[11] * 30
-__pld_R[10] = __pld_R[11] + 17
-__pld_pc = 28
-elseif __pld_pc == 25 then
-__pld_R[11] = __pld_R[4] - 1
-__pld_R[11] = __pld_R[11] * 30
-__pld_R[10] = __pld_R[11] + 21
-__pld_pc = 28
-elseif __pld_pc == 28 then
-__pld_R[11] = true
-__pld_R[12] = cardSort
-__pld_R[12] = __pld_R[12][__pld_R[9]]
-__pld_R[12] = __pld_R[12][1]
-__pld_R[13] = gameSave
-__pld_R[13] = __pld_R[13]["myCard"]
-__pld_R[13] = __pld_R[13][__pld_R[12]]
-__pld_R[13] = __pld_R[13]["hold"]
-if not (__pld_R[13] == (-1)) then __pld_pc = 37 else __pld_pc = 38 end
-elseif __pld_pc == 37 then
-__pld_pc = 39
-elseif __pld_pc == 38 then
-__pld_R[11] = false
-__pld_pc = 39
-elseif __pld_pc == 39 then
-__pld_R[13] = {}
-__pld_R[13]["x"] = __pld_R[10]
-__pld_R[14] = __pld_R[5] * 16
-__pld_R[14] = __pld_R[14] + 30
-__pld_R[13]["y"] = __pld_R[14]
-__pld_R[13]["cid"] = __pld_R[12]
-__pld_R[13]["visible"] = __pld_R[11]
-__pld_R[3][__pld_R[9]] = __pld_R[13]
-if not (__pld_R[9] == __pld_R[2]) then __pld_pc = 48 else __pld_pc = 49 end
-elseif __pld_pc == 48 then
-__pld_pc = 55
-elseif __pld_pc == 49 then
-__pld_R[13] = layerCopy
-__pld_R[14] = __pld_R[9]
-__pld_R[15] = backLayerName
-__pld_R[15] = __pld_R[15]["sys_11_c"]
-__pld_R[13](__pld_R[14], __pld_R[15])
-__pld_pc = 60
-elseif __pld_pc == 55 then
-__pld_R[13] = layerCopy
-__pld_R[14] = __pld_R[9]
-__pld_R[15] = backLayerName
-__pld_R[15] = __pld_R[15]["sys_11_b"]
-__pld_R[13](__pld_R[14], __pld_R[15])
-__pld_pc = 60
-elseif __pld_pc == 60 then
-__pld_R[13] = layerPosition
-__pld_R[14] = __pld_R[9]
-__pld_R[15] = 240
-__pld_R[16] = 272
-__pld_R[13](__pld_R[14], __pld_R[15], __pld_R[16])
-__pld_R[13] = layerAlpha
-__pld_R[14] = __pld_R[9]
-__pld_R[15] = 0
-__pld_R[13](__pld_R[14], __pld_R[15])
-__pld_R[13] = layerClip
-__pld_R[14] = __pld_R[9]
-__pld_R[15] = __pld_R[3][__pld_R[9]]
-__pld_R[15] = __pld_R[15]["x"]
-__pld_R[16] = __pld_R[3][__pld_R[9]]
-__pld_R[16] = __pld_R[16]["y"]
-__pld_R[17] = __pld_R[3][__pld_R[9]]
-__pld_R[17] = __pld_R[17]["x"]
-__pld_R[17] = __pld_R[17] + 26
-__pld_R[18] = __pld_R[3][__pld_R[9]]
-__pld_R[18] = __pld_R[18]["y"]
-__pld_R[18] = __pld_R[18] + 15
-__pld_R[13](__pld_R[14], __pld_R[15], __pld_R[16], __pld_R[17], __pld_R[18])
-__pld_R[13] = layerVisible
-__pld_R[14] = __pld_R[9]
-__pld_R[15] = __pld_R[3][__pld_R[9]]
-__pld_R[15] = __pld_R[15]["visible"]
-__pld_R[13](__pld_R[14], __pld_R[15])
-__pld_R[4] = __pld_R[4] + 1
-if not (15 < __pld_R[4]) then __pld_pc = 89 else __pld_pc = 90 end
-elseif __pld_pc == 89 then
-__pld_pc = 92
-elseif __pld_pc == 90 then
-__pld_R[4] = 1
-__pld_R[5] = __pld_R[5] + 1
-__pld_pc = 92
-elseif __pld_pc == 92 then
-do local __pld_s = __pld_R[8] local __pld_i = __pld_R[6] + __pld_s
-if (__pld_s > 0 and __pld_i <= __pld_R[7]) or (__pld_s <= 0 and __pld_i >= __pld_R[7]) then
-__pld_R[6] = __pld_i __pld_R[9] = __pld_i __pld_pc = 12
-else __pld_pc = 93 end end
-elseif __pld_pc == 93 then
-__pld_R[6] = 1
-__pld_R[7] = myCardMax
-__pld_R[8] = 1
-do
-local __pld_i = __pld_tonumber(__pld_R[6]) if __pld_i == nil then __pld_error("'for' initial value must be a number") end
-local __pld_l = __pld_tonumber(__pld_R[7]) if __pld_l == nil then __pld_error("'for' limit must be a number") end
-local __pld_s = __pld_tonumber(__pld_R[8]) if __pld_s == nil then __pld_error("'for' step must be a number") end
-__pld_R[6] = __pld_i - __pld_s __pld_R[7] = __pld_l __pld_R[8] = __pld_s
-end
-__pld_pc = 116
-elseif __pld_pc == 97 then
-__pld_R[10] = layerMovePosition
-__pld_R[11] = __pld_R[9]
-__pld_R[12] = __pld_R[3][__pld_R[9]]
-__pld_R[12] = __pld_R[12]["x"]
-__pld_R[13] = __pld_R[3][__pld_R[9]]
-__pld_R[13] = __pld_R[13]["y"]
-__pld_R[13] = __pld_R[13] - 2
-__pld_R[14] = math
-__pld_R[14] = __pld_R[14]["random"]
-__pld_R[15] = 6
-__pld_R[16] = 12
-__pld_R[14] = __pld_R[14](__pld_R[15], __pld_R[16])
-__pld_R[14] = __pld_R[14] * 5
-__pld_R[10](__pld_R[11], __pld_R[12], __pld_R[13], __pld_R[14])
-__pld_R[10] = layerMoveAlpha
-__pld_R[11] = __pld_R[9]
-__pld_R[12] = 100
-__pld_R[13] = 60
-__pld_R[10](__pld_R[11], __pld_R[12], __pld_R[13])
-__pld_pc = 116
-elseif __pld_pc == 116 then
-do local __pld_s = __pld_R[8] local __pld_i = __pld_R[6] + __pld_s
-if (__pld_s > 0 and __pld_i <= __pld_R[7]) or (__pld_s <= 0 and __pld_i >= __pld_R[7]) then
-__pld_R[6] = __pld_i __pld_R[9] = __pld_i __pld_pc = 97
-else __pld_pc = 117 end end
-elseif __pld_pc == 117 then
-__pld_R[6] = wait
-__pld_R[7] = 60
-__pld_R[6](__pld_R[7])
-__pld_R[6] = layerCopy
-__pld_R[7] = __pld_R[0]
-__pld_R[8] = backLayerName
-__pld_R[8] = __pld_R[8]["sys_11_d"]
-__pld_R[6](__pld_R[7], __pld_R[8])
-__pld_R[6] = layerPosition
-__pld_R[7] = __pld_R[0]
-__pld_R[8] = __pld_R[3][__pld_R[2]]
-__pld_R[8] = __pld_R[8]["x"]
-__pld_R[9] = __pld_R[3][__pld_R[2]]
-__pld_R[9] = __pld_R[9]["y"]
-__pld_R[9] = __pld_R[9] - 2
-__pld_R[6](__pld_R[7], __pld_R[8], __pld_R[9])
-__pld_R[6] = __pld_R[3][__pld_R[2]]
-__pld_R[6] = __pld_R[6]["visible"]
-if not (__pld_R[6] == true) then __pld_pc = 136 else __pld_pc = 137 end
-elseif __pld_pc == 136 then
-__pld_pc = 144
-elseif __pld_pc == 137 then
-__pld_R[6] = __pld_U[2].v
-__pld_R[6] = __pld_R[6]["drawSceneName"]
-__pld_R[7] = __pld_R[3][__pld_R[2]]
-__pld_R[7] = __pld_R[7]["cid"]
-__pld_R[8] = 10
-__pld_R[9] = 253
-__pld_R[6](__pld_R[7], __pld_R[8], __pld_R[9])
-__pld_pc = 144
-elseif __pld_pc == 144 then
-return __pld_R[3]
-elseif __pld_pc == 145 then
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({[0]=__pld_R[1], [1]=__pld_R[2], [2]=__pld_R[0]})
-__pld_R[0].v["cardModeSet"] = __pld_R[3]
-return __pld_R[0].v
-elseif __pld_pc == 79 then
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
+    local l1_0 = {layerNo = layerName.card1}
+    local l1_1 = 1
+    local l1_2 = 0
+    l1_0.cursorPositionInit = function()
+        l1_1, l1_2 = 1, 0
+    end
+    l1_0.show = function(l2_0, l2_1)
+        local l2_2 = l2_0
+        l2_2 = string.gsub(l2_2, "card/crd_", "")
+        l2_2 = string.gsub(l2_2, "_a.gim", "")
+        l2_2 = 18000 + l2_2
+        layerLoad(l1_0.layerNo, l2_0)
+        layerAlpha(l1_0.layerNo, 0)
+        layerPosition(l1_0.layerNo, -400, 40)
+        layerMovePosition(l1_0.layerNo, 130, 40, 30)
+        layerMoveAlpha(l1_0.layerNo, 100, 30)
+        wait(30)
+        vms(l2_2, "NONVOICE", l2_1)
+        layerMovePosition(l1_0.layerNo, 480, 40, 30)
+        layerMoveAlpha(l1_0.layerNo, 0, 30)
+        wait(30)
+        layerLoad(l1_0.layerNo, "")
+        switchScreen(0, "", 30)
+    end
+    l1_0.showMiniIn = function(l2_0)
+        layerLoad(l1_0.layerNo, l2_0)
+        layerAlpha(l1_0.layerNo, 0)
+        layerPosition(l1_0.layerNo, 270, 10)
+        layerMovePosition(l1_0.layerNo, 270, 30, 20)
+        layerMoveAlpha(l1_0.layerNo, 100, 20)
+        wait(20)
+    end
+    l1_0.showMiniOut = function()
+        layerMovePosition(l1_0.layerNo, 270, 40, 20)
+        layerMoveAlpha(l1_0.layerNo, 0, 20)
+        wait(20)
+        layerLoad(l1_0.layerNo, "")
+        switchScreen(0, "", 30)
+    end
+    l1_0.showRouteDetailIn = function(l2_0)
+        layerLoad(l1_0.layerNo, l2_0)
+        layerAlpha(l1_0.layerNo, 0)
+        layerPosition(l1_0.layerNo, 130, 110)
+        layerMovePosition(l1_0.layerNo, 130, 130, 10)
+        layerMoveAlpha(l1_0.layerNo, 100, 10)
+        wait(10)
+    end
+    l1_0.showRouteDetailOut = function()
+        layerMovePosition(l1_0.layerNo, 130, 130, 5)
+        layerMoveAlpha(l1_0.layerNo, 0, 5)
+        wait(5)
+        layerLoad(l1_0.layerNo, "")
+    end
+    l1_0.cardNgAnim = function()
+        layerCopy(layerName.pose5, layerName.effectWhite)
+        layerVisible(layerName.pose5, false)
+        wait(1)
+        keyPlaySE(seName.viewCard)
+        layerVisible(layerName.pose5, true)
+        layerBlend(layerName.pose5, "ADD")
+        layerAlpha(layerName.pose5, 0)
+        layerScale(layerName.pose5, 100, 100)
+        layerRotate(layerName.pose5, 0, 0, 0)
+        layerMoveAlpha(layerName.pose5, 80, 30)
+        layerMoveScale(layerName.pose5, 0, 0, 30)
+        layerMovePosition(layerName.pose5, 0, 80, 30)
+        layerMoveRotate(layerName.pose5, 0, 0, 150, 30)
+        wait(90)
+        keyPlaySE(seName.arrowKey)
+        layerScale(layerName.pose5, 100, 100)
+        layerAlpha(layerName.pose5, 5)
+        layerRotate(layerName.pose5, 0, 0, 0)
+        layerPosition(layerName.pose5, 0, 0)
+        layerMoveAlpha(layerName.pose5, 0, 60)
+        wait(60)
+        keyPlaySE(seName.arrowKey)
+        layerAlpha(layerName.pose5, 10)
+        layerMoveAlpha(layerName.pose5, 0, 60)
+        wait(60)
+        keyPlaySE(seName.arrowKey)
+        layerAlpha(layerName.pose5, 5)
+        layerMoveAlpha(layerName.pose5, 0, 60)
+        wait(60)
+        wait(1)
+        layerLoad(layerName.pose5, "")
+        switchScreen(0, "", 1)
+        wait(1)
+    end
+    l1_0.mesNot = function()
+        comPoseLoad("po2_aya_f_2_e")
+        local l2_0 = math.random(1, 3)
+        if l2_0 == 1 then
+            vms(60, "AYA00000", "【彩野】「ごめんなさい……直哉くん……」")
+            vms(61, "AYA00010", "【彩野】「今私たちが持っているカードでは、この場面をつくること、難しそう……」")
+            vms(62, "NAO00000", "【直哉】「そうなんだ……」")
+            vms(63, "NONVOICE", "……。")
+        end
+        if l2_0 == 2 then
+            vms(64, "AYA00020", "【彩野】「あ……直哉くん……」")
+            vms(65, "NAO00010", "【直哉】「ん、どうかした？」")
+            vms(66, "AYA00030", "【彩野】「カードの種類、もしかしたら足りないかも」")
+            vms(67, "NAO00020", "【直哉】「僕たちの今持っているカードだと、『あらすじ』がつくれない、ということかな？」")
+            vms(68, "NONVOICE", "彩野さんはこくんと頷く。")
+        end
+        if l2_0 == 3 then
+            vms(69, "AYA00040", "【彩野】「うーん……」")
+            vms(70, "NONVOICE", "彩野さんは眉間に皺を寄せている。")
+            vms(71, "NAO00030", "【直哉】「なにかあった？」")
+            vms(72, "AYA00050", "【彩野】「この場面のあらすじを考えているんだけど、浮かばなくて」")
+            vms(73, "NAO00040", "【直哉】「そっか。もうちょっとカードを集めてみた方がいいかも」")
+            vms(74, "AYA00060", "【彩野】「うん……ごめんね」")
+        end
+        vms(75, "NONVOICE", "この場面をまとめるには、手持ちのカードが足りないみたいだ。")
+        vms(76, "NONVOICE", "新しいカードを集めてみよう。")
+        comPoseDelete()
+    end
+    l1_0.mesNot2 = function()
+        comPoseLoad("po2_aya_f_2_e")
+        vms(77, "AYA00040", "【彩野】「うーん……」")
+        vms(78, "NONVOICE", "アヤノさんは眉間に皺を寄せている。")
+        vms(79, "NONVOICE", "……。")
+        vms(80, "NONVOICE", "……。彩野さんはカードをじっと目にしたまま動かない。")
+        vms(81, "NONVOICE", "この場面を進行させるには、手持ちのカードが足りないようだ。")
+        vms(82, "NONVOICE", "他の場面を展開させて、新しいカードを手に入れる必要があるかもしれない。")
+        comPoseDelete()
+    end
+    l1_0.mesNG = function()
+        systemConfig.unsetConfigButton()
+        comPoseLoad("po2_aya_f_1_a")
+        l1_0.cardNgAnim()
+        comPoseLoad("po2_aya_f_1_c")
+        local l2_0 = math.random(1, 3)
+        if l2_0 == 1 then
+            vms(83, "AYA00070", "【彩野】「ごめんなさい、直哉くん……。何も浮かばないの」")
+            vms(84, "NONVOICE", "彩野さんはカードを見ると、残念そうに首を横に振った。")
+        end
+        if l2_0 == 2 then
+            vms(85, "AYA00080", "【彩野】「…………」")
+            vms(86, "NONVOICE", "彩野さんは僕からカードを受け取ると、じっとそれを見ている。")
+            vms(87, "AYA00090", "【彩野】「……ごめんなさい。ちょっと、違うかも」")
+        end
+        if l2_0 == 3 then
+            vms(88, "AYA00100", "【彩野】「このカードは……うーん」")
+            vms(89, "NONVOICE", "彩野さんはしばらく考え込んだあと、僕の目を見ていった。")
+            vms(90, "AYA00110", "【彩野】「直哉くん……他のカードを見せて貰っていい？」")
+        end
+        vms(91, "NONVOICE", "どうやら渡すべきカードはこれでは無いようだ。")
+        systemConfig.setConfigButton()
+    end
+    l1_0.mesNG2 = function()
+        systemConfig.unsetConfigButton()
+        comPoseLoad("po2_aya_f_1_a")
+        l1_0.cardNgAnim()
+        comPoseLoad("po2_aya_f_2_e")
+        local l2_0 = math.random(1, 3)
+        if l2_0 == 1 then
+            vms(92, "AYA00120", "【彩野】「やっぱり……。浮かばないみたい。ごめんなさい」")
+            vms(93, "NONVOICE", "彩野さんはうつむきがちに言った。")
+        end
+        if l2_0 == 2 then
+            vms(94, "AYA00130", "【彩野】「ごめんなさい……考えがまとまらなくて」")
+            vms(95, "NONVOICE", "彩野さんは目を伏せていった。")
+        end
+        if l2_0 == 3 then
+            vms(96, "AYA00140", "【彩野】「ごめんなさい……このカードはイメージしてたのとは違う感じがする」")
+            vms(97, "NONVOICE", "彩野さんはカードをそっと元の場所に戻した。")
+        end
+        vms(98, "NONVOICE", "……違うカードを渡してみよう。")
+        systemConfig.setConfigButton()
+    end
+    l1_0.mesAnswer = function()
+        local l2_0 = math.random(1, 3)
+        if l2_0 == 1 then
+            vms(99, "AYA00150", "【彩野】「ありがとう」")
+        end
+        if l2_0 == 2 then
+            vms(100, "AYA00160", "【彩野】「ありがとう、直哉くん」")
+        end
+        if l2_0 == 3 then
+            vms(101, "AYA00170", "【彩野】「ありがとう」")
+        end
+    end
+    l1_0.mesNotStoryLine = function()
+        vms(102, "NONVOICE", "○このあらすじより『前の場面のあらすじ』が作成されていません。_rあらすじは物語の先頭から順番に作成する必要があります。")
+        wait(5)
+    end
+    l1_0.cancelCard = function()
+        vms(103, "NONVOICE", "カード選択を中止しました。")
+        wait(5)
+    end
+    l1_0.cardAnswerTrue = function()
+        systemConfig.unsetConfigButton()
+        comPoseLoad("po2_aya_f_1_a")
+        wait(1)
+        layerCopy(layerName.pose4, layerName.bg_1_a_0)
+        layerCopy(layerName.pose5, layerName.effectWhite)
+        layerVisible(layerName.pose4, false)
+        layerVisible(layerName.pose5, false)
+        wait(1)
+        keyPlaySE(seName.viewCard)
+        layerVisible(layerName.pose5, true)
+        layerBlend(layerName.pose5, "ADD")
+        layerAlpha(layerName.pose5, 0)
+        layerScale(layerName.pose5, 100, 100)
+        layerRotate(layerName.pose5, 0, 0, 0)
+        layerMoveAlpha(layerName.pose5, 80, 30)
+        layerMoveScale(layerName.pose5, 0, 0, 30)
+        layerMoveRotate(layerName.pose5, 0, 0, 100, 30)
+        wait(90)
+        keyPlaySE(seName.arrowKey)
+        layerScale(layerName.pose5, 100, 100)
+        layerRotate(layerName.pose5, 0, 0, 0)
+        layerAlpha(layerName.pose5, 5)
+        layerMoveAlpha(layerName.pose5, 0, 60)
+        wait(60)
+        keyPlaySE(seName.arrowKey)
+        layerAlpha(layerName.pose5, 10)
+        layerMoveAlpha(layerName.pose5, 0, 60)
+        wait(60)
+        keyPlaySE(seName.getCard)
+        layerVisible(layerName.pose4, true)
+        layerVisible(layerName.pose5, true)
+        layerScale(layerName.pose4, 100, 100)
+        layerAlpha(layerName.pose4, 100)
+        layerAlpha(layerName.pose5, 80)
+        layerMoveScale(layerName.pose4, 110, 110, 50)
+        layerMoveAlpha(layerName.pose4, 0, 50)
+        layerMoveAlpha(layerName.pose5, 0, 30)
+        wait(60)
+        layerLoad(layerName.pose4, "")
+        layerLoad(layerName.pose5, "")
+        switchScreen(0, "", 1)
+        wait(1)
+        systemConfig.setConfigButton()
+        comPoseLoad("po2_aya_f_1_b")
+        l1_0.mesAnswer()
+    end
+    l1_0.cardAnswerNonvoiceTrue = function()
+        systemConfig.unsetConfigButton()
+        comPoseLoad("po2_aya_f_1_a")
+        wait(1)
+        layerCopy(layerName.pose4, layerName.bg_1_a_0)
+        layerCopy(layerName.pose5, layerName.effectWhite)
+        layerVisible(layerName.pose4, false)
+        layerVisible(layerName.pose5, false)
+        wait(1)
+        keyPlaySE(seName.viewCard)
+        layerVisible(layerName.pose5, true)
+        layerBlend(layerName.pose5, "ADD")
+        layerAlpha(layerName.pose5, 0)
+        layerScale(layerName.pose5, 100, 100)
+        layerRotate(layerName.pose5, 0, 0, 0)
+        layerMoveAlpha(layerName.pose5, 80, 30)
+        layerMoveScale(layerName.pose5, 0, 0, 30)
+        layerMoveRotate(layerName.pose5, 0, 0, 100, 30)
+        wait(90)
+        keyPlaySE(seName.arrowKey)
+        layerScale(layerName.pose5, 100, 100)
+        layerRotate(layerName.pose5, 0, 0, 0)
+        layerAlpha(layerName.pose5, 5)
+        layerMoveAlpha(layerName.pose5, 0, 60)
+        wait(60)
+        keyPlaySE(seName.arrowKey)
+        layerAlpha(layerName.pose5, 10)
+        layerMoveAlpha(layerName.pose5, 0, 60)
+        wait(60)
+        keyPlaySE(seName.getCard)
+        layerVisible(layerName.pose4, true)
+        layerVisible(layerName.pose5, true)
+        layerScale(layerName.pose4, 100, 100)
+        layerAlpha(layerName.pose4, 100)
+        layerAlpha(layerName.pose5, 80)
+        layerMoveScale(layerName.pose4, 110, 110, 50)
+        layerMoveAlpha(layerName.pose4, 0, 50)
+        layerMoveAlpha(layerName.pose5, 0, 30)
+        wait(60)
+        layerLoad(layerName.pose4, "")
+        layerLoad(layerName.pose5, "")
+        switchScreen(0, "", 1)
+        wait(1)
+        systemConfig.setConfigButton()
+    end
+    l1_0.viewAnswer = function()
+        local l2_0 = ""
+        if not (nowPlayBgmFileName == "") then
+            l2_0 = nowPlayBgmFileName
+        end
+        cStopBGMWrap(0)
+        wait(60)
+        cPlayOneshotMusic(cGetFileName("mus", "mus_1"))
+        comEffectYellowIn(120)
+        wait(260)
+        if not (l2_0 == "") then
+            cPlayBGMWrap(l2_0)
+        end
+    end
+    l1_0.selectCardObj = function()
+        advPart(false)
+        wait(1)
+        pageScreen(1)
+        l1_0.cardModeInit()
+        local l2_0 = myCardMax + 1
+        local l2_1 = myCardMax + 2
+        local l2_2 = l1_0.cardModeSet(l2_0, l2_1)
+        local l2_3 = l1_0.cardModeSelect(l2_2, l2_0, l2_1, 0)
+        l1_0.cardModeExit()
+        pageScreen(0)
+        wait(1)
+        advPart(true)
+        if l2_3 == -1 then
+            return l2_3
+        else
+            return l2_2[l2_3].cid
+        end
+    end
+    l1_0.selectCardNotCancelObj = function()
+        advPart(false)
+        wait(1)
+        pageScreen(1)
+        l1_0.cardModeNotCancelInit()
+        local l2_0 = myCardMax + 1
+        local l2_1 = myCardMax + 2
+        local l2_2 = l1_0.cardModeSet(l2_0, l2_1)
+        local l2_3 = l1_0.cardModeSelect(l2_2, l2_0, l2_1, 2)
+        l1_0.cardModeExit()
+        pageScreen(0)
+        wait(1)
+        advPart(true)
+        if l2_3 == -1 then
+            return l2_3
+        else
+            return l2_2[l2_3].cid
+        end
+    end
+    l1_0.checkCard = function()
+        pageScreen(1)
+        l1_0.cardModeInit()
+        local l2_0 = myCardMax + 1
+        local l2_1 = myCardMax + 2
+        local l2_2 = l1_0.cardModeSet(l2_0, l2_1)
+        l1_0.cardModeSelect(l2_2, l2_0, l2_1, 1)
+        l1_0.cardModeExit()
+        pageScreen(0)
+        wait(1)
+    end
+    l1_0.drawSceneName = function(l2_0, l2_1, l2_2)
+        local l2_3 = plotTitle[l2_0]
+        if cardIDFlag == true then
+            l2_3 = "（" .. l2_0 .. "）" .. l2_3
+        end
+        l2_3 = string.gsub(l2_3, "\010", "")
+        cfontPrint(0, l2_1, l2_2, 16777215, 6684672, l2_3)
+    end
+    l1_0.cardModeInit = function()
+        wait(1)
+        fontClear()
+        layerCopy(0, backLayerName.sys_11_a)
+        layerAlpha(0, 0)
+        local l2_0 = myCardMax + 3
+        layerCopy(l2_0, backLayerName.sys_11_e)
+        layerPosition(l2_0, 412, 253)
+        layerAlpha(l2_0, 0)
+        layerMoveAlpha(0, 100, 20)
+        layerMoveAlpha(l2_0, 100, 20)
+        wait(20)
+    end
+    l1_0.cardModeNotCancelInit = function()
+        wait(1)
+        fontClear()
+        layerCopy(0, backLayerName.sys_11_a)
+        layerAlpha(0, 0)
+        layerMoveAlpha(0, 100, 20)
+        wait(20)
+    end
+    l1_0.cardModeExit = function()
+        for l2_3 = 0, 200, 1 do
+            layerMoveAlpha(l2_3, 0, 60)
+        end
+        wait(60)
+        fontClear()
+        for l2_3 = 0, 200, 1 do
+            layerLoad(l2_3, "")
+        end
+    end
+    l1_0.cardModeSelect = function(l2_0, l2_1, l2_2, l2_3)
+        local l2_4 = l1_1 + l1_2 * 15
+        local l2_5 = l1_1
+        local l2_6 = l1_2
+        local l2_7 = l2_4
+        local l2_8 = false
+        local l2_9 = false
+        local l2_10 = 0
+        local l2_11 = 260
+        local l2_12 = 1
+        local l2_13 = 1
+        while true do
+            if l2_8 == false then
+                if not (l2_3 == 2) then
+                    if pressButton("CROSS") == true then
+                        if l2_13 == 0 then
+                            keyPlaySE(seName.cross)
+                            l2_4 = -1
+                            break
+                        end
+                    else
+                        l2_13 = 0
+                    end
+                end
+                if not (l2_5 == l1_1) then
+                    l2_5 = l1_1
+                end
+                if not (l2_6 == l1_2) then
+                    l2_6 = l1_2
+                end
+                if pressButton("RIGHT") == true then
+                    l1_1 = l1_1 + 1
+                    l2_8 = true
+                end
+                if pressButton("LEFT") == true then
+                    l1_1 = l1_1 - 1
+                    l2_8 = true
+                end
+                if pressButton("DOWN") == true then
+                    l1_2 = l1_2 + 1
+                    l2_8 = true
+                end
+                if pressButton("UP") == true then
+                    l1_2 = l1_2 - 1
+                    l2_8 = true
+                end
+                if 15 < l1_1 then
+                    l1_1 = 1
+                    l1_2 = l1_2 + 1
+                    if l1_2 > 12 then
+                        l1_2 = 0
+                    end
+                end
+                if l1_1 < 1 then
+                    l1_1 = 15
+                    l1_2 = l1_2 - 1
+                    if l1_2 < 0 then
+                        l1_2 = 12
+                    end
+                end
+                if 12 < l1_2 then
+                    l1_2 = 0
+                    l1_1 = l1_1 + 1
+                    if 15 < l1_1 then
+                        l1_1 = 1
+                    end
+                end
+                if l1_2 < 0 then
+                    l1_2 = 12
+                    l1_1 = l1_1 - 1
+                    if l1_1 < 1 then
+                        l1_1 = 15
+                    end
+                end
+            end
+            if l2_8 == false then
+                if not (l2_3 == 1) then
+                    if pressButton("CIRCLE") == true then
+                        if l2_12 == 0 then
+                            if l2_0[l2_4].visible == true then
+                                keyPlaySE(seName.circle)
+                                layerVisible(l2_1, false)
+                                layerMovePosition(l2_4, 260, -100, 50)
+                                layerMoveRotate(l2_4, 0, -100, 360, 50)
+                                layerMoveScale(l2_4, 200, 200, 50)
+                                wait(60)
+                                break
+                            end
+                        end
+                    else
+                        l2_12 = 0
+                    end
+                end
+            end
+            if l2_8 == true then
+                fontClear()
+                l2_4 = l1_1 + l1_2 * 15
+                keyPlaySE(seName.arrowKey)
+                layerLoad(l2_2, "")
+                l2_10 = 0
+                if l2_0[l2_4].visible == true then
+                    l1_0.drawSceneName(l2_0[l2_4].cid, 10, 253)
+                    layerCopy(l2_4, backLayerName.sys_11_c)
+                    layerClip(l2_4, l2_0[l2_4].x, l2_0[l2_4].y, l2_0[l2_4].x + 26, l2_0[l2_4].y + 15)
+                end
+                l2_7 = l2_5 + l2_6 * 15
+                layerCopy(l2_7, backLayerName.sys_11_b)
+                layerClip(l2_7, l2_0[l2_7].x, l2_0[l2_7].y, l2_0[l2_7].x + 26, l2_0[l2_7].y + 15)
+                if not (l2_0[l2_7].visible == true) then
+                    layerVisible(l2_7, false)
+                end
+                layerPosition(l2_1, l2_0[l2_4].x, l2_0[l2_4].y - 2)
+                wait(2)
+                l2_8 = false
+            end
+            if l2_0[l2_4].visible == true then
+                if l2_10 <= 5 then
+                    if 5 <= l2_10 then
+                        layerLoadAsync(1, l2_2, "card/crd_" .. l2_0[l2_4].cid .. "_a.gim")
+                        l2_9 = true
+                    end
+                    l2_10 = l2_10 + 1 > 6 and 6 or l2_10 + 1
+                end
+            end
+            if l2_9 == true then
+                if layerIsLoad(l2_2) == true then
+                    layerVisible(l2_2, true)
+                    if l2_0[l2_4].x > 220 then
+                        layerPosition(l2_2, 10, 90)
+                        layerMovePosition(l2_2, 10, 100, 5)
+                    else
+                        layerPosition(l2_2, 260, 90)
+                        layerMovePosition(l2_2, 260, 100, 5)
+                    end
+                    layerAlpha(l2_2, 0)
+                    layerMoveAlpha(l2_2, 100, 5)
+                    l2_9 = false
+                end
+            end
+            wait(2)
+        end
+        return l2_4
+    end
+    l1_0.cardModeSet = function(l2_0, l2_1)
+        local l2_2 = l1_1 + l1_2 * 15
+        local l2_3 = {}
+        local l2_4 = 1
+        local l2_5 = 1
+        for l2_9 = 1, myCardMax, 1 do
+            local l2_10 = 0
+            if l2_4 <= 5 then
+                l2_10 = (l2_4 - 1) * 30 + 13
+            elseif l2_4 <= 10 then
+                l2_10 = (l2_4 - 1) * 30 + 17
+            else
+                l2_10 = (l2_4 - 1) * 30 + 21
+            end
+            local l2_11 = true
+            local l2_12 = cardSort[l2_9][1]
+            if gameSave.myCard[l2_12].hold == -1 then
+                l2_11 = false
+            end
+            l2_3[l2_9] = {x = l2_10, y = l2_5 * 16 + 30, cid = l2_12, visible = l2_11}
+            if l2_9 == l2_2 then
+                layerCopy(l2_9, backLayerName.sys_11_c)
+            else
+                layerCopy(l2_9, backLayerName.sys_11_b)
+            end
+            layerPosition(l2_9, 240, 272)
+            layerAlpha(l2_9, 0)
+            layerClip(l2_9, l2_3[l2_9].x, l2_3[l2_9].y, l2_3[l2_9].x + 26, l2_3[l2_9].y + 15)
+            layerVisible(l2_9, l2_3[l2_9].visible)
+            l2_4 = l2_4 + 1
+            if 15 < l2_4 then
+                l2_4 = 1
+                l2_5 = l2_5 + 1
+            end
+        end
+        for l2_9 = 1, myCardMax, 1 do
+            layerMovePosition(l2_9, l2_3[l2_9].x, l2_3[l2_9].y - 2, math.random(6, 12) * 5)
+            layerMoveAlpha(l2_9, 100, 60)
+        end
+        wait(60)
+        layerCopy(l2_0, backLayerName.sys_11_d)
+        layerPosition(l2_0, l2_3[l2_2].x, l2_3[l2_2].y - 2)
+        if l2_3[l2_2].visible == true then
+            l1_0.drawSceneName(l2_3[l2_2].cid, 10, 253)
+        end
+        return l2_3
+    end
+    return l1_0
 end
 oCard = ObjectCard.new()
 keyPlaySE = function(l1_0)

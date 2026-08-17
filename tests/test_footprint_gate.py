@@ -35,8 +35,10 @@ LEDGER = ROOT / "corpus" / "ledger.jsonl"
 #: -- to 1.0; **zero whole-file fallback files remain**. A repair LOWERS a
 #: value (or drops the file to 1.0 and out of the dict) -- never raises one.
 #: Update in the same commit as the repair that moved it.
+#: M8 tasks-4/5 (multi-assign fix, 2026-08-16): snr_common 1.3994 ->
+#: 1.1555 -- main_77 + main_77_0 certified (27 occurrences structured).
 FOOTPRINT_PIN = {
-    "snr_common.lua": 1.3994,
+    "snr_common.lua": 1.1555,
     "snr_graphic.lua": 1.9509,
     "snr_mainmenu.lua": 3.5598,
     "snr_story_main.lua": 1.6956,

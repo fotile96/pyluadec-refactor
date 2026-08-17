@@ -3,19 +3,19 @@
  "summary": {
   "n_files": 229,
   "n_protos": 1944,
-  "n_candidates": 142,
-  "n_leaf_refusals": 11,
-  "n_non_l3": 17,
+  "n_candidates": 140,
+  "n_leaf_refusals": 9,
+  "n_non_l3": 15,
   "n_cap_files": 132,
   "n_cap_dominants": 132,
   "n_in_both_populations": 1,
   "class_census": {
    "choice-branch": 111,
-   "neither": 23,
+   "neither": 21,
    "ui-keyloop": 8
   },
   "class_census_leaf_refusals": {
-   "neither": 6,
+   "neither": 4,
    "ui-keyloop": 5
   },
   "class_census_cap_dominants": {
@@ -29,8 +29,8 @@
     111
    ],
    "neither": [
-    23,
-    23
+    21,
+    21
    ],
    "ui-keyloop": [
     8,
@@ -60,8 +60,8 @@
    "oCard.selectCardNotCancelObj": "snr_common.lua:main_77_18",
    "oCard.selectCardObj": "snr_common.lua:main_77_17"
   },
-  "n_observed_records": 45,
-  "n_orphan_observations": 19
+  "n_observed_records": 43,
+  "n_orphan_observations": 21
  },
  "candidates": [
   {
@@ -797,115 +797,6 @@
     "reviewed_by": "ui-keyloop-audit",
     "class_agrees": true,
     "note": "SystemConfig.ConfigMain, the config menu; returns an index 1..8 or -1. Loop pcs 4-172, polls at CALL 8/96/109/124, exits pc 5/73/93/106, index clamp at pcs 115/130."
-   }
-  },
-  {
-   "file": "snr_common.lua",
-   "proto_path": "main_77",
-   "mechanical": {
-    "selected_as": [
-     "leaf-refusal"
-    ],
-    "n_insns": 79,
-    "nups": 0,
-    "numparams": 0,
-    "level": "L1",
-    "refusal_reason": "mismatch: code",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": true,
-    "probe": {
-     "file_status": "CAP",
-     "file_events": 3001,
-     "dominant_global": null,
-     "dominant_global_events": null
-    },
-    "n_natural_loops": 0,
-    "n_back_edges": 0,
-    "poll_loops": [],
-    "calls_poll_directly": false,
-    "reaches_poll": false,
-    "loop_polls_per_iteration": false,
-    "in_loop_callees_reaching_poll": [],
-    "option_calls": [],
-    "channels": [],
-    "register_comparisons": 0,
-    "input_space": 1,
-    "drivable_within_budget": true,
-    "class": "neither",
-    "class_evidence": "no poll loop and no option call; no branch channel",
-    "footprint": {
-     "global_reads": [
-      "layerName"
-     ],
-     "table_key_reads": [
-      [
-       "layerName",
-       "card1"
-      ]
-     ],
-     "calls": [],
-     "table_key_calls": [],
-     "dynamic_reads": 0,
-     "read_sites": 1,
-     "call_sites": 0
-    }
-   },
-   "observed": {
-    "reviewed_by": "neither-audit",
-    "class_agrees": true,
-    "note": "ObjectCard.new (into oCard, main pcs 3286/3291/3292); defines 26 methods, calls nothing."
-   }
-  },
-  {
-   "file": "snr_common.lua",
-   "proto_path": "main_77_0",
-   "mechanical": {
-    "selected_as": [
-     "leaf-refusal"
-    ],
-    "n_insns": 5,
-    "nups": 2,
-    "numparams": 0,
-    "level": "L1",
-    "refusal_reason": "mismatch: code",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": true,
-    "probe": {
-     "file_status": "CAP",
-     "file_events": 3001,
-     "dominant_global": null,
-     "dominant_global_events": null
-    },
-    "n_natural_loops": 0,
-    "n_back_edges": 0,
-    "poll_loops": [],
-    "calls_poll_directly": false,
-    "reaches_poll": false,
-    "loop_polls_per_iteration": false,
-    "in_loop_callees_reaching_poll": [],
-    "option_calls": [],
-    "channels": [],
-    "register_comparisons": 0,
-    "input_space": 1,
-    "drivable_within_budget": true,
-    "class": "neither",
-    "class_evidence": "no poll loop and no option call; no branch channel",
-    "footprint": {
-     "global_reads": [],
-     "table_key_reads": [],
-     "calls": [],
-     "table_key_calls": [],
-     "dynamic_reads": 0,
-     "read_sites": 0,
-     "call_sites": 0
-    }
-   },
-   "observed": {
-    "reviewed_by": "neither-audit",
-    "class_agrees": true,
-    "note": "oCard.cursorPositionInit; resets two captured upvalues, no CALL."
    }
   },
   {
@@ -25333,6 +25224,24 @@
     "reviewed_by": "neither-audit",
     "class_agrees": false,
     "note": "RECLASSIFY to choice-branch. GETUPVAL R2,0; GETTABLE R2 R2 K\"ConfigMain\"; CALL at pcs 18-20, result branched at pcs 25/38/40/55; confirm called at pcs 33/48 with EQ false at 34/49. ConfigMain=main_76_2 and confirm=main_76_7 are both direct pressButton callers. The canonical read-then-branch shape, missed for the upvalue reason."
+   }
+  },
+  {
+   "file": "snr_common.lua",
+   "proto_path": "main_77",
+   "observed": {
+    "reviewed_by": "neither-audit",
+    "class_agrees": true,
+    "note": "ObjectCard.new (into oCard, main pcs 3286/3291/3292); defines 26 methods, calls nothing."
+   }
+  },
+  {
+   "file": "snr_common.lua",
+   "proto_path": "main_77_0",
+   "observed": {
+    "reviewed_by": "neither-audit",
+    "class_agrees": true,
+    "note": "oCard.cursorPositionInit; resets two captured upvalues, no CALL."
    }
   },
   {

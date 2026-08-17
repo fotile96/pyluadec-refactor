@@ -443,24 +443,23 @@ def test_a_multiple_assignment_prints_as_separate_statements():
         LOADK 0 K(1)   LOADK 1 K(0)   SETUPVAL 1 -> upval 1   SETUPVAL 0 -> upval 0
 
     Printing that as three separate statements -- which is what `Reconstructor`
-    does, one statement per instruction -- makes `u1` the first upvalue
-    *referenced*, so the recompiled closure numbers the upvalues the other way
-    round and the two `SETUPVAL` operands swap.
+    did through M7, one statement per instruction -- made `u1` the first
+    upvalue *referenced*, so the recompiled closure numbered the upvalues the
+    other way round and the two `SETUPVAL` operands swapped.
 
-    Not fixed, and deliberately: recognising this needs lookahead over an
-    emitted-statement run (a descending run of stores immediately after a
-    matching run of value producers), which is a peephole over this layer's
-    own output -- the shape this project exists to avoid -- and the whole
-    229-file corpus contains **exactly one** instance of the signature
-    (measured this session: one descending `SETUPVAL`/`SETGLOBAL` run of
-    length >= 2, in this proto). Recorded here so the next census inherits the
-    diagnosis instead of re-deriving it.
-
-    The corpus tie itself is asserted by
-    `test_the_multiple_assignment_residual_really_is_snr_common_main_77_0`
-    below (fix round 1, F4): until then the load-bearing sentence of this
-    docstring -- that `u0, u1 = 1, 0` IS `snr_common.lua:main_77_0` -- was a
-    recorded measurement that nothing would have noticed going stale.
+    **CLOSED at the M8 tasks-4/5 campaign (2026-08-16)**, by two paired
+    changes: (1) `freereg.stack_discipline` no longer treats a SETUPVAL that
+    heads a descending SETUPVAL run as a statement end, so the RHS values
+    stay staged instead of being promoted to locals (luac's explist
+    snapshots every RHS operand into fresh temps, so a materialized local
+    on the RHS costs a MOVE the original never had); (2) the
+    Reconstructor's SETUPVAL handler recognizes the descending run over a
+    contiguous register range and emits ONE multi-target Assign. The M4-era
+    note below is kept as the record of why it waited: the rejected fix was
+    a peephole over emitted OUTPUT text; the shipped fix looks ahead over
+    the INSTRUCTION stream (the `_next_touch_is_store_to` precedent) and
+    the register-discipline model -- no text is re-read. The corpus census
+    measured exactly one instance of the signature (this proto).
     """
     src = b"local u0, u1\nreturn function()\nu0, u1 = 1, 0\nend\n"
     original = load_bytes(compile_source(src, strip=True)).subprotos[0]
@@ -471,9 +470,9 @@ def test_a_multiple_assignment_prints_as_separate_statements():
     wrapper = f"local u0, u1\nreturn function()\n{body}end\n".encode()
     candidate = load_bytes(compile_source(wrapper, strip=True)).subprotos[0]
     diffs = compare_protos(original, candidate, level=1)
-    assert [d.field for d in diffs] == ["code"], diffs
-    # ... and what we print instead is the three-statement form.
-    assert body.splitlines() == ["local l1_0 = 1", "u1 = 0", "u0 = l1_0"], body
+    assert diffs == [], diffs
+    # ... and what we print is the one-statement form.
+    assert body.splitlines() == ["u0, u1 = 1, 0"], body
 
 
 def test_the_multiple_assignment_residual_really_is_snr_common_main_77_0(corpus_dir):
@@ -616,3 +615,33 @@ return t.y + p
     _proto, out = _certify(src)
     assert out.level == "L1"
     assert (out.reason or "").startswith("mismatch:")
+
+
+# ---------------------------------------------------------------------------
+# M8 tasks-4/5 campaign: the multiple-assignment residual CLOSED (the
+# `snr_common:main_77_0` row -- one row, the corpus's only instance).
+
+def test_upvalue_multiple_assignment_certifies(corpus_dir):
+    """`u0, u1 = 1, 0`: lparser resolves targets left-to-right (u0 becomes
+    upvalue 0 by first lexical reference) and stores right-to-left, so the
+    bytecode is LOADK r0, LOADK r1, SETUPVAL r1->u1, SETUPVAL r0->u0.
+    Printing three separate statements made `u1` the first upvalue
+    REFERENCED in the recompiled source, swapping the upvalue indices and
+    with them both SETUPVAL operands. Fixed by recognizing the descending
+    SETUPVAL run at the reconstruct layer and emitting ONE multi-target
+    Assign -- `u0, u1 = 1, 0` recompiles bit-for-bit."""
+    src = b"local u0, u1\nreturn function()\nu0, u1 = 1, 0\nend\n"
+    original = load_bytes(compile_source(src, strip=True)).subprotos[0]
+    from pyluadec.verify.normalize import compare_protos
+    from pyluadec.emit.lua import _print_proto_body
+    body = _print_proto_body(original, depth=1, upval_names=("u0", "u1"))
+    wrapper = f"local u0, u1\nreturn function()\n{body}end\n".encode()
+    candidate = load_bytes(compile_source(wrapper, strip=True)).subprotos[0]
+    assert compare_protos(original, candidate, level=1) == []
+    # and the corpus row end-to-end (the certification that flips the row)
+    from pyluadec.ingest import load_file
+    from pyluadec.pipeline import walk_proto_paths
+    protos: dict = {}
+    walk_proto_paths("main", load_file(corpus_dir / "snr_common.lua"), protos)
+    out = certify_proto(protos["main_77_0"], is_chunk_root=False)
+    assert out.level == "L3", out.reason

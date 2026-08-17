@@ -1001,6 +1001,22 @@ def stack_discipline(fn: LirFunction, ordered: list[int],
                 pop_ge(a)
             promote_all()
         elif op in (Op.SETGLOBAL, Op.SETUPVAL, Op.FORPREP):
+            # M8 (the multiple-assignment residual, `snr_common:main_77_0`):
+            # a SETUPVAL that heads a DESCENDING run of SETUPVALs (the
+            # `adjust_assign` stores of `u0, u1 = 1, 0`, emitted
+            # right-to-left by `lparser.c`'s `assignment` recursion) is NOT
+            # a statement end -- the statement ends at the run's LAST store.
+            # Treating the first store as one promoted r0's staged RHS value
+            # to a local, and the recompiled multi-assignment then copied
+            # that local into fresh temps (luac's explist snapshots every
+            # RHS operand) -- two extra instructions where the original had
+            # its constants inline. Only the run's tail resets the register
+            # discipline.
+            if op is Op.SETUPVAL:
+                nxt = fn.instrs.get(pc + 1)
+                if nxt is not None and nxt.ri.op is Op.SETUPVAL \
+                        and nxt.ri.a == a - 1:
+                    continue                        # mid-run: keep staging
             pop_ge(a)
             promote_all()
         elif op in (Op.CLOSE, Op.FORLOOP, Op.TFORLOOP):
