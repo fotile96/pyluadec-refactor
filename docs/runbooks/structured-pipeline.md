@@ -4382,3 +4382,21 @@ recorded attribution -- flagged for the Task 6/stop-loss discussion,
 NOT silently absorbed. The other two gate-critical rows
 (`snr_graphic:main_4`, `snr_story_main:main_3`, expression layout) are
 independent of this.
+
+**Direction (a) was then measured and REJECTED (2026-08-16, controlled
+experiment, reverted the same minute).** The proposed rule -- "a
+temp-graded definition stages even over a `declared` slot, because a
+staged value still enters `_pending` (reads pop it inline) and temp
+means exactly one read, so no second name-read can exist" -- moved the
+corpus to **35 shipping regressions** (`snr_common:main_27` structured
+-> fallback among them; 1463 -> below, 8 hybrid files vs 4). The
+soundness argument misses at least one path (most likely: reads the
+discipline attributes to the NEW def are, in the reconstructor's text,
+name-reads of the OLD local when the old value's expression was already
+consumed by an inline pop in the OTHER order -- the per-def single-read
+count and the env's pop order disagree across branches). `declared`
+-wins is load-bearing for temp defs exactly as its docstring says; a
+finer release needs the reaching-def review round it was already
+assigned, not a one-line inversion. Experiment reverted; ledger
+verified byte-identical to pre-experiment (`ratchet_diff` clean, suite
+batch green).
