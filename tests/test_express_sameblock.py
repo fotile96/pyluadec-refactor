@@ -139,3 +139,34 @@ def test_c2_cond_value_staging_is_load_bearing():
     finally:
         rec.Reconstructor._cond_value_stages = real
     assert _levels_of(_REPRO).get("main_0") == "L3"
+
+
+def test_or_chain_operand_reused_as_callee_in_loop_certifies():
+    """M8 (the `snr_mainmenu:main_7` M-family): an `or` chain's operand
+    register, reused after the chain as a CALLEE, must stay staged. The
+    skipped-kill veto used to fire because the chain's exit jump lands on
+    the FORLOOP latch, and the pc-sorted mention lists found a far read of
+    the slot -- but every path from the latch (the back edge, and the loop
+    exit) REWRITES the slot before any read; the value never survives the
+    kill. With the veto misfiring, the operand materialized as a local and
+    the callee's call-through-a-local cost a MOVE per gate site."""
+    src = b"""local menu = {library = 3, novel = 5}
+local function f(i, sel)
+    local t = {}
+    for i = 1, 4, 1 do
+        if i < menu.library or i == menu.novel then
+            t[i] = 1
+        end
+        sel(menu[i] + i, 50, 30)
+    end
+    return t
+end
+f({1, 2, 3, 4}, print)
+"""
+    out = _certify(src) if False else None
+    from pyluadec.ingest import load_bytes
+    from pyluadec.oracle import compile_source
+    from pyluadec.structure.structured import certify_proto
+    p = load_bytes(compile_source(src, strip=True))
+    res = certify_proto(p, is_chunk_root=True)
+    assert res.level == "L3", res.reason
