@@ -4305,3 +4305,24 @@ M-family 3 + slack-with-co-mismatch 2, and the K1 rows live among the
 rung would pair with music:main's maxstacksize clause, and K1 needs the
 L3.3 hint rung; the M-family and layout rows are emitter-side work, not
 rung work.
+
+### The M-family diagnosis, deepened (M8 tasks-4/5 campaign, 2026-08-16)
+
+`snr_mainmenu:main_7`'s +4 `MOVE`s (and, by signature, `main_25_4`'s +14
+and `main_76_2`'s +6) decompose as: `local lD_R = <cond operand>` (the
+condition-tree path materializes a register whose defs are ALL graded
+temp — measured on main_7: (190,8), (194,8), (198,8), (207,8) every one
+in `temp_defs`; the materialization is the RECONSTRUCTOR's doing, not the
+classifier's), then the arm's later callee write to the same register
+hits `write_reg`'s `declared`-wins rule and materializes as
+`lD_R = layerMoveAlpha`, and calling through a local makes luac `MOVE`
+the callee to the call base — one `MOVE` per site, four sites in main_7
+(the identical menu-rebuild block × 4 gate sites). The original has no
+local there: the condition reads `u1.library` via two SEPARATE defs
+(190/194, each read once by its own compare), and the callee is a direct
+global call. Scope release does not help (`local`, reassign and call sit
+in the SAME if-arm). The open question for the fix: which condition-path
+read serves two differently-defined register defs from one tree position
+and chooses materialization — the answer is the entry point for the next
+session; the honest spelling likely keeps BOTH reads inline (two defs,
+two reads, byte-exact) rather than materializing.
