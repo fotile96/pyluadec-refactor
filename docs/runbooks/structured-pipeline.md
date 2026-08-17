@@ -4362,3 +4362,23 @@ statement-boundary drain; (b) open-read narrowing by top-provability is
 a special-case argument (the callee-side emission proves top < 9) that
 leaves the whole-function `declared` gap in place for the next shape.
 Recommendation recorded: (a), with the review round it requires.
+
+**Correction after the implementation-前 review (2026-08-16, measured):
+neither (a) nor the reaching-def refinement saves THIS row.** The
+earlier BFS targeted the plain-clause read (469) instead of the
+open-read sites; re-run against pc 385: def@195 REACHES the open reads
+on the loop-exit path ([253,468) contains no r8 write), so a
+reaching-def refinement of the veto changes nothing here, and (a)'s
+declared release only addresses the SECOND materialization (the
+callee's), whose byte-exact alternative (calling the global directly)
+compiles into a different register (the materialized local occupies r8
+in our text's frame). The byte-exact spelling requires what the
+original did: `u1.library` evaluated TWICE (two def pairs), i.e. a
+duplicated GETTABLE read that STRICT effects forbids and the corpus
+cannot license for an upvalue chain (the M4 NO_METAMETHOD opt-in
+covers script-built tables only). This row therefore needs either a
+partner decision (a corpus-informed double-eval opt-in) or stays with
+recorded attribution -- flagged for the Task 6/stop-loss discussion,
+NOT silently absorbed. The other two gate-critical rows
+(`snr_graphic:main_4`, `snr_story_main:main_3`, expression layout) are
+independent of this.
