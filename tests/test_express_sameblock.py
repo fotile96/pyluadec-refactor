@@ -142,14 +142,19 @@ def test_c2_cond_value_staging_is_load_bearing():
 
 
 def test_or_chain_operand_reused_as_callee_in_loop_certifies():
-    """M8 (the `snr_mainmenu:main_7` M-family): an `or` chain's operand
-    register, reused after the chain as a CALLEE, must stay staged. The
-    skipped-kill veto used to fire because the chain's exit jump lands on
-    the FORLOOP latch, and the pc-sorted mention lists found a far read of
-    the slot -- but every path from the latch (the back edge, and the loop
-    exit) REWRITES the slot before any read; the value never survives the
-    kill. With the veto misfiring, the operand materialized as a local and
-    the callee's call-through-a-local cost a MOVE per gate site."""
+    """A NEIGHBOUR of the `snr_mainmenu:main_7` M-family shape: an `or`
+    chain's operand register, reused after the chain as a CALLEE, stays
+    staged and the whole thing certifies. Measured on this fixture (M8
+    controller review, 2026-08-16): `_merge_veto_skipped_kill` is called
+    10 times and vetoes 0 of them -- the veto does NOT fire here, and
+    never did (its code is untouched through M8). The corpus row differs
+    precisely in what its inter-site region adds: `CALL`-style
+    `R[5..top)` OPEN reads with no intervening write of the slot, which
+    the veto cannot exclude and is right to treat conservatively -- see
+    the runbook census entry pinned at `28b4713`. This test guards the
+    common shape; `test_mainmenu_main_7_refuses_on_the_m_family_today`
+    (same file) holds the corpus row's current refusal so the M-family
+    fix has a red-to-green witness."""
     src = b"""local menu = {library = 3, novel = 5}
 local function f(i, sel)
     local t = {}
@@ -170,3 +175,21 @@ f({1, 2, 3, 4}, print)
     p = load_bytes(compile_source(src, strip=True))
     res = certify_proto(p, is_chunk_root=True)
     assert res.level == "L3", res.reason
+
+
+def test_mainmenu_main_7_refuses_on_the_m_family_today(corpus_dir):
+    """The M-family corpus row, held as a CURRENT REFUSAL (the red half of
+    the witness; the fix must flip this to L3 -- update it in the same
+    commit). Mechanism per the runbook census (`28b4713`): the
+    skipped-kill veto's OPEN-READ clause fires on the inter-site `R[5..top)`
+    reads, the condition operand materializes, declared-wins materializes
+    the arm's callee through the same slot, and the call-through-a-local
+    costs one MOVE per gate site (+4 total, maxstack 12 -> 13)."""
+    from pyluadec.ingest import load_file
+    from pyluadec.pipeline import walk_proto_paths
+    from pyluadec.structure.structured import certify_proto
+    protos: dict = {}
+    walk_proto_paths("main", load_file(corpus_dir / "snr_mainmenu.lua"), protos)
+    out = certify_proto(protos["main_7"], is_chunk_root=False)
+    assert out.level == "L1"
+    assert out.reason == "mismatch: maxstacksize"

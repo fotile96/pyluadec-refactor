@@ -4345,3 +4345,20 @@ drain (the discipline already knows the slot re-became stack), or
 (b) prove the open reads' top < 9 from the callee-side emission and
 narrow the clause. Both are design changes to load-bearing guards --
 own review round each, not a campaign afternoon.
+
+**Priority elevated to GATE-CRITICAL (controller review, 2026-08-16):**
+`snr_mainmenu` is 3.5598x -- the corpus's worst footprint, on a
+permanently loaded script (the original heap-risk case), and the ENTIRE
+1.5x exit ceiling now rests on three single-own-row files:
+`snr_mainmenu` (M-family, `main_7`), `snr_graphic` 1.9509 (`main_4`,
+expression layout), `snr_story_main` 1.6956 (`main_3`, expression
+layout). The direction decision should be made NOW, not at Task 6. Of
+the two candidates: (a) freereg-coupled `declared` release is the
+PRINCIPLED fix -- it addresses the actual gap (the model cannot see a
+same-arm slot release that the original's freereg discipline performed),
+generalizes to any future shape where a materialized local's slot is
+re-staged, and can be neuter-tested against the discipline's own
+statement-boundary drain; (b) open-read narrowing by top-provability is
+a special-case argument (the callee-side emission proves top < 9) that
+leaves the whole-function `declared` gap in place for the next shape.
+Recommendation recorded: (a), with the review round it requires.
