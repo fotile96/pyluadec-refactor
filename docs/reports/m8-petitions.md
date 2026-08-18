@@ -177,3 +177,20 @@ operation as the printer's existing pure structural folding (typing
 preserved, no text re-parsing), NOT the text-level peephole M4 rejected.
 The liveness oracle, the capture guard, and the batch-bound falsification
 from this session carry over unchanged.
+
+**Iteration 3 design (refined from 2, not yet implemented).** The
+discriminator iteration 2 lacked exists INSIDE the reconstructor: at
+batch end, a slot is releasable iff no NOT-YET-RENDERED expression tree
+references it. The for-header's `pairs(l0_0)` tree sits in `env` (the
+iterator staging) at the Straight's end -- a scan of env values (minus
+the slot's own placeholder), `_pending`, `_self_pending`, and the open
+table-ctx folded items for `LocalExpr(r)` (the existing `_local_regs_in`
+walker) holds it. The clamp's slot has no such tree after its consuming
+SETGLOBAL -- releases. Two further pieces: (a) the DoEnd may land in a
+LATER sibling batch than the DoBegin's (the clamp spans CondValue's
+statements + the consumer's Straight; consecutive Seq children render
+adjacently, so the block is balanced at the parent -- the guard must
+bound how far the DoBegin may stay open, e.g. the next batch only);
+(b) indentation when a block spans a nesting boundary needs one
+printer rule (re-indent the wrapped range). Neuter obligations
+unchanged; the witnesses unchanged.
