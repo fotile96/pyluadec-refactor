@@ -140,6 +140,13 @@ decompile_file` 自动装载 → `run_corpus`/`warranty_build` 接线。
 （见该目录 README）。**新单元 ID = 旧单元 ID**（对齐的本意），
 坐标（file, proto_path[, reg]）与 flag 是增量价值。
 
+与原 plan task 8 的形态差异：plan 的 per-vms-message 清单
+（`{"id", "file", "proto_path", "pc"}`）在 handoff 中被改写为
+「键改用对齐后的名字」+「映射表是核心工件，价值高于 inventory」。
+消息级连续性不需要新工件：vms 消息号是常量池事实，字节同一
+⇒ 消息集合同一，Zndnovel 侧 `build_ledger.py` 在新基座上重跑即得
+（迁移指南 §5 的对账建议正是这么写的）。
+
 ## 8. 遗留与移交
 
 - 决策 ③ 排期外的「改进名字」：改 `name_map.jsonl` 数据行 + 重跑
