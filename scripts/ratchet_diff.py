@@ -485,13 +485,42 @@ def diff_ledgers(old: list[dict], new: list[dict]) -> DiffReport:
         # is covered by behaviour instead, in
         # `tests/test_ratchet_diff.py::test_a_baseline_without_shipped_needs_no_guard`.
         os_, ns = oo.get("shipped"), no.get("shipped")
+        # The propose-and-certify channel (M8) adds "proposal" as a third
+        # `shipped` value. The relative order it installs -- with its
+        # reasons, so nobody has to re-derive them:
+        #   structured > proposal > fallback.
+        # `proposal -> fallback` is a plain downgrade (certified text lost);
+        # `fallback -> proposal` is a plain upgrade (uncertified state
+        # machine replaced by certified text). The deliberate asymmetry is
+        # `structured -> proposal`: a DOWNGRADE, because the reconstructor
+        # used to print this proto itself and now needs a hand-written
+        # proposal to pass -- exactly the "proposal as regression mask"
+        # move P4 exists to prevent, so the ratchet must see it. The
+        # reverse (`proposal -> structured`) is an upgrade: the
+        # reconstructor learned the shape. (A shape can also move
+        # `structured -> structured` while its cert flips -- the level
+        # checks above already cover that direction.)
         if os_ == "structured" and ns == "fallback":
             rep.shipping_lost += 1
             rep.regressions.append(Regression(
                 kind="shipping-regression", shash=nshash,
                 cluster=cluster_of(new_by.get(nshash, {}).get("refusal_reason")),
                 detail=f"{key[0]}:{key[1]} shipped structured, now fallback"))
-        elif os_ == "fallback" and ns == "structured":
+        elif os_ == "structured" and ns == "proposal":
+            rep.regressions.append(Regression(
+                kind="proposal-mask", shash=nshash,
+                cluster=cluster_of(new_by.get(nshash, {}).get("refusal_reason")),
+                detail=f"{key[0]}:{key[1]} shipped structured, now proposal "
+                "-- the reconstructor used to print this proto itself"))
+        elif os_ == "proposal" and ns == "fallback":
+            rep.shipping_lost += 1
+            rep.regressions.append(Regression(
+                kind="shipping-regression", shash=nshash,
+                cluster=cluster_of(new_by.get(nshash, {}).get("refusal_reason")),
+                detail=f"{key[0]}:{key[1]} shipped proposal, now fallback"))
+        elif os_ == "fallback" and ns in ("structured", "proposal"):
+            rep.shipping_gained += 1
+        elif os_ == "proposal" and ns == "structured":
             rep.shipping_gained += 1
         elif os_ is None or ns is None:
             # Counted, not compared. Against a baseline predating M5 task 6
