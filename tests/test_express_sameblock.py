@@ -193,3 +193,34 @@ def test_mainmenu_main_7_refuses_on_the_m_family_today(corpus_dir):
     out = certify_proto(protos["main_7"], is_chunk_root=False)
     assert out.level == "L1"
     assert out.reason == "mismatch: maxstacksize"
+
+
+def test_story_main_main_3_refuses_on_the_busy_slot_family_today(corpus_dir):
+    """The busy-slot corpus row (red half of the witness; the B2 ruling's
+    fix must flip this -- update in the same commit). Root per the census:
+    the original keeps r11 as a pure stack temp (every callee loaded fresh
+    and consumed by its CALL); our earlier clamp's materialization (the
+    task-3 empty-tail fix) declares the slot, and every later callee
+    prints as `lD_R = g; lD_R(...)` (+MOVE per site, +8 total)."""
+    from pyluadec.ingest import load_file
+    from pyluadec.pipeline import walk_proto_paths
+    from pyluadec.structure.structured import certify_proto
+    protos: dict = {}
+    walk_proto_paths("main", load_file(corpus_dir / "snr_story_main.lua"), protos)
+    out = certify_proto(protos["main_3"], is_chunk_root=False)
+    assert out.level == "L1"
+    assert out.reason == "mismatch: code"
+
+
+def test_graphic_main_4_refuses_on_the_busy_slot_family_today(corpus_dir):
+    """Same family, graphic's row (for-init half): the original spells
+    `u10` fresh for the loop init where our text reads the slot's merged
+    local (+13 instructions)."""
+    from pyluadec.ingest import load_file
+    from pyluadec.pipeline import walk_proto_paths
+    from pyluadec.structure.structured import certify_proto
+    protos: dict = {}
+    walk_proto_paths("main", load_file(corpus_dir / "snr_graphic.lua"), protos)
+    out = certify_proto(protos["main_4"], is_chunk_root=False)
+    assert out.level == "L1"
+    assert out.reason == "mismatch: code"

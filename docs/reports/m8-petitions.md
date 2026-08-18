@@ -70,6 +70,23 @@ moot for main_7 — the value genuinely reaches the open reads.
   This is a knowledge-based emission choice, sibling to the M4 
   NO_METAMETHOD precedent (opt-in, corpus-measured, stated where used). 
   Cost: smaller than B1; the argument is corpus-scoped, not universal.
+- **B2 — MEASURED AND REJECTED (2026-08-16, the day of the ruling).**
+  Implemented at `write_reg` (pure loads — `UpvalExpr` always,
+  `GlobalExpr` under the measured no-`_G.__index` corpus argument —
+  staging over a `declared` slot when the def grades temp): the emission
+  improves exactly as intended (`keyPlaySE(seName.circle)` direct where
+  the text had `l1_11 = keyPlaySE; l1_11(...)`) but the corpus moved
+  **8 rows to regression** (`snr_memory:main_4` structured -> fallback
+  among them; 1929 -> 1926 shipped structured) with **zero
+  improvements**. The mechanism is the same invariant the broad
+  inversion broke, just rarer: a staged load pops at its first read; a
+  LATER name-read of the slot then prints a local that was never
+  assigned the new value. Whether such a later read exists is precisely
+  the liveness question -- which only B1's machinery can see. **B2 at
+  the write_reg layer therefore requires B1 as a precondition, not as a
+  successor**; the partner's "provided B2 does not foreclose B1"
+  condition resolves as: B2 cannot stand alone. Reverted same session;
+  ledger verified byte-identical post-revert.
 - **B3 (stop-loss).** The five rows stay attributed (they already are). 
   CONSEQUENCE THE PARTNER MUST WEIGH: `snr_mainmenu` stays 3.56x and 
   **exit criterion 3 (<= 1.5x per file) fails** — B3 therefore also 
