@@ -407,7 +407,8 @@ class Printer:
 
     def __init__(self, fn: LirFunction, rc: RegClass, depth: int,
                 upval_names: tuple[str, ...] = (), path: str = "main",
-                fallback_paths: frozenset[str] = frozenset()):
+                fallback_paths: frozenset[str] = frozenset(),
+                proposals: dict[str, bytes] | None = None):
         self.fn = fn
         self.proto = fn.proto
         self.rc = rc
@@ -419,6 +420,13 @@ class Printer:
         # whole-tree print, in which case nothing below behaves differently.
         self.path = path
         self.fallback_paths = fallback_paths
+        # The propose-and-certify channel (M8): proto_path -> raw proposal
+        # bytes for THIS chunk. Consulted only AFTER the reconstructor text
+        # arm below, so a proposal can never mask a reconstruction that
+        # would have printed -- the reconstructor's own verdicts are
+        # computed before this printer is even built. `None` (the default)
+        # disables the arm everywhere (tests, direct callers).
+        self.proposals = proposals
         self.recon = Reconstructor(fn, rc, depth, upval_names)
         # proto_idx -> the pc of the (single) CLOSURE instruction that
         # produced it. A subproto index is only ever the Bx operand of
@@ -478,6 +486,19 @@ class Printer:
         # convention: this is the key looked up in `fallback_paths`, so a
         # disagreement here would substitute the wrong function.
         child_path = f"{self.path}_{e.proto_idx}"
+        if self.proposals and child_path in self.proposals \
+                and child_path not in self.fallback_paths:
+            # The propose-and-certify channel (M8). The proposal's body is
+            # spliced HERE, bound to THESE names; whether that splice is
+            # right is not this arm's claim -- the caller's whole-tree
+            # compile-and-compare is (any error refuses the chunk). The
+            # `not in fallback_paths` guard keeps the fallback tier's
+            # decisions senior in a mixed round (never happens today --
+            # the two tiers are tried separately -- but the guard makes
+            # the precedence structural rather than assumed).
+            from pyluadec.structure.proposals import inline_parts
+            return inline_parts(self.proposals[child_path], tuple(names),
+                                child_path, shift=self.depth)
         if child_path in self.fallback_paths:
             # The hybrid boundary. The structured printer must not guess at a
             # subtree it could not certify, so the hole is filled by the
@@ -497,7 +518,7 @@ class Printer:
         # unconditionally anyway. The seam now takes what production passes.
         return params, _print_proto_body(child, self.depth + 1, tuple(names),
                                          child_path, self.fallback_paths,
-                                         indent + 1)
+                                         indent + 1, self.proposals)
 
     def _closure_self_ref(self, e: ClosureExpr, target_reg: int) -> bool:
         """True iff the closure captures its own assignment target as an
@@ -1088,13 +1109,15 @@ def print_region(region: Region, printer: Printer, indent: int = 0) -> list[str]
 def print_function(fn: LirFunction, region: Region, rc: RegClass, depth: int,
                    upval_names: tuple[str, ...] = (), path: str = "main",
                    fallback_paths: frozenset[str] = frozenset(),
-                   indent: int = 0) -> str:
+                   indent: int = 0,
+                   proposals: dict[str, bytes] | None = None) -> str:
     """Print one function's body (its SIR region tree + register
     classification) as Lua source -- no enclosing `function(...) ... end`;
     the caller (chunk assembly for the top level, `Printer.closure_parts` for
     a nested CLOSURE) adds that.
     """
-    printer = Printer(fn, rc, depth, upval_names, path, fallback_paths)
+    printer = Printer(fn, rc, depth, upval_names, path, fallback_paths,
+                      proposals)
     lines = printer.region(region, indent)
     return "\n".join(lines) + ("\n" if lines else "")
 
@@ -1102,12 +1125,13 @@ def print_function(fn: LirFunction, region: Region, rc: RegClass, depth: int,
 def _print_proto_body(proto: Proto, depth: int, upval_names: tuple[str, ...],
                       path: str = "main",
                       fallback_paths: frozenset[str] = frozenset(),
-                      indent: int = 0) -> str:
+                      indent: int = 0,
+                      proposals: dict[str, bytes] | None = None) -> str:
     fn = lift_proto(proto)
     region = build_sir(fn)
     rc = classify_registers(fn)
     return print_function(fn, region, rc, depth, upval_names, path,
-                          fallback_paths, indent)
+                          fallback_paths, indent, proposals)
 
 
 def print_chunk_or_raise(proto: Proto) -> str:

@@ -157,6 +157,15 @@ class ChunkOutcome:
     # fully-structured chunk (root certified `L3`) and for a whole-file
     # fallback (nothing structured survived).
     hybrid: bool = False
+    # The propose-and-certify channel (M8): the `proto_path`s whose text
+    # in `source` came from a hand-written proposal rather than from the
+    # structured printer. Like `fallback_paths`, a path covers its whole
+    # subtree; unlike it, these protos ARE certified -- the chunk shipped
+    # only after a whole-tree compare with zero excluded paths.
+    # `proposal_rung` is that round's ladder rung; -1 when no proposal
+    # tier ran.
+    proposal_paths: frozenset[str] = frozenset()
+    proposal_rung: int = -1
     # The `proto_path`s whose text in `source` came from the fallback state
     # machine rather than from the structured printer. A path in this set
     # covers its whole subtree. Empty for a fully-structured chunk; every path
@@ -631,6 +640,33 @@ def _hybrid_round(root: Proto, fb: frozenset[str]
     return payload, None, last
 
 
+def _proposal_round(root: Proto, sites: frozenset[str],
+                    proposals: dict[str, bytes]) -> tuple[bytes, int] | None:
+    """Print the tree with proposal bodies at `sites`, compile, and compare
+    with no excluded paths. `(source, rung)` or `None` (refused -- the
+    caller falls to the hybrid/fallback tiers exactly as before).
+
+    Structurally `_hybrid_round` with an empty excuse set: the compare
+    loop is the same untouched `compare_protos` ladder, but nothing is
+    filtered out, so the verdict covers every proto in the tree
+    including each proposal's own subtree."""
+    try:
+        src = _print_proto_body(root, 0, (), "main", frozenset(), 0,
+                                proposals)
+    except (StructureError, ReconstructError, EmitError):
+        return None
+    payload = src.encode()
+    try:
+        cand = load_bytes(oracle.compile_source(
+            payload, strip=not carries_debug(root)))
+    except oracle.LuaCompileError:
+        return None
+    for k in range(len(NORMALIZATIONS) + 1):
+        if not compare_protos(root, cand, level=k):
+            return payload, k
+    return None
+
+
 def certify_hybrid(root: Proto, certs: dict[str, ProtoCert]) -> HybridCert | None:
     """Assemble and certify a hybrid chunk for a root that did not certify
     `L3`, or return `None` if no hybrid survives (the caller then ships the
@@ -704,7 +740,9 @@ def _certify_hybrid_uncached(root: Proto,
     return None
 
 
-def emit_certified_chunk(root: Proto) -> ChunkOutcome:
+def emit_certified_chunk(root: Proto,
+                         proposals: dict[str, bytes] | None = None,
+                         ) -> ChunkOutcome:
     """Certify every proto in `root`'s tree independently, then choose the
     shipped artifact, in order: the ROOT's own certified bytes if it
     certified L3 (which, per `certify_proto`'s wrapper-isolation contract,
@@ -765,6 +803,29 @@ def emit_certified_chunk(root: Proto) -> ChunkOutcome:
                 "root certified L3 with no source -- certification and "
                 "printing disagree")
         return ChunkOutcome(source=certified, certs=certs)
+    # The propose-and-certify tier (M8, partner-approved 2026-08-18).
+    # Tried between the root's own certification and the hybrid: at the
+    # CLOSURE sites whose protos refused reconstruction AND have a
+    # proposal, splice the proposal body (rebound to the enclosing
+    # scope's own upvalue names), then recompile the WHOLE chunk and
+    # compare with ZERO excluded paths -- the strongest form of P1: any
+    # splicing or renaming error anywhere in the tree refuses the chunk.
+    # Only refusers consult proposals (a proto that certified `L3` keeps
+    # the reconstructor's text), so a proposal can never mask a
+    # reconstruction that would have printed (P4).
+    if proposals:
+        refusers = {path for path, cert in certs.items()
+                    if cert.level != "L3" and path in proposals}
+        if refusers:
+            got = _proposal_round(root, frozenset(refusers), proposals)
+            if got is not None:
+                payload, rung = got
+                shipped_pr = frozenset(
+                    path for path in protos
+                    if _excused(path, frozenset(refusers)))
+                return ChunkOutcome(source=payload, certs=certs,
+                                    proposal_paths=shipped_pr,
+                                    proposal_rung=rung)
     hybrid = certify_hybrid(root, certs)
     if hybrid is not None:
         # `HybridCert.fallback_paths` is the substitution FRONTIER (the CLOSURE
