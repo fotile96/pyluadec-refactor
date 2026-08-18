@@ -417,3 +417,69 @@ cand = load_bytes(compiled).subprotos[0]
 `grep -n '__pld_R\[[0-9]*\] = "' corpus/final/{snr_common,snr_story_main}.lua`
 过滤非 ASCII 行：snr_common 947/981/983（调试串），snr_story_main 377/382
 （玩家公告）。
+
+---
+
+## §9 追记（2026-08-18 同日）：演示战役 8/8——全部叶子已被手工 proposal 认证
+
+partner 批准通道立项（「我同意把 propose-and-certify 通道立项，你可先再推进一些
+手工演示验证」）后，同一会话把 §4.5 建议的「再做一个演示」直接推到了终点：
+**八个叶子全部经未改动的阶梯在 rung 1 通过**。产物入库为
+`corpus/proposals/<file>/<proto_path>.lua`，判定驱动
+`corpus/proposals/verify_proposals.py`（本次运行 8/8 pass、exit 0；neuter
+证明：篡改 `main_24` 一个常量 → exit 1 并点名该 proto，恢复后字节相同）。
+
+### 9.1 逐 proto 战果（全部实测）
+
+| proto | 指令数 | 编辑 | 关键发现 |
+|---|---:|---|---|
+| `main_24` | 8 | 从零手写（§3）| hint 由拼法决定 |
+| `main_76_2` | 174 | 23 行 → 7 行（物化局部→直接求值）| clamp 段本就逐字相同，只是局部未释放 |
+| `main_25_4` | 90 | 28 行 → 8 行 | 原文是**对既有局部的重赋值** `l1_0, l1_1 = f(0)`；我方多声明了两个新局部 |
+| `main_74_18` | 86 | **插入一行裸 `local`** | 死寄存器 = 函数体首条未初始化 `local`（`luaK_nil` 在 pc 0 不发指令），Disposition C 的「hold」可撤销 |
+| `main_3` | 461 | 一个分支区重写（CondValue 直赋全局修常量序 K71→K74 + 物化消除）| 常量池顺序随源码形状复原 |
+| `main_4` | 769 | CIRCLE 分支重写（clamp/u10 直读 + 直呼）| 分歧全在一个分支内 |
+| `main_71` | 450 | **把 7 行表声明倒序** | 「197 指令级联」的真身是声明顺序反了；pack 断言「足以遮蔽它的归一化＝不比较」对，但根本不用遮蔽 |
+| `main_7` | 2182 | 4 个站点同一 5 行模式 → 3 行直拼 | 对齐 diff 显示 +4 指令全是同一形状；四站点即 M6 缺陷 3 的四处 gate site |
+
+工作流即 §4.5 假设的形态：`emit.lua._print_proto_body` 出近失配文本 →
+`compare_protos` 给失配字段 → 双方码流并排反列（`lift.opcodes.decode`）→
+定点编辑 → 重认证。单个 proto 从取文本到通过为数分钟到二十分钟级；
+`main_7`（2182 指令）靠序列对齐 diff（`difflib`，JMP 族只按 opcode 对齐）
+把「1987 个差异词」还原成「4 个插入点」后，难度与 90 指令的没有区别。
+
+### 9.2 端到端拼接测量（snr_graphic 整文件）
+
+把 `main_4` proposal 的函数体按 `__pld_ord` 给出的捕获映射
+（u0=l0_0 … u10=l0_6）拼进 `corpus/final/snr_graphic.lua` 的
+`main = function()` 站点，整文件 `luac_sz4 -s` 编译：**11939 字节 =
+原始同尺寸，§8.2 归一化器判定仅差行号字段**——即该文件从 1.9509× 直接
+回到 §2 北极星门的达成态。upvalue 捕获序的正确性论证：standalone 认证
+已证明候选体的 upvalue 首用序与原始 GETUPVAL 索引序一致（`code` 字段
+逐字相同），故 chunk 内首用即定序的编译结果必然复现原始捕获序。
+其余三个文件的拼接同机制，**未逐一实测**，留给通道接线任务作为其
+验收内容之一。
+
+### 9.3 对 §4/§5/§6 与 petition pack 的影响
+
+- **§4.6 的「不许诺」全部兑现为测量**：`main_7` 不是假设了；八叶全部落袋。
+- **`226b980` 僵局的实测形态**比 §4.2 预期的还轻：四个站点只需把
+  `u1.library` 写回条件内联（原文在该分支本就只求值一次），proposer 路径
+  上连双求值问题都没有出现。
+- **Petition A 正式失去对象**（§3.3 的结论从「不必要」变成「已解决」）。
+- **Decision B（B1/B3）对本语料失去认证意义**：五个 busy-slot 行已全部
+  被 proposal 认证，B1 不再是任何行的必经之路。B1 的分析价值（活性
+  oracle、判别器）只在「未来语料 / 自动化 proposal 生成」意义上保留，
+  按 §5 处置。
+- **Disposition C（`main_74_18`）解除 hold**。
+- 出口条款 3：八叶集成后全部文件 1.0000×，条款被蕴含（§2 北极星门）。
+
+### 9.4 剩余工作（通道接线，归工作 session）
+
+proposal 是数据，通道是代码。待办即 §4.4 清单：`emit_certified_chunk`
+在 CLOSURE 站点消费 proposal（走同一 `certify_proto` 门）、台账
+provenance（`shipped` 增值或新字段）、`ratchet_diff.py` 新 kind、
+`test_m3_exit` 行内耦合扩展、warranty `t_grade` 对 proposal-shipped 的
+分档、`run_corpus.py` 不动点保持。接线后的验收断言现成：15 行非 L3
+归零、fallback occurrence 归零、229/229 文件级字节同一（mod 行号）、
+`corpus/final/` 里 `__pld_` 出现次数为 0。
