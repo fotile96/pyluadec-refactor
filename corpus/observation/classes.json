@@ -3,21 +3,18 @@
  "summary": {
   "n_files": 229,
   "n_protos": 1944,
-  "n_candidates": 140,
-  "n_leaf_refusals": 9,
-  "n_non_l3": 15,
+  "n_candidates": 132,
+  "n_leaf_refusals": 0,
+  "n_non_l3": 0,
   "n_cap_files": 132,
   "n_cap_dominants": 132,
-  "n_in_both_populations": 1,
+  "n_in_both_populations": 0,
   "class_census": {
    "choice-branch": 111,
-   "neither": 21,
-   "ui-keyloop": 8
+   "neither": 17,
+   "ui-keyloop": 4
   },
-  "class_census_leaf_refusals": {
-   "neither": 4,
-   "ui-keyloop": 5
-  },
+  "class_census_leaf_refusals": {},
   "class_census_cap_dominants": {
    "choice-branch": 111,
    "neither": 17,
@@ -29,12 +26,12 @@
     111
    ],
    "neither": [
-    21,
-    21
+    17,
+    17
    ],
    "ui-keyloop": [
-    8,
-    8
+    4,
+    4
    ]
   },
   "budget": 4096,
@@ -47,7 +44,7 @@
   "candidates_polling_per_iteration": {
    "choice-branch": 111,
    "neither": 3,
-   "ui-keyloop": 8
+   "ui-keyloop": 4
   },
   "protos_calling_poll_directly": 19,
   "protos_reaching_poll": 443,
@@ -60,406 +57,10 @@
    "oCard.selectCardNotCancelObj": "snr_common.lua:main_77_18",
    "oCard.selectCardObj": "snr_common.lua:main_77_17"
   },
-  "n_observed_records": 43,
-  "n_orphan_observations": 21
+  "n_observed_records": 35,
+  "n_orphan_observations": 29
  },
  "candidates": [
-  {
-   "file": "snr_common.lua",
-   "proto_path": "main_24",
-   "mechanical": {
-    "selected_as": [
-     "leaf-refusal"
-    ],
-    "n_insns": 8,
-    "nups": 0,
-    "numparams": 0,
-    "level": "L1",
-    "refusal_reason": "mismatch: code",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": true,
-    "probe": {
-     "file_status": "CAP",
-     "file_events": 3001,
-     "dominant_global": null,
-     "dominant_global_events": null
-    },
-    "n_natural_loops": 0,
-    "n_back_edges": 0,
-    "poll_loops": [],
-    "calls_poll_directly": false,
-    "reaches_poll": false,
-    "loop_polls_per_iteration": false,
-    "in_loop_callees_reaching_poll": [],
-    "option_calls": [],
-    "channels": [],
-    "register_comparisons": 0,
-    "input_space": 1,
-    "drivable_within_budget": true,
-    "class": "neither",
-    "class_evidence": "no poll loop and no option call; no branch channel",
-    "footprint": {
-     "global_reads": [],
-     "table_key_reads": [],
-     "calls": [],
-     "table_key_calls": [],
-     "dynamic_reads": 0,
-     "read_sites": 0,
-     "call_sites": 0
-    }
-   },
-   "observed": {
-    "reviewed_by": "neither-audit",
-    "class_agrees": true,
-    "note": "ObjectCommon.new (built into oCom at main pcs 3144/3149/3150). No CALL."
-   }
-  },
-  {
-   "file": "snr_common.lua",
-   "proto_path": "main_25",
-   "mechanical": {
-    "selected_as": [
-     "leaf-refusal"
-    ],
-    "n_insns": 23,
-    "nups": 0,
-    "numparams": 0,
-    "level": "L1",
-    "refusal_reason": "mismatch: code",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": true,
-    "probe": {
-     "file_status": "CAP",
-     "file_events": 3001,
-     "dominant_global": null,
-     "dominant_global_events": null
-    },
-    "n_natural_loops": 0,
-    "n_back_edges": 0,
-    "poll_loops": [],
-    "calls_poll_directly": false,
-    "reaches_poll": false,
-    "loop_polls_per_iteration": false,
-    "in_loop_callees_reaching_poll": [],
-    "option_calls": [],
-    "channels": [],
-    "register_comparisons": 0,
-    "input_space": 1,
-    "drivable_within_budget": true,
-    "class": "neither",
-    "class_evidence": "no poll loop and no option call; no branch channel",
-    "footprint": {
-     "global_reads": [
-      "layerName"
-     ],
-     "table_key_reads": [
-      [
-       "layerName",
-       "hour1"
-      ],
-      [
-       "layerName",
-       "hour2"
-      ]
-     ],
-     "calls": [],
-     "table_key_calls": [],
-     "dynamic_reads": 0,
-     "read_sites": 2,
-     "call_sites": 0
-    }
-   },
-   "observed": {
-    "reviewed_by": "neither-audit",
-    "class_agrees": true,
-    "note": "ObjectHourGlass.new (into oHour, main pcs 3155/3160/3161). No CALL."
-   }
-  },
-  {
-   "file": "snr_common.lua",
-   "proto_path": "main_25_4",
-   "mechanical": {
-    "selected_as": [
-     "leaf-refusal"
-    ],
-    "n_insns": 90,
-    "nups": 1,
-    "numparams": 0,
-    "level": "L1",
-    "refusal_reason": "mismatch: maxstacksize",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": true,
-    "probe": {
-     "file_status": "CAP",
-     "file_events": 3001,
-     "dominant_global": null,
-     "dominant_global_events": null
-    },
-    "n_natural_loops": 0,
-    "n_back_edges": 0,
-    "poll_loops": [],
-    "calls_poll_directly": false,
-    "reaches_poll": false,
-    "loop_polls_per_iteration": false,
-    "in_loop_callees_reaching_poll": [],
-    "option_calls": [],
-    "channels": [],
-    "register_comparisons": 0,
-    "input_space": 1,
-    "drivable_within_budget": true,
-    "class": "neither",
-    "class_evidence": "no poll loop and no option call; no branch channel",
-    "footprint": {
-     "global_reads": [
-      "advPart",
-      "layerAlpha",
-      "layerClip",
-      "layerMovePosition",
-      "layerMoveRotate",
-      "layerPosition",
-      "layerRotate",
-      "switchScreen",
-      "wait"
-     ],
-     "table_key_reads": [],
-     "calls": [
-      "advPart",
-      "layerAlpha",
-      "layerClip",
-      "layerMovePosition",
-      "layerMoveRotate",
-      "layerPosition",
-      "layerRotate",
-      "switchScreen",
-      "wait"
-     ],
-     "table_key_calls": [],
-     "dynamic_reads": 0,
-     "read_sites": 11,
-     "call_sites": 16
-    }
-   },
-   "observed": {
-    "reviewed_by": "neither-audit",
-    "class_agrees": true,
-    "note": "oHour.hourGlassStageStart, hourglass layer animation; only engine calls (wait at pcs 44/86)."
-   }
-  },
-  {
-   "file": "snr_common.lua",
-   "proto_path": "main_71",
-   "mechanical": {
-    "selected_as": [
-     "leaf-refusal"
-    ],
-    "n_insns": 450,
-    "nups": 0,
-    "numparams": 4,
-    "level": "L1",
-    "refusal_reason": "mismatch: code",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": true,
-    "probe": {
-     "file_status": "CAP",
-     "file_events": 3001,
-     "dominant_global": null,
-     "dominant_global_events": null
-    },
-    "n_natural_loops": 6,
-    "n_back_edges": 8,
-    "poll_loops": [
-     {
-      "header_block": 279,
-      "back_edge_blocks": [
-       406
-      ],
-      "poll_pc": 283
-     }
-    ],
-    "calls_poll_directly": true,
-    "reaches_poll": true,
-    "loop_polls_per_iteration": true,
-    "in_loop_callees_reaching_poll": [],
-    "option_calls": [],
-    "channels": [
-     {
-      "path": [
-       {
-        "key": "pressButton"
-       },
-       {
-        "call": true
-       }
-      ],
-      "text": "pressButton()",
-      "domain": 2,
-      "constants": [
-       "true"
-      ],
-      "truth_tested": false
-     },
-     {
-      "path": [
-       {
-        "key": "select"
-       },
-       {
-        "call": true
-       }
-      ],
-      "text": "select()",
-      "domain": 2,
-      "constants": [
-       "0"
-      ],
-      "truth_tested": false
-     }
-    ],
-    "register_comparisons": 0,
-    "input_space": 4,
-    "drivable_within_budget": true,
-    "class": "ui-keyloop",
-    "class_evidence": "poll loop: header block 279, back edge from block (406,), pressButton call at pc 283; 1 such loop(s)",
-    "footprint": {
-     "global_reads": [
-      "advPart",
-      "keyPlaySE",
-      "layerClip",
-      "layerCopy",
-      "layerLoad",
-      "layerMoveAlpha",
-      "layerMoveScale",
-      "layerName",
-      "layerPosition",
-      "pressButton",
-      "seName",
-      "select",
-      "switchScreen",
-      "wait"
-     ],
-     "table_key_reads": [
-      [
-       "layerName",
-       "sel_map_0_a"
-      ],
-      [
-       "layerName",
-       "sel_map_1_a"
-      ],
-      [
-       "layerName",
-       "sel_map_2_a"
-      ],
-      [
-       "layerName",
-       "sel_map_2_b"
-      ],
-      [
-       "seName",
-       "arrowKey"
-      ],
-      [
-       "seName",
-       "circle"
-      ]
-     ],
-     "calls": [
-      "advPart",
-      "keyPlaySE",
-      "layerClip",
-      "layerCopy",
-      "layerLoad",
-      "layerMoveAlpha",
-      "layerMoveScale",
-      "layerPosition",
-      "pressButton",
-      "select",
-      "switchScreen",
-      "wait"
-     ],
-     "table_key_calls": [],
-     "dynamic_reads": 40,
-     "read_sites": 70,
-     "call_sites": 42
-    }
-   },
-   "observed": {
-    "reviewed_by": "ui-keyloop-audit",
-    "class_agrees": true,
-    "note": "comSelectMap (main chunk pc 3252/3253). Loop pcs 279-409, polls at CALL 283/300/317/335/340, single exit at pc 295, no cancel path. Also an option callee."
-   }
-  },
-  {
-   "file": "snr_common.lua",
-   "proto_path": "main_74_18",
-   "mechanical": {
-    "selected_as": [
-     "leaf-refusal"
-    ],
-    "n_insns": 86,
-    "nups": 1,
-    "numparams": 0,
-    "level": "L1",
-    "refusal_reason": "mismatch: maxstacksize",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": true,
-    "probe": {
-     "file_status": "CAP",
-     "file_events": 3001,
-     "dominant_global": null,
-     "dominant_global_events": null
-    },
-    "n_natural_loops": 2,
-    "n_back_edges": 2,
-    "poll_loops": [],
-    "calls_poll_directly": false,
-    "reaches_poll": true,
-    "loop_polls_per_iteration": false,
-    "in_loop_callees_reaching_poll": [],
-    "option_calls": [],
-    "channels": [],
-    "register_comparisons": 0,
-    "input_space": 1,
-    "drivable_within_budget": true,
-    "class": "neither",
-    "class_evidence": "no poll loop and no option call; no branch channel",
-    "footprint": {
-     "global_reads": [
-      "autoSystemSave",
-      "layerAlpha",
-      "layerMoveAlpha",
-      "layerMoveScale",
-      "layerScale",
-      "pageScreen",
-      "wait"
-     ],
-     "table_key_reads": [],
-     "calls": [
-      "autoSystemSave",
-      "layerAlpha",
-      "layerMoveAlpha",
-      "layerMoveScale",
-      "layerScale",
-      "pageScreen",
-      "wait"
-     ],
-     "table_key_calls": [],
-     "dynamic_reads": 0,
-     "read_sites": 13,
-     "call_sites": 18
-    }
-   },
-   "observed": {
-    "reviewed_by": "neither-audit",
-    "class_agrees": false,
-    "note": "RECLASSIFY to choice-branch. Own body calls self.OptionInit pc 9, self.OptionMain pc 67, self.OptionEnd pc 70 through a GETUPVAL base; OptionMain is main_74_13, a direct pressButton caller. Invisible to the rule because scan_proto seeds provenance only on GETGLOBAL."
-   }
-  },
   {
    "file": "snr_common.lua",
    "proto_path": "main_75",
@@ -474,7 +75,7 @@
     "refusal_reason": null,
     "refusal_origin": null,
     "shipped": "structured",
-    "hybrid_chunk": true,
+    "hybrid_chunk": false,
     "probe": {
      "file_status": "CAP",
      "file_events": 3001,
@@ -635,168 +236,6 @@
     "reviewed_by": "choice-branch-audit",
     "class_agrees": true,
     "note": "comDlgYesNo at pcs 39/71/118/149, each result EQ true at pc+1; pcs 118 and 149 are inside the natural loop (header 87, back edge 156). Reviewer note: numparams=1 and it branches on that parameter at pcs 1/16/48/95, which input_space does not model."
-   }
-  },
-  {
-   "file": "snr_common.lua",
-   "proto_path": "main_76_2",
-   "mechanical": {
-    "selected_as": [
-     "leaf-refusal"
-    ],
-    "n_insns": 174,
-    "nups": 1,
-    "numparams": 0,
-    "level": "L1",
-    "refusal_reason": "mismatch: maxstacksize",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": true,
-    "probe": {
-     "file_status": "CAP",
-     "file_events": 3001,
-     "dominant_global": null,
-     "dominant_global_events": null
-    },
-    "n_natural_loops": 1,
-    "n_back_edges": 1,
-    "poll_loops": [
-     {
-      "header_block": 4,
-      "back_edge_blocks": [
-       169
-      ],
-      "poll_pc": 8
-     }
-    ],
-    "calls_poll_directly": true,
-    "reaches_poll": true,
-    "loop_polls_per_iteration": true,
-    "in_loop_callees_reaching_poll": [],
-    "option_calls": [],
-    "channels": [
-     {
-      "path": [
-       {
-        "key": "gameSave"
-       },
-       {
-        "key": "tutorial"
-       },
-       {
-        "key": "firstFragment"
-       }
-      ],
-      "text": "gameSave.tutorial.firstFragment",
-      "domain": 2,
-      "constants": [
-       "1"
-      ],
-      "truth_tested": false
-     },
-     {
-      "path": [
-       {
-        "key": "memoryFlag"
-       }
-      ],
-      "text": "memoryFlag",
-      "domain": 2,
-      "constants": [
-       "true"
-      ],
-      "truth_tested": false
-     },
-     {
-      "path": [
-       {
-        "key": "pressButton"
-       },
-       {
-        "call": true
-       }
-      ],
-      "text": "pressButton()",
-      "domain": 2,
-      "constants": [
-       "true"
-      ],
-      "truth_tested": false
-     },
-     {
-      "path": [
-       {
-        "key": "systemSave"
-       },
-       {
-        "key": "storyLineSkip"
-       }
-      ],
-      "text": "systemSave.storyLineSkip",
-      "domain": 3,
-      "constants": [
-       "0",
-       "2"
-      ],
-      "truth_tested": false
-     }
-    ],
-    "register_comparisons": 0,
-    "input_space": 24,
-    "drivable_within_budget": true,
-    "class": "ui-keyloop",
-    "class_evidence": "poll loop: header block 4, back edge from block (169,), pressButton call at pc 8; 1 such loop(s)",
-    "footprint": {
-     "global_reads": [
-      "gameSave",
-      "keyPlaySE",
-      "layerClip",
-      "layerMovePosition",
-      "memoryFlag",
-      "pressButton",
-      "seName",
-      "systemSave",
-      "wait"
-     ],
-     "table_key_reads": [
-      [
-       "gameSave",
-       "tutorial"
-      ],
-      [
-       "seName",
-       "arrowKey"
-      ],
-      [
-       "seName",
-       "circle"
-      ],
-      [
-       "seName",
-       "cross"
-      ],
-      [
-       "systemSave",
-       "storyLineSkip"
-      ]
-     ],
-     "calls": [
-      "keyPlaySE",
-      "layerClip",
-      "layerMovePosition",
-      "pressButton",
-      "wait"
-     ],
-     "table_key_calls": [],
-     "dynamic_reads": 0,
-     "read_sites": 17,
-     "call_sites": 16
-    }
-   },
-   "observed": {
-    "reviewed_by": "ui-keyloop-audit",
-    "class_agrees": true,
-    "note": "SystemConfig.ConfigMain, the config menu; returns an index 1..8 or -1. Loop pcs 4-172, polls at CALL 8/96/109/124, exits pc 5/73/93/106, index clamp at pcs 115/130."
    }
   },
   {
@@ -21025,17 +20464,16 @@
    "proto_path": "main_4",
    "mechanical": {
     "selected_as": [
-     "leaf-refusal",
      "cap-dominant"
     ],
     "n_insns": 769,
     "nups": 11,
     "numparams": 0,
-    "level": "L1",
-    "refusal_reason": "mismatch: code",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": true,
+    "level": "L3",
+    "refusal_reason": null,
+    "refusal_origin": null,
+    "shipped": "proposal",
+    "hybrid_chunk": false,
     "probe": {
      "file_status": "CAP",
      "file_events": 3001,
@@ -21317,276 +20755,6 @@
     "reviewed_by": "ui-keyloop-audit",
     "class_agrees": true,
     "note": "Debug/dev start menu, four entries (ASCII labels at pcs 11/19/27/35). Loop pcs 38-165, polls at CALL 40/55/70, single exit pc 75, cursor clamped to [1,4]."
-   }
-  },
-  {
-   "file": "snr_mainmenu.lua",
-   "proto_path": "main_7",
-   "mechanical": {
-    "selected_as": [
-     "leaf-refusal"
-    ],
-    "n_insns": 2182,
-    "nups": 7,
-    "numparams": 0,
-    "level": "L1",
-    "refusal_reason": "mismatch: maxstacksize",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": true,
-    "probe": {
-     "file_status": "OK",
-     "file_events": 18,
-     "dominant_global": null,
-     "dominant_global_events": null
-    },
-    "n_natural_loops": 16,
-    "n_back_edges": 32,
-    "poll_loops": [
-     {
-      "header_block": 22,
-      "back_edge_blocks": [
-       553
-      ],
-      "poll_pc": 26
-     },
-     {
-      "header_block": 562,
-      "back_edge_blocks": [
-       1098
-      ],
-      "poll_pc": 566
-     },
-     {
-      "header_block": 1113,
-      "back_edge_blocks": [
-       1633
-      ],
-      "poll_pc": 1117
-     },
-     {
-      "header_block": 1638,
-      "back_edge_blocks": [
-       2178
-      ],
-      "poll_pc": 1642
-     }
-    ],
-    "calls_poll_directly": true,
-    "reaches_poll": true,
-    "loop_polls_per_iteration": true,
-    "in_loop_callees_reaching_poll": [
-     "systemOption.Option"
-    ],
-    "option_calls": [],
-    "channels": [
-     {
-      "path": [
-       {
-        "key": "gameSave"
-       },
-       {
-        "key": "myCard"
-       },
-       {
-        "index": 140
-       },
-       {
-        "key": "hold"
-       }
-      ],
-      "text": "gameSave.myCard[140].hold",
-      "domain": 2,
-      "constants": [
-       "-1"
-      ],
-      "truth_tested": false
-     },
-     {
-      "path": [
-       {
-        "key": "gameSave"
-       },
-       {
-        "key": "startMenuState"
-       }
-      ],
-      "text": "gameSave.startMenuState",
-      "domain": 4,
-      "constants": [
-       "0",
-       "1",
-       "2"
-      ],
-      "truth_tested": false
-     },
-     {
-      "path": [
-       {
-        "key": "pressButton"
-       },
-       {
-        "call": true
-       }
-      ],
-      "text": "pressButton()",
-      "domain": 2,
-      "constants": [
-       "true"
-      ],
-      "truth_tested": false
-     },
-     {
-      "path": [
-       {
-        "key": "systemSave"
-       },
-       {
-        "key": "libFlag"
-       }
-      ],
-      "text": "systemSave.libFlag",
-      "domain": 2,
-      "constants": [
-       "true"
-      ],
-      "truth_tested": false
-     },
-     {
-      "path": [
-       {
-        "key": "systemSave"
-       },
-       {
-        "key": "musicFlag"
-       }
-      ],
-      "text": "systemSave.musicFlag",
-      "domain": 2,
-      "constants": [
-       "true"
-      ],
-      "truth_tested": false
-     },
-     {
-      "path": [
-       {
-        "key": "systemSave"
-       },
-       {
-        "key": "novelFlag"
-       }
-      ],
-      "text": "systemSave.novelFlag",
-      "domain": 2,
-      "constants": [
-       "true"
-      ],
-      "truth_tested": false
-     }
-    ],
-    "register_comparisons": 0,
-    "input_space": 128,
-    "drivable_within_budget": true,
-    "class": "ui-keyloop",
-    "class_evidence": "poll loop: header block 22, back edge from block (553,), pressButton call at pc 26; 4 such loop(s)",
-    "footprint": {
-     "global_reads": [
-      "advPart",
-      "cGetFileName",
-      "cInitGame",
-      "gameSave",
-      "keyPlaySE",
-      "layerAlpha",
-      "layerMoveAlpha",
-      "layerVisible",
-      "logEnable",
-      "pressButton",
-      "quit",
-      "run",
-      "seName",
-      "switchScreen",
-      "systemConfig",
-      "systemOption",
-      "systemSave",
-      "wait"
-     ],
-     "table_key_reads": [
-      [
-       "gameSave",
-       "myCard"
-      ],
-      [
-       "gameSave",
-       "startMenuState"
-      ],
-      [
-       "seName",
-       "arrowKey"
-      ],
-      [
-       "seName",
-       "circle"
-      ],
-      [
-       "seName",
-       "cross"
-      ],
-      [
-       "systemConfig",
-       "unsetConfigButton"
-      ],
-      [
-       "systemOption",
-       "Option"
-      ],
-      [
-       "systemSave",
-       "libFlag"
-      ],
-      [
-       "systemSave",
-       "musicFlag"
-      ],
-      [
-       "systemSave",
-       "novelFlag"
-      ]
-     ],
-     "calls": [
-      "advPart",
-      "cGetFileName",
-      "cInitGame",
-      "keyPlaySE",
-      "layerAlpha",
-      "layerMoveAlpha",
-      "layerVisible",
-      "logEnable",
-      "pressButton",
-      "quit",
-      "run",
-      "switchScreen",
-      "wait"
-     ],
-     "table_key_calls": [
-      [
-       "systemConfig",
-       "unsetConfigButton"
-      ],
-      [
-       "systemOption",
-       "Option"
-      ]
-     ],
-     "dynamic_reads": 24,
-     "read_sites": 380,
-     "call_sites": 271
-    }
-   },
-   "observed": {
-    "reviewed_by": "ui-keyloop-audit",
-    "class_agrees": true,
-    "note": "Main menu, four pages keyed by gameSave.startMenuState. FOUR poll loops (back edges 556/1101/1636/2181) and MEASURED: none of them has a CFG exit edge at all. They are left only through non-returning engine calls, 23 quit() sites."
    }
   },
   {
@@ -24843,341 +24011,6 @@
     "class_agrees": false,
     "note": "RECLASSIFY to choice-branch. Parent main pc 6 CLOSURE 5 5 ups=[MOVE 0..4]; CALL at pcs 17/27/37/47 on UP0..UP3 = main_0..main_3; main_3 calls comDlgStorylineSkip (GETGLOBAL pc 34, CALL pc 36) and branches at pc 37."
    }
-  },
-  {
-   "file": "snr_story_main.lua",
-   "proto_path": "main_3",
-   "mechanical": {
-    "selected_as": [
-     "leaf-refusal"
-    ],
-    "n_insns": 461,
-    "nups": 2,
-    "numparams": 0,
-    "level": "L1",
-    "refusal_reason": "mismatch: code",
-    "refusal_origin": "own",
-    "shipped": "fallback",
-    "hybrid_chunk": true,
-    "probe": {
-     "file_status": "OK",
-     "file_events": 11,
-     "dominant_global": null,
-     "dominant_global_events": null
-    },
-    "n_natural_loops": 3,
-    "n_back_edges": 3,
-    "poll_loops": [
-     {
-      "header_block": 86,
-      "back_edge_blocks": [
-       435
-      ],
-      "poll_pc": 88
-     }
-    ],
-    "calls_poll_directly": true,
-    "reaches_poll": true,
-    "loop_polls_per_iteration": true,
-    "in_loop_callees_reaching_poll": [
-     "comDlgYesNo"
-    ],
-    "option_calls": [
-     {
-      "callee": "comDlgYesNo",
-      "pc": 314,
-      "in_loop": true
-     }
-    ],
-    "channels": [
-     {
-      "path": [
-       {
-        "key": "cGetFileName"
-       },
-       {
-        "call": true
-       }
-      ],
-      "text": "cGetFileName()",
-      "domain": 2,
-      "constants": [],
-      "truth_tested": true
-     },
-     {
-      "path": [
-       {
-        "key": "comDlgYesNo"
-       },
-       {
-        "call": true
-       }
-      ],
-      "text": "comDlgYesNo()",
-      "domain": 2,
-      "constants": [
-       "true"
-      ],
-      "truth_tested": false
-     },
-     {
-      "path": [
-       {
-        "key": "comSectionStoryGetCount"
-       },
-       {
-        "call": true
-       }
-      ],
-      "text": "comSectionStoryGetCount()",
-      "domain": 2,
-      "constants": [
-       "0"
-      ],
-      "truth_tested": true
-     },
-     {
-      "path": [
-       {
-        "key": "gameSave"
-       },
-       {
-        "key": "myCard"
-       },
-       {
-        "dynamic": true
-       },
-       {
-        "key": "hold"
-       }
-      ],
-      "text": "gameSave.myCard[*].hold",
-      "domain": 2,
-      "constants": [
-       "-1"
-      ],
-      "truth_tested": false
-     },
-     {
-      "path": [
-       {
-        "key": "gameSave"
-       },
-       {
-        "key": "startMenuState"
-       }
-      ],
-      "text": "gameSave.startMenuState",
-      "domain": 2,
-      "constants": [
-       "1"
-      ],
-      "truth_tested": false
-     },
-     {
-      "path": [
-       {
-        "key": "gameSave"
-       },
-       {
-        "key": "tutorial"
-       },
-       {
-        "key": "firstFragment"
-       }
-      ],
-      "text": "gameSave.tutorial.firstFragment",
-      "domain": 2,
-      "constants": [
-       "0"
-      ],
-      "truth_tested": false
-     },
-     {
-      "path": [
-       {
-        "key": "layerIsLoad"
-       },
-       {
-        "call": true
-       }
-      ],
-      "text": "layerIsLoad()",
-      "domain": 2,
-      "constants": [
-       "true"
-      ],
-      "truth_tested": false
-     },
-     {
-      "path": [
-       {
-        "key": "pressButton"
-       },
-       {
-        "call": true
-       }
-      ],
-      "text": "pressButton()",
-      "domain": 2,
-      "constants": [
-       "true"
-      ],
-      "truth_tested": false
-     },
-     {
-      "path": [
-       {
-        "key": "selectItemNo"
-       }
-      ],
-      "text": "selectItemNo",
-      "domain": 2,
-      "constants": [
-       "1"
-      ],
-      "truth_tested": false
-     }
-    ],
-    "register_comparisons": 3,
-    "input_space": 512,
-    "drivable_within_budget": true,
-    "class": "ui-keyloop",
-    "class_evidence": "poll loop: header block 86, back edge from block (435,), pressButton call at pc 88; 1 such loop(s)",
-    "footprint": {
-     "global_reads": [
-      "advPart",
-      "cClearNumStoryRoute",
-      "cGetFileName",
-      "cInitGame",
-      "comDlgYesNo",
-      "comSectionFragmentItemInit",
-      "comSectionStoryGetCount",
-      "comSectionUID2ScriptFileName",
-      "fileName",
-      "fontClear",
-      "gameSave",
-      "keyPlaySE",
-      "layerAlpha",
-      "layerCopy",
-      "layerIsLoad",
-      "layerLoad",
-      "layerLoadAsync",
-      "layerMoveAlpha",
-      "layerMovePosition",
-      "layerName",
-      "layerPosition",
-      "layerVisible",
-      "logEnable",
-      "pressButton",
-      "quit",
-      "run",
-      "sceneId2aCard",
-      "seName",
-      "selectItemNo",
-      "switchScreen",
-      "systemConfig",
-      "vms",
-      "wait"
-     ],
-     "table_key_reads": [
-      [
-       "gameSave",
-       "myCard"
-      ],
-      [
-       "gameSave",
-       "startMenuState"
-      ],
-      [
-       "gameSave",
-       "storyRoute"
-      ],
-      [
-       "gameSave",
-       "tutorial"
-      ],
-      [
-       "layerName",
-       "card1"
-      ],
-      [
-       "layerName",
-       "card3"
-      ],
-      [
-       "layerName",
-       "effectBlack"
-      ],
-      [
-       "seName",
-       "arrowKey"
-      ],
-      [
-       "seName",
-       "circle"
-      ],
-      [
-       "seName",
-       "cross"
-      ],
-      [
-       "systemConfig",
-       "setConfigButton"
-      ],
-      [
-       "systemConfig",
-       "unsetConfigButton"
-      ]
-     ],
-     "calls": [
-      "advPart",
-      "cClearNumStoryRoute",
-      "cGetFileName",
-      "cInitGame",
-      "comDlgYesNo",
-      "comSectionFragmentItemInit",
-      "comSectionStoryGetCount",
-      "comSectionUID2ScriptFileName",
-      "fontClear",
-      "keyPlaySE",
-      "layerAlpha",
-      "layerCopy",
-      "layerIsLoad",
-      "layerLoad",
-      "layerLoadAsync",
-      "layerMoveAlpha",
-      "layerMovePosition",
-      "layerPosition",
-      "layerVisible",
-      "logEnable",
-      "pressButton",
-      "quit",
-      "run",
-      "switchScreen",
-      "vms",
-      "wait"
-     ],
-     "table_key_calls": [
-      [
-       "systemConfig",
-       "setConfigButton"
-      ],
-      [
-       "systemConfig",
-       "unsetConfigButton"
-      ]
-     ],
-     "dynamic_reads": 12,
-     "read_sites": 53,
-     "call_sites": 78
-    }
-   },
-   "observed": {
-    "reviewed_by": "ui-keyloop-audit",
-    "class_agrees": true,
-    "note": "Story/card selection screen. Loop pcs 86-438, 10 poll CALLs, single exit pc 389. ALSO satisfies the choice-branch predicate (comDlgYesNo at pc 314, inside the poll loop); ui-keyloop wins by priority and the option call is still recorded."
-   }
   }
  ],
  "orphan_observations": [
@@ -25188,6 +24021,33 @@
     "reviewed_by": "neither-audit",
     "class_agrees": true,
     "note": "Chunk root; builds the permsPersist/permsUnpersist/config tables. No CALL at all; it stores wait/msg/msgQuit as values, never calls them."
+   }
+  },
+  {
+   "file": "snr_common.lua",
+   "proto_path": "main_24",
+   "observed": {
+    "reviewed_by": "neither-audit",
+    "class_agrees": true,
+    "note": "ObjectCommon.new (built into oCom at main pcs 3144/3149/3150). No CALL."
+   }
+  },
+  {
+   "file": "snr_common.lua",
+   "proto_path": "main_25",
+   "observed": {
+    "reviewed_by": "neither-audit",
+    "class_agrees": true,
+    "note": "ObjectHourGlass.new (into oHour, main pcs 3155/3160/3161). No CALL."
+   }
+  },
+  {
+   "file": "snr_common.lua",
+   "proto_path": "main_25_4",
+   "observed": {
+    "reviewed_by": "neither-audit",
+    "class_agrees": true,
+    "note": "oHour.hourGlassStageStart, hourglass layer animation; only engine calls (wait at pcs 44/86)."
    }
   },
   {
@@ -25210,11 +24070,38 @@
   },
   {
    "file": "snr_common.lua",
+   "proto_path": "main_71",
+   "observed": {
+    "reviewed_by": "ui-keyloop-audit",
+    "class_agrees": true,
+    "note": "comSelectMap (main chunk pc 3252/3253). Loop pcs 279-409, polls at CALL 283/300/317/335/340, single exit at pc 295, no cancel path. Also an option callee."
+   }
+  },
+  {
+   "file": "snr_common.lua",
    "proto_path": "main_74_13",
    "observed": {
     "reviewed_by": "ui-keyloop-audit",
     "class_agrees": true,
     "note": "SystemOption.OptionMain, the settings screen. Loop pcs 13-721, 13 poll CALLs, three exits (pc 14, 48, 322). Name from the constructor SETTABLE key."
+   }
+  },
+  {
+   "file": "snr_common.lua",
+   "proto_path": "main_74_18",
+   "observed": {
+    "reviewed_by": "neither-audit",
+    "class_agrees": false,
+    "note": "RECLASSIFY to choice-branch. Own body calls self.OptionInit pc 9, self.OptionMain pc 67, self.OptionEnd pc 70 through a GETUPVAL base; OptionMain is main_74_13, a direct pressButton caller. Invisible to the rule because scan_proto seeds provenance only on GETGLOBAL."
+   }
+  },
+  {
+   "file": "snr_common.lua",
+   "proto_path": "main_76_2",
+   "observed": {
+    "reviewed_by": "ui-keyloop-audit",
+    "class_agrees": true,
+    "note": "SystemConfig.ConfigMain, the config menu; returns an index 1..8 or -1. Loop pcs 4-172, polls at CALL 8/96/109/124, exits pc 5/73/93/106, index clamp at pcs 115/130."
    }
   },
   {
@@ -25308,6 +24195,15 @@
    }
   },
   {
+   "file": "snr_mainmenu.lua",
+   "proto_path": "main_7",
+   "observed": {
+    "reviewed_by": "ui-keyloop-audit",
+    "class_agrees": true,
+    "note": "Main menu, four pages keyed by gameSave.startMenuState. FOUR poll loops (back edges 556/1101/1636/2181) and MEASURED: none of them has a CFG exit edge at all. They are left only through non-returning engine calls, 23 quit() sites."
+   }
+  },
+  {
    "file": "snr_memory.lua",
    "proto_path": "main_2",
    "observed": {
@@ -25368,6 +24264,15 @@
     "reviewed_by": "neither-audit",
     "class_agrees": true,
     "note": "Draws the story/plot selection grid page; called from main_2 pc 93 and main_3 pc 190, and main_3 is the key loop."
+   }
+  },
+  {
+   "file": "snr_story_main.lua",
+   "proto_path": "main_3",
+   "observed": {
+    "reviewed_by": "ui-keyloop-audit",
+    "class_agrees": true,
+    "note": "Story/card selection screen. Loop pcs 86-438, 10 poll CALLs, single exit pc 389. ALSO satisfies the choice-branch predicate (comDlgYesNo at pc 314, inside the poll loop); ui-keyloop wins by priority and the option call is still recorded."
    }
   }
  ]

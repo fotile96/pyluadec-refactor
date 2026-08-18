@@ -45,6 +45,7 @@ from pyluadec.verify.normalize import NORMALIZATIONS, compare_protos  # noqa: E4
 #: (corpus file, proto path, subproto index chain from the chunk root)
 TARGETS = [
     ("snr_common.lua", "main_24", (24,)),
+    ("snr_common.lua", "main_25", (25,)),
     ("snr_common.lua", "main_25_4", (25, 4)),
     ("snr_common.lua", "main_71", (71,)),
     ("snr_common.lua", "main_74_18", (74, 18)),

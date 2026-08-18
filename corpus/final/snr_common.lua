@@ -916,538 +916,118 @@ vms = function(l1_0, l1_1, l1_2)
 end
 ObjectCommon = {}
 ObjectCommon.new = function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0] = {}
-__pld_R[0]["startMenuState"] = 0
-__pld_R[1] = (function(__pld_U) return function(__pld_p0)
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-__pld_R[0] = __pld_p0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[1] = debagFlag
-if __pld_R[1] then __pld_pc = 4 else __pld_pc = 3 end
-elseif __pld_pc == 3 then
-__pld_pc = 11
-elseif __pld_pc == 4 then
-__pld_R[1] = vms
-__pld_R[2] = 1
-__pld_R[3] = "NONVOICE"
-__pld_R[4] = "■デバッグ："
-__pld_R[5] = __pld_R[0]
-__pld_R[4] = __pld_R[4] .. __pld_R[5]
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_pc = 11
-elseif __pld_pc == 11 then
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({})
-__pld_R[0]["debagMsg"] = __pld_R[1]
-__pld_R[1] = (function(__pld_U) return function(__pld_p0)
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-__pld_R[0] = __pld_p0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[1] = debagFlag
-if __pld_R[1] then __pld_pc = 4 else __pld_pc = 3 end
-elseif __pld_pc == 3 then
-__pld_pc = 19
-elseif __pld_pc == 4 then
-__pld_R[1] = pairs
-__pld_R[2] = __pld_R[0]
-__pld_R[1], __pld_R[2], __pld_R[3] = __pld_R[1](__pld_R[2])
-__pld_pc = 17
-elseif __pld_pc == 8 then
-__pld_R[6] = vms
-__pld_R[7] = 2
-__pld_R[8] = "NONVOICE"
-__pld_R[9] = "Ｋｅｙ＿"
-__pld_R[10] = __pld_R[4]
-__pld_R[11] = "：Ｖａｌｕｅ＿"
-__pld_R[12] = __pld_R[5]
-__pld_R[9] = __pld_R[9] .. __pld_R[10] .. __pld_R[11] .. __pld_R[12]
-__pld_R[6](__pld_R[7], __pld_R[8], __pld_R[9])
-__pld_pc = 17
-elseif __pld_pc == 17 then
-__pld_R[4], __pld_R[5] = __pld_R[1](__pld_R[2], __pld_R[3])
-if __pld_R[4] ~= nil then __pld_R[3] = __pld_R[4] __pld_pc = 18 else __pld_pc = 19 end
-elseif __pld_pc == 18 then
-__pld_pc = 8
-elseif __pld_pc == 19 then
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
-end end)({})
-__pld_R[0]["debagPairs"] = __pld_R[1]
-return __pld_R[0]
-elseif __pld_pc == 8 then
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
+    local t = { startMenuState = 0 }
+    t.debagMsg = function(msg)
+        if debagFlag then
+            vms(1, "NONVOICE", "■デバッグ：" .. msg)
+        end
+    end
+    t.debagPairs = function(t2)
+        if debagFlag then
+            for k, v in pairs(t2) do
+                vms(2, "NONVOICE", "Ｋｅｙ＿" .. k .. "：Ｖａｌｕｅ＿" .. v)
+            end
+        end
+    end
+    return t
 end
 oCom = ObjectCommon.new()
 ObjectHourGlass = {}
 ObjectHourGlass.new = function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {[0]=true}, 0
-__pld_R[0] = {}
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0].v = {}
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["hour1"]
-__pld_R[0].v["layerNo"] = __pld_R[1]
-__pld_R[1] = layerName
-__pld_R[1] = __pld_R[1]["hour2"]
-__pld_R[0].v["layerNo2"] = __pld_R[1]
-__pld_R[1] = (function(__pld_U) return function(__pld_p0)
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-__pld_R[0] = __pld_p0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[1] = 0
-__pld_R[2] = 0
-if not (100 <= __pld_R[0]) then __pld_pc = 4 else __pld_pc = 5 end
-elseif __pld_pc == 4 then
-__pld_pc = 8
-elseif __pld_pc == 5 then
-__pld_R[1] = 240
-__pld_R[2] = 60
-__pld_pc = 52
-elseif __pld_pc == 8 then
-if not (90 <= __pld_R[0]) then __pld_pc = 9 else __pld_pc = 10 end
-elseif __pld_pc == 9 then
-__pld_pc = 13
-elseif __pld_pc == 10 then
-__pld_R[1] = 180
-__pld_R[2] = 60
-__pld_pc = 52
-elseif __pld_pc == 13 then
-if not (80 <= __pld_R[0]) then __pld_pc = 14 else __pld_pc = 15 end
-elseif __pld_pc == 14 then
-__pld_pc = 18
-elseif __pld_pc == 15 then
-__pld_R[1] = 120
-__pld_R[2] = 60
-__pld_pc = 52
-elseif __pld_pc == 18 then
-if not (70 <= __pld_R[0]) then __pld_pc = 19 else __pld_pc = 20 end
-elseif __pld_pc == 19 then
-__pld_pc = 23
-elseif __pld_pc == 20 then
-__pld_R[1] = 60
-__pld_R[2] = 60
-__pld_pc = 52
-elseif __pld_pc == 23 then
-if not (60 <= __pld_R[0]) then __pld_pc = 24 else __pld_pc = 25 end
-elseif __pld_pc == 24 then
-__pld_pc = 28
-elseif __pld_pc == 25 then
-__pld_R[1] = 0
-__pld_R[2] = 60
-__pld_pc = 52
-elseif __pld_pc == 28 then
-if not (50 <= __pld_R[0]) then __pld_pc = 29 else __pld_pc = 30 end
-elseif __pld_pc == 29 then
-__pld_pc = 33
-elseif __pld_pc == 30 then
-__pld_R[1] = 240
-__pld_R[2] = 0
-__pld_pc = 52
-elseif __pld_pc == 33 then
-if not (40 <= __pld_R[0]) then __pld_pc = 34 else __pld_pc = 35 end
-elseif __pld_pc == 34 then
-__pld_pc = 38
-elseif __pld_pc == 35 then
-__pld_R[1] = 180
-__pld_R[2] = 0
-__pld_pc = 52
-elseif __pld_pc == 38 then
-if not (30 <= __pld_R[0]) then __pld_pc = 39 else __pld_pc = 40 end
-elseif __pld_pc == 39 then
-__pld_pc = 43
-elseif __pld_pc == 40 then
-__pld_R[1] = 120
-__pld_R[2] = 0
-__pld_pc = 52
-elseif __pld_pc == 43 then
-if not (20 <= __pld_R[0]) then __pld_pc = 44 else __pld_pc = 45 end
-elseif __pld_pc == 44 then
-__pld_pc = 48
-elseif __pld_pc == 45 then
-__pld_R[1] = 60
-__pld_R[2] = 0
-__pld_pc = 52
-elseif __pld_pc == 48 then
-if not (10 <= __pld_R[0]) then __pld_pc = 49 else __pld_pc = 50 end
-elseif __pld_pc == 49 then
-__pld_pc = 52
-elseif __pld_pc == 50 then
-__pld_R[1] = 0
-__pld_R[2] = 0
-__pld_pc = 52
-elseif __pld_pc == 52 then
-__pld_R[3] = __pld_R[1]
-__pld_R[4] = __pld_R[2]
-return __pld_R[3], __pld_R[4]
-elseif __pld_pc == 55 then
-return
-else __pld_error("pyluadec fallback: invalid pc") end
+local l1_0 = {layerNo = layerName.hour1, layerNo2 = layerName.hour2}
+l1_0.setHourGlassCount2FileName = function(l2_0)
+    local l2_1 = 0
+    local l2_2 = 0
+    if l2_0 >= 100 then
+        l2_1 = 240
+        l2_2 = 60
+    elseif l2_0 >= 90 then
+        l2_1 = 180
+        l2_2 = 60
+    elseif l2_0 >= 80 then
+        l2_1 = 120
+        l2_2 = 60
+    elseif l2_0 >= 70 then
+        l2_1 = 60
+        l2_2 = 60
+    elseif 60 <= l2_0 then
+        l2_1 = 0
+        l2_2 = 60
+    elseif l2_0 >= 50 then
+        l2_1 = 240
+        l2_2 = 0
+    elseif l2_0 >= 40 then
+        l2_1 = 180
+        l2_2 = 0
+    elseif l2_0 >= 30 then
+        l2_1 = 120
+        l2_2 = 0
+    elseif l2_0 >= 20 then
+        l2_1 = 60
+        l2_2 = 0
+    elseif l2_0 >= 10 then
+        l2_1 = 0
+        l2_2 = 0
+    end
+    return l2_1, l2_2
 end
-end end)({})
-__pld_R[0].v["setHourGlassCount2FileName"] = __pld_R[1]
-__pld_R[1] = (function(__pld_U) return function(__pld_p0)
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-__pld_R[0] = __pld_p0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[1] = __pld_U[0].v
-__pld_R[1] = __pld_R[1]["setHourGlassCount2FileName"]
-__pld_R[2] = __pld_R[0]
-__pld_R[1], __pld_R[2] = __pld_R[1](__pld_R[2])
-__pld_R[3] = layerCopy
-__pld_R[4] = __pld_U[0].v
-__pld_R[4] = __pld_R[4]["layerNo"]
-__pld_R[5] = layerName
-__pld_R[5] = __pld_R[5]["sys_4_a"]
-__pld_R[3](__pld_R[4], __pld_R[5])
-__pld_R[3] = layerClip
-__pld_R[4] = __pld_U[0].v
-__pld_R[4] = __pld_R[4]["layerNo"]
-__pld_R[5] = __pld_R[1]
-__pld_R[6] = __pld_R[2]
-__pld_R[7] = __pld_R[1] + 60
-__pld_R[8] = __pld_R[2] + 60
-__pld_R[3](__pld_R[4], __pld_R[5], __pld_R[6], __pld_R[7], __pld_R[8])
-__pld_R[3] = layerAnime
-__pld_R[4] = __pld_U[0].v
-__pld_R[4] = __pld_R[4]["layerNo"]
-__pld_R[5] = 4
-__pld_R[6] = true
-__pld_R[3](__pld_R[4], __pld_R[5], __pld_R[6])
-__pld_R[3] = layerAlpha
-__pld_R[4] = __pld_U[0].v
-__pld_R[4] = __pld_R[4]["layerNo"]
-__pld_R[5] = 0
-__pld_R[3](__pld_R[4], __pld_R[5])
-__pld_R[3] = layerPosition
-__pld_R[4] = __pld_U[0].v
-__pld_R[4] = __pld_R[4]["layerNo"]
-__pld_R[5] = 520
-__pld_R[6] = (-30)
-__pld_R[3](__pld_R[4], __pld_R[5], __pld_R[6])
-__pld_R[3] = layerMovePosition
-__pld_R[4] = __pld_U[0].v
-__pld_R[4] = __pld_R[4]["layerNo"]
-__pld_R[5] = 400
-__pld_R[6] = 10
-__pld_R[7] = 30
-__pld_R[3](__pld_R[4], __pld_R[5], __pld_R[6], __pld_R[7])
-__pld_R[3] = layerMoveAlpha
-__pld_R[4] = __pld_U[0].v
-__pld_R[4] = __pld_R[4]["layerNo"]
-__pld_R[5] = 100
-__pld_R[6] = 30
-__pld_R[3](__pld_R[4], __pld_R[5], __pld_R[6])
-__pld_R[3] = wait
-__pld_R[4] = 30
-__pld_R[3](__pld_R[4])
-return
-else __pld_error("pyluadec fallback: invalid pc") end
+l1_0.hourGlassStageIn = function(l2_0)
+    local l2_1, l2_2 = l1_0.setHourGlassCount2FileName(l2_0)
+    layerCopy(l1_0.layerNo, layerName.sys_4_a)
+    layerClip(l1_0.layerNo, l2_1, l2_2, l2_1 + 60, l2_2 + 60)
+    layerAnime(l1_0.layerNo, 4, true)
+    layerAlpha(l1_0.layerNo, 0)
+    layerPosition(l1_0.layerNo, 520, -30)
+    layerMovePosition(l1_0.layerNo, 400, 10, 30)
+    layerMoveAlpha(l1_0.layerNo, 100, 30)
+    wait(30)
 end
-end end)({[0]=__pld_R[0]})
-__pld_R[0].v["hourGlassStageIn"] = __pld_R[1]
-__pld_R[1] = (function(__pld_U) return function(__pld_p0)
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-__pld_R[0] = __pld_p0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[1] = layerMovePosition
-__pld_R[2] = __pld_U[0].v
-__pld_R[2] = __pld_R[2]["layerNo"]
-__pld_R[3] = (-50)
-__pld_R[4] = (-50)
-__pld_R[5] = 30
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4], __pld_R[5])
-__pld_R[1] = layerMoveAlpha
-__pld_R[2] = __pld_U[0].v
-__pld_R[2] = __pld_R[2]["layerNo"]
-__pld_R[3] = 0
-__pld_R[4] = 30
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = wait
-__pld_R[2] = 30
-__pld_R[1](__pld_R[2])
-__pld_R[1] = layerLoad
-__pld_R[2] = __pld_U[0].v
-__pld_R[2] = __pld_R[2]["layerNo"]
-__pld_R[3] = ""
-__pld_R[1](__pld_R[2], __pld_R[3])
-__pld_R[1] = switchScreen
-__pld_R[2] = 0
-__pld_R[3] = ""
-__pld_R[4] = 30
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = wait
-__pld_R[2] = 10
-__pld_R[1](__pld_R[2])
-return
-else __pld_error("pyluadec fallback: invalid pc") end
+l1_0.hourGlassStageOut = function(l2_0)
+    layerMovePosition(l1_0.layerNo, -50, -50, 30)
+    layerMoveAlpha(l1_0.layerNo, 0, 30)
+    wait(30)
+    layerLoad(l1_0.layerNo, "")
+    switchScreen(0, "", 30)
+    wait(10)
 end
-end end)({[0]=__pld_R[0]})
-__pld_R[0].v["hourGlassStageOut"] = __pld_R[1]
-__pld_R[1] = (function(__pld_U) return function(__pld_p0, __pld_p1)
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-__pld_R[0] = __pld_p0
-__pld_R[1] = __pld_p1
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[2] = __pld_U[0].v
-__pld_R[2] = __pld_R[2]["setHourGlassCount2FileName"]
-__pld_R[3] = __pld_R[1]
-__pld_R[2], __pld_R[3] = __pld_R[2](__pld_R[3])
-__pld_R[4] = __pld_U[0].v
-__pld_R[4] = __pld_R[4]["setHourGlassCount2FileName"]
-__pld_R[5] = __pld_R[0]
-__pld_R[4], __pld_R[5] = __pld_R[4](__pld_R[5])
-__pld_R[6] = layerCopy
-__pld_R[7] = __pld_U[0].v
-__pld_R[7] = __pld_R[7]["layerNo2"]
-__pld_R[8] = layerName
-__pld_R[8] = __pld_R[8]["sys_4_a"]
-__pld_R[6](__pld_R[7], __pld_R[8])
-__pld_R[6] = layerClip
-__pld_R[7] = __pld_U[0].v
-__pld_R[7] = __pld_R[7]["layerNo2"]
-__pld_R[8] = __pld_R[4]
-__pld_R[9] = __pld_R[5]
-__pld_R[10] = __pld_R[4] + 60
-__pld_R[11] = __pld_R[5] + 60
-__pld_R[6](__pld_R[7], __pld_R[8], __pld_R[9], __pld_R[10], __pld_R[11])
-__pld_R[6] = layerAlpha
-__pld_R[7] = __pld_U[0].v
-__pld_R[7] = __pld_R[7]["layerNo2"]
-__pld_R[8] = 100
-__pld_R[6](__pld_R[7], __pld_R[8])
-__pld_R[6] = layerPosition
-__pld_R[7] = __pld_U[0].v
-__pld_R[7] = __pld_R[7]["layerNo2"]
-__pld_R[8] = 5
-__pld_R[9] = 5
-__pld_R[6](__pld_R[7], __pld_R[8], __pld_R[9])
-__pld_R[6] = layerMoveAlpha
-__pld_R[7] = __pld_U[0].v
-__pld_R[7] = __pld_R[7]["layerNo2"]
-__pld_R[8] = 0
-__pld_R[9] = 30
-__pld_R[6](__pld_R[7], __pld_R[8], __pld_R[9])
-__pld_R[6] = layerCopy
-__pld_R[7] = __pld_U[0].v
-__pld_R[7] = __pld_R[7]["layerNo"]
-__pld_R[8] = layerName
-__pld_R[8] = __pld_R[8]["sys_4_a"]
-__pld_R[6](__pld_R[7], __pld_R[8])
-__pld_R[6] = layerClip
-__pld_R[7] = __pld_U[0].v
-__pld_R[7] = __pld_R[7]["layerNo"]
-__pld_R[8] = __pld_R[2]
-__pld_R[9] = __pld_R[3]
-__pld_R[10] = __pld_R[2] + 60
-__pld_R[11] = __pld_R[3] + 60
-__pld_R[6](__pld_R[7], __pld_R[8], __pld_R[9], __pld_R[10], __pld_R[11])
-__pld_R[6] = layerAlpha
-__pld_R[7] = __pld_U[0].v
-__pld_R[7] = __pld_R[7]["layerNo"]
-__pld_R[8] = 0
-__pld_R[6](__pld_R[7], __pld_R[8])
-__pld_R[6] = layerPosition
-__pld_R[7] = __pld_U[0].v
-__pld_R[7] = __pld_R[7]["layerNo"]
-__pld_R[8] = 5
-__pld_R[9] = 5
-__pld_R[6](__pld_R[7], __pld_R[8], __pld_R[9])
-__pld_R[6] = layerMoveAlpha
-__pld_R[7] = __pld_U[0].v
-__pld_R[7] = __pld_R[7]["layerNo"]
-__pld_R[8] = 100
-__pld_R[9] = 30
-__pld_R[6](__pld_R[7], __pld_R[8], __pld_R[9])
-__pld_R[6] = layerAnime
-__pld_R[7] = __pld_U[0].v
-__pld_R[7] = __pld_R[7]["layerNo"]
-__pld_R[8] = 4
-__pld_R[9] = true
-__pld_R[6](__pld_R[7], __pld_R[8], __pld_R[9])
-__pld_R[6] = wait
-__pld_R[7] = 30
-__pld_R[6](__pld_R[7])
-__pld_R[6] = layerLoad
-__pld_R[7] = __pld_U[0].v
-__pld_R[7] = __pld_R[7]["layerNo2"]
-__pld_R[8] = ""
-__pld_R[6](__pld_R[7], __pld_R[8])
-__pld_R[6] = switchScreen
-__pld_R[7] = 0
-__pld_R[8] = ""
-__pld_R[9] = 30
-__pld_R[6](__pld_R[7], __pld_R[8], __pld_R[9])
-__pld_R[6] = wait
-__pld_R[7] = 10
-__pld_R[6](__pld_R[7])
-return
-else __pld_error("pyluadec fallback: invalid pc") end
+l1_0.hourGlassStageCngTo = function(l2_0, l2_1)
+    local l2_2, l2_3 = l1_0.setHourGlassCount2FileName(l2_1)
+    local l2_4, l2_5 = l1_0.setHourGlassCount2FileName(l2_0)
+    layerCopy(l1_0.layerNo2, layerName.sys_4_a)
+    layerClip(l1_0.layerNo2, l2_4, l2_5, l2_4 + 60, l2_5 + 60)
+    layerAlpha(l1_0.layerNo2, 100)
+    layerPosition(l1_0.layerNo2, 5, 5)
+    layerMoveAlpha(l1_0.layerNo2, 0, 30)
+    layerCopy(l1_0.layerNo, layerName.sys_4_a)
+    layerClip(l1_0.layerNo, l2_2, l2_3, l2_2 + 60, l2_3 + 60)
+    layerAlpha(l1_0.layerNo, 0)
+    layerPosition(l1_0.layerNo, 5, 5)
+    layerMoveAlpha(l1_0.layerNo, 100, 30)
+    layerAnime(l1_0.layerNo, 4, true)
+    wait(30)
+    layerLoad(l1_0.layerNo2, "")
+    switchScreen(0, "", 30)
+    wait(10)
 end
-end end)({[0]=__pld_R[0]})
-__pld_R[0].v["hourGlassStageCngTo"] = __pld_R[1]
-__pld_R[1] = (function(__pld_U) return function()
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0] = advPart
-__pld_R[1] = false
-__pld_R[0](__pld_R[1])
-__pld_R[0] = layerAlpha
-__pld_R[1] = __pld_U[0].v
-__pld_R[1] = __pld_R[1]["layerNo"]
-__pld_R[2] = 100
-__pld_R[0](__pld_R[1], __pld_R[2])
-__pld_R[0] = __pld_U[0].v
-__pld_R[0] = __pld_R[0]["setHourGlassCount2FileName"]
-__pld_R[1] = 100
-__pld_R[0], __pld_R[1] = __pld_R[0](__pld_R[1])
-__pld_R[2] = layerClip
-__pld_R[3] = __pld_U[0].v
-__pld_R[3] = __pld_R[3]["layerNo"]
-__pld_R[4] = __pld_R[0]
-__pld_R[5] = __pld_R[1]
-__pld_R[6] = __pld_R[0] + 60
-__pld_R[7] = __pld_R[1] + 60
-__pld_R[2](__pld_R[3], __pld_R[4], __pld_R[5], __pld_R[6], __pld_R[7])
-__pld_R[2] = layerPosition
-__pld_R[3] = __pld_U[0].v
-__pld_R[3] = __pld_R[3]["layerNo"]
-__pld_R[4] = 5
-__pld_R[5] = 5
-__pld_R[2](__pld_R[3], __pld_R[4], __pld_R[5])
-__pld_R[2] = layerMovePosition
-__pld_R[3] = __pld_U[0].v
-__pld_R[3] = __pld_R[3]["layerNo"]
-__pld_R[4] = 5
-__pld_R[5] = (-10)
-__pld_R[6] = 40
-__pld_R[2](__pld_R[3], __pld_R[4], __pld_R[5], __pld_R[6])
-__pld_R[2] = layerMoveRotate
-__pld_R[3] = __pld_U[0].v
-__pld_R[3] = __pld_R[3]["layerNo"]
-__pld_R[4] = 0
-__pld_R[5] = 0
-__pld_R[6] = 180
-__pld_R[7] = 40
-__pld_R[2](__pld_R[3], __pld_R[4], __pld_R[5], __pld_R[6], __pld_R[7])
-__pld_R[2] = wait
-__pld_R[3] = 40
-__pld_R[2](__pld_R[3])
-__pld_R[2] = __pld_U[0].v
-__pld_R[2] = __pld_R[2]["setHourGlassCount2FileName"]
-__pld_R[3] = 0
-__pld_R[2], __pld_R[3] = __pld_R[2](__pld_R[3])
-__pld_R[1] = __pld_R[3]
-__pld_R[0] = __pld_R[2]
-__pld_R[2] = layerClip
-__pld_R[3] = __pld_U[0].v
-__pld_R[3] = __pld_R[3]["layerNo"]
-__pld_R[4] = __pld_R[0]
-__pld_R[5] = __pld_R[1]
-__pld_R[6] = __pld_R[0] + 60
-__pld_R[7] = __pld_R[1] + 60
-__pld_R[2](__pld_R[3], __pld_R[4], __pld_R[5], __pld_R[6], __pld_R[7])
-__pld_R[2] = layerPosition
-__pld_R[3] = __pld_U[0].v
-__pld_R[3] = __pld_R[3]["layerNo"]
-__pld_R[4] = 5
-__pld_R[5] = (-10)
-__pld_R[2](__pld_R[3], __pld_R[4], __pld_R[5])
-__pld_R[2] = layerRotate
-__pld_R[3] = __pld_U[0].v
-__pld_R[3] = __pld_R[3]["layerNo"]
-__pld_R[4] = 0
-__pld_R[5] = 0
-__pld_R[6] = 0
-__pld_R[2](__pld_R[3], __pld_R[4], __pld_R[5], __pld_R[6])
-__pld_R[2] = switchScreen
-__pld_R[3] = 0
-__pld_R[4] = ""
-__pld_R[5] = 15
-__pld_R[2](__pld_R[3], __pld_R[4], __pld_R[5])
-__pld_R[2] = layerMovePosition
-__pld_R[3] = __pld_U[0].v
-__pld_R[3] = __pld_R[3]["layerNo"]
-__pld_R[4] = 5
-__pld_R[5] = 5
-__pld_R[6] = 30
-__pld_R[2](__pld_R[3], __pld_R[4], __pld_R[5], __pld_R[6])
-__pld_R[2] = wait
-__pld_R[3] = 30
-__pld_R[2](__pld_R[3])
-__pld_R[2] = advPart
-__pld_R[3] = true
-__pld_R[2](__pld_R[3])
-return
-else __pld_error("pyluadec fallback: invalid pc") end
+l1_0.hourGlassStageStart = function()
+advPart(false)
+layerAlpha(l1_0.layerNo, 100)
+local l2_0, l2_1 = l1_0.setHourGlassCount2FileName(100)
+layerClip(l1_0.layerNo, l2_0, l2_1, l2_0 + 60, l2_1 + 60)
+layerPosition(l1_0.layerNo, 5, 5)
+layerMovePosition(l1_0.layerNo, 5, -10, 40)
+layerMoveRotate(l1_0.layerNo, 0, 0, 180, 40)
+wait(40)
+l2_0, l2_1 = l1_0.setHourGlassCount2FileName(0)
+layerClip(l1_0.layerNo, l2_0, l2_1, l2_0 + 60, l2_1 + 60)
+layerPosition(l1_0.layerNo, 5, -10)
+layerRotate(l1_0.layerNo, 0, 0, 0)
+switchScreen(0, "", 15)
+layerMovePosition(l1_0.layerNo, 5, 5, 30)
+wait(30)
+advPart(true)
 end
-end end)({[0]=__pld_R[0]})
-__pld_R[0].v["hourGlassStageStart"] = __pld_R[1]
-return __pld_R[0].v
-elseif __pld_pc == 23 then
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
+return l1_0
 end
 oHour = ObjectHourGlass.new()
 comDlgYesNo = function(l1_0, l1_1, l1_2)
@@ -2631,626 +2211,128 @@ comSectionFragmentItemInit = function()
     fragmentCursorCount = 0
     fragmentCursorPage = 1
 end
-comSelectMap = function(__pld_p0, __pld_p1, __pld_p2, __pld_p3, ...)
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-__pld_R[0] = __pld_p0
-__pld_R[1] = __pld_p1
-__pld_R[2] = __pld_p2
-__pld_R[3] = __pld_p3
-local __pld_pc = 1
+comSelectMap = function(l1_0, l1_1, l1_2, l1_3, ...)
+if not l1_3 then
+    l1_3 = ""
+end
+advPart(false)
+local l1_5 = {art = 1, music = 2, health = 3, staffRoom = 4, court = 5, ground = 6, class = 7, roof = 8, corridor = 9, library = 10}
+local l1_6 = {art = 0, music = 52, health = 104, staffRoom = 156, court = 208, ground = 0, class = 52, roof = 104, corridor = 156, library = 208}
+local l1_7 = {art = 0, music = 0, health = 0, staffRoom = 0, court = 0, ground = 120, class = 120, roof = 120, corridor = 120, library = 120}
+local l1_8 = {}
+local l1_9 = {}
+local l1_10 = {bg = 0, chara = 1, info = 3, map = 4}
+local l1_11 = {}
+local l1_12 = 0
+if 0 < select("#", ...) then
+    l1_12 = select("#", ...) / 4
+end
+for l1_16 = 1, select("#", ...), 1 do
+    l1_11[l1_16] = select(l1_16, ...)
+end
+for l1_16 = 0, 15, 1 do
+    layerLoad(l1_16, "")
+end
+layerLoad(l1_10.bg, l1_0)
+layerCopy(l1_10.info, layerName.sel_map_0_a)
+layerPosition(l1_10.info, 0, 230)
+if l1_1 == "YUI" then
+    layerCopy(l1_10.chara, layerName.sel_map_2_a)
+    if l1_2 == 1 then
+        layerClip(l1_10.chara, 0, 0, 90, 92)
+    else
+        layerClip(l1_10.chara, 90, 0, 180, 92)
+    end
+elseif l1_1 == "AYA" then
+    layerCopy(l1_10.chara, layerName.sel_map_2_b)
+    if l1_2 == 1 then
+        layerClip(l1_10.chara, 0, 0, 80, 84)
+    elseif l1_2 == 2 then
+        layerClip(l1_10.chara, 80, 0, 160, 84)
+    else
+        layerClip(l1_10.chara, 160, 0, 240, 84)
+    end
+end
+layerPosition(l1_10.chara, 180, 188)
+if not (l1_3 == "") then
+    layerCopy(l1_10.map, layerName.sel_map_1_a)
+    layerPosition(l1_10.map, 356, 246)
+    layerClip(l1_10.map, l1_7[l1_3], l1_6[l1_3] + 26, l1_7[l1_3] + 120, l1_6[l1_3] + 52)
+else
+    l1_3 = l1_11[1]
+end
+local l1_13 = 1
+local l1_14 = 1
+for l1_18 = 1, l1_12, 1 do
+    layerCopy(l1_10.map + l1_18, layerName.sel_map_1_a)
+    layerPosition(l1_10.map + l1_18, l1_11[(l1_18 - 1) * 4 + 2], l1_11[(l1_18 - 1) * 4 + 3])
+    if l1_11[(l1_18 - 1) * 4 + 1] == l1_3 then
+        layerClip(l1_10.map + l1_18, l1_7[l1_11[(l1_18 - 1) * 4 + 1]], l1_6[l1_11[(l1_18 - 1) * 4 + 1]], l1_7[l1_11[(l1_18 - 1) * 4 + 1]] + 120, l1_6[l1_11[(l1_18 - 1) * 4 + 1]] + 26)
+        l1_13 = l1_18
+    else
+        layerClip(l1_10.map + l1_18, l1_7[l1_11[(l1_18 - 1) * 4 + 1]], l1_6[l1_11[(l1_18 - 1) * 4 + 1]] + 26, l1_7[l1_11[(l1_18 - 1) * 4 + 1]] + 120, l1_6[l1_11[(l1_18 - 1) * 4 + 1]] + 52)
+    end
+end
+switchScreen(0, "", 60)
+local l1_15 = false
+local l1_16 = 1
+local l1_17 = 1
+local l1_18 = 1
 while true do
-if __pld_pc == 1 then
-if __pld_R[3] then __pld_pc = 2 else __pld_pc = 3 end
-elseif __pld_pc == 2 then
-__pld_pc = 4
-elseif __pld_pc == 3 then
-__pld_R[3] = ""
-__pld_pc = 4
-elseif __pld_pc == 4 then
-__pld_R[5] = advPart
-__pld_R[6] = false
-__pld_R[5](__pld_R[6])
-__pld_R[5] = {}
-__pld_R[5]["art"] = 1
-__pld_R[5]["music"] = 2
-__pld_R[5]["health"] = 3
-__pld_R[5]["staffRoom"] = 4
-__pld_R[5]["court"] = 5
-__pld_R[5]["ground"] = 6
-__pld_R[5]["class"] = 7
-__pld_R[5]["roof"] = 8
-__pld_R[5]["corridor"] = 9
-__pld_R[5]["library"] = 10
-__pld_R[6] = {}
-__pld_R[6]["art"] = 0
-__pld_R[6]["music"] = 52
-__pld_R[6]["health"] = 104
-__pld_R[6]["staffRoom"] = 156
-__pld_R[6]["court"] = 208
-__pld_R[6]["ground"] = 0
-__pld_R[6]["class"] = 52
-__pld_R[6]["roof"] = 104
-__pld_R[6]["corridor"] = 156
-__pld_R[6]["library"] = 208
-__pld_R[7] = {}
-__pld_R[7]["art"] = 0
-__pld_R[7]["music"] = 0
-__pld_R[7]["health"] = 0
-__pld_R[7]["staffRoom"] = 0
-__pld_R[7]["court"] = 0
-__pld_R[7]["ground"] = 120
-__pld_R[7]["class"] = 120
-__pld_R[7]["roof"] = 120
-__pld_R[7]["corridor"] = 120
-__pld_R[7]["library"] = 120
-__pld_R[8] = {}
-__pld_R[9] = {}
-__pld_R[10] = {}
-__pld_R[10]["bg"] = 0
-__pld_R[10]["chara"] = 1
-__pld_R[10]["info"] = 3
-__pld_R[10]["map"] = 4
-__pld_R[11] = {}
-__pld_R[12] = 0
-__pld_R[13] = select
-__pld_R[14] = "#"
-do local __pld_rs = __pld_pack(...)
-for __pld_i = 1, __pld_rs.n do __pld_set(__pld_R, __pld_B, 15 + __pld_i - 1, __pld_rs[__pld_i]) end
-__pld_top = 15 + __pld_rs.n end
-do local __pld_t, __pld_n = {}, __pld_top - 14 for __pld_i = 1, __pld_n do __pld_t[__pld_i] = __pld_get(__pld_R, __pld_B, 14 + __pld_i - 1) end __pld_R[13] = __pld_R[13](__pld_unpack(__pld_t, 1, __pld_n)) end
-if not (0 < __pld_R[13]) then __pld_pc = 54 else __pld_pc = 55 end
-elseif __pld_pc == 54 then
-__pld_pc = 60
-elseif __pld_pc == 55 then
-__pld_R[13] = select
-__pld_R[14] = "#"
-do local __pld_rs = __pld_pack(...)
-for __pld_i = 1, __pld_rs.n do __pld_set(__pld_R, __pld_B, 15 + __pld_i - 1, __pld_rs[__pld_i]) end
-__pld_top = 15 + __pld_rs.n end
-do local __pld_t, __pld_n = {}, __pld_top - 14 for __pld_i = 1, __pld_n do __pld_t[__pld_i] = __pld_get(__pld_R, __pld_B, 14 + __pld_i - 1) end __pld_R[13] = __pld_R[13](__pld_unpack(__pld_t, 1, __pld_n)) end
-__pld_R[12] = __pld_R[13] / 4
-__pld_pc = 60
-elseif __pld_pc == 60 then
-__pld_R[13] = 1
-__pld_R[14] = select
-__pld_R[15] = "#"
-do local __pld_rs = __pld_pack(...)
-for __pld_i = 1, __pld_rs.n do __pld_set(__pld_R, __pld_B, 16 + __pld_i - 1, __pld_rs[__pld_i]) end
-__pld_top = 16 + __pld_rs.n end
-do local __pld_t, __pld_n = {}, __pld_top - 15 for __pld_i = 1, __pld_n do __pld_t[__pld_i] = __pld_get(__pld_R, __pld_B, 15 + __pld_i - 1) end __pld_R[14] = __pld_R[14](__pld_unpack(__pld_t, 1, __pld_n)) end
-__pld_R[15] = 1
-do
-local __pld_i = __pld_tonumber(__pld_R[13]) if __pld_i == nil then __pld_error("'for' initial value must be a number") end
-local __pld_l = __pld_tonumber(__pld_R[14]) if __pld_l == nil then __pld_error("'for' limit must be a number") end
-local __pld_s = __pld_tonumber(__pld_R[15]) if __pld_s == nil then __pld_error("'for' step must be a number") end
-__pld_R[13] = __pld_i - __pld_s __pld_R[14] = __pld_l __pld_R[15] = __pld_s
+    if l1_15 == false then
+        if pressButton("CIRCLE") == true then
+            if l1_18 == 0 then
+                keyPlaySE(seName.circle)
+                wait(5)
+                break
+            end
+        else
+            l1_18 = 0
+        end
+        if pressButton("UP") == true then
+            if l1_16 == 0 then
+                l1_14 = l1_13
+                l1_13 = l1_13 - 1 < 1 and l1_12 or l1_13 - 1
+                l1_15 = true
+            end
+        else
+            l1_16 = 0
+        end
+        if pressButton("DOWN") == true then
+            if l1_17 == 0 then
+                l1_14 = l1_13
+                l1_13 = l1_12 < l1_13 + 1 and 1 or l1_13 + 1
+                l1_15 = true
+            end
+        else
+            l1_17 = 0
+        end
+        if pressButton("LEFT") == true then
+        end
+        if pressButton("RIGHT") == true then
+        end
+    end
+    if l1_15 == true then
+        keyPlaySE(seName.arrowKey)
+        layerClip(l1_10.map + l1_13, l1_7[l1_11[(l1_13 - 1) * 4 + 1]], l1_6[l1_11[(l1_13 - 1) * 4 + 1]], l1_7[l1_11[(l1_13 - 1) * 4 + 1]] + 120, l1_6[l1_11[(l1_13 - 1) * 4 + 1]] + 26)
+        layerClip(l1_10.map + l1_14, l1_7[l1_11[(l1_14 - 1) * 4 + 1]], l1_6[l1_11[(l1_14 - 1) * 4 + 1]] + 26, l1_7[l1_11[(l1_14 - 1) * 4 + 1]] + 120, l1_6[l1_11[(l1_14 - 1) * 4 + 1]] + 52)
+        l1_15 = false
+        wait(5)
+    end
+    wait(2)
 end
-__pld_pc = 72
-elseif __pld_pc == 67 then
-__pld_R[17] = select
-__pld_R[18] = __pld_R[16]
-do local __pld_rs = __pld_pack(...)
-for __pld_i = 1, __pld_rs.n do __pld_set(__pld_R, __pld_B, 19 + __pld_i - 1, __pld_rs[__pld_i]) end
-__pld_top = 19 + __pld_rs.n end
-do local __pld_t, __pld_n = {}, __pld_top - 18 for __pld_i = 1, __pld_n do __pld_t[__pld_i] = __pld_get(__pld_R, __pld_B, 18 + __pld_i - 1) end __pld_R[17] = __pld_R[17](__pld_unpack(__pld_t, 1, __pld_n)) end
-__pld_R[11][__pld_R[16]] = __pld_R[17]
-__pld_pc = 72
-elseif __pld_pc == 72 then
-do local __pld_s = __pld_R[15] local __pld_i = __pld_R[13] + __pld_s
-if (__pld_s > 0 and __pld_i <= __pld_R[14]) or (__pld_s <= 0 and __pld_i >= __pld_R[14]) then
-__pld_R[13] = __pld_i __pld_R[16] = __pld_i __pld_pc = 67
-else __pld_pc = 73 end end
-elseif __pld_pc == 73 then
-__pld_R[13] = 0
-__pld_R[14] = 15
-__pld_R[15] = 1
-do
-local __pld_i = __pld_tonumber(__pld_R[13]) if __pld_i == nil then __pld_error("'for' initial value must be a number") end
-local __pld_l = __pld_tonumber(__pld_R[14]) if __pld_l == nil then __pld_error("'for' limit must be a number") end
-local __pld_s = __pld_tonumber(__pld_R[15]) if __pld_s == nil then __pld_error("'for' step must be a number") end
-__pld_R[13] = __pld_i - __pld_s __pld_R[14] = __pld_l __pld_R[15] = __pld_s
+for l1_22 = 1, l1_12, 1 do
+    if not (l1_13 == l1_22) then
+        layerMoveAlpha(l1_10.map + l1_22, 0, 30)
+        layerMoveScale(l1_10.map + l1_22, 100, 0, 30)
+    end
 end
-__pld_pc = 81
-elseif __pld_pc == 77 then
-__pld_R[17] = layerLoad
-__pld_R[18] = __pld_R[16]
-__pld_R[19] = ""
-__pld_R[17](__pld_R[18], __pld_R[19])
-__pld_pc = 81
-elseif __pld_pc == 81 then
-do local __pld_s = __pld_R[15] local __pld_i = __pld_R[13] + __pld_s
-if (__pld_s > 0 and __pld_i <= __pld_R[14]) or (__pld_s <= 0 and __pld_i >= __pld_R[14]) then
-__pld_R[13] = __pld_i __pld_R[16] = __pld_i __pld_pc = 77
-else __pld_pc = 82 end end
-elseif __pld_pc == 82 then
-__pld_R[13] = layerLoad
-__pld_R[14] = __pld_R[10]["bg"]
-__pld_R[15] = __pld_R[0]
-__pld_R[13](__pld_R[14], __pld_R[15])
-__pld_R[13] = layerCopy
-__pld_R[14] = __pld_R[10]["info"]
-__pld_R[15] = layerName
-__pld_R[15] = __pld_R[15]["sel_map_0_a"]
-__pld_R[13](__pld_R[14], __pld_R[15])
-__pld_R[13] = layerPosition
-__pld_R[14] = __pld_R[10]["info"]
-__pld_R[15] = 0
-__pld_R[16] = 230
-__pld_R[13](__pld_R[14], __pld_R[15], __pld_R[16])
-if not (__pld_R[1] == "YUI") then __pld_pc = 97 else __pld_pc = 98 end
-elseif __pld_pc == 97 then
-__pld_pc = 121
-elseif __pld_pc == 98 then
-__pld_R[13] = layerCopy
-__pld_R[14] = __pld_R[10]["chara"]
-__pld_R[15] = layerName
-__pld_R[15] = __pld_R[15]["sel_map_2_a"]
-__pld_R[13](__pld_R[14], __pld_R[15])
-if not (__pld_R[2] == 1) then __pld_pc = 104 else __pld_pc = 105 end
-elseif __pld_pc == 104 then
-__pld_pc = 113
-elseif __pld_pc == 105 then
-__pld_R[13] = layerClip
-__pld_R[14] = __pld_R[10]["chara"]
-__pld_R[15] = 0
-__pld_R[16] = 0
-__pld_R[17] = 90
-__pld_R[18] = 92
-__pld_R[13](__pld_R[14], __pld_R[15], __pld_R[16], __pld_R[17], __pld_R[18])
-__pld_pc = 155
-elseif __pld_pc == 113 then
-__pld_R[13] = layerClip
-__pld_R[14] = __pld_R[10]["chara"]
-__pld_R[15] = 90
-__pld_R[16] = 0
-__pld_R[17] = 180
-__pld_R[18] = 92
-__pld_R[13](__pld_R[14], __pld_R[15], __pld_R[16], __pld_R[17], __pld_R[18])
-__pld_pc = 155
-elseif __pld_pc == 121 then
-if not (__pld_R[1] == "AYA") then __pld_pc = 122 else __pld_pc = 123 end
-elseif __pld_pc == 122 then
-__pld_pc = 155
-elseif __pld_pc == 123 then
-__pld_R[13] = layerCopy
-__pld_R[14] = __pld_R[10]["chara"]
-__pld_R[15] = layerName
-__pld_R[15] = __pld_R[15]["sel_map_2_b"]
-__pld_R[13](__pld_R[14], __pld_R[15])
-if not (__pld_R[2] == 1) then __pld_pc = 129 else __pld_pc = 130 end
-elseif __pld_pc == 129 then
-__pld_pc = 138
-elseif __pld_pc == 130 then
-__pld_R[13] = layerClip
-__pld_R[14] = __pld_R[10]["chara"]
-__pld_R[15] = 0
-__pld_R[16] = 0
-__pld_R[17] = 80
-__pld_R[18] = 84
-__pld_R[13](__pld_R[14], __pld_R[15], __pld_R[16], __pld_R[17], __pld_R[18])
-__pld_pc = 155
-elseif __pld_pc == 138 then
-if not (__pld_R[2] == 2) then __pld_pc = 139 else __pld_pc = 140 end
-elseif __pld_pc == 139 then
-__pld_pc = 148
-elseif __pld_pc == 140 then
-__pld_R[13] = layerClip
-__pld_R[14] = __pld_R[10]["chara"]
-__pld_R[15] = 80
-__pld_R[16] = 0
-__pld_R[17] = 160
-__pld_R[18] = 84
-__pld_R[13](__pld_R[14], __pld_R[15], __pld_R[16], __pld_R[17], __pld_R[18])
-__pld_pc = 155
-elseif __pld_pc == 148 then
-__pld_R[13] = layerClip
-__pld_R[14] = __pld_R[10]["chara"]
-__pld_R[15] = 160
-__pld_R[16] = 0
-__pld_R[17] = 240
-__pld_R[18] = 84
-__pld_R[13](__pld_R[14], __pld_R[15], __pld_R[16], __pld_R[17], __pld_R[18])
-__pld_pc = 155
-elseif __pld_pc == 155 then
-__pld_R[13] = layerPosition
-__pld_R[14] = __pld_R[10]["chara"]
-__pld_R[15] = 180
-__pld_R[16] = 188
-__pld_R[13](__pld_R[14], __pld_R[15], __pld_R[16])
-if __pld_R[3] == "" then __pld_pc = 161 else __pld_pc = 162 end
-elseif __pld_pc == 161 then
-__pld_pc = 183
-elseif __pld_pc == 162 then
-__pld_R[13] = layerCopy
-__pld_R[14] = __pld_R[10]["map"]
-__pld_R[15] = layerName
-__pld_R[15] = __pld_R[15]["sel_map_1_a"]
-__pld_R[13](__pld_R[14], __pld_R[15])
-__pld_R[13] = layerPosition
-__pld_R[14] = __pld_R[10]["map"]
-__pld_R[15] = 356
-__pld_R[16] = 246
-__pld_R[13](__pld_R[14], __pld_R[15], __pld_R[16])
-__pld_R[13] = layerClip
-__pld_R[14] = __pld_R[10]["map"]
-__pld_R[15] = __pld_R[7][__pld_R[3]]
-__pld_R[16] = __pld_R[6][__pld_R[3]]
-__pld_R[16] = __pld_R[16] + 26
-__pld_R[17] = __pld_R[7][__pld_R[3]]
-__pld_R[17] = __pld_R[17] + 120
-__pld_R[18] = __pld_R[6][__pld_R[3]]
-__pld_R[18] = __pld_R[18] + 52
-__pld_R[13](__pld_R[14], __pld_R[15], __pld_R[16], __pld_R[17], __pld_R[18])
-__pld_pc = 184
-elseif __pld_pc == 183 then
-__pld_R[3] = __pld_R[11][1]
-__pld_pc = 184
-elseif __pld_pc == 184 then
-__pld_R[13] = 1
-__pld_R[14] = 1
-__pld_R[15] = 1
-__pld_R[16] = __pld_R[12]
-__pld_R[17] = 1
-do
-local __pld_i = __pld_tonumber(__pld_R[15]) if __pld_i == nil then __pld_error("'for' initial value must be a number") end
-local __pld_l = __pld_tonumber(__pld_R[16]) if __pld_l == nil then __pld_error("'for' limit must be a number") end
-local __pld_s = __pld_tonumber(__pld_R[17]) if __pld_s == nil then __pld_error("'for' step must be a number") end
-__pld_R[15] = __pld_i - __pld_s __pld_R[16] = __pld_l __pld_R[17] = __pld_s
+wait(30)
+for l1_22 = 0, 15, 1 do
+    layerLoad(l1_22, "")
 end
-__pld_pc = 269
-elseif __pld_pc == 190 then
-__pld_R[19] = layerCopy
-__pld_R[20] = __pld_R[10]["map"]
-__pld_R[20] = __pld_R[20] + __pld_R[18]
-__pld_R[21] = layerName
-__pld_R[21] = __pld_R[21]["sel_map_1_a"]
-__pld_R[19](__pld_R[20], __pld_R[21])
-__pld_R[19] = layerPosition
-__pld_R[20] = __pld_R[10]["map"]
-__pld_R[20] = __pld_R[20] + __pld_R[18]
-__pld_R[21] = __pld_R[18] - 1
-__pld_R[21] = __pld_R[21] * 4
-__pld_R[21] = __pld_R[21] + 2
-__pld_R[21] = __pld_R[11][__pld_R[21]]
-__pld_R[22] = __pld_R[18] - 1
-__pld_R[22] = __pld_R[22] * 4
-__pld_R[22] = __pld_R[22] + 3
-__pld_R[22] = __pld_R[11][__pld_R[22]]
-__pld_R[19](__pld_R[20], __pld_R[21], __pld_R[22])
-__pld_R[19] = __pld_R[18] - 1
-__pld_R[19] = __pld_R[19] * 4
-__pld_R[19] = __pld_R[19] + 1
-__pld_R[19] = __pld_R[11][__pld_R[19]]
-if not (__pld_R[19] == __pld_R[3]) then __pld_pc = 213 else __pld_pc = 214 end
-elseif __pld_pc == 213 then
-__pld_pc = 242
-elseif __pld_pc == 214 then
-__pld_R[19] = layerClip
-__pld_R[20] = __pld_R[10]["map"]
-__pld_R[20] = __pld_R[20] + __pld_R[18]
-__pld_R[21] = __pld_R[18] - 1
-__pld_R[21] = __pld_R[21] * 4
-__pld_R[21] = __pld_R[21] + 1
-__pld_R[21] = __pld_R[11][__pld_R[21]]
-__pld_R[21] = __pld_R[7][__pld_R[21]]
-__pld_R[22] = __pld_R[18] - 1
-__pld_R[22] = __pld_R[22] * 4
-__pld_R[22] = __pld_R[22] + 1
-__pld_R[22] = __pld_R[11][__pld_R[22]]
-__pld_R[22] = __pld_R[6][__pld_R[22]]
-__pld_R[23] = __pld_R[18] - 1
-__pld_R[23] = __pld_R[23] * 4
-__pld_R[23] = __pld_R[23] + 1
-__pld_R[23] = __pld_R[11][__pld_R[23]]
-__pld_R[23] = __pld_R[7][__pld_R[23]]
-__pld_R[23] = __pld_R[23] + 120
-__pld_R[24] = __pld_R[18] - 1
-__pld_R[24] = __pld_R[24] * 4
-__pld_R[24] = __pld_R[24] + 1
-__pld_R[24] = __pld_R[11][__pld_R[24]]
-__pld_R[24] = __pld_R[6][__pld_R[24]]
-__pld_R[24] = __pld_R[24] + 26
-__pld_R[19](__pld_R[20], __pld_R[21], __pld_R[22], __pld_R[23], __pld_R[24])
-__pld_R[13] = __pld_R[18]
-__pld_pc = 269
-elseif __pld_pc == 242 then
-__pld_R[19] = layerClip
-__pld_R[20] = __pld_R[10]["map"]
-__pld_R[20] = __pld_R[20] + __pld_R[18]
-__pld_R[21] = __pld_R[18] - 1
-__pld_R[21] = __pld_R[21] * 4
-__pld_R[21] = __pld_R[21] + 1
-__pld_R[21] = __pld_R[11][__pld_R[21]]
-__pld_R[21] = __pld_R[7][__pld_R[21]]
-__pld_R[22] = __pld_R[18] - 1
-__pld_R[22] = __pld_R[22] * 4
-__pld_R[22] = __pld_R[22] + 1
-__pld_R[22] = __pld_R[11][__pld_R[22]]
-__pld_R[22] = __pld_R[6][__pld_R[22]]
-__pld_R[22] = __pld_R[22] + 26
-__pld_R[23] = __pld_R[18] - 1
-__pld_R[23] = __pld_R[23] * 4
-__pld_R[23] = __pld_R[23] + 1
-__pld_R[23] = __pld_R[11][__pld_R[23]]
-__pld_R[23] = __pld_R[7][__pld_R[23]]
-__pld_R[23] = __pld_R[23] + 120
-__pld_R[24] = __pld_R[18] - 1
-__pld_R[24] = __pld_R[24] * 4
-__pld_R[24] = __pld_R[24] + 1
-__pld_R[24] = __pld_R[11][__pld_R[24]]
-__pld_R[24] = __pld_R[6][__pld_R[24]]
-__pld_R[24] = __pld_R[24] + 52
-__pld_R[19](__pld_R[20], __pld_R[21], __pld_R[22], __pld_R[23], __pld_R[24])
-__pld_pc = 269
-elseif __pld_pc == 269 then
-do local __pld_s = __pld_R[17] local __pld_i = __pld_R[15] + __pld_s
-if (__pld_s > 0 and __pld_i <= __pld_R[16]) or (__pld_s <= 0 and __pld_i >= __pld_R[16]) then
-__pld_R[15] = __pld_i __pld_R[18] = __pld_i __pld_pc = 190
-else __pld_pc = 270 end end
-elseif __pld_pc == 270 then
-__pld_R[15] = switchScreen
-__pld_R[16] = 0
-__pld_R[17] = ""
-__pld_R[18] = 60
-__pld_R[15](__pld_R[16], __pld_R[17], __pld_R[18])
-__pld_R[15] = false
-__pld_R[16] = 1
-__pld_R[17] = 1
-__pld_R[18] = 1
-__pld_pc = 279
-elseif __pld_pc == 279 then
-if not (__pld_R[15] == false) then __pld_pc = 280 else __pld_pc = 281 end
-elseif __pld_pc == 280 then
-__pld_pc = 343
-elseif __pld_pc == 281 then
-__pld_R[19] = pressButton
-__pld_R[20] = "CIRCLE"
-__pld_R[19] = __pld_R[19](__pld_R[20])
-if not (__pld_R[19] == true) then __pld_pc = 285 else __pld_pc = 286 end
-elseif __pld_pc == 285 then
-__pld_pc = 297
-elseif __pld_pc == 286 then
-if not (__pld_R[18] == 0) then __pld_pc = 287 else __pld_pc = 288 end
-elseif __pld_pc == 287 then
-__pld_pc = 298
-elseif __pld_pc == 288 then
-__pld_R[19] = keyPlaySE
-__pld_R[20] = seName
-__pld_R[20] = __pld_R[20]["circle"]
-__pld_R[19](__pld_R[20])
-__pld_R[19] = wait
-__pld_R[20] = 5
-__pld_R[19](__pld_R[20])
-__pld_pc = 410
-elseif __pld_pc == 296 then
-__pld_pc = 298
-elseif __pld_pc == 297 then
-__pld_R[18] = 0
-__pld_pc = 298
-elseif __pld_pc == 298 then
-__pld_R[19] = pressButton
-__pld_R[20] = "UP"
-__pld_R[19] = __pld_R[19](__pld_R[20])
-if not (__pld_R[19] == true) then __pld_pc = 302 else __pld_pc = 303 end
-elseif __pld_pc == 302 then
-__pld_pc = 314
-elseif __pld_pc == 303 then
-if not (__pld_R[16] == 0) then __pld_pc = 304 else __pld_pc = 305 end
-elseif __pld_pc == 304 then
-__pld_pc = 315
-elseif __pld_pc == 305 then
-__pld_R[14] = __pld_R[13]
-__pld_R[19] = __pld_R[13] - 1
-if not (__pld_R[19] < 1) then __pld_pc = 308 else __pld_pc = 309 end
-elseif __pld_pc == 308 then
-__pld_pc = 311
-elseif __pld_pc == 309 then
-do local __pld_t = __pld_R[12] if __pld_t then __pld_R[13] = __pld_t __pld_pc = 310 else __pld_pc = 311 end end
-elseif __pld_pc == 310 then
-__pld_pc = 312
-elseif __pld_pc == 311 then
-__pld_R[13] = __pld_R[13] - 1
-__pld_pc = 312
-elseif __pld_pc == 312 then
-__pld_R[15] = true
-__pld_pc = 315
-elseif __pld_pc == 314 then
-__pld_R[16] = 0
-__pld_pc = 315
-elseif __pld_pc == 315 then
-__pld_R[19] = pressButton
-__pld_R[20] = "DOWN"
-__pld_R[19] = __pld_R[19](__pld_R[20])
-if not (__pld_R[19] == true) then __pld_pc = 319 else __pld_pc = 320 end
-elseif __pld_pc == 319 then
-__pld_pc = 332
-elseif __pld_pc == 320 then
-if not (__pld_R[17] == 0) then __pld_pc = 321 else __pld_pc = 322 end
-elseif __pld_pc == 321 then
-__pld_pc = 333
-elseif __pld_pc == 322 then
-__pld_R[14] = __pld_R[13]
-__pld_R[19] = __pld_R[13] + 1
-if not (__pld_R[12] < __pld_R[19]) then __pld_pc = 325 else __pld_pc = 326 end
-elseif __pld_pc == 325 then
-__pld_pc = 329
-elseif __pld_pc == 326 then
-__pld_R[19] = 1
-do local __pld_t = __pld_R[19] if __pld_t then __pld_R[13] = __pld_t __pld_pc = 328 else __pld_pc = 329 end end
-elseif __pld_pc == 328 then
-__pld_pc = 330
-elseif __pld_pc == 329 then
-__pld_R[13] = __pld_R[13] + 1
-__pld_pc = 330
-elseif __pld_pc == 330 then
-__pld_R[15] = true
-__pld_pc = 333
-elseif __pld_pc == 332 then
-__pld_R[17] = 0
-__pld_pc = 333
-elseif __pld_pc == 333 then
-__pld_R[19] = pressButton
-__pld_R[20] = "LEFT"
-__pld_R[19] = __pld_R[19](__pld_R[20])
-if not (__pld_R[19] == true) then __pld_pc = 337 else __pld_pc = 338 end
-elseif __pld_pc == 337 then
-__pld_pc = 338
-elseif __pld_pc == 338 then
-__pld_R[19] = pressButton
-__pld_R[20] = "RIGHT"
-__pld_R[19] = __pld_R[19](__pld_R[20])
-if not (__pld_R[19] == true) then __pld_pc = 342 else __pld_pc = 343 end
-elseif __pld_pc == 342 then
-__pld_pc = 343
-elseif __pld_pc == 343 then
-if not (__pld_R[15] == true) then __pld_pc = 344 else __pld_pc = 345 end
-elseif __pld_pc == 344 then
-__pld_pc = 406
-elseif __pld_pc == 345 then
-__pld_R[19] = keyPlaySE
-__pld_R[20] = seName
-__pld_R[20] = __pld_R[20]["arrowKey"]
-__pld_R[19](__pld_R[20])
-__pld_R[19] = layerClip
-__pld_R[20] = __pld_R[10]["map"]
-__pld_R[20] = __pld_R[20] + __pld_R[13]
-__pld_R[21] = __pld_R[13] - 1
-__pld_R[21] = __pld_R[21] * 4
-__pld_R[21] = __pld_R[21] + 1
-__pld_R[21] = __pld_R[11][__pld_R[21]]
-__pld_R[21] = __pld_R[7][__pld_R[21]]
-__pld_R[22] = __pld_R[13] - 1
-__pld_R[22] = __pld_R[22] * 4
-__pld_R[22] = __pld_R[22] + 1
-__pld_R[22] = __pld_R[11][__pld_R[22]]
-__pld_R[22] = __pld_R[6][__pld_R[22]]
-__pld_R[23] = __pld_R[13] - 1
-__pld_R[23] = __pld_R[23] * 4
-__pld_R[23] = __pld_R[23] + 1
-__pld_R[23] = __pld_R[11][__pld_R[23]]
-__pld_R[23] = __pld_R[7][__pld_R[23]]
-__pld_R[23] = __pld_R[23] + 120
-__pld_R[24] = __pld_R[13] - 1
-__pld_R[24] = __pld_R[24] * 4
-__pld_R[24] = __pld_R[24] + 1
-__pld_R[24] = __pld_R[11][__pld_R[24]]
-__pld_R[24] = __pld_R[6][__pld_R[24]]
-__pld_R[24] = __pld_R[24] + 26
-__pld_R[19](__pld_R[20], __pld_R[21], __pld_R[22], __pld_R[23], __pld_R[24])
-__pld_R[19] = layerClip
-__pld_R[20] = __pld_R[10]["map"]
-__pld_R[20] = __pld_R[20] + __pld_R[14]
-__pld_R[21] = __pld_R[14] - 1
-__pld_R[21] = __pld_R[21] * 4
-__pld_R[21] = __pld_R[21] + 1
-__pld_R[21] = __pld_R[11][__pld_R[21]]
-__pld_R[21] = __pld_R[7][__pld_R[21]]
-__pld_R[22] = __pld_R[14] - 1
-__pld_R[22] = __pld_R[22] * 4
-__pld_R[22] = __pld_R[22] + 1
-__pld_R[22] = __pld_R[11][__pld_R[22]]
-__pld_R[22] = __pld_R[6][__pld_R[22]]
-__pld_R[22] = __pld_R[22] + 26
-__pld_R[23] = __pld_R[14] - 1
-__pld_R[23] = __pld_R[23] * 4
-__pld_R[23] = __pld_R[23] + 1
-__pld_R[23] = __pld_R[11][__pld_R[23]]
-__pld_R[23] = __pld_R[7][__pld_R[23]]
-__pld_R[23] = __pld_R[23] + 120
-__pld_R[24] = __pld_R[14] - 1
-__pld_R[24] = __pld_R[24] * 4
-__pld_R[24] = __pld_R[24] + 1
-__pld_R[24] = __pld_R[11][__pld_R[24]]
-__pld_R[24] = __pld_R[6][__pld_R[24]]
-__pld_R[24] = __pld_R[24] + 52
-__pld_R[19](__pld_R[20], __pld_R[21], __pld_R[22], __pld_R[23], __pld_R[24])
-__pld_R[15] = false
-__pld_R[19] = wait
-__pld_R[20] = 5
-__pld_R[19](__pld_R[20])
-__pld_pc = 406
-elseif __pld_pc == 406 then
-__pld_R[19] = wait
-__pld_R[20] = 2
-__pld_R[19](__pld_R[20])
-__pld_pc = 279
-elseif __pld_pc == 410 then
-__pld_R[19] = 1
-__pld_R[20] = __pld_R[12]
-__pld_R[21] = 1
-do
-local __pld_i = __pld_tonumber(__pld_R[19]) if __pld_i == nil then __pld_error("'for' initial value must be a number") end
-local __pld_l = __pld_tonumber(__pld_R[20]) if __pld_l == nil then __pld_error("'for' limit must be a number") end
-local __pld_s = __pld_tonumber(__pld_R[21]) if __pld_s == nil then __pld_error("'for' step must be a number") end
-__pld_R[19] = __pld_i - __pld_s __pld_R[20] = __pld_l __pld_R[21] = __pld_s
-end
-__pld_pc = 429
-elseif __pld_pc == 414 then
-if __pld_R[13] == __pld_R[22] then __pld_pc = 415 else __pld_pc = 416 end
-elseif __pld_pc == 415 then
-__pld_pc = 429
-elseif __pld_pc == 416 then
-__pld_R[23] = layerMoveAlpha
-__pld_R[24] = __pld_R[10]["map"]
-__pld_R[24] = __pld_R[24] + __pld_R[22]
-__pld_R[25] = 0
-__pld_R[26] = 30
-__pld_R[23](__pld_R[24], __pld_R[25], __pld_R[26])
-__pld_R[23] = layerMoveScale
-__pld_R[24] = __pld_R[10]["map"]
-__pld_R[24] = __pld_R[24] + __pld_R[22]
-__pld_R[25] = 100
-__pld_R[26] = 0
-__pld_R[27] = 30
-__pld_R[23](__pld_R[24], __pld_R[25], __pld_R[26], __pld_R[27])
-__pld_pc = 429
-elseif __pld_pc == 429 then
-do local __pld_s = __pld_R[21] local __pld_i = __pld_R[19] + __pld_s
-if (__pld_s > 0 and __pld_i <= __pld_R[20]) or (__pld_s <= 0 and __pld_i >= __pld_R[20]) then
-__pld_R[19] = __pld_i __pld_R[22] = __pld_i __pld_pc = 414
-else __pld_pc = 430 end end
-elseif __pld_pc == 430 then
-__pld_R[19] = wait
-__pld_R[20] = 30
-__pld_R[19](__pld_R[20])
-__pld_R[19] = 0
-__pld_R[20] = 15
-__pld_R[21] = 1
-do
-local __pld_i = __pld_tonumber(__pld_R[19]) if __pld_i == nil then __pld_error("'for' initial value must be a number") end
-local __pld_l = __pld_tonumber(__pld_R[20]) if __pld_l == nil then __pld_error("'for' limit must be a number") end
-local __pld_s = __pld_tonumber(__pld_R[21]) if __pld_s == nil then __pld_error("'for' step must be a number") end
-__pld_R[19] = __pld_i - __pld_s __pld_R[20] = __pld_l __pld_R[21] = __pld_s
-end
-__pld_pc = 441
-elseif __pld_pc == 437 then
-__pld_R[23] = layerLoad
-__pld_R[24] = __pld_R[22]
-__pld_R[25] = ""
-__pld_R[23](__pld_R[24], __pld_R[25])
-__pld_pc = 441
-elseif __pld_pc == 441 then
-do local __pld_s = __pld_R[21] local __pld_i = __pld_R[19] + __pld_s
-if (__pld_s > 0 and __pld_i <= __pld_R[20]) or (__pld_s <= 0 and __pld_i >= __pld_R[20]) then
-__pld_R[19] = __pld_i __pld_R[22] = __pld_i __pld_pc = 437
-else __pld_pc = 442 end end
-elseif __pld_pc == 442 then
-__pld_R[19] = advPart
-__pld_R[20] = true
-__pld_R[19](__pld_R[20])
-__pld_R[19] = __pld_R[13] - 1
-__pld_R[19] = __pld_R[19] * 4
-__pld_R[19] = __pld_R[19] + 4
-__pld_R[19] = __pld_R[11][__pld_R[19]]
-return __pld_R[19]
-elseif __pld_pc == 450 then
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
+advPart(true)
+return l1_11[(l1_13 - 1) * 4 + 4]
 end
 comSectionMapmoveAyanoIn = function(l1_0)
     local l1_1 = math.random(1, 3)
@@ -3885,129 +2967,29 @@ SystemOption.new = function()
         end
     end
     l1_0.Option = function()
-local __pld_ord = {l1_0}
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[1] = pageScreen
-__pld_R[2] = 1
-__pld_R[1](__pld_R[2])
-__pld_R[1] = l1_0
-__pld_R[1] = __pld_R[1]["blackIn"]
-__pld_R[1]()
-__pld_R[1] = l1_0
-__pld_R[1] = __pld_R[1]["OptionInit"]
-__pld_R[1]()
-__pld_R[1] = 3
-__pld_R[2] = 100
-__pld_R[3] = 1
-do
-local __pld_i = __pld_tonumber(__pld_R[1]) if __pld_i == nil then __pld_error("'for' initial value must be a number") end
-local __pld_l = __pld_tonumber(__pld_R[2]) if __pld_l == nil then __pld_error("'for' limit must be a number") end
-local __pld_s = __pld_tonumber(__pld_R[3]) if __pld_s == nil then __pld_error("'for' step must be a number") end
-__pld_R[1] = __pld_i - __pld_s __pld_R[2] = __pld_l __pld_R[3] = __pld_s
+local l2_0
+pageScreen(1)
+l1_0.blackIn()
+l1_0.OptionInit()
+for l2_4 = 3, 100, 1 do
+    layerAlpha(l2_4, 0)
 end
-__pld_pc = 18
-elseif __pld_pc == 14 then
-__pld_R[5] = layerAlpha
-__pld_R[6] = __pld_R[4]
-__pld_R[7] = 0
-__pld_R[5](__pld_R[6], __pld_R[7])
-__pld_pc = 18
-elseif __pld_pc == 18 then
-do local __pld_s = __pld_R[3] local __pld_i = __pld_R[1] + __pld_s
-if (__pld_s > 0 and __pld_i <= __pld_R[2]) or (__pld_s <= 0 and __pld_i >= __pld_R[2]) then
-__pld_R[1] = __pld_i __pld_R[4] = __pld_i __pld_pc = 14
-else __pld_pc = 19 end end
-elseif __pld_pc == 19 then
-__pld_R[1] = layerScale
-__pld_R[2] = l1_0
-__pld_R[2] = __pld_R[2]["layerNumber"]
-__pld_R[2] = __pld_R[2]["optionBg"]
-__pld_R[3] = 0
-__pld_R[4] = 100
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = layerMoveScale
-__pld_R[2] = l1_0
-__pld_R[2] = __pld_R[2]["layerNumber"]
-__pld_R[2] = __pld_R[2]["optionBg"]
-__pld_R[3] = 100
-__pld_R[4] = 100
-__pld_R[5] = 20
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4], __pld_R[5])
-__pld_R[1] = layerScale
-__pld_R[2] = l1_0
-__pld_R[2] = __pld_R[2]["layerNumber"]
-__pld_R[2] = __pld_R[2]["info"]
-__pld_R[3] = 0
-__pld_R[4] = 100
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4])
-__pld_R[1] = layerMoveScale
-__pld_R[2] = l1_0
-__pld_R[2] = __pld_R[2]["layerNumber"]
-__pld_R[2] = __pld_R[2]["info"]
-__pld_R[3] = 100
-__pld_R[4] = 100
-__pld_R[5] = 20
-__pld_R[1](__pld_R[2], __pld_R[3], __pld_R[4], __pld_R[5])
-__pld_R[1] = wait
-__pld_R[2] = 20
-__pld_R[1](__pld_R[2])
-__pld_R[1] = 3
-__pld_R[2] = 100
-__pld_R[3] = 1
-do
-local __pld_i = __pld_tonumber(__pld_R[1]) if __pld_i == nil then __pld_error("'for' initial value must be a number") end
-local __pld_l = __pld_tonumber(__pld_R[2]) if __pld_l == nil then __pld_error("'for' limit must be a number") end
-local __pld_s = __pld_tonumber(__pld_R[3]) if __pld_s == nil then __pld_error("'for' step must be a number") end
-__pld_R[1] = __pld_i - __pld_s __pld_R[2] = __pld_l __pld_R[3] = __pld_s
+layerScale(l1_0.layerNumber.optionBg, 0, 100)
+layerMoveScale(l1_0.layerNumber.optionBg, 100, 100, 20)
+layerScale(l1_0.layerNumber.info, 0, 100)
+layerMoveScale(l1_0.layerNumber.info, 100, 100, 20)
+wait(20)
+for l2_4 = 3, 100, 1 do
+    layerMoveAlpha(l2_4, 100, 10)
 end
-__pld_pc = 61
-elseif __pld_pc == 56 then
-__pld_R[5] = layerMoveAlpha
-__pld_R[6] = __pld_R[4]
-__pld_R[7] = 100
-__pld_R[8] = 10
-__pld_R[5](__pld_R[6], __pld_R[7], __pld_R[8])
-__pld_pc = 61
-elseif __pld_pc == 61 then
-do local __pld_s = __pld_R[3] local __pld_i = __pld_R[1] + __pld_s
-if (__pld_s > 0 and __pld_i <= __pld_R[2]) or (__pld_s <= 0 and __pld_i >= __pld_R[2]) then
-__pld_R[1] = __pld_i __pld_R[4] = __pld_i __pld_pc = 56
-else __pld_pc = 62 end end
-elseif __pld_pc == 62 then
-__pld_R[1] = wait
-__pld_R[2] = 10
-__pld_R[1](__pld_R[2])
-__pld_R[1] = l1_0
-__pld_R[1] = __pld_R[1]["OptionMain"]
-__pld_R[1]()
-__pld_R[1] = l1_0
-__pld_R[1] = __pld_R[1]["OptionEnd"]
-__pld_R[1]()
-__pld_R[1] = autoSystemSave
-__pld_R[2] = 1
-__pld_R[1](__pld_R[2])
-__pld_R[1] = l1_0
-__pld_R[1] = __pld_R[1]["blackOut"]
-__pld_R[1]()
-__pld_R[1] = wait
-__pld_R[2] = 5
-__pld_R[1](__pld_R[2])
-__pld_R[1] = pageScreen
-__pld_R[2] = 0
-__pld_R[1](__pld_R[2])
-__pld_R[1] = wait
-__pld_R[2] = 1
-__pld_R[1](__pld_R[2])
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
+wait(10)
+l1_0.OptionMain()
+l1_0.OptionEnd()
+autoSystemSave(1)
+l1_0.blackOut()
+wait(5)
+pageScreen(0)
+wait(1)
     end
     return l1_0
 end
@@ -4142,271 +3124,63 @@ SystemConfig.new = function()
         end
     end
     l1_0.ConfigMain = function()
-local __pld_ord = {l1_0}
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
-while true do
-if __pld_pc == 1 then
-__pld_R[0] = 0
-__pld_R[1] = 1
-__pld_R[2] = false
-__pld_pc = 4
-elseif __pld_pc == 4 then
-if not (__pld_R[0] < 1) then __pld_pc = 5 else __pld_pc = 6 end
-elseif __pld_pc == 5 then
-__pld_pc = 173
-elseif __pld_pc == 6 then
-__pld_R[3] = pressButton
-__pld_R[4] = "CIRCLE"
-__pld_R[3] = __pld_R[3](__pld_R[4])
-if not (__pld_R[3] == true) then __pld_pc = 10 else __pld_pc = 11 end
-elseif __pld_pc == 10 then
-__pld_pc = 94
-elseif __pld_pc == 11 then
-if not (__pld_R[2] == false) then __pld_pc = 12 else __pld_pc = 13 end
-elseif __pld_pc == 12 then
-__pld_pc = 94
-elseif __pld_pc == 13 then
-__pld_R[3] = gameSave
-__pld_R[3] = __pld_R[3]["tutorial"]
-__pld_R[3] = __pld_R[3]["firstFragment"]
-if not (__pld_R[3] == 1) then __pld_pc = 17 else __pld_pc = 18 end
-elseif __pld_pc == 17 then
-__pld_pc = 75
-elseif __pld_pc == 18 then
-if not (__pld_R[1] == 6) then __pld_pc = 19 else __pld_pc = 20 end
-elseif __pld_pc == 19 then
-__pld_pc = 63
-elseif __pld_pc == 20 then
-__pld_R[3] = keyPlaySE
-__pld_R[4] = seName
-__pld_R[4] = __pld_R[4]["circle"]
-__pld_R[3](__pld_R[4])
-__pld_R[3] = systemSave
-__pld_R[4] = systemSave
-__pld_R[4] = __pld_R[4]["storyLineSkip"]
-if not (__pld_R[4] == 2) then __pld_pc = 28 else __pld_pc = 29 end
-elseif __pld_pc == 28 then
-__pld_pc = 32
-elseif __pld_pc == 29 then
-__pld_R[4] = 0
-if __pld_R[4] then __pld_pc = 31 else __pld_pc = 32 end
-elseif __pld_pc == 31 then
-__pld_pc = 33
-elseif __pld_pc == 32 then
-__pld_R[4] = 2
-__pld_pc = 33
-elseif __pld_pc == 33 then
-__pld_R[3]["storyLineSkip"] = __pld_R[4]
-__pld_R[3] = systemSave
-__pld_R[3] = __pld_R[3]["storyLineSkip"]
-if __pld_R[3] == 0 then __pld_pc = 37 else __pld_pc = 38 end
-elseif __pld_pc == 37 then
-__pld_pc = 49
-elseif __pld_pc == 38 then
-__pld_R[3] = layerClip
-__pld_R[4] = l1_0
-__pld_R[4] = __pld_R[4]["layerNumber"]
-__pld_R[4] = __pld_R[4]["info"]
-__pld_R[4] = __pld_R[4] + 4
-__pld_R[5] = 0
-__pld_R[6] = 0
-__pld_R[7] = 11
-__pld_R[8] = 11
-__pld_R[3](__pld_R[4], __pld_R[5], __pld_R[6], __pld_R[7], __pld_R[8])
-__pld_pc = 59
-elseif __pld_pc == 49 then
-__pld_R[3] = layerClip
-__pld_R[4] = l1_0
-__pld_R[4] = __pld_R[4]["layerNumber"]
-__pld_R[4] = __pld_R[4]["info"]
-__pld_R[4] = __pld_R[4] + 4
-__pld_R[5] = 0
-__pld_R[6] = 11
-__pld_R[7] = 11
-__pld_R[8] = 22
-__pld_R[3](__pld_R[4], __pld_R[5], __pld_R[6], __pld_R[7], __pld_R[8])
-__pld_pc = 59
-elseif __pld_pc == 59 then
-__pld_R[3] = wait
-__pld_R[4] = 5
-__pld_R[3](__pld_R[4])
-__pld_pc = 94
-elseif __pld_pc == 63 then
-if not (__pld_R[1] == 3) then __pld_pc = 64 else __pld_pc = 65 end
-elseif __pld_pc == 64 then
-__pld_pc = 69
-elseif __pld_pc == 65 then
-__pld_R[3] = memoryFlag
-if not (__pld_R[3] == true) then __pld_pc = 67 else __pld_pc = 68 end
-elseif __pld_pc == 67 then
-__pld_pc = 69
-elseif __pld_pc == 68 then
-__pld_pc = 94
-elseif __pld_pc == 69 then
-__pld_R[3] = keyPlaySE
-__pld_R[4] = seName
-__pld_R[4] = __pld_R[4]["circle"]
-__pld_R[3](__pld_R[4])
-__pld_pc = 173
-elseif __pld_pc == 74 then
-__pld_pc = 94
-elseif __pld_pc == 75 then
-if __pld_R[1] == 3 then __pld_pc = 76 else __pld_pc = 77 end
-elseif __pld_pc == 76 then
-__pld_pc = 83
-elseif __pld_pc == 77 then
-if __pld_R[1] == 4 then __pld_pc = 78 else __pld_pc = 79 end
-elseif __pld_pc == 78 then
-__pld_pc = 83
-elseif __pld_pc == 79 then
-if __pld_R[1] == 7 then __pld_pc = 80 else __pld_pc = 81 end
-elseif __pld_pc == 80 then
-__pld_pc = 83
-elseif __pld_pc == 81 then
-if not (__pld_R[1] == 8) then __pld_pc = 82 else __pld_pc = 83 end
-elseif __pld_pc == 82 then
-__pld_pc = 94
-elseif __pld_pc == 83 then
-if not (__pld_R[1] == 3) then __pld_pc = 84 else __pld_pc = 85 end
-elseif __pld_pc == 84 then
-__pld_pc = 89
-elseif __pld_pc == 85 then
-__pld_R[3] = memoryFlag
-if not (__pld_R[3] == true) then __pld_pc = 87 else __pld_pc = 88 end
-elseif __pld_pc == 87 then
-__pld_pc = 89
-elseif __pld_pc == 88 then
-__pld_pc = 94
-elseif __pld_pc == 89 then
-__pld_R[3] = keyPlaySE
-__pld_R[4] = seName
-__pld_R[4] = __pld_R[4]["circle"]
-__pld_R[3](__pld_R[4])
-__pld_pc = 173
-elseif __pld_pc == 94 then
-__pld_R[3] = pressButton
-__pld_R[4] = "CROSS"
-__pld_R[3] = __pld_R[3](__pld_R[4])
-if not (__pld_R[3] == true) then __pld_pc = 98 else __pld_pc = 99 end
-elseif __pld_pc == 98 then
-__pld_pc = 107
-elseif __pld_pc == 99 then
-if not (__pld_R[2] == false) then __pld_pc = 100 else __pld_pc = 101 end
-elseif __pld_pc == 100 then
-__pld_pc = 107
-elseif __pld_pc == 101 then
-__pld_R[3] = keyPlaySE
-__pld_R[4] = seName
-__pld_R[4] = __pld_R[4]["cross"]
-__pld_R[3](__pld_R[4])
-__pld_R[1] = (-1)
-__pld_pc = 173
-elseif __pld_pc == 107 then
-__pld_R[3] = pressButton
-__pld_R[4] = "UP"
-__pld_R[3] = __pld_R[3](__pld_R[4])
-if not (__pld_R[3] == true) then __pld_pc = 111 else __pld_pc = 112 end
-elseif __pld_pc == 111 then
-__pld_pc = 122
-elseif __pld_pc == 112 then
-if not (__pld_R[2] == false) then __pld_pc = 113 else __pld_pc = 114 end
-elseif __pld_pc == 113 then
-__pld_pc = 122
-elseif __pld_pc == 114 then
-__pld_R[3] = __pld_R[1] - 1
-if not (__pld_R[3] < 1) then __pld_pc = 116 else __pld_pc = 117 end
-elseif __pld_pc == 116 then
-__pld_pc = 120
-elseif __pld_pc == 117 then
-__pld_R[3] = 8
-do local __pld_t = __pld_R[3] if __pld_t then __pld_R[1] = __pld_t __pld_pc = 119 else __pld_pc = 120 end end
-elseif __pld_pc == 119 then
-__pld_pc = 121
-elseif __pld_pc == 120 then
-__pld_R[1] = __pld_R[1] - 1
-__pld_pc = 121
-elseif __pld_pc == 121 then
-__pld_R[2] = true
-__pld_pc = 122
-elseif __pld_pc == 122 then
-__pld_R[3] = pressButton
-__pld_R[4] = "DOWN"
-__pld_R[3] = __pld_R[3](__pld_R[4])
-if not (__pld_R[3] == true) then __pld_pc = 126 else __pld_pc = 127 end
-elseif __pld_pc == 126 then
-__pld_pc = 137
-elseif __pld_pc == 127 then
-if not (__pld_R[2] == false) then __pld_pc = 128 else __pld_pc = 129 end
-elseif __pld_pc == 128 then
-__pld_pc = 137
-elseif __pld_pc == 129 then
-__pld_R[3] = __pld_R[1] + 1
-if not (8 < __pld_R[3]) then __pld_pc = 131 else __pld_pc = 132 end
-elseif __pld_pc == 131 then
-__pld_pc = 135
-elseif __pld_pc == 132 then
-__pld_R[3] = 1
-do local __pld_t = __pld_R[3] if __pld_t then __pld_R[1] = __pld_t __pld_pc = 134 else __pld_pc = 135 end end
-elseif __pld_pc == 134 then
-__pld_pc = 136
-elseif __pld_pc == 135 then
-__pld_R[1] = __pld_R[1] + 1
-__pld_pc = 136
-elseif __pld_pc == 136 then
-__pld_R[2] = true
-__pld_pc = 137
-elseif __pld_pc == 137 then
-if not (__pld_R[2] == true) then __pld_pc = 138 else __pld_pc = 139 end
-elseif __pld_pc == 138 then
-__pld_pc = 169
-elseif __pld_pc == 139 then
-__pld_R[3] = keyPlaySE
-__pld_R[4] = seName
-__pld_R[4] = __pld_R[4]["arrowKey"]
-__pld_R[3](__pld_R[4])
-__pld_R[3] = layerMovePosition
-__pld_R[4] = l1_0
-__pld_R[4] = __pld_R[4]["layerNumber"]
-__pld_R[4] = __pld_R[4]["configBG"]
-__pld_R[4] = __pld_R[4] + 2
-__pld_R[5] = 175
-__pld_R[6] = __pld_R[1] - 1
-__pld_R[6] = __pld_R[6] * 24
-__pld_R[6] = __pld_R[6] + 35
-__pld_R[7] = 5
-__pld_R[3](__pld_R[4], __pld_R[5], __pld_R[6], __pld_R[7])
-__pld_R[3] = layerClip
-__pld_R[4] = l1_0
-__pld_R[4] = __pld_R[4]["layerNumber"]
-__pld_R[4] = __pld_R[4]["info"]
-__pld_R[4] = __pld_R[4] + 3
-__pld_R[5] = 0
-__pld_R[6] = __pld_R[1] - 1
-__pld_R[6] = __pld_R[6] * 18
-__pld_R[7] = 376
-__pld_R[8] = __pld_R[1] * 18
-__pld_R[3](__pld_R[4], __pld_R[5], __pld_R[6], __pld_R[7], __pld_R[8])
-__pld_R[3] = wait
-__pld_R[4] = 5
-__pld_R[3](__pld_R[4])
-__pld_R[2] = false
-__pld_pc = 169
-elseif __pld_pc == 169 then
-__pld_R[3] = wait
-__pld_R[4] = 1
-__pld_R[3](__pld_R[4])
-__pld_pc = 4
-elseif __pld_pc == 173 then
-return __pld_R[1]
-elseif __pld_pc == 174 then
-return
-else __pld_error("pyluadec fallback: invalid pc") end
+local l2_0 = 0
+local l2_1 = 1
+local l2_2 = false
+while l2_0 < 1 do
+    if pressButton("CIRCLE") == true then
+        if l2_2 == false then
+            if gameSave.tutorial.firstFragment == 1 then
+                if l2_1 == 6 then
+                    keyPlaySE(seName.circle)
+                    systemSave.storyLineSkip = systemSave.storyLineSkip == 2 and 0 or 2
+                    if not (systemSave.storyLineSkip == 0) then
+                        layerClip(l1_0.layerNumber.info + 4, 0, 0, 11, 11)
+                    else
+                        layerClip(l1_0.layerNumber.info + 4, 0, 11, 11, 22)
+                    end
+                    wait(5)
+                elseif l2_1 == 3 and memoryFlag == true then
+                else
+                    keyPlaySE(seName.circle)
+                    break
+                end
+            elseif not (l2_1 == 3) and not (l2_1 == 4) and not (l2_1 == 7) and not (l2_1 == 8) or l2_1 == 3 and memoryFlag == true then
+            else
+                keyPlaySE(seName.circle)
+                break
+            end
+        end
+    end
+    if pressButton("CROSS") == true then
+        if l2_2 == false then
+            keyPlaySE(seName.cross)
+            l2_1 = -1
+            break
+        end
+    end
+    if pressButton("UP") == true then
+        if l2_2 == false then
+            l2_1 = l2_1 - 1 < 1 and 8 or l2_1 - 1
+            l2_2 = true
+        end
+    end
+    if pressButton("DOWN") == true then
+        if l2_2 == false then
+            l2_1 = 8 < l2_1 + 1 and 1 or l2_1 + 1
+            l2_2 = true
+        end
+    end
+    if l2_2 == true then
+        keyPlaySE(seName.arrowKey)
+        layerMovePosition(l1_0.layerNumber.configBG + 2, 175, (l2_1 - 1) * 24 + 35, 5)
+        layerClip(l1_0.layerNumber.info + 3, 0, (l2_1 - 1) * 18, 376, l2_1 * 18)
+        wait(5)
+        l2_2 = false
+    end
+    wait(1)
 end
+return l2_1
     end
     l1_0.blackIn = function()
         layerLoad(0, "")
