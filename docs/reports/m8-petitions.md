@@ -194,3 +194,21 @@ bound how far the DoBegin may stay open, e.g. the next batch only);
 (b) indentation when a block spans a nesting boundary needs one
 printer rule (re-indent the wrapped range). Neuter obligations
 unchanged; the witnesses unchanged.
+
+**Iteration 3 status (implemented, measured, reverted green -- same
+session).** The env-reference discriminator WORKS: the for-header
+fixture now prints the name IN scope (`do local l0_0 = {} for k, v in
+pairs(l0_0) do ... end end` -- previously out of scope). What remains
+is exactly the charter's (a)/(b): the DoEnd's placement when its batch
+nests inside the consumer's block (the fixture's loop-`end` line took
+the DoEnd's indent, and the clamp shape's block lands unbalanced --
+"candidate chunk did not recompile" -- 41 batch failures, down from
+63 pre-printer-arm and 15 at iteration 1). Next session's concrete
+entry: the DoEnd must carry the DoBegin's batch's indent (record it at
+open time; print at that indent, not the closing batch's), and the
+sibling-window bound (close only within the opener's batch or the very
+next batch at the SAME region level) must replace the current
+any-later-batch close. All scaffolding (oracle, discriminator,
+captured_regs guard, printer arms) is specified in this charter's
+iterations 1-3; the tree is green (113-passed batch, refusal pins
+intact).
