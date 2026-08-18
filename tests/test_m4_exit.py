@@ -170,7 +170,12 @@ def test_reasons_cluster_into_the_known_causes():
     rather than as fixed counts -- counts are measurements and move."""
     entries = _entries()
     non_l3 = [e for e in entries if e["level"] != "L3"]
-    assert non_l3, "nothing left to census (delete this test if that is real)"
+    # (The original "delete this test if that is real" instruction was
+    # overtaken by the proposal-channel wiring, 2026-08-18: the residual
+    # population is empty and the pin stays as the guard against a
+    # refusal family REAPPEARING -- which is what a non-empty `non_l3`
+    # now means below.)
+    _ = non_l3
     # `isinstance` guard, not an assertion: a missing reason is
     # `test_every_non_l3_row_says_why`'s finding to report, and this test
     # crashing with an AttributeError first would only obscure it.
@@ -189,6 +194,7 @@ def test_reasons_cluster_into_the_known_causes():
     # empty-tail clamp fix certified 3 of its 4 rows and the fourth
     # (snr_graphic:main) re-refuses as `mismatch: code at root/4`, the
     # known main_4 inheritance. Only `mismatch` remains (19 rows).
-    assert kinds == {"mismatch"}
-    assert "structure" not in kinds
-    assert "reconstruct" not in kinds
+    # The proposal-channel wiring (2026-08-18) took the population to
+    # 1478/1478 `L3`: the residual census is EMPTY and this pin stays as
+    # the guard against a refusal family REAPPEARING.
+    assert kinds == set()

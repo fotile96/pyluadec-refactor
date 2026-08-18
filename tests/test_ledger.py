@@ -189,11 +189,14 @@ def test_dashboard_refusal_key_collapses_every_varying_part():
     assert k("mismatch: const[7]") == "mismatch: const[i]"
     # Every distinct reason in the committed ledger must reduce to a key with
     # no bare decimal left in it, which is the property the histogram needs.
+    # (The committed ledger went all-`L3` at the proposal-channel wiring,
+    # 2026-08-18, so `reasons` is empty today; the mapping assertions above
+    # are the live part of this test, and a new refusal reason re-enters the
+    # loop below the moment one ships.)
     import json
     reasons = {json.loads(l)["refusal_reason"]
                for l in (root / "corpus" / "ledger.jsonl").read_text().splitlines()
                if l.strip() and json.loads(l)["refusal_reason"]}
-    assert reasons
     for r in reasons:
         assert not any(t.rstrip(":,;").isdigit() for t in k(r).split(" ")), r
 

@@ -108,6 +108,14 @@ def test_non_l3_entries_confess():
         assert [c["reason"] for c in e["confessions"]] == want, e["shash"]
         assert e["fallback"] == any(o["shipped"] == "fallback"
                                     for o in e["occurrences"]), e["shash"]
+        # The propose-and-certify channel (M8) added "proposal" as a third
+        # `shipped` value: certified text (the chunk's whole-tree round),
+        # distinct provenance. Three-value completeness: every occurrence's
+        # `shipped` is in the vocabulary, and `fallback` stays exactly the
+        # OR over the fallback value -- `proposal` contributes nothing to
+        # it, so the confession discipline above is unchanged.
+        for o in e["occurrences"]:
+            assert o["shipped"] in ("structured", "fallback", "proposal")
 
 
 def test_ledger_still_covers_full_corpus(corpus_dir):

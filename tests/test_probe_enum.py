@@ -555,13 +555,14 @@ def test_the_compound_if_population_moved_from_twentyone_shapes_to_one(
         r = by_key[key]
         verdicts[key] = r["level"] if r["level"] == "L3" \
             else (r["refusal_reason"] or "").split(":")[0]
-    assert sorted(verdicts.values()).count("L3") == 8
+    # All-L3 since the proposal channel (2026-08-18): 8 -> 13, mismatch 5.
+    assert sorted(verdicts.values()).count("L3") == 13
     # M8 task 2 (2026-08-16): main_71 moved mismatch-ward; the structure
     # count is now 0 and mismatch 4 (was 3 + 1 structure).
     # M8 task 3 (2026-08-16): snr_graphic:main left `reconstruct` for the
     # `mismatch: code at root/4` inheritance (main_4); the memory flips
     # were outside this population, so L3 stays 8 and mismatch is 5.
-    assert sorted(verdicts.values()).count("mismatch") == 5
+    assert sorted(verdicts.values()).count("mismatch") == 0
     assert sorted(verdicts.values()).count("structure") == 0
     assert sorted(verdicts.values()).count("reconstruct") == 0
     # Re-measured 2026-08-15 (M7 task 8): `snr_graphic.lua:main` moved from

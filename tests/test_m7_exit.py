@@ -172,8 +172,10 @@ def test_m7_exit_box_model_game_text_is_a_pinned_residual():
     # census -- the file is fully structured now (the deferred-constructor
     # position fix). The multi-assign fix then certified main_77 + its
     # subtree (27 occurrences), taking snr_common from 49 lines to 3.
-    assert dict(counts) == {
-        "snr_common.lua": 3, "snr_story_main.lua": 2}
+    # The proposal-channel wiring (2026-08-18) took this to ZERO -- no
+    # state machine ships anywhere. The pin keeps the empty shape so
+    # growth is red ("cannot grow silently" is the test's whole point).
+    assert dict(counts) == {}
 
 
 def test_m7_exit_factor_e_never_decides_a_selection():

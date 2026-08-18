@@ -176,7 +176,7 @@ def test_observed_records_have_the_reviewed_shape(doc):
 # lookahead certified snr_common:main_29 -- their observation records moved
 # to orphan quarantine (preserved, not lost).
 # Re-derived 2026-08-16 with the command above.
-_OBSERVED_DIGEST = "026e2699d05954819fe5fe53b2590f6cfdc64f442c5a64a32b078975d46a8cad"  # M8 multi-assign: 43/21 (see above)
+_OBSERVED_DIGEST = "4f43db4d12e85362f2d17d7969d58f11a7680e5eedce017a4ecdf4b8004bc622"  # M8 proposal channel: 35/29 (see above)
 # observations moved to the orphan quarantine when those protos certified (48/16
 # -> 46/18); their reviewed content is carried verbatim.
 
@@ -209,7 +209,9 @@ def test_the_observed_half_is_pinned_by_digest():
     # certified (the constructor position fix) and its observation moved
     # to the quarantine likewise. The multi-assign fix (same campaign)
     # certified main_77 + main_77_0: 43 / 21.
-    assert (len(obs), len(orphans)) == (43, 21)
+    # The proposal-channel wiring (2026-08-18) emptied the refusal
+    # population: every reviewed observation moved to the quarantine.
+    assert (len(obs), len(orphans)) == (35, 29)
     blob = json.dumps({"observed": obs, "orphans": orphans},
                       sort_keys=True, ensure_ascii=True)
     assert hashlib.sha256(blob.encode("ascii")).hexdigest() == _OBSERVED_DIGEST, (
@@ -605,7 +607,9 @@ def test_leaf_refusal_rule_agrees_with_an_independent_stubbing_experiment(corpus
     # position fix certified snr_novel:main and snr_music:main; 15 after
     # the multi-assign fix certified main_77 + main_77_0 (the parent's
     # mismatch WAS the child's divergence).
-    assert len(non_l3) == 15, len(non_l3)
+    # All-L3 since the proposal channel (2026-08-18); the equivalence is
+    # vacuous until a refusal family reappears.
+    assert len(non_l3) == 0, len(non_l3)
     checked = 0
     for (f, path), (row, p) in sorted(non_l3.items()):
         kind = row["refusal_reason"].split(":", 1)[0]

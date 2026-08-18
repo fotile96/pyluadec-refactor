@@ -363,7 +363,38 @@ def test_the_observation_coverage_check_rejects_each_way_it_can_rot(mutation):
     assert coverage_gaps(rows, doc) == []                    # clean: green
 
     leaves = sorted(leaf_refusals(doc))
-    assert leaves, "no leaf refusals left -- this test needs re-scoping"
+    # The ledger went all-`L3` at the proposal-channel wiring (2026-08-18),
+    # so the committed `classes.json` no longer carries leaf refusals. The
+    # five rot mutations still need a victim: SYNTHESIZE one in the COPIED
+    # observation doc (the baseline side of the join), exactly as the
+    # committed data used to look. The clean-join assertion above runs
+    # against the real pair and stays the live gate.
+    if not leaves:
+        # No leaf refusals in the committed data (all-L3 since the
+        # proposal channel, 2026-08-18): synthesize the PAIR the join
+        # needs -- a candidate marked `leaf-refusal` in the copied doc AND
+        # a matching `L1` row in the copied ledger, so both sides of
+        # `coverage_gaps` see it (the mutations then rot exactly one side).
+        victim_row = copy.deepcopy(doc["candidates"][0])
+        victim_row["mechanical"]["selected_as"] = ["leaf-refusal"]
+        victim_row["mechanical"]["refusal_reason"] = "mismatch: code"
+        victim_row["mechanical"]["refusal_origin"] = "own"
+        victim_row["mechanical"]["level"] = "L1"
+        doc["candidates"].append(victim_row)
+        doc["summary"]["n_non_l3"] = doc["summary"].get("n_non_l3", 0) + 1
+        vrow = copy.deepcopy(next(r for r in rows
+                                  if r["shash"] == "ff" * 32)) if any(
+            r["shash"] == "ff" * 32 for r in rows) else copy.deepcopy(rows[0])
+        vrow["level"] = "L1"
+        vrow["l3_level"] = None
+        vrow["refusal_reason"] = "mismatch: code"
+        vrow["occurrences"] = [{"file": victim_row["file"],
+                                "proto_path": victim_row["proto_path"],
+                                "shipped": "fallback", "hybrid": False,
+                                "l2": None}]
+        rows.append(vrow)
+        assert coverage_gaps(rows, doc) == [], "synthetic pair must join clean"
+        leaves = sorted(leaf_refusals(doc))
     victim = leaves[0]
 
     if mutation == "drop-candidate":
