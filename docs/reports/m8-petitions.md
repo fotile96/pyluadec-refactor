@@ -109,3 +109,44 @@ attempted (the fold cap) and falsified. Any masking deep enough to cover
 197 reordered instructions would not be a normalization, it would be 
 "compare nothing". Stays attributed unless the busy-slot ruling (B1/B2) 
 changes the constructor emission underneath it.
+
+## B1 charter and first-increment record (2026-08-16)
+
+**Charter (the review round's terms, per the ruling).**
+- Goal: align the TEXT's local scopes with the ORIGINAL's register
+  lifetimes, releasing the busy-slot family (`main_3`, `main_4`,
+  `main_7`'s callee half, `main_25_4`, `main_76_2`).
+- Mechanism: (1) a bytecode-liveness oracle (per-pc live-in sets,
+  backward fixpoint over the instruction graph; open reads conservatively
+  live-in every register at/above their base — the veto's own
+  conservatism, costing certifications never correctness); (2) at
+  `force_materialize`, wrap the LocalDecl in a `do ... end` when the
+  slot's death pc (first live-in excluding it) falls within the current
+  `stmts_for` batch AND the slot is in no CLOSURE's captures (the
+  lifter's whole-function `captured_regs` — a captured local's block end
+  emits CLOSE, bytecode-visible); (3) release `declared[reg]` at the
+  death pc so later temp-graded defs stage into the freed slot.
+- Neuter obligations (before any keep): (a) liveness bug injection — a
+  name-read after release prints a GLOBAL read, certification-visible;
+  (b) capture-guard neuter — a captured slot scoped anyway must gain a
+  CLOSE and fail; (c) unbalanced-block injection — DoEnd landing outside
+  its batch must fail, not print malformed Lua; (d) the three refusal
+  pins (`main_7`/`main_3`/`main_4`) flip to L3.
+- Standing evidence for the design: B2's 8 regressions proved staging
+  without scope-release breaks on later name-reads — B1 releases the
+  SCOPE ITSELF, which is the structural fix; the 35-regression broad
+  inversion and the 157-regression fold cap bound the design space from
+  the other side.
+
+**First increment: implemented and REVERTED same session (15 synthetic
+regressions, `mismatch: maxstacksize` family).** The full mechanism
+above was coded (liveness oracle, death-pc scoping with the batch and
+capture guards, DoBegin/DoEnd statements + printer arms) and the
+adjacent batches went 15-red — the release timing fires too early for
+at least one shape (a released slot's later read degrades, maxstack
+grows). The tree was restored to green (66 passed batch, refusal pins
+intact); the increment's design survives in this charter. Next entry
+point: instrument ONE failing fixture (`test_a_generic_for_over_a_call_
+prints_one_iterator_expression[0]`) — the generic-for iterator triple's
+control slots are the likely collision (their staging may legitimately
+outlive the batch-window liveness model).
