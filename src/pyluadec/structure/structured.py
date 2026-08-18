@@ -69,6 +69,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from typing import Mapping
 
 from pyluadec.emit.lua import print_chunk_or_raise, _print_proto_body
 from pyluadec.express.reconstruct import ReconstructError
@@ -327,7 +328,21 @@ def _oracle_identity() -> tuple[str, int, int]:
     return (str(luac), st.st_mtime_ns, st.st_size)
 
 
-def certify_proto(proto: Proto, *, is_chunk_root: bool) -> ProtoCert:
+def _naming_token(naming: Mapping[tuple[str, int], str] | None):
+    """The naming table's memo-key component: a content token (`None` for
+    the no-table default). Two root certifications of one proto under
+    different tables print different TEXT (same bytecode), and the root
+    tier ships the printed bytes, so the memos must not alias. Content --
+    not `id()` -- so two equal tables share one entry, same spirit as
+    `_memo_key`."""
+    if naming is None:
+        return None
+    return hash(tuple(sorted(naming.items())))
+
+
+def certify_proto(proto: Proto, *, is_chunk_root: bool,
+                  naming: Mapping[tuple[str, int], str] | None = None,
+                  ) -> ProtoCert:
     """Certify one proto's own subtree in isolation, memoized for the life of
     the process. See `_certify_proto_uncached` for what certification is; this
     wrapper is only about who pays for it.
@@ -389,11 +404,13 @@ def certify_proto(proto: Proto, *, is_chunk_root: bool) -> ProtoCert:
     this module anyway to reach it -- gets its verdicts for free. Call
     `clear_certification_cache()` to drop it.
     """
-    key = _oracle_identity() + (is_chunk_root,) + _memo_key(proto)
+    key = _oracle_identity() + (is_chunk_root,) + _memo_key(proto) \
+        + (_naming_token(naming),)
     hit = _CERT_CACHE.get(key)
     if hit is not None:
         return hit
-    cert = _certify_proto_uncached(proto, is_chunk_root=is_chunk_root)
+    cert = _certify_proto_uncached(proto, is_chunk_root=is_chunk_root,
+                                   naming=naming)
     _CERT_CACHE[key] = cert
     return cert
 
@@ -422,7 +439,9 @@ def clear_certification_cache() -> None:
     _HYBRID_CACHE.clear()
 
 
-def _certify_proto_uncached(proto: Proto, *, is_chunk_root: bool) -> ProtoCert:
+def _certify_proto_uncached(proto: Proto, *, is_chunk_root: bool,
+                            naming: Mapping[tuple[str, int], str] | None = None,
+                            ) -> ProtoCert:
     """Certify one proto's own subtree in isolation.
 
     `is_chunk_root=True`: the proto IS the chunk main -- its structured print
@@ -450,7 +469,7 @@ def _certify_proto_uncached(proto: Proto, *, is_chunk_root: bool) -> ProtoCert:
     """
     if is_chunk_root:
         try:
-            src = print_chunk_or_raise(proto)
+            src = print_chunk_or_raise(proto, naming=naming)
         except (StructureError, ReconstructError) as exc:
             return _refused(exc)
         payload = src.encode()
@@ -605,7 +624,8 @@ def _plan_substitutions(root: Proto, certs: dict[str, ProtoCert]) -> set[str]:
     return fb
 
 
-def _hybrid_round(root: Proto, fb: frozenset[str]
+def _hybrid_round(root: Proto, fb: frozenset[str],
+                  naming: Mapping[tuple[str, int], str] | None = None,
                   ) -> tuple[bytes, int | None, tuple[Mismatch, ...]] | None:
     """Print, compile and compare one candidate substitution set.
 
@@ -616,7 +636,7 @@ def _hybrid_round(root: Proto, fb: frozenset[str]
     subtrees.
     """
     try:
-        src = _print_proto_body(root, 0, (), "main", fb)
+        src = _print_proto_body(root, 0, (), "main", fb, 0, None, naming)
     except (StructureError, ReconstructError, EmitError):
         return None
     payload = src.encode()
@@ -641,7 +661,9 @@ def _hybrid_round(root: Proto, fb: frozenset[str]
 
 
 def _proposal_round(root: Proto, sites: frozenset[str],
-                    proposals: dict[str, bytes]) -> tuple[bytes, int] | None:
+                    proposals: dict[str, bytes],
+                    naming: Mapping[tuple[str, int], str] | None = None,
+                    ) -> tuple[bytes, int] | None:
     """Print the tree with proposal bodies at `sites`, compile, and compare
     with no excluded paths. `(source, rung)` or `None` (refused -- the
     caller falls to the hybrid/fallback tiers exactly as before).
@@ -662,7 +684,7 @@ def _proposal_round(root: Proto, sites: frozenset[str],
     filtered = {path: proposals[path] for path in sites if path in proposals}
     try:
         src = _print_proto_body(root, 0, (), "main", frozenset(), 0,
-                                filtered)
+                                filtered, naming)
     except (StructureError, ReconstructError, EmitError):
         return None
     payload = src.encode()
@@ -677,7 +699,9 @@ def _proposal_round(root: Proto, sites: frozenset[str],
     return None
 
 
-def certify_hybrid(root: Proto, certs: dict[str, ProtoCert]) -> HybridCert | None:
+def certify_hybrid(root: Proto, certs: dict[str, ProtoCert],
+                   naming: Mapping[tuple[str, int], str] | None = None,
+                   ) -> HybridCert | None:
     """Assemble and certify a hybrid chunk for a root that did not certify
     `L3`, or return `None` if no hybrid survives (the caller then ships the
     whole-file fallback).
@@ -691,29 +715,32 @@ def certify_hybrid(root: Proto, certs: dict[str, ProtoCert]) -> HybridCert | Non
     fallback are not claimed. In particular the root's own `code` -- including
     the `CLOSURE` instruction and the `MOVE`/`GETUPVAL` pseudo-instructions
     that follow it at each substituted site -- and its `constants`,
-    `maxstacksize` and frame contract are all still compared exactly, which is
-    what makes `structure.fallback.inline_function_parts`' "one subproto slot,
+    `maxstacksize` and frame contract are all still compared exactly, which
+    is what makes `structure.fallback.inline_function_parts`' "one subproto slot,
     same captures, same order" obligations checkable rather than assumed.
 
-    Cached per process; see `_HYBRID_CACHE`.
+    Cached per process; see `_HYBRID_CACHE`. The cache key includes the
+    naming token: the assembled source embeds the table's names.
     """
-    key = _oracle_identity() + _memo_key(root)
+    key = _oracle_identity() + _memo_key(root) + (_naming_token(naming),)
     if key in _HYBRID_CACHE:
         return _HYBRID_CACHE[key]
-    result = _certify_hybrid_uncached(root, certs)
+    result = _certify_hybrid_uncached(root, certs, naming)
     _HYBRID_CACHE[key] = result
     return result
 
 
 def _certify_hybrid_uncached(root: Proto,
-                             certs: dict[str, ProtoCert]) -> HybridCert | None:
+                             certs: dict[str, ProtoCert],
+                             naming: Mapping[tuple[str, int], str] | None = None,
+                             ) -> HybridCert | None:
     fb = _plan_substitutions(root, certs)
     if "main" in fb:
         # The root's own body does not print. There is no structured code to
         # keep, so there is no hybrid -- only the whole-file fallback.
         return None
     for _round in range(_HYBRID_ROUNDS):
-        got = _hybrid_round(root, frozenset(fb))
+        got = _hybrid_round(root, frozenset(fb), naming)
         if got is None:
             return None
         payload, rung, mismatches = got
@@ -752,6 +779,7 @@ def _certify_hybrid_uncached(root: Proto,
 
 def emit_certified_chunk(root: Proto,
                          proposals: dict[str, bytes] | None = None,
+                         naming: Mapping[tuple[str, int], str] | None = None,
                          ) -> ChunkOutcome:
     """Certify every proto in `root`'s tree independently, then choose the
     shipped artifact, in order: the ROOT's own certified bytes if it
@@ -789,7 +817,7 @@ def emit_certified_chunk(root: Proto,
     # rely on it): relying on iteration order would make the "main
     # certified L3 => print succeeded" assertion below correct only by
     # coincidence if some future change reordered `protos`.
-    certs["main"] = certify_proto(root, is_chunk_root=True)
+    certs["main"] = certify_proto(root, is_chunk_root=True, naming=naming)
     for path, p in protos.items():
         if path == "main":
             continue
@@ -827,7 +855,7 @@ def emit_certified_chunk(root: Proto,
         refusers = {path for path, cert in certs.items()
                     if cert.level != "L3" and path in proposals}
         if refusers:
-            got = _proposal_round(root, frozenset(refusers), proposals)
+            got = _proposal_round(root, frozenset(refusers), proposals, naming)
             if got is not None:
                 payload, rung = got
                 shipped_pr = frozenset(
@@ -836,7 +864,7 @@ def emit_certified_chunk(root: Proto,
                 return ChunkOutcome(source=payload, certs=certs,
                                     proposal_paths=shipped_pr,
                                     proposal_rung=rung)
-    hybrid = certify_hybrid(root, certs)
+    hybrid = certify_hybrid(root, certs, naming)
     if hybrid is not None:
         # `HybridCert.fallback_paths` is the substitution FRONTIER (the CLOSURE
         # sites the printer left holes at); `ChunkOutcome.fallback_paths` is

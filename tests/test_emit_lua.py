@@ -233,6 +233,7 @@ def test_bare_local_decl_has_no_trailing_equals():
     from pyluadec.express.reconstruct import LocalDecl
     p = Printer.__new__(Printer)
     p.depth = 0
+    p.naming = None          # the naming seam's off state (M8 alignment)
     line = p._local_decl(LocalDecl((3,), ()))
     assert line == "local l0_3"
     assert not line.rstrip().endswith("=")

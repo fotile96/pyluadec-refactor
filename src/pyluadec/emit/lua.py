@@ -57,6 +57,8 @@ not reimplemented here. Local names always go through
 """
 from __future__ import annotations
 
+from typing import Mapping
+
 from pyluadec.express.expr import (BinExpr, CallExpr, ClosureExpr, ConstExpr,
                                    Expr, GlobalExpr, IndexExpr, LocalExpr,
                                    MultiSpill, TableExpr, UnExpr, UpvalExpr,
@@ -299,7 +301,9 @@ def _expr(e: Expr, depth: int, parent_prec: int, ctx: "Printer | None",
             return txt if prec >= parent_prec else f"({txt})"
         return _wrap_if_primary(txt, parent_prec)
     if isinstance(e, LocalExpr):
-        return name_for(e.reg, depth)
+        if ctx is None:
+            return name_for(e.reg, depth)
+        return ctx.local_name(e.reg)
     if isinstance(e, GlobalExpr):
         return _ident(e.name)
     if isinstance(e, UpvalExpr):
@@ -408,7 +412,8 @@ class Printer:
     def __init__(self, fn: LirFunction, rc: RegClass, depth: int,
                 upval_names: tuple[str, ...] = (), path: str = "main",
                 fallback_paths: frozenset[str] = frozenset(),
-                proposals: dict[str, bytes] | None = None):
+                proposals: dict[str, bytes] | None = None,
+                naming: Mapping[tuple[str, int], str] | None = None):
         self.fn = fn
         self.proto = fn.proto
         self.rc = rc
@@ -427,6 +432,14 @@ class Printer:
         # computed before this printer is even built. `None` (the default)
         # disables the arm everywhere (tests, direct callers).
         self.proposals = proposals
+        # The naming-alignment table (M8): `(proto_path, register) -> name`
+        # for THIS chunk, threaded from `pipeline.decompile_chunk` exactly
+        # like `proposals`. Every place that would synthesize
+        # `l<depth>_<reg>` goes through `local_name` instead, so a miss is
+        # the old spelling and a hit renames the local declaration, every
+        # reference, and (via `closure_parts`) the upvalue names children
+        # capture -- one name per register per function, no text rewriting.
+        self.naming = naming
         self.recon = Reconstructor(fn, rc, depth, upval_names)
         # proto_idx -> the pc of the (single) CLOSURE instruction that
         # produced it. A subproto index is only ever the Bx operand of
@@ -453,6 +466,21 @@ class Printer:
             raise ReconstructError(f"upvalue index {idx} has no name (nups mismatch)")
         return self.upval_names[idx]
 
+    def local_name(self, reg: int, *, path: str | None = None,
+                   depth: int | None = None) -> str:
+        """The identifier this print uses for `reg`: the naming table's
+        entry for `(path, reg)` when one exists, else the synthesized
+        `l<depth>_<reg>`. `path`/`depth` default to this function's own --
+        the two callers that need something else are naming ANOTHER
+        function's registers (a child's params and a child's captured
+        upvalues), and they say so explicitly."""
+        if self.naming is not None:
+            hit = self.naming.get((path if path is not None else self.path,
+                                   reg))
+            if hit is not None:
+                return hit
+        return name_for(reg, self.depth if depth is None else depth)
+
     def _closure_pc(self, idx: int) -> int:
         pc = self._closure_pc_by_idx.get(idx)
         if pc is None:
@@ -475,7 +503,7 @@ class Printer:
         names: list[str] = []
         for ps in self.fn.closure_pseudo[pc]:
             if ps.op is Op.MOVE:
-                names.append(name_for(ps.b, self.depth))
+                names.append(self.local_name(ps.b))
             elif ps.op is Op.GETUPVAL:
                 names.append(self.upval_name(ps.b))
             else:
@@ -504,7 +532,9 @@ class Printer:
             # subtree it could not certify, so the hole is filled by the
             # semantically-exact state machine, bound to THESE names.
             return inline_function_parts(child, child_path, tuple(names))
-        params = ", ".join(name_for(i, self.depth + 1) for i in range(child.numparams))
+        params = ", ".join(self.local_name(i, path=child_path,
+                                           depth=self.depth + 1)
+                           for i in range(child.numparams))
         if child.is_vararg & 2:
             params = params + (", ..." if params else "...")
         # One call shape, always. Round 1 of M5 task 6 branched here on `if not
@@ -518,7 +548,8 @@ class Printer:
         # unconditionally anyway. The seam now takes what production passes.
         return params, _print_proto_body(child, self.depth + 1, tuple(names),
                                          child_path, self.fallback_paths,
-                                         indent + 1, self.proposals)
+                                         indent + 1, self.proposals,
+                                         self.naming)
 
     def _closure_self_ref(self, e: ClosureExpr, target_reg: int) -> bool:
         """True iff the closure captures its own assignment target as an
@@ -539,7 +570,7 @@ class Printer:
     # ---- statements -----------------------------------------------------
     def target(self, t: AssignTarget, indent: int = 0) -> str:
         if isinstance(t, LocalTarget):
-            return name_for(t.reg, self.depth)
+            return self.local_name(t.reg)
         if isinstance(t, GlobalTarget):
             return _ident(t.name)
         if isinstance(t, IndexTarget):
@@ -566,7 +597,7 @@ class Printer:
         raise ReconstructError(f"unprintable statement {type(s).__name__}")
 
     def _local_decl(self, s: LocalDecl, indent: int = 0) -> str:
-        names = ", ".join(name_for(r, self.depth) for r in s.regs)
+        names = ", ".join(self.local_name(r) for r in s.regs)
         if not s.exprs:
             # A bare declaration (`local a, b`, no initialiser -- see the
             # module docstring / task-6-report "fault injection (b)"): NOT
@@ -800,7 +831,7 @@ class Printer:
             return out
         if isinstance(r, NumericFor):
             a = r.prep.ri.a
-            var = name_for(a + 3, self.depth)
+            var = self.local_name(a + 3)
             init = self.expr(self.recon.take_expr(a), indent=indent)
             limit = self.expr(self.recon.take_expr(a + 1), indent=indent)
             step = self.expr(self.recon.take_expr(a + 2), indent=indent)
@@ -822,7 +853,7 @@ class Printer:
             return out
         if isinstance(r, GenericFor):
             a, c = r.call.ri.a, r.call.ri.c
-            vars_ = ", ".join(name_for(a + 3 + i, self.depth) for i in range(c))
+            vars_ = ", ".join(self.local_name(a + 3 + i) for i in range(c))
             # `for k, v in pairs(t) do` staged ONE expression across the whole
             # control triple, so slots a+1/a+2 come back as `MultiSpill`
             # placeholders and the header prints the single expression (see
@@ -1110,14 +1141,16 @@ def print_function(fn: LirFunction, region: Region, rc: RegClass, depth: int,
                    upval_names: tuple[str, ...] = (), path: str = "main",
                    fallback_paths: frozenset[str] = frozenset(),
                    indent: int = 0,
-                   proposals: dict[str, bytes] | None = None) -> str:
+                   proposals: dict[str, bytes] | None = None,
+                   naming: Mapping[tuple[str, int], str] | None = None,
+                   ) -> str:
     """Print one function's body (its SIR region tree + register
     classification) as Lua source -- no enclosing `function(...) ... end`;
     the caller (chunk assembly for the top level, `Printer.closure_parts` for
     a nested CLOSURE) adds that.
     """
     printer = Printer(fn, rc, depth, upval_names, path, fallback_paths,
-                      proposals)
+                      proposals, naming)
     lines = printer.region(region, indent)
     return "\n".join(lines) + ("\n" if lines else "")
 
@@ -1126,15 +1159,19 @@ def _print_proto_body(proto: Proto, depth: int, upval_names: tuple[str, ...],
                       path: str = "main",
                       fallback_paths: frozenset[str] = frozenset(),
                       indent: int = 0,
-                      proposals: dict[str, bytes] | None = None) -> str:
+                      proposals: dict[str, bytes] | None = None,
+                      naming: Mapping[tuple[str, int], str] | None = None,
+                      ) -> str:
     fn = lift_proto(proto)
     region = build_sir(fn)
     rc = classify_registers(fn)
     return print_function(fn, region, rc, depth, upval_names, path,
-                          fallback_paths, indent, proposals)
+                          fallback_paths, indent, proposals, naming)
 
 
-def print_chunk_or_raise(proto: Proto) -> str:
+def print_chunk_or_raise(proto: Proto,
+                         naming: Mapping[tuple[str, int], str] | None = None,
+                         ) -> str:
     """`print_chunk`, but letting the refusal propagate instead of turning it
     into `None`.
 
@@ -1145,21 +1182,29 @@ def print_chunk_or_raise(proto: Proto) -> str:
     task 6). A `None` cannot carry that message, and re-deriving it by calling
     the printer a second time inside an `except` would be both wasteful and a
     lie waiting to happen if the two calls ever disagreed.
+
+    `naming` (M8 alignment) is the per-chunk name table; `None` keeps the
+    synthesized `l<depth>_<reg>` spellings.
     """
-    return _print_proto_body(proto, depth=0, upval_names=())
+    return _print_proto_body(proto, depth=0, upval_names=(), naming=naming)
 
 
-def print_chunk(proto: Proto) -> str | None:
+def print_chunk(proto: Proto,
+                naming: Mapping[tuple[str, int], str] | None = None,
+                ) -> str | None:
     """Structurally print an entire proto tree (this proto and, inline at
-    their CLOSURE sites, every descendant) as a compilable Lua chunk.
+    its CLOSURE sites, every descendant) as a compilable Lua chunk.
 
     Returns None if any part of the tree -- this proto or any descendant --
     cannot be structured (`StructureError`) or reconstructed
     (`ReconstructError`); the caller (Task 7) falls back to the whole-chunk
     fallback emitter in that case. Anything else propagates: it is a bug in
     this printer or an upstream layer, not a legitimate refusal.
+
+    `naming` (M8 alignment) is the per-chunk name table, as on
+    `print_chunk_or_raise`.
     """
     try:
-        return print_chunk_or_raise(proto)
+        return print_chunk_or_raise(proto, naming=naming)
     except (StructureError, ReconstructError):
         return None

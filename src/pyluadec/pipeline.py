@@ -91,11 +91,12 @@ def walk_proto_paths(path: str, p: Proto, out: dict[str, Proto]) -> None:
 
 def decompile_chunk(root: Proto,
                     proposals: dict[str, bytes] | None = None,
+                    naming: dict[tuple[str, int], str] | None = None,
                     ) -> DecompileResult:
     from pyluadec.structure.structured import emit_certified_chunk
     protos: dict[str, Proto] = {}
     walk_proto_paths("main", root, protos)
-    out = emit_certified_chunk(root, proposals)
+    out = emit_certified_chunk(root, proposals, naming)
     levels = {path: out.certs[path].level for path in protos}
     rungs = {path: out.certs[path].rung for path in protos}
     reasons = {path: out.certs[path].reason for path in protos}
@@ -144,7 +145,13 @@ def decompile_file(path) -> DecompileResult:
     ships. Wiring it here restores `decompile_file == shipped artifact`;
     the probes then observe the certified text, which is byte-identical
     to the original bytecode -- measured, not assumed, at the wiring:
-    both probes' verdicts were unchanged by the switch on this corpus)."""
+    both probes' verdicts were unchanged by the switch on this corpus).
+
+    The file's naming table rides along for the same reason (M8 naming
+    alignment): `decompile_file` is the entry point the shipped surface
+    is defined by, so it names what ships."""
     path = Path(path)
     from pyluadec.structure import proposals
-    return decompile_chunk(_ingest_file(path), proposals.for_file(path.name))
+    from pyluadec.structure import naming as naming_table
+    return decompile_chunk(_ingest_file(path), proposals.for_file(path.name),
+                           naming_table.for_file(path.name))

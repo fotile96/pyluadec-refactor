@@ -95,6 +95,7 @@ from pyluadec.lift.opcodes import Op, decode  # noqa: E402
 from pyluadec.oracle import LuaCompileError, compile_source  # noqa: E402
 from pyluadec.pipeline import decompile_chunk, walk_proto_paths  # noqa: E402
 from pyluadec.structure import proposals  # noqa: E402
+from pyluadec.structure import naming  # noqa: E402
 from pyluadec.predcorpus import load_pred_proto  # noqa: E402
 from pyluadec.predrecert import recert_bytes, t_grade  # noqa: E402
 from pyluadec.verify.certify import carries_debug  # noqa: E402
@@ -313,7 +314,8 @@ def build_all(corpus_dir: Path, pred_dir: Path):
                 hybrid_flags[name] = True
 
         ours_result = decompile_chunk(load_file(orig_path),
-                                      proposals.for_file(name))
+                                      proposals.for_file(name),
+                                      naming.for_file(name))
         # Proposal-shipped text IS certified (the chunk's whole-tree round),
         # so Factor T grades it by level -- the shipped-first ladder's T-
         # arm exists for UNCERTIFIED fallback text, which this is not. The

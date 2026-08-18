@@ -174,6 +174,7 @@ def main() -> int:
     # exactly the fingerprint the certification memo uses, and a second,
     # public transcription of that field list is the drift this import avoids.
     from pyluadec.structure import proposals
+    from pyluadec.structure import naming as naming_table
     from pyluadec.structure.structured import _debug_fingerprint
     from pyluadec.verify.ledger import (LedgerEntry, oracle_version, row_l2,
                                         structural_hash, write_ledger)
@@ -210,7 +211,8 @@ def main() -> int:
     for f in files:
         root_bytes = f.read_bytes()
         root = load_file(f)
-        res = decompile_chunk(root, proposals.for_file(f.name))
+        res = decompile_chunk(root, proposals.for_file(f.name),
+                              naming_table.for_file(f.name))
         (outdir / f.name).write_bytes(res.source)
         try:
             oracle.compile_source(res.source)
