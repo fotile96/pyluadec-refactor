@@ -150,3 +150,30 @@ point: instrument ONE failing fixture (`test_a_generic_for_over_a_call_
 prints_one_iterator_expression[0]`) — the generic-for iterator triple's
 control slots are the likely collision (their staging may legitimately
 outlive the batch-window liveness model).
+
+
+**Second iteration (same session): the GRANULARITY MISMATCH is the real
+finding.** Moving the release to batch end (never mid-batch, bounds
+cleared per batch, `_run_isolated` included) still printed `do local
+l0_0 = {} end for k in pairs(l0_0)` -- the name out of scope at its
+consumer. Root cause, now measured on both shapes: **the batch that
+MATERIALIZES is not the batch that PRINTS the consumer.** The for-header
+staging (pcs 1-4) is one `stmts_for` batch, but the `for ... in
+pairs(l0_0)` line prints afterwards from the printer's `GenericFor` arm
+(`take_expr`), outside that batch; symmetrically, the clamp chain's
+materialization happens in `CondValue`'s isolated staging run whose
+batch ends before the consuming statement's batch begins -- so the
+death-pc-within-batch guard REJECTS the very shape B1 exists to fix
+while ACCEPTING the for-header shape it must not touch. Batch-granularity
+scoping is therefore the wrong layer, in both directions at once.
+
+**Redesign direction (for the review round's next session).** Scoping
+decisions belong where PRINT ORDER is known: the printer's own typed
+statement stream. A structural wrapper pass there -- scan the emitted
+`Stmt` list for a `LocalDecl` whose slot's last name-read is a bounded
+range away, wrap exactly that range in a block node, then let the
+reconstructor's `declared` release follow -- is the same class of
+operation as the printer's existing pure structural folding (typing
+preserved, no text re-parsing), NOT the text-level peephole M4 rejected.
+The liveness oracle, the capture guard, and the batch-bound falsification
+from this session carry over unchanged.
