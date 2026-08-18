@@ -557,7 +557,7 @@ mixed = function(p, q) local r = (p or q) == 1 a = b return r end
 # Corpus arm.
 # --------------------------------------------------------------------------
 
-HYBRID_FILES = ("snr_story_main.lua",)
+HYBRID_FILES = ()
 
 
 def test_corpus_hybrid_files_ship_hybrid(corpus_dir, decompiled):
@@ -591,7 +591,14 @@ def test_corpus_hybrid_files_ship_hybrid(corpus_dir, decompiled):
     snr_mainmenu 1; snr_memory 1; snr_story_main 1); this tuple tracks
     `snr_story_main.lua` as the small remaining member --
     `snr_graphic` carries its own coverage below in
-    `test_corpus_hybrid_invariant_on_one_file`."""
+    `test_corpus_hybrid_invariant_on_one_file`.
+
+    And at the proposal-channel wiring (2026-08-18): one became ZERO.
+    `snr_story_main.lua`'s last substituted function (`main_3`) ships a
+    certified proposal; the whole hybrid population is empty -- every
+    file ships certified text (1478/1478 `L3`). The tuple stays as an
+    empty tuple rather than the test being deleted: a file dropping
+    BACK to hybrid is the failure this guard exists to name."""
     for name in HYBRID_FILES:
         res = decompiled(corpus_dir / name)
         assert res.hybrid is True, name
@@ -632,7 +639,9 @@ def test_corpus_hybrid_invariant_on_one_file(corpus_dir):
 # `snr_s1_10_s.lua` (1) at task 9, and `snr_s3_10_s.lua`/`snr_s4_10_s.lua`
 # (1 each) at task 10 -- all by certifying. Pinned so the reach measurement
 # below cannot silently start injecting nothing.
-SENTINELS_PER_FILE = {"snr_story_main.lua": 1}
+# Emptyed at the proposal-channel wiring (2026-08-18) with HYBRID_FILES:
+# no substituted code ships anywhere, so no probe reaches any.
+SENTINELS_PER_FILE = {}
 
 # The files whose substituted code each standing probe EXECUTES, measured
 # 2026-08-12 (round 1) by the test below. This is the honest scope of the
@@ -647,8 +656,12 @@ SENTINELS_PER_FILE = {"snr_story_main.lua": 1}
 # leaving, not by a probe getting better. Re-measured at M7 task 10
 # (2026-08-16): the one tracked hybrid moves under the behaviour sentinel,
 # none under global-state.
+# Both emptied at the proposal-channel wiring (2026-08-18): the hybrid
+# population is empty, so no probe reaches any substituted code. The
+# tables stay (with the test) as the re-derivation obligation the day a
+# file lands back on the hybrid tier.
 PROBE_REACH_GLOBAL_STATE: frozenset[str] = frozenset()
-PROBE_REACH_BEHAVIOUR = frozenset({"snr_story_main.lua"})
+PROBE_REACH_BEHAVIOUR = frozenset()
 
 
 def test_probe_reach_of_the_substituted_code(corpus_dir, monkeypatch):

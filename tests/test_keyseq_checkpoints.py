@@ -508,23 +508,40 @@ def _press_arm(key: bytes, clamp: bytes) -> bytes:
             b'                                local l2_9 = l1_0.optionKey0[l2_1]\n'
             b'                                ' + clamp)
 
-_ACCEPTED_BREAK = (b"elseif __pld_pc == 89 then\n"
-                   b"__pld_R[3] = keyPlaySE\n__pld_R[4] = seName\n"
-                   b"__pld_R[4] = __pld_R[4][\"circle\"]\n"
-                   b"__pld_R[3](__pld_R[4])\n__pld_pc = 173\n")
+# Gate-family anchors, re-derived against the STRUCTURED artifact at the
+# proposal-channel wiring (2026-08-18): the ConfigMain function now ships
+# certified text (byte-identical to the original bytecode), so the
+# pc-dispatch spellings the fallback-era anchors used match nothing. The
+# anchors target the OUTER elseif/else of the CIRCLE handler -- the arm
+# the CONFIG_GATE spec actually drives (firstFragment != 1 in the probe
+# environment; the inner firstFragment==1 region is the one the property
+# docstring itself records as never entered). Each is unique in the
+# chunk (measured at the wiring tree).
+_GATE_LINE = (b"            elseif not (l2_1 == 3) and not (l2_1 == 4) "
+              b"and not (l2_1 == 7) and not (l2_1 == 8) or l2_1 == 3 "
+              b"and memoryFlag == true then\n")
 
-_LOOP_WAIT = (b"elseif __pld_pc == 169 then\n"
-              b"__pld_R[3] = wait\n__pld_R[4] = 1\n__pld_R[3](__pld_R[4])\n"
-              b"__pld_pc = 4\n")
+_ACCEPTED_BREAK = (_GATE_LINE +
+                   b"            else\n"
+                   b"                keyPlaySE(seName.circle)\n"
+                   b"                break\n")
 
-_MEMORY_GATE = (b"elseif __pld_pc == 85 then\n__pld_R[3] = memoryFlag\n"
-                b"if not (__pld_R[3] == true) then __pld_pc = 87 "
-                b"else __pld_pc = 88 end\n")
+_LOOP_WAIT = (b"        l2_2 = false\n"
+              b"    end\n"
+              b"    wait(1)\n"
+              b"end\n"
+              b"return l2_1\n")
 
-_POLL_RIGHT = (b"elseif __pld_pc == 81 then\n__pld_R[8] = pressButton\n"
-               b"__pld_R[9] = \"RIGHT\"\n")
-_POLL_LEFT = (b"elseif __pld_pc == 146 then\n__pld_R[8] = pressButton\n"
-              b"__pld_R[9] = \"LEFT\"\n")
+_MEMORY_GATE = _GATE_LINE
+
+_FIRSTFRAGMENT_GATE = (
+    b"            if gameSave.tutorial.firstFragment == 1 then\n"
+    b"                if l2_1 == 6 then\n")
+
+_POLL_RIGHT = (b"    if pressButton(\"CIRCLE\") == true then\n"
+               b"        if l2_2 == false then\n")
+_POLL_LEFT = (b"    if pressButton(\"CROSS\") == true then\n"
+              b"        if l2_2 == false then\n")
 
 INJECTIONS = [
     # (id, which property, spec, [(anchor, replacement), ...], failure fragment)
@@ -564,28 +581,34 @@ INJECTIONS = [
      [(_press_arm(b"RIGHT", _CLAMP_WIDE), _press_arm(b"LEFT", _CLAMP_WIDE)),
       (_press_arm(b"LEFT", _CLAMP_LEFT), _press_arm(b"RIGHT", _CLAMP_LEFT))],
      "the branch arms have swapped"),
+    # The four fallback-era pc-dispatch injections were re-derived against
+    # the structured artifact at the proposal-channel wiring (2026-08-18);
+    # each mutation preserves the semantic content of its historical bug.
     ("playbook: break promoted to unconditional",
      "gate", CONFIG_GATE_SPEC,
-     [(b"elseif __pld_pc == 82 then\n__pld_pc = 94\n",
-       b"elseif __pld_pc == 82 then\n__pld_pc = 83\n")],
+     [(_GATE_LINE,
+       b"            elseif false then\n")],
      "promoted to unconditional"),
     ("playbook: the no-state-change path loses its wait(1)",
      "gate", CONFIG_GATE_SPEC,
-     [(_LOOP_WAIT, b"elseif __pld_pc == 169 then\n__pld_pc = 4\n")],
-     "not OK"),
+     [(_LOOP_WAIT,
+       _LOOP_WAIT.replace(b"    wait(1)\n", b"    wait(0)\n"))],
+     "wait changed"),
     # Round 1: the loop's wait changing DURATION rather than disappearing. The
     # run still finishes, but every scheduled frame misses, so CIRCLE is never
     # down -- which the break assertion used to report as "the loop ended at
     # the FIRST CIRCLE press" with no press to speak of.
     ("the loop's wait changes from 1 frame to 2",
      "gate", CONFIG_GATE_SPEC,
-     [(_LOOP_WAIT, _LOOP_WAIT.replace(b"__pld_R[4] = 1\n",
-                                      b"__pld_R[4] = 2\n"))],
+     [(_LOOP_WAIT, _LOOP_WAIT.replace(b"    wait(1)\n",
+                                      b"    wait(2)\n"))],
      "gone out of step"),
     ("the firstFragment gate is forced open",
      "gate", CONFIG_GATE_SPEC,
-     [(b"elseif __pld_pc == 17 then\n__pld_pc = 75\n",
-       b"elseif __pld_pc == 17 then\n__pld_pc = 18\n")],
+     [(_FIRSTFRAGMENT_GATE,
+       _FIRSTFRAGMENT_GATE.replace(
+           b"if gameSave.tutorial.firstFragment == 1 then",
+           b"if true then"))],
      "let something through"),
     # Round 1: the gate the first version of this module claimed and did not
     # press. Only the "forced open" direction is detectable -- see
@@ -593,13 +616,17 @@ INJECTIONS = [
     ("the memoryFlag gate is forced open",
      "gate", CONFIG_GATE_SPEC,
      [(_MEMORY_GATE,
-       b"elseif __pld_pc == 85 then\n__pld_R[3] = memoryFlag\n"
-       b"__pld_pc = 88\n")],
+       _MEMORY_GATE.replace(
+           b"elseif not (l2_1 == 3) and not (l2_1 == 4) and not "
+           b"(l2_1 == 7) and not (l2_1 == 8) or l2_1 == 3 and "
+           b"memoryFlag == true then",
+           b"elseif true then"))],
      "the break on the gated path is gone"),
     ("the break on the gated path is removed",
      "gate", CONFIG_GATE_SPEC,
      [(_ACCEPTED_BREAK,
-       _ACCEPTED_BREAK.replace(b"__pld_pc = 173\n", b"__pld_pc = 94\n"))],
+       _ACCEPTED_BREAK.replace(b"                break\n",
+                               b"                wait(1)\n"))],
      "the break on the gated path is gone"),
 ]
 

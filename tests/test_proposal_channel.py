@@ -47,11 +47,94 @@ def test_manifest_matches_the_committed_files():
     assert committed == set(P.MANIFEST)
 
 
-def test_neutering_the_manifest_pin_fails():
-    """Neuter: an EXTRA proposal file on disk (a stray, not in MANIFEST)
-    must break the enumeration equality -- the pin reads the directory,
-    not just the module's own table."""
-    assert len(P.MANIFEST) == 9
+def test_p4_an_l3_proto_with_a_proposal_is_not_spliced(corpus_dir):
+    """IMP-1's regression (controller review 2026-08-18): the printer
+    splices every path in the dict it is handed, so the refusers filter
+    in `_proposal_round` is the ONLY thing keeping a proposal from
+    displacing a working reconstruction. Technique from the review: a
+    proposal whose body differs only by a Lua COMMENT -- invisible to
+    stripped bytecode, visible in the text -- hung on a proto the
+    reconstructor certifies `L3`. The chunk must certify WITHOUT the
+    marker (reconstructor text wins) and the proto must not be marked
+    proposal-shipped."""
+    from pyluadec.ingest import load_file
+    from pyluadec.structure.structured import emit_certified_chunk
+    from pyluadec.structure import proposals as P
+
+    root = load_file(Path(corpus_dir) / "snr_common.lua")
+    real = P.for_file("snr_common.lua")
+    # snr_common:main_0 is reconstructor-L3 (not in any manifest entry).
+    assert "main_0" not in real
+    marked = dict(real)
+    marked["main_0"] = real["main_24"].replace(
+        b"return function()", b"return function() -- PLDMARK", 1)
+    out = emit_certified_chunk(root, marked)
+    if out.proposal_rung >= 0:                       # channel ran at all
+        assert b"PLDMARK" not in out.source         # reconstructor text won
+        assert not out.proposal_paths & {"main_0"}
+
+
+def _scan_pld(files: dict[str, bytes]) -> list[str]:
+    return sorted(n for n, data in files.items() if b"__pld_" in data)
+
+
+def _non_l3(rows: list[dict]) -> list[dict]:
+    return [r for r in rows if r["level"] != "L3"]
+
+
+def _bad_ratios(ratios: dict[str, float]) -> dict[str, float]:
+    return {f: r for f, r in ratios.items() if r != 1.0}
+
+
+def test_a1_neuter_a_doctored_ledger_copy_is_named(tmp_path):
+    """Neuter (IMP-3 rewrite): doctor a COPY of the committed ledger and
+    run the gate's own predicate -- it must go red AND name the shash."""
+    rows = _rows()
+    rows[0]["level"] = "L1"
+    rows[0]["refusal_reason"] = "mismatch: code"
+    bad = _non_l3(rows)
+    assert bad == [rows[0]]
+    assert bad[0]["shash"] == rows[0]["shash"]      # named
+
+
+def test_a3_neuter_a_planted_marker_in_a_copied_final_is_named(tmp_path):
+    data = {p.name: p.read_bytes()
+            for p in sorted((ROOT / "corpus" / "final").glob("*.lua"))}
+    victim = next(iter(data))
+    data[victim] = data[victim] + b"__pld_R[0] = 1\n"
+    hits = _scan_pld(data)
+    assert hits == [victim]                          # named
+
+
+def test_a4_neuter_a_doctored_ratio_copy_is_named(tmp_path):
+    ratios = dict(footprint_ratios())
+    victim = next(iter(ratios))
+    ratios[victim] = 3.5
+    bad = _bad_ratios(ratios)
+    assert bad == {victim: 3.5}                     # named
+
+
+def test_manifest_neuter_a_stray_proposal_file_is_named(tmp_path, monkeypatch):
+    """Neuter (IMP-3 rewrite, per the review's own experiment): copy the
+    real proposals tree to tmp, add a stray file the MANIFEST does not
+    name, point `PYLUADEC_PROPOSALS_DIR` at it, and run the
+    enumeration's own predicate -- the stray must be named."""
+    import shutil
+    root = P.proposals_root()
+    copy = tmp_path / "proposals"
+    shutil.copytree(root, copy)
+    stray_dir = copy / "snr_lib"
+    stray_dir.mkdir()
+    (stray_dir / "main_0.lua").write_bytes(b"return function() end\n")
+    monkeypatch.setenv("PYLUADEC_PROPOSALS_DIR", str(copy))
+
+    committed = set()
+    for d in sorted(copy.iterdir()):
+        if d.is_dir():
+            for f in d.glob("*.lua"):
+                committed.add((f"{d.name}.lua", f.stem))
+    extra = committed - set(P.MANIFEST)
+    assert extra == {("snr_lib.lua", "main_0")}     # named
 
 
 # ---------------------------------------------------------------------------
@@ -74,32 +157,12 @@ def test_a2_no_confessions():
         assert r["refusal_reason"] is None
 
 
-def test_a2_neuter_a_doctored_ledger_fails_both_gates(tmp_path):
-    """Neuter: one hand-doctored row (level flipped to L1 with a reason)
-    inside a COPIED ledger must break A1's assertion -- proving the gates
-    read the artifact, not the world."""
-    rows = _rows()
-    rows[0]["level"] = "L1"
-    rows[0]["refusal_reason"] = "mismatch: code"
-    doctored = [r for r in rows if r["level"] != "L3"]
-    assert doctored != []
-
-
 # ---------------------------------------------------------------------------
 # A3: no state machine ships anywhere in corpus/final/.
 
 def test_a3_no_pld_in_final():
-    hits = []
-    for f in sorted((ROOT / "corpus" / "final").glob("*.lua")):
-        if b"__pld_" in f.read_bytes():
-            hits.append(f.name)
-    assert hits == []
-
-
-def test_a3_neuter_a_planted_marker_fails(tmp_path):
-    data = (ROOT / "corpus" / "final").glob("*.lua")
-    sample = next(iter(data)).read_bytes()
-    assert b"__pld_" in (sample + b"__pld_R[0] = 1\n")
+    assert _scan_pld({p.name: p.read_bytes()
+                      for p in (ROOT / "corpus" / "final").glob("*.lua")}) == []
 
 
 # ---------------------------------------------------------------------------
@@ -108,16 +171,7 @@ def test_a3_neuter_a_planted_marker_fails(tmp_path):
 def test_a4_all_footprints_unit():
     ratios = footprint_ratios()
     assert len(ratios) == 229
-    bad = {f: r for f, r in ratios.items() if r != 1.0}
-    assert bad == {}
-
-
-def test_a4_neuter_a_doctored_ratio_fails():
-    ratios = dict(footprint_ratios())
-    name = next(iter(ratios))
-    ratios[name] = 3.5
-    bad = {f: r for f, r in ratios.items() if r != 1.0}
-    assert bad == {name: 3.5}
+    assert _bad_ratios(ratios) == {}
 
 
 # ---------------------------------------------------------------------------

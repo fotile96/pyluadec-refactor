@@ -650,9 +650,19 @@ def _proposal_round(root: Proto, sites: frozenset[str],
     loop is the same untouched `compare_protos` ladder, but nothing is
     filtered out, so the verdict covers every proto in the tree
     including each proposal's own subtree."""
+    # P4 (controller review IMP-1, 2026-08-18): the printer splices every
+    # path present in the dict it is handed, so the refusers filter HAPPENS
+    # HERE -- upstream of the printer -- or not at all. An unfiltered dict
+    # would let a proposal silently replace a reconstruction that still
+    # works (certified `L3`), mislabel it `structured` in the ledger, and
+    # blind the ratchet's `proposal-mask` kind in the one scenario it
+    # exists for. The triggering experiment: a marker-comment proposal on
+    # an L3 proto certified the chunk with the proposal's text while the
+    # ledger said `structured`.
+    filtered = {path: proposals[path] for path in sites if path in proposals}
     try:
         src = _print_proto_body(root, 0, (), "main", frozenset(), 0,
-                                proposals)
+                                filtered)
     except (StructureError, ReconstructError, EmitError):
         return None
     payload = src.encode()
@@ -810,9 +820,9 @@ def emit_certified_chunk(root: Proto,
     # scope's own upvalue names), then recompile the WHOLE chunk and
     # compare with ZERO excluded paths -- the strongest form of P1: any
     # splicing or renaming error anywhere in the tree refuses the chunk.
-    # Only refusers consult proposals (a proto that certified `L3` keeps
-    # the reconstructor's text), so a proposal can never mask a
-    # reconstruction that would have printed (P4).
+    # P4's "refusers only" is enforced by _proposal_round's dict filter
+    # (see there): a proto that certified `L3` keeps the reconstructor's
+    # text because its path never reaches the printer.
     if proposals:
         refusers = {path for path, cert in certs.items()
                     if cert.level != "L3" and path in proposals}

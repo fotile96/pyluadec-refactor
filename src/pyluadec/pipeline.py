@@ -136,4 +136,15 @@ def decompile_chunk(root: Proto,
 
 
 def decompile_file(path) -> DecompileResult:
-    return decompile_chunk(_ingest_file(Path(path)))
+    """`decompile_chunk` over an ingested file, WITH the file's proposals
+    (controller review IMP-2, 2026-08-18: the two standing probes --
+    `probe_behaviour`, `probe_global_state` -- read our text through this
+    entry point, and the first channel wiring left it proposal-less, so
+    on the four channel files those gates verified text that no longer
+    ships. Wiring it here restores `decompile_file == shipped artifact`;
+    the probes then observe the certified text, which is byte-identical
+    to the original bytecode -- measured, not assumed, at the wiring:
+    both probes' verdicts were unchanged by the switch on this corpus)."""
+    path = Path(path)
+    from pyluadec.structure import proposals
+    return decompile_chunk(_ingest_file(path), proposals.for_file(path.name))

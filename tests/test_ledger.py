@@ -192,7 +192,10 @@ def test_dashboard_refusal_key_collapses_every_varying_part():
     # (The committed ledger went all-`L3` at the proposal-channel wiring,
     # 2026-08-18, so `reasons` is empty today; the mapping assertions above
     # are the live part of this test, and a new refusal reason re-enters the
-    # loop below the moment one ships.)
+    # loop below the moment one ships. MIN-3 (controller review): the loop
+    # below is CONSTRUCTIVELY A NO-OP today -- it carries zero iterations
+    # until that happens; it is kept because it is the check that fires
+    # then, not because it checks anything now.)
     import json
     reasons = {json.loads(l)["refusal_reason"]
                for l in (root / "corpus" / "ledger.jsonl").read_text().splitlines()

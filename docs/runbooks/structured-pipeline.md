@@ -4481,9 +4481,12 @@ very name `u0` was renamed to, silently turning a capture into a
 self-reference (measured as `nups` mismatches on all three depth-2
 sites in the first wiring round). `emit_certified_chunk`'s proposal
 tier sits between root certification and hybrid: print the tree with
-proposal bodies at the **refusing** sites only (a proto that certified
-`L3` keeps the reconstructor's text -- a proposal can never mask a
-working reconstruction), compile with the real oracle, and compare with
+proposal bodies at the **refusing** sites only (the P4 filter lives in
+`_proposal_round`'s dict narrowing -- the controller review's IMP-1
+found the first wiring passed the dict through unfiltered, so a proposal
+would have displaced a working reconstruction while the ledger said
+`structured`; the filter is load-bearing and pinned by a
+marker-comment test), compile with the real oracle, and compare with
 the untouched ladder and **zero excluded paths**. Any error anywhere
 refuses the chunk; the caller falls to hybrid/whole-fallback exactly as
 before.

@@ -41,9 +41,14 @@ exact. The whole-tree compare re-proves it on every regeneration.
 explicit list of proposals the pipeline will ever consult -- adding or
 removing one is a deliberate edit here, held by
 ``tests/test_proposal_channel.py``'s enumeration pin. A proto that the
-reconstructor certified ``L3`` never consults a proposal: the registry
-arm sits AFTER the reconstructor text in ``closure_parts``, so a
-proposal cannot mask a reconstruction that would have succeeded.
+reconstructor certified ``L3`` never consults a proposal: the protection
+lives in the CALLER's refusers filter (``structured._proposal_round``
+narrows the dict to refusing sites before the printer ever sees it --
+controller review IMP-1, 2026-08-18; an earlier revision claimed the
+protection came from the arm's position in ``closure_parts``, which was
+wrong twice over: the arm returns early, so without the filter a
+proposal would ALWAYS displace the reconstructor's text, certified or
+not).
 """
 from __future__ import annotations
 
@@ -54,9 +59,11 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 _DEFAULT_ROOT = _REPO_ROOT / "corpus" / "proposals"
 
 #: The pinned enumeration (property P4): (corpus file, proto path).
-#: Populated by the controller's demonstration campaign (survey §9,
-#: 2026-08-18) -- 8 leaves, each certified through the unmodified ladder
-#: by ``corpus/proposals/verify_proposals.py`` (8/8 at the wiring tree).
+#: The controller's demonstration campaign certified 8 leaves (survey
+#: §9); the channel wiring added the 9th (`main_25`, its own K1 fold --
+#: controller review §1.2 confirmed the diagnosis the wiring measured).
+#: Each entry is certified through the unmodified ladder by
+#: ``corpus/proposals/verify_proposals.py`` (9/9 at the wiring tree).
 MANIFEST: tuple[tuple[str, str], ...] = (
     ("snr_common.lua", "main_24"),
     ("snr_common.lua", "main_25"),
