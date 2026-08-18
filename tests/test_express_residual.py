@@ -697,3 +697,34 @@ def test_int2fb_exactness_boundary():
         fn = lift_proto(load_bytes(compile_source(
             f"local t = {{{fields}}}\nreturn t\n".encode(), strip=True)))
         assert fn.instrs[1].ri.c == c, (n, c)
+
+
+# ---------------------------------------------------------------------------
+# M8 B1 (the busy-slot ruling's review round): scoped materialization.
+# A materialized local whose bytecode liveness ends MID-REGION is wrapped
+# in a bytecode-invisible `do ... end` (no CLOSURE captures -> no CLOSE),
+# and `declared` releases the slot at its death pc -- later temp-graded
+# defs then stage into the freed slot exactly as the original's freereg
+# discipline did.
+
+def test_scoped_clamp_frees_the_slot_for_the_callee_certifies():
+    """The `snr_story_main:main_3` shape: a clamp materializes the busy
+    slot (`local l1_R = <chain>`), its value dies at the next read, and
+    the FOLLOWING callee (loaded fresh per statement in the original)
+    must land in the freed slot -- not be pushed to a higher register."""
+    src = b"""local function f(i, pressed)
+    if pressed == "CIRCLE" then
+        local fn = i == 1 and cGetFileName("sysgim", "b") or cGetFileName("sysgim", "a")
+        setGlobal(fn)
+        keyPlaySE("circle")
+        if comDlgYesNo(fn, 100, 80) == true then
+            doScriptScene(comScene(fn))
+            return 1
+        end
+    end
+    return 0
+end
+f(1, "CIRCLE")
+"""
+    _proto, out = _certify(src)
+    assert out.level == "L3", out.reason
