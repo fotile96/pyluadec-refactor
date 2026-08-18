@@ -4427,6 +4427,32 @@ masking rung (a partner petition) or a fold-order-preserving split
 known). Current refusals pinned red by
 `test_literal_statement_split_is_a_recorded_gap`.
 
+### The campaign's Step-1 census is COMPLETE (2026-08-16)
+
+`snr_story_main:main_3` diagnosed last: first divergence pc307
+`GETGLOBAL 12` vs `MOVE 12,11` -- our text assigns each callee to the
+busy slot's local and calls through it (`l1_11 = keyPlaySE;
+l1_11(seName.circle)`), where the original loads the callee fresh per
+statement (`keyPlaySE(seName.circle)`, +8 instructions, const-pool
+reorder). **All three gate-critical rows share this one root** with
+`snr_mainmenu:main_7` and `snr_graphic:main_4`: the whole-function
+`declared` merges a busy slot's per-statement lifetimes, and the
+original re-evaluates (callees, upvalue chains) fresh per use. Rename
+recorded: the "M-family" is really the **busy-slot family**.
+
+**Every remaining own row is now attributed** (the spec §5 stop-loss
+form, attribution-complete): busy-slot family ×5 (`main_7`, `main_4`,
+`main_3`, `main_25_4`, `main_76_2`); K1 hint ×3 (`main_24`, `main_25`,
+`main_71` -- L3.3 rung or fold-split, count-cap falsified); slack+code
+×1 (`main_74_18`, maxstack BELOW original plus a code co-mismatch); +
+6 inherited roots that dissolve with their descendants. Three fix
+directions have been experimentally falsified with zero spillover
+(declared-inversion 35 regressions; count-cap 157; reaching-def
+refinement moot -- the value reaches the open reads). The paths that
+remain are PARTNER DECISIONS at Task 6: the K1/L3.3 rung bundle, the
+busy-slot ruling (reaching-def review round vs a corpus-informed
+fresh-eval opt-in), and `main_74_18`'s disposition.
+
 Also recorded from the same session: a NESTED-literal inversion gap
 (inner literal's values read the outer's staged TableExpr; the outer's
 materialization lands after the inner's statement -- the printed text
