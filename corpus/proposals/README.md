@@ -8,10 +8,14 @@ proto，全部经**未改动的**认证阶梯在 rung 1（strip-lineinfo）通�
 
 - 文件格式：`certify_proto` 对非根 proto 用的 wrapper 原样
   （`local u0, ...` 声明 + `return function(<params>) <body> end`）。
-- **这些文件尚未被管线消费。** 通道接线（`emit_certified_chunk` 在
-  CLOSURE 站点查 proposal、台账 provenance、ratchet kind、warranty
-  `t_grade` 分档）是通道实现任务的活；届时布局/命名以那个任务为准，
-  本目录是它的输入。
+- **已接入管线（2026-08-18，通道实现任务落盘）。** 消费点：
+  `emit_certified_chunk` 的 proposal tier（`structure/structured.py`），
+  打印臂在 `emit/lua.py::closure_parts`（reconstructor 臂之后、fallback
+  之前）；台账 `shipped` 增值 `"proposal"`（ratchet 序
+  structured > proposal > fallback，`structured -> proposal` 是
+  `proposal-mask` 降级）；守卫在 `tests/test_proposal_channel.py`
+  （枚举钉 = `structure/proposals.py::MANIFEST` 与本目录文件集相等）。
+  本清单从 8 叶扩到 **9**：`main_25`（K1 折叠自有拒绝）在接线中入册。
 - 除 `main_24`（从码流走查从零写出）外，其余七份都是「近失配打印文本 +
   定点编辑」的产物：基底文本由 `emit.lua._print_proto_body` 生成，编辑
   只动失配区域。
