@@ -645,3 +645,55 @@ def test_upvalue_multiple_assignment_certifies(corpus_dir):
     walk_proto_paths("main", load_file(corpus_dir / "snr_common.lua"), protos)
     out = certify_proto(protos["main_77_0"], is_chunk_root=False)
     assert out.level == "L3", out.reason
+
+
+# ---------------------------------------------------------------------------
+# M8 tasks-4/5 campaign: the K1 hint cluster -- the literal/statement split.
+# Measured (2026-08-16, vendored luac): NEWTABLE's raw C field is EXACT for
+# literal hash counts 1..17 (18 -> 17, 19-20 -> 18, 23-24 -> 20: the
+# int2fb pairs collapse only from 18). The M7-task-9 note's "15-field
+# literal decodes to 14" does not reproduce; the inexactness starts at 18.
+
+def test_literal_statement_split_is_a_recorded_gap():
+    """The K1 hint cluster (`snr_common:main_24` C=1, `main_25` C=2,
+    `main_71` C=10): the original's constructor held FEWER hash fields
+    than we fold (instruction streams otherwise byte-identical -- only
+    the NEWTABLE C differs). Boundary re-measured 2026-08-16 against the
+    vendored luac: raw C is EXACT for literal hash counts 1..16, and 17
+    is AMBIGUOUS (17 and 18 both encode to 17; 19-20 -> 18). A fold-time
+    count cap was implemented and REJECTED the same session: closing the
+    ctx at the hint count regresses 157 rows (snr_common:main_74 among
+    them -- shipped structured -> fallback; the early close reorders the
+    value staging, the same failure mode M7 task 9's first count-based
+    gate hit). The cluster therefore stays with the L3.3 masking rung or
+    a fold-order-preserving split; these tests pin the CURRENT refusal
+    so the eventual fix has red-to-green witnesses."""
+    src = b"""local t = {a = 1}
+t.b = function() return 1 end
+t.c = function() return 2 end
+return t
+"""
+    _proto, out = _certify(src)
+    assert out.level == "L1"
+    assert (out.reason or "").startswith("mismatch:")
+    src2 = b"""local t = {a = 1, b = 2, c = 3}
+return t.a + t.b + t.c
+"""
+    _proto2, out2 = _certify(src2)
+    assert out2.level == "L3"
+
+
+def test_int2fb_exactness_boundary():
+    """The encoding ladder, pinned (2026-08-16, vendored luac): raw C ==
+    literal hash count for 1..16; 17 <- {17, 18}; 18 <- {19, 20}; 20 <-
+    {23, 24}. The M7-task-9 note's 'past 7 is inexact' and 'a 15-field
+    literal decodes to 14' do NOT reproduce (15 -> 15)."""
+    from pyluadec.ingest import load_bytes
+    from pyluadec.oracle import compile_source
+    from pyluadec.lift import lift_proto
+    for n, c in ((1, 1), (7, 7), (15, 15), (16, 16), (17, 17), (18, 17),
+                 (19, 18), (20, 18), (23, 20), (24, 20), (31, 24)):
+        fields = ", ".join(f"k{i} = {i}" for i in range(n))
+        fn = lift_proto(load_bytes(compile_source(
+            f"local t = {{{fields}}}\nreturn t\n".encode(), strip=True)))
+        assert fn.instrs[1].ri.c == c, (n, c)

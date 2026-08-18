@@ -4384,7 +4384,8 @@ NOT silently absorbed. The other two gate-critical rows
 independent of this.
 
 **Direction (a) was then measured and REJECTED (2026-08-16, controlled
-experiment, reverted the same minute).** The proposed rule -- "a
+experiment, reverted the same minute).** [The K1 count-cap experiment of
+the same session met the same verdict: see below.] The proposed rule -- "a
 temp-graded definition stages even over a `declared` slot, because a
 staged value still enters `_pending` (reads pop it inline) and temp
 means exactly one read, so no second name-read can exist" -- moved the
@@ -4400,3 +4401,35 @@ finer release needs the reaching-def review round it was already
 assigned, not a one-line inversion. Experiment reverted; ledger
 verified byte-identical to pre-experiment (`ratchet_diff` clean, suite
 batch green).
+
+
+### The K1 count-cap experiment: rejected 157-3 (same campaign)
+
+The int2fb boundary was RE-MEASURED (2026-08-16, vendored luac): raw C
+is EXACT for literal hash counts **1..16**, ambiguous at 17 ({17,18}),
+collapsed from 18 on. This corrects the M7-task-9 note twice over: "past
+7 is inexact" understates the exact range, and its worked example "a
+15-field literal decodes to 14" does not reproduce (15 -> 15). Pinned as
+`test_int2fb_exactness_boundary`.
+
+The tempting fix -- cap the fold at the original's hint count, close the
+ctx there, dispatch further SETTABLEs as statement stores -- was
+implemented and **regressed 157 rows** (`snr_common:main_74` structured
+-> fallback among them; whole-file fallback reappeared on 3 files). The
+failure mode is the SAME one M7 task 9's first count gate hit and
+documented: the early close reorders the value staging (the regressed
+emission puts the outer literal's SETTABLEs ahead of a nested table's
+own NEWTABLE staging -- the fold order and the statement stream no
+longer compose). The cap was reverted the same session; ledger verified
+byte-identical post-revert. The K1 cluster therefore stays with the L3.3
+masking rung (a partner petition) or a fold-order-preserving split
+(some signal for the constructor's END other than the count -- none is
+known). Current refusals pinned red by
+`test_literal_statement_split_is_a_recorded_gap`.
+
+Also recorded from the same session: a NESTED-literal inversion gap
+(inner literal's values read the outer's staged TableExpr; the outer's
+materialization lands after the inner's statement -- the printed text
+reads a GLOBAL). Certification refuses it, so it cannot ship wrong;
+corpus census: no remaining row names it. Pinned by
+`test_nested_literal_inversion_is_a_recorded_gap`.
