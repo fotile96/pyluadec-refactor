@@ -4459,3 +4459,54 @@ materialization lands after the inner's statement -- the printed text
 reads a GLOBAL). Certification refuses it, so it cannot ship wrong;
 corpus census: no remaining row names it. Pinned by
 `test_nested_literal_inversion_is_a_recorded_gap`.
+## The propose-and-certify channel (M8 wiring, 2026-08-18)
+
+A hand-written source **proposal** for a proto the reconstructor cannot
+print, certified through the **unmodified** ladder and spliced into the
+chunk at its CLOSURE site. Partner-approved 2026-08-18; the campaign
+that produced the current nine proposals is
+`docs/reports/m8-strategy-survey-fable5.md` §9, the wiring handoff is
+`docs/reports/m8-handoff-proposal-channel.md`.
+
+**The flow.** `structure/proposals.py` holds the pinned `MANIFEST`
+(9 entries; adding/removing one is a deliberate edit held by
+`tests/test_proposal_channel.py`'s enumeration pin) and the inliner: a
+boundary-aware, string/comment-tracking scanner (no `re` -- the package
+ban) that (1) rebinds the wrapper's `u<digits>` upvalue references to
+the enclosing scope's own identifiers (`closure_parts`' pseudo-
+instruction names), and (2) shifts `l<k>_` local prefixes by the site
+depth -- the **shadow-capture fix**: the wrapper spells its locals
+`l1_*`, and spliced at a depth-2 site an unshifted `l1_0` shadows the
+very name `u0` was renamed to, silently turning a capture into a
+self-reference (measured as `nups` mismatches on all three depth-2
+sites in the first wiring round). `emit_certified_chunk`'s proposal
+tier sits between root certification and hybrid: print the tree with
+proposal bodies at the **refusing** sites only (a proto that certified
+`L3` keeps the reconstructor's text -- a proposal can never mask a
+working reconstruction), compile with the real oracle, and compare with
+the untouched ladder and **zero excluded paths**. Any error anywhere
+refuses the chunk; the caller falls to hybrid/whole-fallback exactly as
+before.
+
+**Provenance (P2) and the ledger.** `shipped` gained the value
+`"proposal"` (15 occurrences today, all in the four formerly-hybrid
+files); a proposal-tier chunk records `L3` at the round's rung for
+EVERY proto in the tree -- the whole-tree compare covered ancestors of
+substituted sites too (the pre-hybrid "root certified implies every
+descendant" convention, applied to the new tier). The reconstructor's
+own per-proto verdicts are unchanged and internal; `ratchet_diff.py`
+installs `structured > proposal > fallback` with `structured ->
+proposal` the `proposal-mask` downgrade (the reconstructor used to
+print this proto itself -- the P4 move the ratchet exists to see).
+
+**What the channel is NOT.** It is not a comparator change --
+`verify/` is untouched, `LADDER_VERSION` unchanged; certification went
+through the same door it always had. It is not a return of the retired
+pass registry (spec §2): no apply/rollback, only propose + the existing
+certify. And it is not the fallback: proposal text is certified text,
+so warranty `t_grade` grades it by level (the shipped-first `T-` arm is
+for uncertified state machines). The census sections above are kept as
+the history of the mechanisms the channel superseded; the residual
+population as of this wiring is **empty** -- 1478/1478 `L3`, zero
+fallback occurrences, `corpus/final/` carries no `__pld_` marker, every
+footprint 1.0, and file-level byte identity (mod lineinfo) is 229/229.
