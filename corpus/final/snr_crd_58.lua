@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_58_s2s_500_step5 = function()
     cStopBGMWrap()
     comPoseLoad("po2_aya_f_2_e")
     vms(2959, "NONVOICE", "【彩野】「うーん……」")
@@ -17,7 +17,7 @@ local l0_0 = function()
     run(cGetFileName("script", "snr_fragment_main"))
     quit()
 end
-local l0_1 = function()
+local card_58_s2s_500_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(2968, "NONVOICE", "【直哉】「この場面は、途中までは『ユウイチの後ろ姿』と同じ展開。でも――」")
@@ -46,7 +46,7 @@ local l0_1 = function()
     vms(2986, "NONVOICE", "【直哉】「アヤノさんが帰った後、サクラさんはそっとある行動をとるんだ。その行動は――」")
     comPoseDelete()
 end
-local l0_2 = function()
+local card_58_s2s_500_resolve = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_2_d")
     vms(2987, "NONVOICE", "【彩野】「ため息をついちゃうみたいな、落胆させるようなことは駄目ってことね」")
@@ -58,7 +58,7 @@ local l0_2 = function()
     vms(2992, "NONVOICE", "【直哉】「サクラさんのナゾトキで正解した時のあらすじは――」")
     comPoseDelete()
 end
-local l0_3 = function()
+local card_58_s2s_500_step3 = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_2_a")
     vms(2993, "NONVOICE", "【彩野】「あ、なるほど。正解の時と不正解があった時で、展開が違うんだね」")
@@ -74,7 +74,7 @@ local l0_3 = function()
     vms(3001, "NONVOICE", "【直哉】「ナゾトキに正解することで得られたオマジナイは……」")
     comPoseDelete()
 end
-local l0_4 = function()
+local card_58_s2s_500_step4 = function()
     oCard.cardAnswerTrue()
     cStopBGMWrap()
     comPoseLoad("po2_aya_f_1_a")
@@ -97,7 +97,7 @@ local l0_4 = function()
     vms(3014, "NONVOICE", "【直哉】「『その行動』の場面は――」")
     comPoseDelete()
 end
-local l0_5 = function()
+local card_58_s2s_500_step6 = function()
     oCard.cardAnswerTrue()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
@@ -151,7 +151,7 @@ main = function()
         quit()
     end
     local l1_0 = false
-    l0_1()
+    card_58_s2s_500_intro()
     local l1_1 = 0
     local l1_2 = 0
     local l1_3 = -1
@@ -180,7 +180,7 @@ main = function()
         end
         wait(30)
     end
-    l0_2()
+    card_58_s2s_500_resolve()
     local l1_4 = 0
     local l1_5 = 0
     local l1_6 = -1
@@ -209,7 +209,7 @@ main = function()
         end
         wait(30)
     end
-    l0_3()
+    card_58_s2s_500_step3()
     local l1_7 = 0
     local l1_8 = 0
     local l1_9 = -1
@@ -239,7 +239,7 @@ main = function()
         end
         wait(30)
     end
-    l0_4()
+    card_58_s2s_500_step4()
     local l1_10 = 0
     local l1_11 = 0
     local l1_12 = -1
@@ -269,9 +269,9 @@ main = function()
         wait(30)
     end
     if l1_0 == true then
-        l0_0()
+        card_58_s2s_500_step5()
     end
-    l0_5()
+    card_58_s2s_500_step6()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

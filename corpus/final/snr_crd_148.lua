@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_148_s4s_40_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(760, "NONVOICE", "【直哉】「廊下でユウイチを見かけて、声を掛けるんだけど――」")
@@ -11,7 +11,7 @@ local l0_0 = function()
     vms(766, "NONVOICE", "【直哉】「場面は、セクション３になるね。あらすじが作ってあるよ」")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_148_s4s_40_resolve = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_e")
     vms(767, "NONVOICE", "【彩野】「あ、なるほど。きくちゃんに階段のウワサを聞きに戻るんだね」")
@@ -36,7 +36,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_148_s4s_40_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -63,7 +63,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_148_s4s_40_resolve()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

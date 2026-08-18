@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_13_s1s_110_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(665, "NONVOICE", "【彩野】「……お店……ユウイチとの賭け……」")
@@ -10,7 +10,7 @@ local l0_0 = function()
     vms(671, "NONVOICE", "【彩野】「私たちもよく食べていた――」")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_13_s1s_110_resolve = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(672, "NONVOICE", "【彩野】「そうそう、ハンバーガーのお店」")
@@ -43,7 +43,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_13_s1s_110_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -70,7 +70,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_13_s1s_110_resolve()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

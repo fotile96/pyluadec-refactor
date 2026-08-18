@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_103_s6s_150_sel_step11 = function()
     cStopBGMWrap()
     comPoseLoad("po2_aya_f_2_e")
     vms(371, "NONVOICE", "【彩野】「うーん……」")
@@ -17,7 +17,7 @@ local l0_0 = function()
     run(cGetFileName("script", "snr_fragment_main"))
     quit()
 end
-local l0_1 = function()
+local card_103_s6s_150_sel_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(380, "NONVOICE", "【直哉】「アヤノさんがノートにつけていたタイトル、だね」")
@@ -28,7 +28,7 @@ local l0_1 = function()
     vms(384, "NONVOICE", "【直哉】「うん。えっとね、これになるよ」")
     comPoseDelete()
 end
-local l0_2 = function()
+local card_103_s6s_150_sel_resolve = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(385, "NONVOICE", "【彩野】「そっか……」")
@@ -48,49 +48,49 @@ local l0_2 = function()
     vms(394, "NONVOICE", "【直哉】「まず、セクション１の物語のあらすじは――」")
     comPoseDelete()
 end
-local l0_3 = function()
+local card_103_s6s_150_sel_step3 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(395, "NONVOICE", "【彩野】「コックリさんをして……」")
     vms(396, "NONVOICE", "【直哉】「セクション２のあらすじは――」")
     comPoseDelete()
 end
-local l0_4 = function()
+local card_103_s6s_150_sel_step4 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(397, "NONVOICE", "【彩野】「オマジナイをして……」")
     vms(398, "NONVOICE", "【直哉】「セクション３Ａのあらすじは――」")
     comPoseDelete()
 end
-local l0_5 = function()
+local card_103_s6s_150_sel_step5 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(399, "NONVOICE", "【彩野】「階段のウワサ……」")
     vms(400, "NONVOICE", "【直哉】「セクション３Ｂのあらすじは――」")
     comPoseDelete()
 end
-local l0_6 = function()
+local card_103_s6s_150_sel_step6 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(401, "NONVOICE", "【彩野】「花火を見て……」")
     vms(402, "NONVOICE", "【直哉】「セクション４Ａのあらすじは――」")
     comPoseDelete()
 end
-local l0_7 = function()
+local card_103_s6s_150_sel_step7 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(403, "NONVOICE", "【彩野】「メモを見て……」")
     vms(404, "NONVOICE", "【直哉】「セクション４Ｂのあらすじは――」")
     comPoseDelete()
 end
-local l0_8 = function()
+local card_103_s6s_150_sel_step8 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(405, "NONVOICE", "【彩野】「屋上……」")
     vms(406, "NONVOICE", "【直哉】「セクション５のあらすじは――」")
     comPoseDelete()
 end
-local l0_9 = function()
+local card_103_s6s_150_sel_step9 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(407, "NONVOICE", "【彩野】「……サクラさん……」")
@@ -105,7 +105,7 @@ local l0_9 = function()
     vms(415, "NONVOICE", "【直哉】「うん。その物語のタイトルは――」")
     comPoseDelete()
 end
-local l0_10 = function()
+local card_103_s6s_150_sel_step10 = function()
     oCard.cardAnswerNonvoiceTrue()
     cStopBGMWrap()
     comPoseLoad("po2_aya_f_2_e")
@@ -120,7 +120,7 @@ local l0_10 = function()
     vms(423, "NONVOICE", "【直哉】「えっとね、確か、『ポケットの中のメモ』の場面に書いてあったはず――」")
     comPoseDelete()
 end
-local l0_11 = function()
+local card_103_s6s_150_sel_step12 = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(424, "NONVOICE", "【彩野】「……」")
@@ -209,7 +209,7 @@ main = function()
         quit()
     end
     local l1_0 = false
-    l0_1()
+    card_103_s6s_150_sel_intro()
     local l1_1 = 0
     local l1_2 = 0
     local l1_3 = -1
@@ -238,7 +238,7 @@ main = function()
         end
         wait(30)
     end
-    l0_2()
+    card_103_s6s_150_sel_resolve()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -267,7 +267,7 @@ main = function()
         end
         wait(30)
     end
-    l0_3()
+    card_103_s6s_150_sel_step3()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -296,7 +296,7 @@ main = function()
         end
         wait(30)
     end
-    l0_4()
+    card_103_s6s_150_sel_step4()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -325,7 +325,7 @@ main = function()
         end
         wait(30)
     end
-    l0_5()
+    card_103_s6s_150_sel_step5()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -354,7 +354,7 @@ main = function()
         end
         wait(30)
     end
-    l0_6()
+    card_103_s6s_150_sel_step6()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -383,7 +383,7 @@ main = function()
         end
         wait(30)
     end
-    l0_7()
+    card_103_s6s_150_sel_step7()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -412,7 +412,7 @@ main = function()
         end
         wait(30)
     end
-    l0_8()
+    card_103_s6s_150_sel_step8()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -441,7 +441,7 @@ main = function()
         end
         wait(30)
     end
-    l0_9()
+    card_103_s6s_150_sel_step9()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -470,7 +470,7 @@ main = function()
         end
         wait(30)
     end
-    l0_10()
+    card_103_s6s_150_sel_step10()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -500,9 +500,9 @@ main = function()
         wait(30)
     end
     if l1_0 == true then
-        l0_0()
+        card_103_s6s_150_sel_step11()
     end
-    l0_11()
+    card_103_s6s_150_sel_step12()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

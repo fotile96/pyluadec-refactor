@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_57_s2s_450_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(2935, "NONVOICE", "【彩野】「ユウイチが、屋上から落ちた場面」")
@@ -12,7 +12,7 @@ local l0_0 = function()
     vms(2942, "NONVOICE", "僕はカードを彩野さんに見せることにした。")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_57_s2s_450_resolve = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(2943, "NONVOICE", "【直哉】「オマジナイに失敗したときの場面の、もう一つがこのカード」")
@@ -48,7 +48,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_57_s2s_450_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -75,7 +75,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_57_s2s_450_resolve()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

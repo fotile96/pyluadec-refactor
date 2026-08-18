@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_22_s1s_215_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(2014, "NONVOICE", "【彩野】「『彼女』としていたこと……」")
@@ -6,7 +6,7 @@ local l0_0 = function()
     vms(2016, "NONVOICE", "【彩野】「直哉くん、もう一度、『約束』について、カードを見せて貰っていい？」")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_22_s1s_215_resolve = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(2017, "NONVOICE", "【彩野】「放課後の、約束」")
@@ -43,7 +43,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_22_s1s_215_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -70,7 +70,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_22_s1s_215_resolve()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

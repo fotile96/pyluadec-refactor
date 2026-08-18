@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_47_s2s_250_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(2779, "NONVOICE", "【彩野】「教室の中で話した後、サクラさんにオマジナイを聞きに行く場面」")
@@ -7,7 +7,7 @@ local l0_0 = function()
     vms(2782, "NONVOICE", "【直哉】「えっとね、確か『朝の教室』の場面に……」")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_47_s2s_250_resolve = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(2783, "NONVOICE", "【彩野】「朝の教室……夫婦喧嘩……」")
@@ -38,7 +38,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_47_s2s_250_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -65,7 +65,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_47_s2s_250_resolve()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

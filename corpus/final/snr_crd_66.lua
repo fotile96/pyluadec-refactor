@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_66_s3s_50_sel_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(3168, "NONVOICE", "【彩野】「直哉くん、ここの場面なんだけど」")
@@ -24,7 +24,7 @@ local l0_0 = function()
     vms(3184, "NONVOICE", "昨日、彩野さんから聞いた、『あのセクションのあらすじ』を見せれば、説明できるだろうか……")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_66_s3s_50_sel_resolve = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_2_e")
     vms(3185, "NONVOICE", "【彩野】「セクション５。私とサクラさんの物語……」")
@@ -72,7 +72,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_66_s3s_50_sel_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -100,7 +100,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_66_s3s_50_sel_resolve()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

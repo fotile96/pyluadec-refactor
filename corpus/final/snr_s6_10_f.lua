@@ -1,7 +1,7 @@
-local l0_0 = function(l1_0, l1_1)
+local scene_s6f_10 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     wait(1)
     comEffectFadeOut(60)
     wait(1)
@@ -95,10 +95,10 @@ local l0_0 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_1 = function(l1_0, l1_1)
+local scene_s6f_20 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cLoadPlaySE(cGetFileName("se", "se_146"), false)
     wait(60)
     wait(1)
@@ -184,10 +184,10 @@ local l0_1 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_2 = function(l1_0, l1_1)
+local scene_s6f_30 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     wait(1)
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_23_a_0"))
     switchScreen(0, "", 60)
@@ -246,10 +246,10 @@ local l0_2 = function(l1_0, l1_1)
     vms(15432, "YUK07250", "【由加里】「忘れものと落とし物……」")
     l1_2()
 end
-local l0_3 = function(l1_0, l1_1)
+local scene_s6f_40 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     comPoseLoad("po1_yuk_f_2_c")
     vms(15435, "NONVOICE", "【由加里】「……」")
     comPoseDelete()
@@ -437,10 +437,10 @@ local l0_3 = function(l1_0, l1_1)
     vms(15511, "NAO14330", "【直哉】「……はい」")
     l1_2()
 end
-local l0_4 = function(l1_0, l1_1)
+local scene_s6f_50 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     wait(1)
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_23_a_0"))
     switchScreen(0, "", 60)
@@ -460,7 +460,7 @@ local l0_4 = function(l1_0, l1_1)
     end
     l1_2()
 end
-local l0_5 = function(l1_0, l1_1)
+local scene_s6f_complete = function(scene_id, scene_title)
     local l1_2 = function()
     end
     cPlayOneshotMusic(cGetFileName("mus", "mus_8"))
@@ -500,26 +500,26 @@ main = function()
         if doScriptScene == "end" then
             l1_0 = 1
         elseif doScriptScene == "s6f-10" then
-            l0_0(doScriptScene, "サクラの日記")
+            scene_s6f_10(doScriptScene, "サクラの日記")
             doScriptScene = "s6f-20"
         elseif doScriptScene == "s6f-20" then
-            l0_1(doScriptScene, "ユウイチの伝言")
+            scene_s6f_20(doScriptScene, "ユウイチの伝言")
             doScriptScene = "s6f-30"
         elseif doScriptScene == "s6f-30" then
-            l0_2(doScriptScene, "眠っている二人")
+            scene_s6f_30(doScriptScene, "眠っている二人")
             doScriptScene = "s6f-40"
         elseif doScriptScene == "s6f-40" then
-            l0_3(doScriptScene, "ユウイチの遺書")
+            scene_s6f_40(doScriptScene, "ユウイチの遺書")
             doScriptScene = "s6f-50"
         elseif doScriptScene == "s6f-50" then
-            l0_4(doScriptScene, "君の優しい所")
+            scene_s6f_50(doScriptScene, "君の優しい所")
             doScriptScene = "s6f-complete"
         elseif doScriptScene == "s6f-complete" then
             if memoryFlag == true then
                 run(cGetFileName("script", "snr_memory"))
                 quit()
             end
-            l0_5(doScriptScene, "セクション６読了")
+            scene_s6f_complete(doScriptScene, "セクション６読了")
             gameSave.myCard[110].hold = 1
             gameSave.myCard[140].hold = 1
             doScriptScene = "end"

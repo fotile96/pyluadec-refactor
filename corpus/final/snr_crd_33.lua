@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_33_s2s_80_sel_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(2447, "NONVOICE", "【彩野】「夏の予定……」")
@@ -7,7 +7,7 @@ local l0_0 = function()
     vms(2450, "NONVOICE", "【彩野】「そのあらすじカード、見せてもらっていい？」")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_33_s2s_80_sel_resolve = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(2451, "NONVOICE", "【彩野】「ふむ。予定に行かないと、なにも起こらないんだ……」")
@@ -47,7 +47,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_33_s2s_80_sel_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -74,7 +74,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_33_s2s_80_sel_resolve()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

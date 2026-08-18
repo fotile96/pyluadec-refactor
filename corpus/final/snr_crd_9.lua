@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_9_s1s_70_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(3773, "NONVOICE", "【直哉】「この場面は遅れてきたユウイチがアヤノさんをからかう場面だね」")
@@ -6,7 +6,7 @@ local l0_0 = function()
     vms(3775, "NONVOICE", "【彩野】「時間。そういえば、教室のこれは今も変わってないね。黒板の上の……」")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_9_s1s_70_resolve = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(3776, "NONVOICE", "【彩野】「黒板の上の時計」")
@@ -39,7 +39,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_9_s1s_70_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -66,7 +66,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_9_s1s_70_resolve()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

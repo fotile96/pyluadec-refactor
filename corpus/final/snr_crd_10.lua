@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_10_s1s_80_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(283, "NONVOICE", "【直哉】「セクション１，というのが、どうやらこの物語の区切りを意味するみたいだね」")
@@ -9,7 +9,7 @@ local l0_0 = function()
     vms(288, "NONVOICE", "【彩野】「うん――」")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_10_s1s_80_resolve = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(289, "NONVOICE", "【彩野】「教室が舞台、なのかな」")
@@ -48,7 +48,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_10_s1s_80_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -75,7 +75,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_10_s1s_80_resolve()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

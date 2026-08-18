@@ -1,7 +1,7 @@
-local l0_0 = function()
+local card_94_s8s_50_intro = function()
     vms(3868, "NONVOICE", "○セクション７のあらすじを選択してください。")
 end
-local l0_1 = function()
+local card_94_s8s_50_resolve = function()
     wait(60)
     keyPlaySE(seName.getCard)
     comEffectYellowIn(60)
@@ -21,7 +21,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_94_s8s_50_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -39,7 +39,7 @@ main = function()
         vms(3869, "NONVOICE", "○セクション７のあらすじを選択してください。")
         wait(30)
     end
-    l0_1()
+    card_94_s8s_50_resolve()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

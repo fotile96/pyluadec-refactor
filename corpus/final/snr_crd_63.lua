@@ -1,11 +1,11 @@
-local l0_0 = function()
+local card_63_s2s_124_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(3132, "NONVOICE", "【直哉】「この場面のあと、『また、いつもの生活』に戻っちゃうみたいだね」")
     vms(3133, "NONVOICE", "【彩野】「いつもの生活。えっと、直哉くん、そのカード見せて貰っていい？」")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_63_s2s_124_resolve = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(3134, "NONVOICE", "【彩野】「なるほど……」")
@@ -31,7 +31,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_63_s2s_124_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -58,7 +58,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_63_s2s_124_resolve()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

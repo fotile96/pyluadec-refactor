@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_177_s5s_20_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(1534, "NONVOICE", "【彩野】「屋上のサクラさん……」")
@@ -42,42 +42,42 @@ local l0_0 = function()
     vms(1560, "NONVOICE", "【直哉】「えっとね、セクション１のあらすじは――」")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_177_s5s_20_resolve = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(1561, "NONVOICE", "【彩野】「コックリさん……」")
     vms(1562, "NONVOICE", "【直哉】「セクション２のあらすじは――」")
     comPoseDelete()
 end
-local l0_2 = function()
+local card_177_s5s_20_step3 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(1563, "NONVOICE", "【彩野】「オマジナイ……」")
     vms(1564, "NONVOICE", "【直哉】「セクション３Ａのあらすじは――」")
     comPoseDelete()
 end
-local l0_3 = function()
+local card_177_s5s_20_step4 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_c")
     vms(1565, "NONVOICE", "【彩野】「階段……ユウイチ……」")
     vms(1566, "NONVOICE", "【直哉】「セクション３Ｂのあらすじは――」")
     comPoseDelete()
 end
-local l0_4 = function()
+local card_177_s5s_20_step5 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_b")
     vms(1567, "NONVOICE", "【彩野】「キス、しないんだ……」")
     vms(1568, "NONVOICE", "【直哉】「セクション４Ａのあらすじは――」")
     comPoseDelete()
 end
-local l0_5 = function()
+local card_177_s5s_20_step6 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(1569, "NONVOICE", "【彩野】「ユウイチ……」")
     vms(1570, "NONVOICE", "【直哉】「セクション４Ｂのあらすじは――」")
     comPoseDelete()
 end
-local l0_6 = function()
+local card_177_s5s_20_step7 = function()
     oCard.cardAnswerNonvoiceTrue()
     cStopBGMWrap()
     comPoseLoad("po2_aya_f_1_c")
@@ -90,7 +90,7 @@ local l0_6 = function()
     vms(1575, "NONVOICE", "【直哉】「……うん。『いつかきみがみるお話。』の、あらすじは――」")
     comPoseDelete()
 end
-local l0_7 = function()
+local card_177_s5s_20_step8 = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_2_e")
     vms(1576, "NONVOICE", "【彩野】「うん……」")
@@ -265,7 +265,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_177_s5s_20_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -292,7 +292,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_177_s5s_20_resolve()
     local l1_3 = 0
     local l1_4 = 0
     local l1_5 = -1
@@ -319,7 +319,7 @@ main = function()
         end
         wait(30)
     end
-    l0_2()
+    card_177_s5s_20_step3()
     local l1_6 = 0
     local l1_7 = 0
     local l1_8 = -1
@@ -346,7 +346,7 @@ main = function()
         end
         wait(30)
     end
-    l0_3()
+    card_177_s5s_20_step4()
     local l1_9 = 0
     local l1_10 = 0
     local l1_11 = -1
@@ -373,7 +373,7 @@ main = function()
         end
         wait(30)
     end
-    l0_4()
+    card_177_s5s_20_step5()
     local l1_12 = 0
     local l1_13 = 0
     local l1_14 = -1
@@ -400,7 +400,7 @@ main = function()
         end
         wait(30)
     end
-    l0_5()
+    card_177_s5s_20_step6()
     local l1_15 = 0
     local l1_16 = 0
     local l1_17 = -1
@@ -427,7 +427,7 @@ main = function()
         end
         wait(30)
     end
-    l0_6()
+    card_177_s5s_20_step7()
     local l1_18 = 0
     local l1_19 = 0
     local l1_20 = -1
@@ -454,7 +454,7 @@ main = function()
         end
         wait(30)
     end
-    l0_7()
+    card_177_s5s_20_step8()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

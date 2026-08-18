@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_8_s1s_60_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(3506, "NONVOICE", "【彩野】「きくちゃんと『噂』について話してた」")
@@ -9,7 +9,7 @@ local l0_0 = function()
     vms(3511, "NONVOICE", "ユウイチとの仲で言われた事、か。確か、このカードが関連するかもしれない。")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_8_s1s_60_resolve = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(3512, "NONVOICE", "【直哉】「でも、彩野さんは現実でもユウイチとは幼なじみだから、それぐらいは……」")
@@ -51,7 +51,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_8_s1s_60_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -78,7 +78,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_8_s1s_60_resolve()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

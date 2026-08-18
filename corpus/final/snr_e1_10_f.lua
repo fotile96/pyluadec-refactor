@@ -1,7 +1,7 @@
-local l0_0 = function(l1_0, l1_1)
+local scene_e1f_10 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cPlayOneshotMusic(cGetFileName("mus", "mus_26"))
     wait(1)
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_26_a_0"))
@@ -40,7 +40,7 @@ local l0_0 = function(l1_0, l1_1)
     vms(3914, "NONVOICE", "女生徒は窓から校庭を眺めながら答えた。")
     l1_2()
 end
-local l0_1 = function(l1_0, l1_1)
+local scene_e1f_complete = function(scene_id, scene_title)
     local l1_2 = function()
     end
     cPlayOneshotMusic(cGetFileName("mus", "mus_8"))
@@ -70,14 +70,14 @@ main = function()
         if doScriptScene == "end" then
             l1_0 = 1
         elseif doScriptScene == "e1f-10" then
-            l0_0(doScriptScene, "由加里先生")
+            scene_e1f_10(doScriptScene, "由加里先生")
             doScriptScene = "e1f-complete"
         elseif doScriptScene == "e1f-complete" then
             if memoryFlag == true then
                 run(cGetFileName("script", "snr_memory"))
                 quit()
             end
-            l0_1(doScriptScene, "セクションＥＸ１読了")
+            scene_e1f_complete(doScriptScene, "セクションＥＸ１読了")
             gameSave.myCard[118].hold = 1
             gameSave.myCard[143].hold = 1
             doScriptScene = "end"

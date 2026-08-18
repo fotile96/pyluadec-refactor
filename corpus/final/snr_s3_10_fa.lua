@@ -1,7 +1,7 @@
-local l0_0 = function(l1_0, l1_1)
+local scene_s3fa_10 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     wait(1)
     comEffectFadeOut(120)
     vms(10321, "NONVOICE", "僕は彩野さんを家に送り返した。")
@@ -110,10 +110,10 @@ local l0_0 = function(l1_0, l1_1)
     vms(10386, "NONVOICE", "図書室の扉を閉める時、先生の嗚咽が耳に入った。")
     l1_2()
 end
-local l0_1 = function(l1_0, l1_1)
+local scene_s3fa_20 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     wait(1)
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_4_b_0"))
     switchScreen(0, "", 60)
@@ -208,10 +208,10 @@ local l0_1 = function(l1_0, l1_1)
     vms(10440, "NAO09650", "【直哉】「そう、コーヒーの空き缶」")
     l1_2()
 end
-local l0_2 = function(l1_0, l1_1)
+local scene_s3fa_30 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cStopBGMWrap()
     wait(1)
     comEffectFadeOut(120)
@@ -309,10 +309,10 @@ local l0_2 = function(l1_0, l1_1)
     vms(10500, "NONVOICE", "僕は千秋ちゃんを連れ、駅前の商店街へと向かった。")
     l1_2()
 end
-local l0_3 = function(l1_0, l1_1)
+local scene_s3fa_40 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cPlayLoopSeWrap(cGetFileName("loop", "loop_1"))
     wait(1)
     layerLoad(layerName.event, cGetFileName("event", "eve_75_x"))
@@ -596,10 +596,10 @@ local l0_3 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_4 = function(l1_0, l1_1)
+local scene_s3fa_50 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cStopLoopSeWrap()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_12_x"))
     wait(1)
@@ -646,10 +646,10 @@ local l0_4 = function(l1_0, l1_1)
     vms(10698, "CHI01480", "【千秋】「はい。覚えるのは得意です。私」")
     l1_2()
 end
-local l0_5 = function(l1_0, l1_1)
+local scene_s3fa_60 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     comEffectBlackoutAndIn(120)
     comPoseLoad("po1_chi_f_1_a")
     vms(10699, "CHI01490", "【千秋】「あとは、ここをまっすぐですから」")
@@ -736,7 +736,7 @@ local l0_5 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_6 = function(l1_0, l1_1)
+local scene_s3fa_complete = function(scene_id, scene_title)
     local l1_2 = function()
     end
     cPlayOneshotMusic(cGetFileName("mus", "mus_8"))
@@ -777,29 +777,29 @@ main = function()
         if doScriptScene == "end" then
             l1_0 = 1
         elseif doScriptScene == "s3fa-10" then
-            l0_0(doScriptScene, "図書室の由加里先生")
+            scene_s3fa_10(doScriptScene, "図書室の由加里先生")
             doScriptScene = "s3fa-20"
         elseif doScriptScene == "s3fa-20" then
-            l0_1(doScriptScene, "千秋と帰りの歌")
+            scene_s3fa_20(doScriptScene, "千秋と帰りの歌")
             doScriptScene = "s3fa-30"
         elseif doScriptScene == "s3fa-30" then
-            l0_2(doScriptScene, "コーヒー")
+            scene_s3fa_30(doScriptScene, "コーヒー")
             doScriptScene = "s3fa-40"
         elseif doScriptScene == "s3fa-40" then
-            l0_3(doScriptScene, "神社でお祭り")
+            scene_s3fa_40(doScriptScene, "神社でお祭り")
             doScriptScene = "s3fa-50"
         elseif doScriptScene == "s3fa-50" then
-            l0_4(doScriptScene, "近道")
+            scene_s3fa_50(doScriptScene, "近道")
             doScriptScene = "s3fa-60"
         elseif doScriptScene == "s3fa-60" then
-            l0_5(doScriptScene, "誰も見たことのない夕焼け")
+            scene_s3fa_60(doScriptScene, "誰も見たことのない夕焼け")
             doScriptScene = "s3fa-complete"
         elseif doScriptScene == "s3fa-complete" then
             if memoryFlag == true then
                 run(cGetFileName("script", "snr_memory"))
                 quit()
             end
-            l0_6(doScriptScene, "セクション３Ａ読了")
+            scene_s3fa_complete(doScriptScene, "セクション３Ａ読了")
             gameSave.myCard[89].hold = 1
             gameSave.myCard[135].hold = 1
             doScriptScene = "end"

@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_104_s6s_160_step15 = function()
     cStopBGMWrap()
     comPoseLoad("po2_aya_f_2_e")
     vms(445, "NONVOICE", "【彩野】「うーん……」")
@@ -17,7 +17,7 @@ local l0_0 = function()
     run(cGetFileName("script", "snr_fragment_main"))
     quit()
 end
-local l0_1 = function()
+local card_104_s6s_160_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_7_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(454, "NONVOICE", "【直哉】「屋上でサクラさんと話す場面、だね……」")
@@ -39,91 +39,91 @@ local l0_1 = function()
     vms(465, "NONVOICE", "【直哉】「うん、了解。まずは、『サクラの日記：９月１３日』だね――」")
     comPoseDelete()
 end
-local l0_2 = function()
+local card_104_s6s_160_resolve = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_b")
     vms(466, "NONVOICE", "【彩野】「……サクラさんと、私、出会って……」")
     vms(467, "NONVOICE", "【直哉】「サクラの日記：７月（書きかけ）――」")
     comPoseDelete()
 end
-local l0_3 = function()
+local card_104_s6s_160_step3 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_b")
     vms(468, "NONVOICE", "【彩野】「うん。サクラさんと、こんな風に、会ってた……」")
     vms(469, "NONVOICE", "【直哉】「サクラの日記：９月１６日――」")
     comPoseDelete()
 end
-local l0_4 = function()
+local card_104_s6s_160_step4 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(470, "NONVOICE", "【彩野】「ユウイチ……」")
     vms(471, "NONVOICE", "【直哉】「サクラの日記：９月１６日（夜）――」")
     comPoseDelete()
 end
-local l0_5 = function()
+local card_104_s6s_160_step5 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_c")
     vms(472, "NONVOICE", "【彩野】「サクラさん……」")
     vms(473, "NONVOICE", "【直哉】「サクラの日記：９月２０日――」")
     comPoseDelete()
 end
-local l0_6 = function()
+local card_104_s6s_160_step6 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_2_e")
     vms(474, "NONVOICE", "【彩野】「ユウイチ……ドーナツ……」")
     vms(475, "NONVOICE", "【直哉】「サクラの日記：９月２２日――」")
     comPoseDelete()
 end
-local l0_7 = function()
+local card_104_s6s_160_step7 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_c")
     vms(476, "NONVOICE", "【彩野】「電話……してた……」")
     vms(477, "NONVOICE", "【直哉】「サクラの日記：９月２３日――」")
     comPoseDelete()
 end
-local l0_8 = function()
+local card_104_s6s_160_step8 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_c")
     vms(478, "NONVOICE", "【彩野】「サクラさん、苦しそうで……」")
     vms(479, "NONVOICE", "【直哉】「サクラの日記：９月２９日――」")
     comPoseDelete()
 end
-local l0_9 = function()
+local card_104_s6s_160_step9 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_b")
     vms(480, "NONVOICE", "【彩野】「歌……」")
     vms(481, "NONVOICE", "【直哉】「サクラの日記：断片――」")
     comPoseDelete()
 end
-local l0_10 = function()
+local card_104_s6s_160_step10 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_c")
     vms(482, "NONVOICE", "【彩野】「オマジナイ……」")
     vms(483, "NONVOICE", "【直哉】「サクラの日記：１０月３日――」")
     comPoseDelete()
 end
-local l0_11 = function()
+local card_104_s6s_160_step11 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_2_e")
     vms(484, "NONVOICE", "【彩野】「身体が……」")
     vms(485, "NONVOICE", "【直哉】「サクラの日記：１１月１２日――」")
     comPoseDelete()
 end
-local l0_12 = function()
+local card_104_s6s_160_step12 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_c")
     vms(486, "NONVOICE", "【彩野】「中庭……」")
     vms(487, "NONVOICE", "【直哉】「サクラの日記：２月１３日――」")
     comPoseDelete()
 end
-local l0_13 = function()
+local card_104_s6s_160_step13 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_2_e")
     vms(488, "NONVOICE", "【彩野】「サクラさん……」")
     vms(489, "NONVOICE", "【直哉】「アヤノの返信：９月２５日――」")
     comPoseDelete()
 end
-local l0_14 = function()
+local card_104_s6s_160_step14 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_2_e")
     cStopBGMWrap()
@@ -131,7 +131,7 @@ local l0_14 = function()
     vms(491, "NONVOICE", "【直哉】「これで最後だね。アヤノの返信：１０月３０日――」")
     comPoseDelete()
 end
-local l0_15 = function()
+local card_104_s6s_160_step16 = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_c")
     vms(492, "NONVOICE", "【彩野】「……」")
@@ -236,7 +236,7 @@ main = function()
         quit()
     end
     local l1_0 = false
-    l0_1()
+    card_104_s6s_160_intro()
     local l1_1 = 0
     local l1_2 = 0
     local l1_3 = -1
@@ -265,7 +265,7 @@ main = function()
         end
         wait(30)
     end
-    l0_2()
+    card_104_s6s_160_resolve()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -294,7 +294,7 @@ main = function()
         end
         wait(30)
     end
-    l0_3()
+    card_104_s6s_160_step3()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -323,7 +323,7 @@ main = function()
         end
         wait(30)
     end
-    l0_4()
+    card_104_s6s_160_step4()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -352,7 +352,7 @@ main = function()
         end
         wait(30)
     end
-    l0_5()
+    card_104_s6s_160_step5()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -381,7 +381,7 @@ main = function()
         end
         wait(30)
     end
-    l0_6()
+    card_104_s6s_160_step6()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -410,7 +410,7 @@ main = function()
         end
         wait(30)
     end
-    l0_7()
+    card_104_s6s_160_step7()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -439,7 +439,7 @@ main = function()
         end
         wait(30)
     end
-    l0_8()
+    card_104_s6s_160_step8()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -468,7 +468,7 @@ main = function()
         end
         wait(30)
     end
-    l0_9()
+    card_104_s6s_160_step9()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -497,7 +497,7 @@ main = function()
         end
         wait(30)
     end
-    l0_10()
+    card_104_s6s_160_step10()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -526,7 +526,7 @@ main = function()
         end
         wait(30)
     end
-    l0_11()
+    card_104_s6s_160_step11()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -555,7 +555,7 @@ main = function()
         end
         wait(30)
     end
-    l0_12()
+    card_104_s6s_160_step12()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -584,7 +584,7 @@ main = function()
         end
         wait(30)
     end
-    l0_13()
+    card_104_s6s_160_step13()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -613,7 +613,7 @@ main = function()
         end
         wait(30)
     end
-    l0_14()
+    card_104_s6s_160_step14()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -643,9 +643,9 @@ main = function()
         wait(30)
     end
     if l1_0 == true then
-        l0_0()
+        card_104_s6s_160_step15()
     end
-    l0_15()
+    card_104_s6s_160_step16()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

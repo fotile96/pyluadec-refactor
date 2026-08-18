@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_173_s4s_670_sel_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(1404, "NONVOICE", "【直哉】「屋上でユウイチがアヤノさんを助けた後の場面、だね」")
@@ -20,7 +20,7 @@ local l0_0 = function()
     vms(1415, "NONVOICE", "【彩野】「……直哉くん。セクション４の物語全体の『あらすじ』、教えてもらっていいかな？」")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_173_s4s_670_sel_resolve = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(1416, "NONVOICE", "【彩野】「……」")
@@ -57,7 +57,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_173_s4s_670_sel_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -84,7 +84,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_173_s4s_670_sel_resolve()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

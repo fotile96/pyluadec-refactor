@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_89_s3s_650_step8 = function()
     cStopBGMWrap()
     comPoseLoad("po2_aya_f_2_e")
     vms(3702, "NONVOICE", "【彩野】「うーん……」")
@@ -17,7 +17,7 @@ local l0_0 = function()
     run(cGetFileName("script", "snr_fragment_main"))
     quit()
 end
-local l0_1 = function()
+local card_89_s3s_650_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_7_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(3711, "NONVOICE", "【直哉】「セクション３、アヤノさんとユウイチが屋上で過ごすシーン」")
@@ -31,7 +31,7 @@ local l0_1 = function()
     vms(3717, "NONVOICE", "【直哉】「この物語は、お昼休みにサクラさんから学校のある場所の『ウワサ』を聞いたところから始まったんだ」")
     comPoseDelete()
 end
-local l0_2 = function()
+local card_89_s3s_650_resolve = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(3718, "NONVOICE", "【彩野】「階段の、ウワサ……」")
@@ -39,7 +39,7 @@ local l0_2 = function()
     vms(3720, "NONVOICE", "【直哉】「階段は、通称『――階段』と呼ばれていた」")
     comPoseDelete()
 end
-local l0_3 = function()
+local card_89_s3s_650_step3 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(3721, "NONVOICE", "【彩野】「お化け階段……階段のウワサ……」")
@@ -47,7 +47,7 @@ local l0_3 = function()
     vms(3723, "NONVOICE", "【直哉】「この事を示す場面が――」")
     comPoseDelete()
 end
-local l0_4 = function()
+local card_89_s3s_650_step4 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(3724, "NONVOICE", "【彩野】「保健室の先生……直哉くん、この先生って……」")
@@ -57,7 +57,7 @@ local l0_4 = function()
     vms(3728, "NONVOICE", "【直哉】「ここで『物語を進行させるための展開』は、ユウイチを――」")
     comPoseDelete()
 end
-local l0_5 = function()
+local card_89_s3s_650_step5 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_2_d")
     vms(3729, "NONVOICE", "【彩野】「はは、ほうっておいちゃうんだね……」")
@@ -65,7 +65,7 @@ local l0_5 = function()
     vms(3731, "NONVOICE", "【直哉】「ウワサをきくちゃんに聞く。そのことを示す場面が――」")
     comPoseDelete()
 end
-local l0_6 = function()
+local card_89_s3s_650_step6 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_2_e")
     vms(3732, "NONVOICE", "【彩野】「きくちゃん……」")
@@ -73,7 +73,7 @@ local l0_6 = function()
     vms(3734, "NONVOICE", "【直哉】「途中、アヤノさんはユウイチと合流して、階段の調査を始めた。その場面が――」")
     comPoseDelete()
 end
-local l0_7 = function()
+local card_89_s3s_650_step7 = function()
     oCard.cardAnswerNonvoiceTrue()
     cStopBGMWrap()
     comPoseLoad("po2_aya_f_1_a")
@@ -83,7 +83,7 @@ local l0_7 = function()
     vms(3738, "NONVOICE", "【直哉】「その時、アヤノさんは思ったんだ。ユウイチと――」")
     comPoseDelete()
 end
-local l0_8 = function()
+local card_89_s3s_650_step9 = function()
     oCard.cardAnswerNonvoiceTrue()
     vms(3739, "NONVOICE", "【直哉】「そして、アヤノさんはユウイチと一緒に屋上に行った」")
     vms(3740, "NONVOICE", "【直哉】「屋上からは花火が上がっているのが見えた」")
@@ -184,7 +184,7 @@ main = function()
         quit()
     end
     local l1_0 = false
-    l0_1()
+    card_89_s3s_650_intro()
     local l1_1 = 0
     local l1_2 = 0
     local l1_3 = -1
@@ -213,7 +213,7 @@ main = function()
         end
         wait(30)
     end
-    l0_2()
+    card_89_s3s_650_resolve()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -242,7 +242,7 @@ main = function()
         end
         wait(30)
     end
-    l0_3()
+    card_89_s3s_650_step3()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -271,7 +271,7 @@ main = function()
         end
         wait(30)
     end
-    l0_4()
+    card_89_s3s_650_step4()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -300,7 +300,7 @@ main = function()
         end
         wait(30)
     end
-    l0_5()
+    card_89_s3s_650_step5()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -329,7 +329,7 @@ main = function()
         end
         wait(30)
     end
-    l0_6()
+    card_89_s3s_650_step6()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -358,7 +358,7 @@ main = function()
         end
         wait(30)
     end
-    l0_7()
+    card_89_s3s_650_step7()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -389,9 +389,9 @@ main = function()
         wait(30)
     end
     if l1_0 == true then
-        l0_0()
+        card_89_s3s_650_step8()
     end
-    l0_8()
+    card_89_s3s_650_step9()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_67_s3s_90_sel_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(3212, "NONVOICE", "階段のウワサ、か。")
@@ -15,7 +15,7 @@ local l0_0 = function()
     vms(3220, "NONVOICE", "確か、放課後学校を探索するときに……。")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_67_s3s_90_sel_resolve = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(3221, "NONVOICE", "【彩野】「そっか、ホコリっぽくて、『いわく』つきの階段……」")
@@ -68,7 +68,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_67_s3s_90_sel_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -95,7 +95,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_67_s3s_90_sel_resolve()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()
