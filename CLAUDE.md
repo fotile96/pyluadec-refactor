@@ -124,6 +124,19 @@ Phase 1（M0）已完成：uv 骨架、vendored pristine Lua 5.1.5、序列化�
 - 跑单个测试：`uv run pytest tests/test_x.py::test_y -v`
 - 一键迁移验证（三道门 + 全量测试，spec §6 Step 2；32 位与 64 位环境均可跑，64 位跑绿是 M1 出口）：`./scripts/verify_migration.sh`
 - 语料位置约定：语料从不硬编码进代码，一律经环境变量 `PYLUADEC_CORPUS_DIR` 获取（指向 229 个 `.lua` 字节码文件所在目录，参照原项目的 `/root/pyluadec/others/script_to_decompile/`）。未设置或目录不存在时，依赖语料的 pytest 用例会 `pytest.skip`（见 `tests/conftest.py` 的 `corpus_dir` fixture），不会报错中断其余测试。
+- **指向外部输入数据的环境变量有四个**（M8 命名对齐后收齐；2026-08-23 实测
+  `grep -rho "PYLUADEC_[A-Z0-9_]*"` 全树共 **11** 个 `PYLUADEC_*`，其余七个是
+  构建覆盖 / 测试接缝 / 探针旋钮，不指外部数据——别把这两类混为一谈）：
+  - `PYLUADEC_CORPUS_DIR`（229 个字节码文件）与 `PYLUADEC_PRED_CORPUS_DIR`
+    （前作反编译源码，惯例是 Zndnovel/lua_scripts 检出）——缺失时 pytest
+    **skip**（见上一条，裸跑不是"全部测试"）。
+  - `PYLUADEC_STAGE1_DIR`（前作 `post_process/stage1_output/`，命名 harvest 的
+    文本权威）与 `PYLUADEC_TRANSLATION_IR`（前作 `post_process/translation_ir/`，
+    单元映射**只读目录名**，不碰 `meta.json` 里的游戏文本）——只被
+    `corpus/naming/` 的生成器与门脚本读取，缺失时**报错退出 2**（不是判决，是
+    仪器配错，与 `ratchet_diff.py` 的 128 同类）。这两个在代码里带**本机绝对
+    路径的默认值**——那是便利不是约定：换一台机器必须显式传，否则脚本会指名
+    道姓地报「不是目录」并退 2。
 
 64 位新机开荒（Linux x86_64 / macOS arm64）的完整步骤、双平台验收要求、门失败时的排查方法，见 `docs/runbooks/64bit-migration.md`。
 
