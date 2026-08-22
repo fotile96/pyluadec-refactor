@@ -125,8 +125,11 @@ Phase 1（M0）已完成：uv 骨架、vendored pristine Lua 5.1.5、序列化�
 - 一键迁移验证（三道门 + 全量测试，spec §6 Step 2；32 位与 64 位环境均可跑，64 位跑绿是 M1 出口）：`./scripts/verify_migration.sh`
 - 语料位置约定：语料从不硬编码进代码，一律经环境变量 `PYLUADEC_CORPUS_DIR` 获取（指向 229 个 `.lua` 字节码文件所在目录，参照原项目的 `/root/pyluadec/others/script_to_decompile/`）。未设置或目录不存在时，依赖语料的 pytest 用例会 `pytest.skip`（见 `tests/conftest.py` 的 `corpus_dir` fixture），不会报错中断其余测试。
 - **指向外部输入数据的环境变量有四个**（M8 命名对齐后收齐；2026-08-23 实测
-  `grep -rho "PYLUADEC_[A-Z0-9_]*"` 全树共 **11** 个 `PYLUADEC_*`，其余七个是
-  构建覆盖 / 测试接缝 / 探针旋钮，不指外部数据——别把这两类混为一谈）：
+  `grep -rho "PYLUADEC_[A-Z0-9_]*" src scripts tests corpus --include="*.py"`
+  得 **11** 个互不相同的 `PYLUADEC_*`，其余七个是构建覆盖 / 测试接缝 / 探针
+  旋钮，不指外部数据——别把这两类混为一谈。口径是**源码里的 `*.py`**：全树连
+  文档一起扫会多出一个 `PYLUADEC_`，那是散文里 `PYLUADEC_*` 通配写法被前缀
+  匹配到的，不是第 12 个变量）：
   - `PYLUADEC_CORPUS_DIR`（229 个字节码文件）与 `PYLUADEC_PRED_CORPUS_DIR`
     （前作反编译源码，惯例是 Zndnovel/lua_scripts 检出）——缺失时 pytest
     **skip**（见上一条，裸跑不是"全部测试"）。
@@ -477,3 +480,108 @@ Phase 7 已完成（12 个任务 + task 12 收口轮吸收 controller review 的
 ### 本里程碑再次应验的老教训
 
 Task 11 的 §3 用**截断的 grep 输出**外推出「零引用」、用**没测过的拆分**写了计时归属——两处都被 controller review 抓到。前者正是 M6 总结过的「散文断言了没人量过的行为」在 M7 的复发；修复方式同款：实测改写 + 把口径本身变成钉子测试。**grep 的输出是被管道截断的，结论不是。**
+
+
+## Phase 8（M8：zero-doubt handoff —— propose-and-certify 通道 + 命名对齐）现状
+
+Phase 8 已完成并合并（`5eb1d46`，43 个提交；随后 `c735604` 收掉 controller
+review 的四个 Minor）。**这是残差归零的里程碑**：本节的每个数字都在
+2026-08-23 的合并树上由 controller 独立复测过（不采信被审方自述）。
+
+权威分工：战略依据与手工演示战役在 `docs/reports/m8-strategy-survey-fable5.md`
+（§2 文件级字节同一、§3 `main_24` 演示、§9 八叶战役与拼接测量）；通道接线的
+需求与验收在 `docs/reports/m8-handoff-proposal-channel.md`（A1–A7 / P1–P7）；
+复核结论与三个 Important 在 `docs/reports/m8-review-proposal-channel.md`；
+命名对齐的普查、裁决与验收在 `docs/reports/m8-naming-t0.md`，其需求在
+`docs/reports/m8-handoff-naming-alignment.md`，下游迁移指南在
+`docs/runbooks/zndnovel-naming-migration.md`。机制细节一律以
+`docs/runbooks/structured-pipeline.md` 的通道节与命名节为准。
+
+### 收口数字（2026-08-23 controller 独立实测）
+
+- 台账：**1478/1478 唯一 proto `L3`（100.0%）**，非 `L3` **0** 行、confession
+  **0**、`refusal_reason` 全 `null`、`hybrid` 全 `False`。1944 处 occurrence =
+  **structured 1929 + proposal 15**，**fallback 0**。rung 分布 1477 个 rung 1
+  + **1 个 rung 0**（`config.lua:main`——严格级通过，连行号字段都相同）。
+- **`corpus/final/` 229/229 重编译后与原始 PSP 字节码逐字节相同**（仅
+  `linedefined`/`lastlinedefined` 两个行号字段归零后比；归一化器见 survey
+  §8.2，独立实现复核过）。`config.lua` 连归一化都不需要。
+- `__pld_` 盒模型全语料 **0**；每文件 footprint **恰为 1.0**；warranty
+  **1944/1944 occurrence 全 `T3`**（M7 收口时 snr_common 尚有 `T-` 12）。
+- 套件 **1233 passed**（本机 macOS 15.2 / Apple M4，73.8–79.4s，多次实测）；
+  `./scripts/ratchet_job.sh` exit 0，对 M7 基线 `72cb6a8` **22 升 0 降**。
+
+### propose-and-certify 通道（本里程碑的机制头条）
+
+**残差的性质从「算法能力」变成了「搜索」，而认证门天生适合接一个不需要可信的
+搜索者。** 法官不挑原告：`certify_proto` 只问「这段文本编译出来的字节与原始
+是否逐字段相同」，不问文本从哪来。自动 reconstructor 必须对全语料 sound（因此
+被 STRICT、`declared` 闸门层层束缚），但 **proposer 不需要 soundness——字节
+相等本身就是全部证明**；猜错了法官拒收，错误代码一行都发不出去。
+
+- 数据：`corpus/proposals/<file>/<proto_path>.lua`，**9 份**手写源码（8 份出自
+  controller 的演示战役，第 9 份 `snr_common:main_25` 在接线中发现是自有 K1
+  拒绝——pc 1 `NEWTABLE C=2` vs 我方 `C=3`，review §1.2 复核确认）。
+  枚举被 `structure/proposals.py::MANIFEST` 钉死（P4）。
+- 判定驱动 `corpus/proposals/verify_proposals.py`：**9/9 全部经未改动的阶梯在
+  rung 1 通过**，自带 tamper neuter（改坏一个常量 → exit 1 并点名）。
+- 机制：`structure/proposals.py`（注册表 + 无 `re` 的边界感知内联器，含
+  upvalue 改名与 `l<k>_` 前缀按站点深度平移的**遮蔽修复**）；
+  `structured.py` 的 proposal tier 夹在 root 认证与 hybrid 之间，**整树重编译、
+  零排除路径**比对——任何拼接/改名错误都拒绝整个 chunk 而不是发货（P1 的最强
+  形态，比 hybrid 更严）。
+- 台账：`shipped` 增值 `"proposal"`（15 处，分布 snr_common 12 / 其余三个
+  hybrid 老文件各 1）；`ratchet_diff.py` 装 **`structured > proposal >
+  fallback`** 三值序，其中 **`structured -> proposal` 是 `proposal-mask`
+  降级**——「用 proposal 遮蔽一个仍然工作的重建」正是 P4 要防的那一手。
+- **通道不是比较器变更**：`verify/` diff 为空、`LADDER_VERSION` 未动；也不是
+  退役的 pass registry 复活（无 apply/rollback，只有 propose + 既有 certify）。
+
+### 命名对齐（下游本地化的对接面）
+
+移植前作 `post_process/` 三个重命名器的可读化成果，**不复刻旧文本表面，只复刻
+名字**：
+
+- `corpus/naming/name_map.jsonl` **1754 行**（函数名 846 + 参数名 908，覆盖
+  161 个文件），`unit_map.jsonl` **1003 行**且 **`new_id == old_id` 全部成立**
+  ——**旧翻译资产（`translation_ir/` 的 1003 个单元）100% 可再锚定**。
+- 锚定构造：**锚在 CLOSURE 指令的 Bx 操作数**（= subproto 序号，M6 已证两边树
+  229/229 同构），**不是**寄存器号——旧文本重编译与原始字节码从不指令级同一
+  （M6 实测 3903 处差异），寄存器分配两边不同，槽位不能当序号用。
+- 接线是**打印器的输入名字表**（`structure/naming.py` → `emit/lua.py` 的
+  `local_name` 接缝），不是文本后处理：「绝不回读自己发出的字符串」照旧。
+- **为什么这件事对认证是免费的**：语料 strip 过，局部名不进字节码。所以
+  161 个文件文本变了，而 `corpus/ledger.jsonl` 与 `corpus/warranty.jsonl`
+  **逐字节不变**。反过来，任何改变名字解析的改名（局部遮蔽被引用的全局 ⇒
+  GETGLOBAL→MOVE；关键字 ⇒ 编译失败）都会改变编译产物、被整树比对拒绝——
+  **坏名字只能拉低台账，不可能发货**（`tests/test_naming_channel.py::
+  test_a_shadowing_rename_is_refused_by_certification` 端到端钉住）。
+- controller 独立复核（不采信自述）：1754 个名字在我方 final 与旧
+  `stage1_output` **两侧都以词边界出现**；用「函数体内 `vms()` 消息号多重集」
+  当指纹逐个对拍，**809/809 相同、0 处不同**（另 37 个无 vms 调用的调度/共享
+  函数，0 个定位不到）——名字不只是拼写相同，**指的是同一个函数**。
+- job `corpus/naming/verify_naming.py`（三道守卫 + `--tamper`，触发时机写在
+  docstring 里）；不动点在套件里另有钉子，不是唯一守卫。
+
+### 复核与四个 Minor
+
+Controller review 返回 **MERGE**，三个 Important 全部由**重跑原触发实验**确认
+已修：P4 不变式当时「文档声称、代码未实施」（`sites` 是死参数，实验显示
+proposal 文本发货而台账记 `structured`）；`decompile_file` 未接线导致 L1.5/L1.75
+两条探针验证已不发货的文本；四个 neuter 证明是同义反复（做了 docstring 描述的
+实验：真钉子红、"neuter" 绿）。四个 Minor 于 `c735604` 修完：精确 memo token
+（`hash()` 换成排序元组本身——碰撞的后果是错误认证判决，而精确键在此规模免费，
+实测每文件最多 172 条、中位数 2）、`verify_naming.py` 补触发时机、CLAUDE.md 记
+环境变量、A1 的门与 neuter 共用谓词。
+
+### 本里程碑的教训（老病复发一次，当场抓住一次）
+
+修 Minor 3 时 controller 的初稿写「外部输入的环境变量**共四个**」——**没数就
+写**。数完是 **11 个**互不相同的 `PYLUADEC_*`（源码 `*.py` 口径），四个指外部
+数据、七个是构建覆盖/测试接缝/探针旋钮，遂按实测分类重写。**同一段话还错了
+第二次**：改写稿把口径写成「全树」，而实际量的是 `src`/`scripts`/`tests`/
+`corpus` 的 `*.py`——落盘前逐条复验时被自己的检查脚本判 FAIL 抓出（全树扫会
+得 12，多出的那个是散文里 `PYLUADEC_*` 通配写法被前缀匹配到的空壳）。**引用
+计数必须连口径一起引**，这是 M5「引用比例必须连分母一起引」的同一条规则换了
+个身。这一次两处都在提交前抓住了，代价是一次复验；上几个里程碑没抓住的代价
+是一整轮 `fix:` 提交。
