@@ -334,10 +334,22 @@ def _naming_token(naming: Mapping[tuple[str, int], str] | None):
     different tables print different TEXT (same bytecode), and the root
     tier ships the printed bytes, so the memos must not alias. Content --
     not `id()` -- so two equal tables share one entry, same spirit as
-    `_memo_key`."""
+    `_memo_key`.
+
+    The token is the sorted item tuple ITSELF, not a hash of it (controller
+    review Minor, 2026-08-23). The first version returned
+    `hash(tuple(sorted(...)))`: a 64-bit compaction whose collision would
+    hand back another table's verdict -- a WRONG certification, the most
+    expensive failure this module can produce -- to buy nothing, because
+    the exact key is free at this size. Measured: `naming.for_file` returns
+    one file's names, at most 172 entries (`snr_s2_10_s.lua`) and a median
+    of 2 over the 161 named files, so the tuple is small, hashable and
+    comparable. Same lesson as `_oracle_identity`, which was rewritten in
+    the M5 task 2 review round because a proxy key could never partition
+    what it claimed to."""
     if naming is None:
         return None
-    return hash(tuple(sorted(naming.items())))
+    return tuple(sorted(naming.items()))
 
 
 def certify_proto(proto: Proto, *, is_chunk_root: bool,

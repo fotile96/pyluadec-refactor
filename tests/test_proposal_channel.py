@@ -141,8 +141,12 @@ def test_manifest_neuter_a_stray_proposal_file_is_named(tmp_path, monkeypatch):
 # A1/A2: the ledger's residual is empty and nothing ships fallback.
 
 def test_a1_no_non_l3_rows():
-    non_l3 = [r for r in _rows() if r["level"] != "L3"]
-    assert non_l3 == []
+    # Through `_non_l3`, the same predicate the neuter above runs against a
+    # doctored copy -- A3 and A4 already shared theirs, A1 kept a private
+    # inline copy (controller review Minor, 2026-08-23). A neuter that
+    # exercises a DIFFERENT expression than its gate proves nothing about
+    # the gate; sharing the callable is what makes the proof transitive.
+    assert _non_l3(_rows()) == []
 
 
 def test_a2_no_fallback_occurrences():

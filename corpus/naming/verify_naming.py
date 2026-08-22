@@ -27,6 +27,22 @@ predicate, expecting each to fail and name its victim.  Nothing under
 Usage:
     PYLUADEC_CORPUS_DIR=<229-file bytecode corpus> \
     uv run python corpus/naming/verify_naming.py [--tamper]
+
+**When it must be run** (CLAUDE.md's second out-of-suite condition, which
+the first version of this docstring omitted -- controller review Minor,
+2026-08-23): after ANY edit to ``name_map.jsonl`` or to
+``harvest_naming.py``; after any change to the print path that could move
+a name (``emit/lua.py``'s ``local_name`` seam, ``structure/naming.py``);
+before a milestone close; and before any merge that regenerates
+``corpus/final/``.  P1 additionally needs ``corpus/final/`` to be current
+with ``src/`` -- run ``scripts/run_corpus.py`` first if in doubt, since a
+stale artifact makes this gate answer a question about the past.
+
+It is NOT the only guard for two of these three checks: the suite carries
+``tests/test_naming_channel.py::test_table_is_a_fixed_point_of_the_harvest``
+and ``::test_unit_map_is_a_fixed_point_and_reanchors_everything``.  The
+byte-identity arm (P1) is this job's alone at whole-corpus scale, which is
+why it is a job -- its cost is proportional to the 229-file corpus.
 """
 from __future__ import annotations
 
