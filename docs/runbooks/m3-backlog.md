@@ -2956,7 +2956,7 @@ priority order, and every figure was measured at the M7 closing tree
 relying on any of them.
 
 **Starting state, measured 2026-08-16.** `L3` **1456/1478 unique (98.5%) /
-1922/1944 occurrences (97.9%)**; **222 files fully structured / 5 hybrid /
+1922/1944 occurrences (98.9%)**; **222 files fully structured / 5 hybrid /
 2 whole-file fallback** (`snr_music`, `snr_novel`); 1880/1944 occurrences
 ship structured text. Suite **1174 tests, 73.60–75.73 s** ×3 (macOS 15.2 /
 Apple M4 arm64) against the ~120 s formal-verification earmark;
@@ -3015,7 +3015,9 @@ ruling. The sanity argument for the rung must live with the rung (the
 Diagnosed at instruction level (M7 task 2, `docs/reports/m7-warranty.md`
 §1): the predecessor emits `local f, v1, v2` in every scope, so pred
 recompilation carries 1–2 dead locals per proto and fails the root
-`maxstacksize` comparison in 228/229 files — the entire reason the merge
+`maxstacksize` comparison for 163 of 229 roots (71%; 58 more fail on
+`code` at equal maxstacksize, 7 refuse at structure/reconstruct, 1 clean —
+all 228 fail re-certification) — the dominant reason the merge
 is degenerate. **Not a defect in our pipeline.** Fixing it (e.g. a
 normalization that ignores dead-local maxstacksize slack, or re-emitting
 dead locals) is only worth anything if a future milestone wants the pred
@@ -3039,3 +3041,35 @@ amended by M7.
 - The backlog file-head reading-order pointer had rotted for two
   milestone closes before the M7 wrap fixed it (2026-08-16); if M8 appends
   an agenda, update the pointer in the same commit.
+
+## 7. Carried in from M7's final whole-branch review (2026-08-16)
+
+The independent review seat ran after M7 closed and after M8 tasks 1–3
+landed; its verdict was **merge, no Critical, nothing requiring a rewrite
+of M7 commits** (merged as `0d39272`). Its **seven Important findings are
+fix-forward work inside M8** and are enumerated with their measurements in
+`docs/reports/m7-warranty.md` §5. Headline order, as the review ranked it:
+
+1. **IMP-2** — the mechanism-F attribution ("228/229 fail the root
+   maxstacksize comparison") is **163/229**; six committed sites carry it,
+   and it is the sentence the merge deliverable's honesty argument rests
+   on. Correct all six.
+2. **IMP-1** — `test_m7_exit_readability_floor` is a tautology (escaped
+   literals are skipped before the denominator, so the ratio is
+   identically 1.0). A gate that cannot fail is this repo's stated worst
+   case; fix by counting escaped non-ASCII into the denominator.
+3. **IMP-3 / IMP-7** — occurrence-`L3` is 98.9%, published as 97.9% in four
+   documents; plus five panel/census arithmetic errors including a false
+   "had certified already at task 9's gate" whose paragraph then sums to
+   −17 against an actual −18.
+4. **IMP-4 / IMP-5 / IMP-6** — three guards not proven load-bearing by
+   anything in the tree; the pin-opcode gate covers 62 of 203 pc
+   references; the `unpinned > 0` veto is inert (deleting it regenerates a
+   byte-identical warranty).
+
+**Sequencing note for future milestones**: M8 opened on an unreviewed,
+unmerged M7. Nothing was harmed this time — every finding was fix-forward
+— but the review's own disposition had to reason about five M8 commits
+sitting on top of the range it was auditing. The M8 plan's prerequisite
+section says to merge first; it was written for exactly this reason and
+was not followed.

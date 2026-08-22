@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_41_s2s_190_sel_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(2688, "NONVOICE", "【直哉】「彩野さん、ここのナゾトキだけど、間違えた部分と正解の部分、両方のあらすじがあるみたいだね」")
@@ -6,7 +6,7 @@ local l0_0 = function()
     vms(2690, "NONVOICE", "【彩野】「じゃあ、えっと、直哉くん。最初に正解の場面のあらすじを見せてもらっていい？」")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_41_s2s_190_sel_resolve = function()
     oCard.cardAnswerTrue()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
@@ -14,7 +14,7 @@ local l0_1 = function()
     vms(2692, "NONVOICE", "【彩野】「それじゃあ……ナゾトキに間違えたときの場面、教えてくれるかな……」")
     comPoseDelete()
 end
-local l0_2 = function()
+local card_41_s2s_190_sel_step3 = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(2693, "NONVOICE", "【彩野】「ふむふむ……」")
@@ -44,7 +44,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_41_s2s_190_sel_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -71,7 +71,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_41_s2s_190_sel_resolve()
     local l1_3 = 0
     local l1_4 = 0
     local l1_5 = -1
@@ -98,7 +98,7 @@ main = function()
         end
         wait(30)
     end
-    l0_2()
+    card_41_s2s_190_sel_step3()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

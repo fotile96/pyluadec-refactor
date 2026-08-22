@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_152_s4s_100_sel_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_19_x"))
     cLoadPlaySE(cGetFileName("se", "se_106"), false)
     wait(1)
@@ -7,7 +7,7 @@ local l0_0 = function()
     wait(60)
     vms(966, "NONVOICE", "セクション８のあらすじカードを選択してください。")
 end
-local l0_1 = function()
+local card_152_s4s_100_sel_resolve = function()
     keyPlaySE(seName.getCard)
     comEffectYellowIn(60)
     wait(200)
@@ -24,7 +24,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_152_s4s_100_sel_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -47,7 +47,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_152_s4s_100_sel_resolve()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

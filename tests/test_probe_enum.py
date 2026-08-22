@@ -528,11 +528,16 @@ def test_the_compound_if_population_moved_from_twentyone_shapes_to_one(
     rows = _ledger_rows()
     shapes = [r for r in rows
               if (r.get("refusal_reason") or "").startswith("structure:")]
-    assert len(shapes) == 2
-    assert {s["refusal_reason"] for s in shapes} == {
-        "structure: pc 286: else-join out of range"}
+    # M8 task 2 (2026-08-16): the family EMPTIED. The arm-trailing
+    # empty-then recognizer fix let `build_sir` accept `main_71` (and its
+    # root); both rows now refuse at certification as `mismatch: code`
+    # (constructor-layout class, first divergence NEWTABLE C=10 vs 0 at
+    # pc 7) -- the same two-layer stack this test's own history recorded
+    # for the other 20 shapes. The recognizer gap itself is closed with
+    # synthetic L3 fixtures in tests/test_sir_loops_longtail.py.
+    assert len(shapes) == 0
     leaves = probe_enum.compound_if_leaves(rows)
-    assert leaves == [("snr_common.lua", "main_71")]
+    assert leaves == []
     # The derivation and `classes.json` still agree, on the smaller set.
     classes = json.loads(
         (probe_enum.ROOT / "corpus" / "observation" / "classes.json")
@@ -550,9 +555,16 @@ def test_the_compound_if_population_moved_from_twentyone_shapes_to_one(
         r = by_key[key]
         verdicts[key] = r["level"] if r["level"] == "L3" \
             else (r["refusal_reason"] or "").split(":")[0]
-    assert sorted(verdicts.values()).count("L3") == 8
-    assert sorted(verdicts.values()).count("mismatch") == 3
-    assert sorted(verdicts.values()).count("structure") == 1
+    # All-L3 since the proposal channel (2026-08-18): 8 -> 13, mismatch 5.
+    assert sorted(verdicts.values()).count("L3") == 13
+    # M8 task 2 (2026-08-16): main_71 moved mismatch-ward; the structure
+    # count is now 0 and mismatch 4 (was 3 + 1 structure).
+    # M8 task 3 (2026-08-16): snr_graphic:main left `reconstruct` for the
+    # `mismatch: code at root/4` inheritance (main_4); the memory flips
+    # were outside this population, so L3 stays 8 and mismatch is 5.
+    assert sorted(verdicts.values()).count("mismatch") == 0
+    assert sorted(verdicts.values()).count("structure") == 0
+    assert sorted(verdicts.values()).count("reconstruct") == 0
     # Re-measured 2026-08-15 (M7 task 8): `snr_graphic.lua:main` moved from
     # `mismatch` to `reconstruct` -- the staging-span exemption changed its
     # printed text, and the isolated verdict is now the reconstruction
@@ -567,7 +579,9 @@ def test_the_compound_if_population_moved_from_twentyone_shapes_to_one(
     # `mismatch: code` -> `L3` -- the key-staged-below-table barrier (its
     # `snr_s3_10_s:main_59` twin left the population at M6 task 11's
     # condition trees, which is why the count moved by one and not two).
-    assert sorted(verdicts.values()).count("reconstruct") == 1
+    # M8 task 3 (2026-08-16): 1 -> 0 -- snr_graphic:main left `reconstruct`
+    # for the `mismatch: code at root/4` inheritance (main_4).
+    assert sorted(verdicts.values()).count("reconstruct") == 0
 
 
 def test_the_smallest_leaf_refusal_is_identical_over_its_whole_space(

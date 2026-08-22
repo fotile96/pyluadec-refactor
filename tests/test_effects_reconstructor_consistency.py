@@ -792,7 +792,14 @@ def test_the_printer_arm_is_not_carried_entirely_by_arm_one(corpus_scan):
     assert rec.printed_via_frame > 0, rec.printed_via_frame
     assert rec.printed_via_arm1 > 0, rec.printed_via_arm1
     assert rec.printed_via_arm1 + rec.printed_via_frame == rec.printed
-    assert rec.printed_via_frame_by_kind == {"NumericFor": 34, "GenericFor": 3}, (
+    # 34 NumericFor until M8 task 2 (2026-08-16): 41 after -- main_71's
+    # subtree entered the printing population when the arm-trailing
+    # empty-then recognizer fix let `build_sir` accept it (its numeric-for
+    # at pc 413+ now prints). 43/7 after M8 task 3: the empty-tail clamp
+    # fix certified snr_memory's whole file and snr_graphic's main_3, so
+    # their loops print through the structured path in the shipped hybrid
+    # too. A population figure, not a floor.
+    assert rec.printed_via_frame_by_kind == {"NumericFor": 43, "GenericFor": 7}, (
         rec.printed_via_frame_by_kind)
 
 
@@ -817,7 +824,11 @@ chains stage instead of materializing locals)
     hand next time someone reads the docstring.
     """
     rec = corpus_scan["rec"]
-    assert rec.printed_via_arm1_by_kind.get("CLOSURE", 0) == 966, (
+    # 966 until M8 task 2 (2026-08-16): 1006 after -- main_71's subtree
+    # (40 CLOSURE sites) prints now; 1026 after M8 task 3 (snr_memory's
+    # file fully structured + snr_graphic's main_3 subtree prints); see
+    # the NumericFor note above.
+    assert rec.printed_via_arm1_by_kind.get("CLOSURE", 0) == 1026, (
         rec.printed_via_arm1_by_kind.get("CLOSURE"))
     assert "CLOSURE" not in rec.printed_via_frame_by_kind, (
         rec.printed_via_frame_by_kind)
@@ -1053,7 +1064,13 @@ def test_the_two_arms_together_reach_37_of_38_opcodes(grid_scan, corpus_scan):
     both = grid_scan["rec"].ops | corpus_scan["rec"].ops
     assert both == set(Op) - _UNREACHABLE_BY_BOTH_ARMS, sorted(
         op.name for op in (set(Op) - _UNREACHABLE_BY_BOTH_ARMS) ^ both)
-    only_synth = {Op.SELF, Op.POW, Op.UNM, Op.NOT, Op.LOADNIL}
+    # M8 task 2 (2026-08-16): the synthetic-only set SHRANK by LOADNIL --
+    # main_71's subtree (a nil default lives in it) entered the corpus
+    # printing population, so LOADNIL is now asserted COVERED by the corpus
+    # arm too. SELF/POW/UNM/NOT remain grid-only: no corpus proto that
+    # prints contains them yet.
+    assert Op.LOADNIL in corpus_scan["rec"].ops
+    only_synth = {Op.SELF, Op.POW, Op.UNM, Op.NOT}
     assert only_synth <= grid_scan["rec"].ops
     assert not only_synth & corpus_scan["rec"].ops
     only_corpus = {Op.JMP, Op.FORPREP, Op.FORLOOP, Op.TFORLOOP}

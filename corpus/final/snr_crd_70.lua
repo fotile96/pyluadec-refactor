@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_70_s3s_170_sel_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(3319, "NONVOICE", "【直哉】「サクラさんから聞いた階段のウワサについて、クラスのみんなに聞いてみる場面なんだけど……」")
@@ -13,7 +13,7 @@ local l0_0 = function()
     vms(3326, "NONVOICE", "【直哉】「まずは、『適当に聞く』方の展開――」")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_70_s3s_170_sel_resolve = function()
     oCard.cardAnswerTrue()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_2_d")
@@ -21,7 +21,7 @@ local l0_1 = function()
     vms(3328, "NONVOICE", "【直哉】「次に『とりあえず聞いてみる』のはこんなあらすじ」")
     comPoseDelete()
 end
-local l0_2 = function()
+local card_70_s3s_170_sel_step3 = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(3329, "NONVOICE", "【彩野】「ふむ……」")
@@ -62,7 +62,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_70_s3s_170_sel_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -89,7 +89,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_70_s3s_170_sel_resolve()
     local l1_3 = 0
     local l1_4 = 0
     local l1_5 = -1
@@ -116,7 +116,7 @@ main = function()
         end
         wait(30)
     end
-    l0_2()
+    card_70_s3s_170_sel_step3()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

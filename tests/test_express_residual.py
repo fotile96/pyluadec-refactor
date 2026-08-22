@@ -443,24 +443,23 @@ def test_a_multiple_assignment_prints_as_separate_statements():
         LOADK 0 K(1)   LOADK 1 K(0)   SETUPVAL 1 -> upval 1   SETUPVAL 0 -> upval 0
 
     Printing that as three separate statements -- which is what `Reconstructor`
-    does, one statement per instruction -- makes `u1` the first upvalue
-    *referenced*, so the recompiled closure numbers the upvalues the other way
-    round and the two `SETUPVAL` operands swap.
+    did through M7, one statement per instruction -- made `u1` the first
+    upvalue *referenced*, so the recompiled closure numbered the upvalues the
+    other way round and the two `SETUPVAL` operands swapped.
 
-    Not fixed, and deliberately: recognising this needs lookahead over an
-    emitted-statement run (a descending run of stores immediately after a
-    matching run of value producers), which is a peephole over this layer's
-    own output -- the shape this project exists to avoid -- and the whole
-    229-file corpus contains **exactly one** instance of the signature
-    (measured this session: one descending `SETUPVAL`/`SETGLOBAL` run of
-    length >= 2, in this proto). Recorded here so the next census inherits the
-    diagnosis instead of re-deriving it.
-
-    The corpus tie itself is asserted by
-    `test_the_multiple_assignment_residual_really_is_snr_common_main_77_0`
-    below (fix round 1, F4): until then the load-bearing sentence of this
-    docstring -- that `u0, u1 = 1, 0` IS `snr_common.lua:main_77_0` -- was a
-    recorded measurement that nothing would have noticed going stale.
+    **CLOSED at the M8 tasks-4/5 campaign (2026-08-16)**, by two paired
+    changes: (1) `freereg.stack_discipline` no longer treats a SETUPVAL that
+    heads a descending SETUPVAL run as a statement end, so the RHS values
+    stay staged instead of being promoted to locals (luac's explist
+    snapshots every RHS operand into fresh temps, so a materialized local
+    on the RHS costs a MOVE the original never had); (2) the
+    Reconstructor's SETUPVAL handler recognizes the descending run over a
+    contiguous register range and emits ONE multi-target Assign. The M4-era
+    note below is kept as the record of why it waited: the rejected fix was
+    a peephole over emitted OUTPUT text; the shipped fix looks ahead over
+    the INSTRUCTION stream (the `_next_touch_is_store_to` precedent) and
+    the register-discipline model -- no text is re-read. The corpus census
+    measured exactly one instance of the signature (this proto).
     """
     src = b"local u0, u1\nreturn function()\nu0, u1 = 1, 0\nend\n"
     original = load_bytes(compile_source(src, strip=True)).subprotos[0]
@@ -471,9 +470,9 @@ def test_a_multiple_assignment_prints_as_separate_statements():
     wrapper = f"local u0, u1\nreturn function()\n{body}end\n".encode()
     candidate = load_bytes(compile_source(wrapper, strip=True)).subprotos[0]
     diffs = compare_protos(original, candidate, level=1)
-    assert [d.field for d in diffs] == ["code"], diffs
-    # ... and what we print instead is the three-statement form.
-    assert body.splitlines() == ["local l1_0 = 1", "u1 = 0", "u0 = l1_0"], body
+    assert diffs == [], diffs
+    # ... and what we print is the one-statement form.
+    assert body.splitlines() == ["u0, u1 = 1, 0"], body
 
 
 def test_the_multiple_assignment_residual_really_is_snr_common_main_77_0(corpus_dir):
@@ -495,3 +494,237 @@ def test_the_multiple_assignment_residual_really_is_snr_common_main_77_0(corpus_
     src = b"local u0, u1\nreturn function()\nu0, u1 = 1, 0\nend\n"
     mine = load_bytes(compile_source(src, strip=True)).subprotos[0]
     assert compare_protos(target, mine, level=1) == []
+
+
+# ---------------------------------------------------------------------------
+# M8 task 3: the empty-tail alternative re-reading the chain target (the
+# `snr_graphic`/`snr_memory` `main`/`main_3` family -- "register 7 is read
+# again after its staged value was consumed").
+
+def test_empty_tail_reread_clamp_on_staged_chain_certifies():
+    """The corpus geometry, mirrored: A = a CondValue chain whose result is
+    STAGED for its one explicit reader, B = the clamp `x = (9 < x) and 9 or
+    x` whose EMPTY final alternative re-reads x's incoming value with no
+    instruction (invisible to the pc-linear read-count that graded A's
+    definition temp). Before task 3 this refused with exactly the family's
+    message; the fix materializes the incoming value as a local before the
+    chain is built -- the shape the original source has."""
+    src = b"""local function f(a, b, c)
+    local s = 0
+    local x = c and 9 or (a.v - b * 9)
+    x = (9 < x) and 9 or x
+    for i = 1, x, 1 do s = s + i end
+    return s
+end
+f({v = 1}, 2, 3)
+"""
+    _proto, out = _certify(src)
+    assert out.level == "L3", out.reason
+
+
+def test_settable_consumer_of_a_staged_clamp_is_a_recorded_gap():
+    """A DIFFERENT synthetic shape found while building the repro above
+    (recorded, not asserted away): when the clamp chain's consumer is a
+    table store (`t[1] = x = (9 < x) and 9 or x` reading a materialized
+    local -- no staging at all), our emission stages the chain result into
+    a fresh register and recompiles TEST+MOVE where luac discharged
+    TESTSET into the original slot -- `mismatch: code`, caught by
+    certification. Corpus census (2026-08-16): no corpus proto carries
+    this exact shape (the 4 family rows all refuse earlier, at the empty
+    tail); revisit if a campaign row ever names it."""
+    src = b"""local function f(a, b)
+    local t = {}
+    local x = a - b
+    x = (9 < x) and 9 or x
+    t[1] = x
+    return t[1]
+end
+f({v = 1}, 2)
+"""
+    _proto, out = _certify(src)
+    assert out.level == "L1"
+    assert (out.reason or "").startswith("mismatch: code")
+
+
+# ---------------------------------------------------------------------------
+# M8 (tasks 4/5 campaign): the deferred-constructor position bug
+# (`snr_novel:main` -- the whole-file row; one row held 15 occurrences).
+
+def test_constructor_deferred_behind_local_decl_certifies():
+    """A pending table-constructor ctx stays open until the table's first
+    read, so a `local` statement the original placed AFTER the constructor
+    used to emit FIRST -- the deferred `local t = {...}` landed behind it,
+    and the recompile assigned the table the wrong register (declaration
+    order IS register order), diverging every instruction downstream (the
+    `snr_novel:main` shape: first divergence NEWTABLE r0 vs LOADK r1).
+    Fix: an instruction whose write would MATERIALIZE (write_reg's own
+    temp/local predicate) cannot belong to the constructor's interior, so
+    every open ctx closes in position before it dispatches."""
+    src = b"""local t = {a = {x = 1, y = 2, z = 3}, b = 2, c = 3}
+local p = 0
+local q = 1
+for i = 1, q do p = p + t.a.x end
+return p
+"""
+    _proto, out = _certify(src)
+    assert out.level == "L3", out.reason
+
+
+def test_constructor_position_minimal_certifies():
+    src = b"""local t = {a = 1, b = 2}
+local p = 0
+return t.a + p
+"""
+    _proto, out = _certify(src)
+    assert out.level == "L3", out.reason
+
+
+def test_constructor_item_staging_still_folds_across_temps():
+    """The guard must NOT close the ctx on item-staging writes: dynamic
+    keys and array items stage temp-classified registers between the
+    NEWTABLE and its SETTABLE/SETLIST (the M7 dynamic-key fold). Both
+    shapes still certify after the interception."""
+    src = b"""local k = "x"
+local t = {[k] = 1, y = 2}
+local p = 0
+return t.y + p
+"""
+    _proto, out = _certify(src)
+    assert out.level == "L3", out.reason
+    src2 = b"""local t = {3, 4}
+local p = 0
+return t[1] + p
+"""
+    _proto2, out2 = _certify(src2)
+    assert out2.level == "L3", out2.reason
+
+
+def test_mixed_literal_with_array_and_trailing_local_is_a_recorded_gap():
+    """A pre-existing gap found while writing the fold-preservation test
+    (recorded, not asserted away): mixing a dynamic hash key, a nested
+    array literal AND a trailing array item in one constructor fails
+    certification BOTH before and after the M8 position fix (before:
+    `mismatch: maxstacksize`; after: `mismatch: code` -- the position fix
+    changed which field diverges first, not the outcome). Corpus census:
+    no remaining row names this shape. Revisit if a campaign row does."""
+    src = b"""local k = "x"
+local t = {[k] = 1, y = 2, {3, 4}, k}
+local p = 0
+return t.y + p
+"""
+    _proto, out = _certify(src)
+    assert out.level == "L1"
+    assert (out.reason or "").startswith("mismatch:")
+
+
+# ---------------------------------------------------------------------------
+# M8 tasks-4/5 campaign: the multiple-assignment residual CLOSED (the
+# `snr_common:main_77_0` row -- one row, the corpus's only instance).
+
+def test_upvalue_multiple_assignment_certifies(corpus_dir):
+    """`u0, u1 = 1, 0`: lparser resolves targets left-to-right (u0 becomes
+    upvalue 0 by first lexical reference) and stores right-to-left, so the
+    bytecode is LOADK r0, LOADK r1, SETUPVAL r1->u1, SETUPVAL r0->u0.
+    Printing three separate statements made `u1` the first upvalue
+    REFERENCED in the recompiled source, swapping the upvalue indices and
+    with them both SETUPVAL operands. Fixed by recognizing the descending
+    SETUPVAL run at the reconstruct layer and emitting ONE multi-target
+    Assign -- `u0, u1 = 1, 0` recompiles bit-for-bit."""
+    src = b"local u0, u1\nreturn function()\nu0, u1 = 1, 0\nend\n"
+    original = load_bytes(compile_source(src, strip=True)).subprotos[0]
+    from pyluadec.verify.normalize import compare_protos
+    from pyluadec.emit.lua import _print_proto_body
+    body = _print_proto_body(original, depth=1, upval_names=("u0", "u1"))
+    wrapper = f"local u0, u1\nreturn function()\n{body}end\n".encode()
+    candidate = load_bytes(compile_source(wrapper, strip=True)).subprotos[0]
+    assert compare_protos(original, candidate, level=1) == []
+    # and the corpus row end-to-end (the certification that flips the row)
+    from pyluadec.ingest import load_file
+    from pyluadec.pipeline import walk_proto_paths
+    protos: dict = {}
+    walk_proto_paths("main", load_file(corpus_dir / "snr_common.lua"), protos)
+    out = certify_proto(protos["main_77_0"], is_chunk_root=False)
+    assert out.level == "L3", out.reason
+
+
+# ---------------------------------------------------------------------------
+# M8 tasks-4/5 campaign: the K1 hint cluster -- the literal/statement split.
+# Measured (2026-08-16, vendored luac): NEWTABLE's raw C field is EXACT for
+# literal hash counts 1..17 (18 -> 17, 19-20 -> 18, 23-24 -> 20: the
+# int2fb pairs collapse only from 18). The M7-task-9 note's "15-field
+# literal decodes to 14" does not reproduce; the inexactness starts at 18.
+
+def test_literal_statement_split_is_a_recorded_gap():
+    """The K1 hint cluster (`snr_common:main_24` C=1, `main_25` C=2,
+    `main_71` C=10): the original's constructor held FEWER hash fields
+    than we fold (instruction streams otherwise byte-identical -- only
+    the NEWTABLE C differs). Boundary re-measured 2026-08-16 against the
+    vendored luac: raw C is EXACT for literal hash counts 1..16, and 17
+    is AMBIGUOUS (17 and 18 both encode to 17; 19-20 -> 18). A fold-time
+    count cap was implemented and REJECTED the same session: closing the
+    ctx at the hint count regresses 157 rows (snr_common:main_74 among
+    them -- shipped structured -> fallback; the early close reorders the
+    value staging, the same failure mode M7 task 9's first count-based
+    gate hit). The cluster therefore stays with the L3.3 masking rung or
+    a fold-order-preserving split; these tests pin the CURRENT refusal
+    so the eventual fix has red-to-green witnesses."""
+    src = b"""local t = {a = 1}
+t.b = function() return 1 end
+t.c = function() return 2 end
+return t
+"""
+    _proto, out = _certify(src)
+    assert out.level == "L1"
+    assert (out.reason or "").startswith("mismatch:")
+    src2 = b"""local t = {a = 1, b = 2, c = 3}
+return t.a + t.b + t.c
+"""
+    _proto2, out2 = _certify(src2)
+    assert out2.level == "L3"
+
+
+def test_int2fb_exactness_boundary():
+    """The encoding ladder, pinned (2026-08-16, vendored luac): raw C ==
+    literal hash count for 1..16; 17 <- {17, 18}; 18 <- {19, 20}; 20 <-
+    {23, 24}. The M7-task-9 note's 'past 7 is inexact' and 'a 15-field
+    literal decodes to 14' do NOT reproduce (15 -> 15)."""
+    from pyluadec.ingest import load_bytes
+    from pyluadec.oracle import compile_source
+    from pyluadec.lift import lift_proto
+    for n, c in ((1, 1), (7, 7), (15, 15), (16, 16), (17, 17), (18, 17),
+                 (19, 18), (20, 18), (23, 20), (24, 20), (31, 24)):
+        fields = ", ".join(f"k{i} = {i}" for i in range(n))
+        fn = lift_proto(load_bytes(compile_source(
+            f"local t = {{{fields}}}\nreturn t\n".encode(), strip=True)))
+        assert fn.instrs[1].ri.c == c, (n, c)
+
+
+# ---------------------------------------------------------------------------
+# M8 B1 (the busy-slot ruling's review round): scoped materialization.
+# A materialized local whose bytecode liveness ends MID-REGION is wrapped
+# in a bytecode-invisible `do ... end` (no CLOSURE captures -> no CLOSE),
+# and `declared` releases the slot at its death pc -- later temp-graded
+# defs then stage into the freed slot exactly as the original's freereg
+# discipline did.
+
+def test_scoped_clamp_frees_the_slot_for_the_callee_certifies():
+    """The `snr_story_main:main_3` shape: a clamp materializes the busy
+    slot (`local l1_R = <chain>`), its value dies at the next read, and
+    the FOLLOWING callee (loaded fresh per statement in the original)
+    must land in the freed slot -- not be pushed to a higher register."""
+    src = b"""local function f(i, pressed)
+    if pressed == "CIRCLE" then
+        local fn = i == 1 and cGetFileName("sysgim", "b") or cGetFileName("sysgim", "a")
+        setGlobal(fn)
+        keyPlaySE("circle")
+        if comDlgYesNo(fn, 100, 80) == true then
+            doScriptScene(comScene(fn))
+            return 1
+        end
+    end
+    return 0
+end
+f(1, "CIRCLE")
+"""
+    _proto, out = _certify(src)
+    assert out.level == "L3", out.reason

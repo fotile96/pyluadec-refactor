@@ -325,645 +325,185 @@ local l0_2 = function()
     layerLoad(100, "")
 end
 main = function()
-local __pld_ord = {l0_2, l0_1}
-local __pld_select, __pld_unpack, __pld_tonumber, __pld_error = select, unpack, tonumber, error
-local __pld_pack = function(...) return {n = __pld_select('#', ...), ...} end
-local __pld_get = function(R, B, i) local x = R[i] if B[i] then return x.v end return x end
-local __pld_set = function(R, B, i, v) if B[i] then R[i].v = v else R[i] = v end end
-local __pld_R, __pld_B, __pld_top = {}, {}, 0
-local __pld_pc = 1
+advPart(false)
+logEnable(false)
+systemConfig.unsetConfigButton()
+if gameSave.tutorial.firstFragment == 0 then
+    if gameSave.startMenuState == 1 then
+        doScriptScene = "s1s_10"
+        run(cGetFileName("script", "snr_s1_10_s"))
+        quit()
+    else
+        vms(16817, "NONVOICE", "【■おしらせ】ゲームメニューに、『Ｆｒａｇｍｅｎｔ』モードが追加されました。")
+        vms(16818, "NONVOICE", "【■おしらせ】物語の続きはＦｒａｇｍｅｎｔモードより参照することができます。")
+        cInitGame()
+        run(cGetFileName("script", "snr_mainmenu"))
+        quit()
+    end
+end
+local l1_0 = comSectionStoryGetCount()
+if l1_0 == 0 then
+    doScriptScene = "s1s_20"
+    run(cGetFileName("script", "snr_s1_10_s"))
+    quit()
+end
+if selectItemNo < 1 then
+    selectItemNo = l1_0
+end
+if l1_0 < selectItemNo then
+    selectItemNo = l1_0
+end
+l0_2()
+local l1_1 = false
+local l1_2 = false
+local l1_3 = 0
+local l1_4 = selectItemNo
+local l1_5 = l1_4
+local l1_6 = false
+local l1_7 = 1
+local l1_8 = 1
+local l1_9 = 1
+systemConfig.setConfigButton()
 while true do
-if __pld_pc == 1 then
-__pld_R[0] = advPart
-__pld_R[1] = false
-__pld_R[0](__pld_R[1])
-__pld_R[0] = logEnable
-__pld_R[1] = false
-__pld_R[0](__pld_R[1])
-__pld_R[0] = systemConfig
-__pld_R[0] = __pld_R[0]["unsetConfigButton"]
-__pld_R[0]()
-__pld_R[0] = gameSave
-__pld_R[0] = __pld_R[0]["tutorial"]
-__pld_R[0] = __pld_R[0]["firstFragment"]
-if not (__pld_R[0] == 0) then __pld_pc = 14 else __pld_pc = 15 end
-elseif __pld_pc == 14 then
-__pld_pc = 50
-elseif __pld_pc == 15 then
-__pld_R[0] = gameSave
-__pld_R[0] = __pld_R[0]["startMenuState"]
-if not (__pld_R[0] == 1) then __pld_pc = 18 else __pld_pc = 19 end
-elseif __pld_pc == 18 then
-__pld_pc = 30
-elseif __pld_pc == 19 then
-__pld_R[0] = "s1s_10"
-doScriptScene = __pld_R[0]
-__pld_R[0] = run
-__pld_R[1] = cGetFileName
-__pld_R[2] = "script"
-__pld_R[3] = "snr_s1_10_s"
-do 
-local __pld_rs = __pld_pack(__pld_R[1](__pld_R[2], __pld_R[3]))
-for __pld_i = 1, __pld_rs.n do __pld_set(__pld_R, __pld_B, 1 + __pld_i - 1, __pld_rs[__pld_i]) end
-__pld_top = 1 + __pld_rs.n end
-do local __pld_t, __pld_n = {}, __pld_top - 1 for __pld_i = 1, __pld_n do __pld_t[__pld_i] = __pld_get(__pld_R, __pld_B, 1 + __pld_i - 1) end __pld_R[0](__pld_unpack(__pld_t, 1, __pld_n)) end
-__pld_R[0] = quit
-__pld_R[0]()
-__pld_pc = 50
-elseif __pld_pc == 30 then
-__pld_R[0] = vms
-__pld_R[1] = 16817
-__pld_R[2] = "NONVOICE"
-__pld_R[3] = "【■おしらせ】ゲームメニューに、『Ｆｒａｇｍｅｎｔ』モードが追加されました。"
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = vms
-__pld_R[1] = 16818
-__pld_R[2] = "NONVOICE"
-__pld_R[3] = "【■おしらせ】物語の続きはＦｒａｇｍｅｎｔモードより参照することができます。"
-__pld_R[0](__pld_R[1], __pld_R[2], __pld_R[3])
-__pld_R[0] = cInitGame
-__pld_R[0]()
-__pld_R[0] = run
-__pld_R[1] = cGetFileName
-__pld_R[2] = "script"
-__pld_R[3] = "snr_mainmenu"
-do 
-local __pld_rs = __pld_pack(__pld_R[1](__pld_R[2], __pld_R[3]))
-for __pld_i = 1, __pld_rs.n do __pld_set(__pld_R, __pld_B, 1 + __pld_i - 1, __pld_rs[__pld_i]) end
-__pld_top = 1 + __pld_rs.n end
-do local __pld_t, __pld_n = {}, __pld_top - 1 for __pld_i = 1, __pld_n do __pld_t[__pld_i] = __pld_get(__pld_R, __pld_B, 1 + __pld_i - 1) end __pld_R[0](__pld_unpack(__pld_t, 1, __pld_n)) end
-__pld_R[0] = quit
-__pld_R[0]()
-__pld_pc = 50
-elseif __pld_pc == 50 then
-__pld_R[0] = comSectionStoryGetCount
-__pld_R[0] = __pld_R[0]()
-if not (__pld_R[0] == 0) then __pld_pc = 53 else __pld_pc = 54 end
-elseif __pld_pc == 53 then
-__pld_pc = 64
-elseif __pld_pc == 54 then
-__pld_R[1] = "s1s_20"
-doScriptScene = __pld_R[1]
-__pld_R[1] = run
-__pld_R[2] = cGetFileName
-__pld_R[3] = "script"
-__pld_R[4] = "snr_s1_10_s"
-do 
-local __pld_rs = __pld_pack(__pld_R[2](__pld_R[3], __pld_R[4]))
-for __pld_i = 1, __pld_rs.n do __pld_set(__pld_R, __pld_B, 2 + __pld_i - 1, __pld_rs[__pld_i]) end
-__pld_top = 2 + __pld_rs.n end
-do local __pld_t, __pld_n = {}, __pld_top - 2 for __pld_i = 1, __pld_n do __pld_t[__pld_i] = __pld_get(__pld_R, __pld_B, 2 + __pld_i - 1) end __pld_R[1](__pld_unpack(__pld_t, 1, __pld_n)) end
-__pld_R[1] = quit
-__pld_R[1]()
-__pld_pc = 64
-elseif __pld_pc == 64 then
-__pld_R[1] = selectItemNo
-if not (__pld_R[1] < 1) then __pld_pc = 66 else __pld_pc = 67 end
-elseif __pld_pc == 66 then
-__pld_pc = 68
-elseif __pld_pc == 67 then
-selectItemNo = __pld_R[0]
-__pld_pc = 68
-elseif __pld_pc == 68 then
-__pld_R[1] = selectItemNo
-if not (__pld_R[0] < __pld_R[1]) then __pld_pc = 70 else __pld_pc = 71 end
-elseif __pld_pc == 70 then
-__pld_pc = 72
-elseif __pld_pc == 71 then
-selectItemNo = __pld_R[0]
-__pld_pc = 72
-elseif __pld_pc == 72 then
-__pld_R[1] = l0_2
-__pld_R[1]()
-__pld_R[1] = false
-__pld_R[2] = false
-__pld_R[3] = 0
-__pld_R[4] = selectItemNo
-__pld_R[5] = __pld_R[4]
-__pld_R[6] = false
-__pld_R[7] = 1
-__pld_R[8] = 1
-__pld_R[9] = 1
-__pld_R[10] = systemConfig
-__pld_R[10] = __pld_R[10]["setConfigButton"]
-__pld_R[10]()
-__pld_pc = 86
-elseif __pld_pc == 86 then
-__pld_R[10] = pressButton
-__pld_R[11] = "RIGHT"
-__pld_R[10] = __pld_R[10](__pld_R[11])
-if not (__pld_R[10] == true) then __pld_pc = 90 else __pld_pc = 91 end
-elseif __pld_pc == 90 then
-__pld_pc = 103
-elseif __pld_pc == 91 then
-if not (__pld_R[6] == false) then __pld_pc = 92 else __pld_pc = 93 end
-elseif __pld_pc == 92 then
-__pld_pc = 103
-elseif __pld_pc == 93 then
-if not (__pld_R[4] < __pld_R[0]) then __pld_pc = 94 else __pld_pc = 95 end
-elseif __pld_pc == 94 then
-__pld_pc = 103
-elseif __pld_pc == 95 then
-__pld_R[5] = __pld_R[4]
-__pld_R[10] = __pld_R[4] + 1
-if not (__pld_R[0] < __pld_R[10]) then __pld_pc = 98 else __pld_pc = 99 end
-elseif __pld_pc == 98 then
-__pld_pc = 101
-elseif __pld_pc == 99 then
-do local __pld_t = __pld_R[0] if __pld_t then __pld_R[4] = __pld_t __pld_pc = 100 else __pld_pc = 101 end end
-elseif __pld_pc == 100 then
-__pld_pc = 102
-elseif __pld_pc == 101 then
-__pld_R[4] = __pld_R[4] + 1
-__pld_pc = 102
-elseif __pld_pc == 102 then
-__pld_R[6] = true
-__pld_pc = 103
-elseif __pld_pc == 103 then
-__pld_R[10] = pressButton
-__pld_R[11] = "LEFT"
-__pld_R[10] = __pld_R[10](__pld_R[11])
-if not (__pld_R[10] == true) then __pld_pc = 107 else __pld_pc = 108 end
-elseif __pld_pc == 107 then
-__pld_pc = 115
-elseif __pld_pc == 108 then
-if not (__pld_R[6] == false) then __pld_pc = 109 else __pld_pc = 110 end
-elseif __pld_pc == 109 then
-__pld_pc = 115
-elseif __pld_pc == 110 then
-if not (1 < __pld_R[4]) then __pld_pc = 111 else __pld_pc = 112 end
-elseif __pld_pc == 111 then
-__pld_pc = 115
-elseif __pld_pc == 112 then
-__pld_R[5] = __pld_R[4]
-__pld_R[4] = __pld_R[4] - 1
-__pld_R[6] = true
-__pld_pc = 115
-elseif __pld_pc == 115 then
-__pld_R[10] = pressButton
-__pld_R[11] = "R"
-__pld_R[10] = __pld_R[10](__pld_R[11])
-if not (__pld_R[10] == true) then __pld_pc = 119 else __pld_pc = 120 end
-elseif __pld_pc == 119 then
-__pld_pc = 147
-elseif __pld_pc == 120 then
-if not (__pld_R[6] == false) then __pld_pc = 121 else __pld_pc = 122 end
-elseif __pld_pc == 121 then
-__pld_pc = 147
-elseif __pld_pc == 122 then
-__pld_R[5] = __pld_R[4]
-__pld_R[10] = __pld_R[4] + 1
-__pld_R[11] = __pld_R[0]
-__pld_R[12] = 1
-do
-local __pld_i = __pld_tonumber(__pld_R[10]) if __pld_i == nil then __pld_error("'for' initial value must be a number") end
-local __pld_l = __pld_tonumber(__pld_R[11]) if __pld_l == nil then __pld_error("'for' limit must be a number") end
-local __pld_s = __pld_tonumber(__pld_R[12]) if __pld_s == nil then __pld_error("'for' step must be a number") end
-__pld_R[10] = __pld_i - __pld_s __pld_R[11] = __pld_l __pld_R[12] = __pld_s
+    if pressButton("RIGHT") == true then
+        if l1_6 == false then
+            if l1_4 < l1_0 then
+                l1_5 = l1_4
+                l1_4 = l1_0 < l1_4 + 1 and l1_0 or l1_4 + 1
+                l1_6 = true
+            end
+        end
+    end
+    if pressButton("LEFT") == true then
+        if l1_6 == false then
+            if 1 < l1_4 then
+                l1_5 = l1_4
+                l1_4 = l1_4 - 1
+                l1_6 = true
+            end
+        end
+    end
+    if pressButton("R") == true then
+        if l1_6 == false then
+            l1_5 = l1_4
+            for l1_13 = l1_4 + 1, l1_0, 1 do
+                local l1_14 = sceneId2aCard[gameSave.storyRoute[l1_13].sceneId]
+                l1_4 = l1_13
+                if gameSave.myCard[l1_14].hold == -1 then
+                    l1_4 = l1_13
+                    break
+                end
+            end
+            wait(5)
+            l1_6 = true
+        end
+    end
+    if pressButton("L") == true then
+        if l1_6 == false then
+            l1_5 = l1_4
+            for l1_13 = l1_4 - 1, 1, -1 do
+                local l1_14 = sceneId2aCard[gameSave.storyRoute[l1_13].sceneId]
+                l1_4 = l1_13
+                if gameSave.myCard[l1_14].hold == -1 then
+                    l1_4 = l1_13
+                    break
+                end
+            end
+            wait(5)
+            l1_6 = true
+        end
+    end
+    if l1_6 == true then
+        keyPlaySE(seName.arrowKey)
+        fontClear()
+        l0_1(l1_4, l1_5)
+        l1_3 = 0
+        l1_6 = false
+        layerLoad(layerName.card1, "")
+        layerLoad(layerName.card3, "")
+        wait(3)
+    end
+    local l1_10 = sceneId2aCard[gameSave.storyRoute[l1_4].sceneId]
+    if not (gameSave.myCard[l1_10].hold == -1) then
+        if l1_3 <= 3 then
+            if 3 <= l1_3 then
+                layerLoadAsync(0, layerName.card1, cGetFileName("card", "crd_" .. l1_10 .. "_a"))
+                l1_2 = true
+            end
+            l1_3 = l1_3 + 1 > 4 and 4 or l1_3 + 1
+        end
+    end
+    if l1_2 == true then
+        if layerIsLoad(layerName.card1) == true then
+            layerVisible(layerName.card1, true)
+            layerAlpha(layerName.card1, 0)
+            layerPosition(layerName.card1, 130, 110)
+            layerMovePosition(layerName.card1, 130, 130, 10)
+            layerMoveAlpha(layerName.card1, 100, 10)
+            l1_2 = false
+        end
+    end
+    if not (pressButton("CIRCLE") == true) then
+        l1_7 = 0
+    end
+    if pressButton("CIRCLE") == true then
+        if l1_7 == 0 then
+            fileName = l1_4 == 1 and cGetFileName("sysgim", "sys_5_b") or cGetFileName("sysgim", "sys_5_a")
+            keyPlaySE(seName.circle)
+            if comDlgYesNo(fileName, 100, 80) == true then
+                local l1_11 = comSectionUID2ScriptFileName(gameSave.storyRoute[l1_4].sceneId)
+                doScriptScene = gameSave.storyRoute[l1_4].sceneId
+                selectItemNo = -1
+                gameSave.ayanoTime = gameSave.storyRoute[l1_4].ayanoTime
+                cClearNumStoryRoute(l1_4)
+                cInitGame()
+                fontClear()
+                run(cGetFileName("script", l1_11))
+                quit()
+            else
+                l1_7 = 1
+                l1_8 = 1
+                l1_9 = 1
+            end
+            layerLoad(layerName.card3, "")
+            switchScreen(0, "", 5)
+            wait(5)
+        end
+    end
+    if not (pressButton("CROSS") == true) then
+        l1_8 = 0
+    end
+    if pressButton("CROSS") == true then
+        if l1_8 == 0 then
+            systemConfig.unsetConfigButton()
+            keyPlaySE(seName.cross)
+            selectItemNo = l1_4
+            break
+        end
+    end
+    if not (pressButton("TRIANGLE") == true) then
+        l1_9 = 0
+    end
+    if pressButton("TRIANGLE") == true then
+        if l1_9 == 0 then
+            systemConfig.unsetConfigButton()
+            keyPlaySE(seName.cross)
+            layerCopy(199, layerName.effectBlack)
+            fontClear()
+            switchScreen(0, "", 60)
+            selectItemNo = l1_4
+            comSectionFragmentItemInit()
+            cInitGame()
+            run(cGetFileName("script", "snr_fragment_main"))
+            quit()
+        end
+    end
+    wait(2)
 end
-__pld_pc = 142
-elseif __pld_pc == 127 then
-__pld_R[14] = sceneId2aCard
-__pld_R[15] = gameSave
-__pld_R[15] = __pld_R[15]["storyRoute"]
-__pld_R[15] = __pld_R[15][__pld_R[13]]
-__pld_R[15] = __pld_R[15]["sceneId"]
-__pld_R[14] = __pld_R[14][__pld_R[15]]
-__pld_R[4] = __pld_R[13]
-__pld_R[15] = gameSave
-__pld_R[15] = __pld_R[15]["myCard"]
-__pld_R[15] = __pld_R[15][__pld_R[14]]
-__pld_R[15] = __pld_R[15]["hold"]
-if not (__pld_R[15] == (-1)) then __pld_pc = 139 else __pld_pc = 140 end
-elseif __pld_pc == 139 then
-__pld_pc = 142
-elseif __pld_pc == 140 then
-__pld_R[4] = __pld_R[13]
-__pld_pc = 143
-elseif __pld_pc == 142 then
-do local __pld_s = __pld_R[12] local __pld_i = __pld_R[10] + __pld_s
-if (__pld_s > 0 and __pld_i <= __pld_R[11]) or (__pld_s <= 0 and __pld_i >= __pld_R[11]) then
-__pld_R[10] = __pld_i __pld_R[13] = __pld_i __pld_pc = 127
-else __pld_pc = 143 end end
-elseif __pld_pc == 143 then
-__pld_R[10] = wait
-__pld_R[11] = 5
-__pld_R[10](__pld_R[11])
-__pld_R[6] = true
-__pld_pc = 147
-elseif __pld_pc == 147 then
-__pld_R[10] = pressButton
-__pld_R[11] = "L"
-__pld_R[10] = __pld_R[10](__pld_R[11])
-if not (__pld_R[10] == true) then __pld_pc = 151 else __pld_pc = 152 end
-elseif __pld_pc == 151 then
-__pld_pc = 179
-elseif __pld_pc == 152 then
-if not (__pld_R[6] == false) then __pld_pc = 153 else __pld_pc = 154 end
-elseif __pld_pc == 153 then
-__pld_pc = 179
-elseif __pld_pc == 154 then
-__pld_R[5] = __pld_R[4]
-__pld_R[10] = __pld_R[4] - 1
-__pld_R[11] = 1
-__pld_R[12] = (-1)
-do
-local __pld_i = __pld_tonumber(__pld_R[10]) if __pld_i == nil then __pld_error("'for' initial value must be a number") end
-local __pld_l = __pld_tonumber(__pld_R[11]) if __pld_l == nil then __pld_error("'for' limit must be a number") end
-local __pld_s = __pld_tonumber(__pld_R[12]) if __pld_s == nil then __pld_error("'for' step must be a number") end
-__pld_R[10] = __pld_i - __pld_s __pld_R[11] = __pld_l __pld_R[12] = __pld_s
-end
-__pld_pc = 174
-elseif __pld_pc == 159 then
-__pld_R[14] = sceneId2aCard
-__pld_R[15] = gameSave
-__pld_R[15] = __pld_R[15]["storyRoute"]
-__pld_R[15] = __pld_R[15][__pld_R[13]]
-__pld_R[15] = __pld_R[15]["sceneId"]
-__pld_R[14] = __pld_R[14][__pld_R[15]]
-__pld_R[4] = __pld_R[13]
-__pld_R[15] = gameSave
-__pld_R[15] = __pld_R[15]["myCard"]
-__pld_R[15] = __pld_R[15][__pld_R[14]]
-__pld_R[15] = __pld_R[15]["hold"]
-if not (__pld_R[15] == (-1)) then __pld_pc = 171 else __pld_pc = 172 end
-elseif __pld_pc == 171 then
-__pld_pc = 174
-elseif __pld_pc == 172 then
-__pld_R[4] = __pld_R[13]
-__pld_pc = 175
-elseif __pld_pc == 174 then
-do local __pld_s = __pld_R[12] local __pld_i = __pld_R[10] + __pld_s
-if (__pld_s > 0 and __pld_i <= __pld_R[11]) or (__pld_s <= 0 and __pld_i >= __pld_R[11]) then
-__pld_R[10] = __pld_i __pld_R[13] = __pld_i __pld_pc = 159
-else __pld_pc = 175 end end
-elseif __pld_pc == 175 then
-__pld_R[10] = wait
-__pld_R[11] = 5
-__pld_R[10](__pld_R[11])
-__pld_R[6] = true
-__pld_pc = 179
-elseif __pld_pc == 179 then
-if not (__pld_R[6] == true) then __pld_pc = 180 else __pld_pc = 181 end
-elseif __pld_pc == 180 then
-__pld_pc = 206
-elseif __pld_pc == 181 then
-__pld_R[10] = keyPlaySE
-__pld_R[11] = seName
-__pld_R[11] = __pld_R[11]["arrowKey"]
-__pld_R[10](__pld_R[11])
-__pld_R[10] = fontClear
-__pld_R[10]()
-__pld_R[10] = l0_1
-__pld_R[11] = __pld_R[4]
-__pld_R[12] = __pld_R[5]
-__pld_R[10](__pld_R[11], __pld_R[12])
-__pld_R[3] = 0
-__pld_R[6] = false
-__pld_R[10] = layerLoad
-__pld_R[11] = layerName
-__pld_R[11] = __pld_R[11]["card1"]
-__pld_R[12] = ""
-__pld_R[10](__pld_R[11], __pld_R[12])
-__pld_R[10] = layerLoad
-__pld_R[11] = layerName
-__pld_R[11] = __pld_R[11]["card3"]
-__pld_R[12] = ""
-__pld_R[10](__pld_R[11], __pld_R[12])
-__pld_R[10] = wait
-__pld_R[11] = 3
-__pld_R[10](__pld_R[11])
-__pld_pc = 206
-elseif __pld_pc == 206 then
-__pld_R[10] = sceneId2aCard
-__pld_R[11] = gameSave
-__pld_R[11] = __pld_R[11]["storyRoute"]
-__pld_R[11] = __pld_R[11][__pld_R[4]]
-__pld_R[11] = __pld_R[11]["sceneId"]
-__pld_R[10] = __pld_R[10][__pld_R[11]]
-__pld_R[11] = gameSave
-__pld_R[11] = __pld_R[11]["myCard"]
-__pld_R[11] = __pld_R[11][__pld_R[10]]
-__pld_R[11] = __pld_R[11]["hold"]
-if __pld_R[11] == (-1) then __pld_pc = 217 else __pld_pc = 218 end
-elseif __pld_pc == 217 then
-__pld_pc = 242
-elseif __pld_pc == 218 then
-if not (__pld_R[3] <= 3) then __pld_pc = 219 else __pld_pc = 220 end
-elseif __pld_pc == 219 then
-__pld_pc = 242
-elseif __pld_pc == 220 then
-if not (3 <= __pld_R[3]) then __pld_pc = 221 else __pld_pc = 222 end
-elseif __pld_pc == 221 then
-__pld_pc = 235
-elseif __pld_pc == 222 then
-__pld_R[11] = layerLoadAsync
-__pld_R[12] = 0
-__pld_R[13] = layerName
-__pld_R[13] = __pld_R[13]["card1"]
-__pld_R[14] = cGetFileName
-__pld_R[15] = "card"
-__pld_R[16] = "crd_"
-__pld_R[17] = __pld_R[10]
-__pld_R[18] = "_a"
-__pld_R[16] = __pld_R[16] .. __pld_R[17] .. __pld_R[18]
-do 
-local __pld_rs = __pld_pack(__pld_R[14](__pld_R[15], __pld_R[16]))
-for __pld_i = 1, __pld_rs.n do __pld_set(__pld_R, __pld_B, 14 + __pld_i - 1, __pld_rs[__pld_i]) end
-__pld_top = 14 + __pld_rs.n end
-do local __pld_t, __pld_n = {}, __pld_top - 12 for __pld_i = 1, __pld_n do __pld_t[__pld_i] = __pld_get(__pld_R, __pld_B, 12 + __pld_i - 1) end __pld_R[11](__pld_unpack(__pld_t, 1, __pld_n)) end
-__pld_R[2] = true
-__pld_pc = 235
-elseif __pld_pc == 235 then
-__pld_R[11] = __pld_R[3] + 1
-if not (4 < __pld_R[11]) then __pld_pc = 237 else __pld_pc = 238 end
-elseif __pld_pc == 237 then
-__pld_pc = 241
-elseif __pld_pc == 238 then
-__pld_R[11] = 4
-do local __pld_t = __pld_R[11] if __pld_t then __pld_R[3] = __pld_t __pld_pc = 240 else __pld_pc = 241 end end
-elseif __pld_pc == 240 then
-__pld_pc = 242
-elseif __pld_pc == 241 then
-__pld_R[3] = __pld_R[3] + 1
-__pld_pc = 242
-elseif __pld_pc == 242 then
-if not (__pld_R[2] == true) then __pld_pc = 243 else __pld_pc = 244 end
-elseif __pld_pc == 243 then
-__pld_pc = 280
-elseif __pld_pc == 244 then
-__pld_R[11] = layerIsLoad
-__pld_R[12] = layerName
-__pld_R[12] = __pld_R[12]["card1"]
-__pld_R[11] = __pld_R[11](__pld_R[12])
-if not (__pld_R[11] == true) then __pld_pc = 249 else __pld_pc = 250 end
-elseif __pld_pc == 249 then
-__pld_pc = 280
-elseif __pld_pc == 250 then
-__pld_R[11] = layerVisible
-__pld_R[12] = layerName
-__pld_R[12] = __pld_R[12]["card1"]
-__pld_R[13] = true
-__pld_R[11](__pld_R[12], __pld_R[13])
-__pld_R[11] = layerAlpha
-__pld_R[12] = layerName
-__pld_R[12] = __pld_R[12]["card1"]
-__pld_R[13] = 0
-__pld_R[11](__pld_R[12], __pld_R[13])
-__pld_R[11] = layerPosition
-__pld_R[12] = layerName
-__pld_R[12] = __pld_R[12]["card1"]
-__pld_R[13] = 130
-__pld_R[14] = 110
-__pld_R[11](__pld_R[12], __pld_R[13], __pld_R[14])
-__pld_R[11] = layerMovePosition
-__pld_R[12] = layerName
-__pld_R[12] = __pld_R[12]["card1"]
-__pld_R[13] = 130
-__pld_R[14] = 130
-__pld_R[15] = 10
-__pld_R[11](__pld_R[12], __pld_R[13], __pld_R[14], __pld_R[15])
-__pld_R[11] = layerMoveAlpha
-__pld_R[12] = layerName
-__pld_R[12] = __pld_R[12]["card1"]
-__pld_R[13] = 100
-__pld_R[14] = 10
-__pld_R[11](__pld_R[12], __pld_R[13], __pld_R[14])
-__pld_R[2] = false
-__pld_pc = 280
-elseif __pld_pc == 280 then
-__pld_R[11] = pressButton
-__pld_R[12] = "CIRCLE"
-__pld_R[11] = __pld_R[11](__pld_R[12])
-if __pld_R[11] == true then __pld_pc = 284 else __pld_pc = 285 end
-elseif __pld_pc == 284 then
-__pld_pc = 286
-elseif __pld_pc == 285 then
-__pld_R[7] = 0
-__pld_pc = 286
-elseif __pld_pc == 286 then
-__pld_R[11] = pressButton
-__pld_R[12] = "CIRCLE"
-__pld_R[11] = __pld_R[11](__pld_R[12])
-if not (__pld_R[11] == true) then __pld_pc = 290 else __pld_pc = 291 end
-elseif __pld_pc == 290 then
-__pld_pc = 368
-elseif __pld_pc == 291 then
-if not (__pld_R[7] == 0) then __pld_pc = 292 else __pld_pc = 293 end
-elseif __pld_pc == 292 then
-__pld_pc = 368
-elseif __pld_pc == 293 then
-if not (__pld_R[4] == 1) then __pld_pc = 294 else __pld_pc = 295 end
-elseif __pld_pc == 294 then
-__pld_pc = 301
-elseif __pld_pc == 295 then
-__pld_R[11] = cGetFileName
-__pld_R[12] = "sysgim"
-__pld_R[13] = "sys_5_b"
-__pld_R[11] = __pld_R[11](__pld_R[12], __pld_R[13])
-if __pld_R[11] then __pld_pc = 300 else __pld_pc = 301 end
-elseif __pld_pc == 300 then
-__pld_pc = 305
-elseif __pld_pc == 301 then
-__pld_R[11] = cGetFileName
-__pld_R[12] = "sysgim"
-__pld_R[13] = "sys_5_a"
-__pld_R[11] = __pld_R[11](__pld_R[12], __pld_R[13])
-__pld_pc = 305
-elseif __pld_pc == 305 then
-fileName = __pld_R[11]
-__pld_R[11] = keyPlaySE
-__pld_R[12] = seName
-__pld_R[12] = __pld_R[12]["circle"]
-__pld_R[11](__pld_R[12])
-__pld_R[11] = comDlgYesNo
-__pld_R[12] = fileName
-__pld_R[13] = 100
-__pld_R[14] = 80
-__pld_R[11] = __pld_R[11](__pld_R[12], __pld_R[13], __pld_R[14])
-if not (__pld_R[11] == true) then __pld_pc = 316 else __pld_pc = 317 end
-elseif __pld_pc == 316 then
-__pld_pc = 352
-elseif __pld_pc == 317 then
-__pld_R[11] = comSectionUID2ScriptFileName
-__pld_R[12] = gameSave
-__pld_R[12] = __pld_R[12]["storyRoute"]
-__pld_R[12] = __pld_R[12][__pld_R[4]]
-__pld_R[12] = __pld_R[12]["sceneId"]
-__pld_R[11] = __pld_R[11](__pld_R[12])
-__pld_R[12] = gameSave
-__pld_R[12] = __pld_R[12]["storyRoute"]
-__pld_R[12] = __pld_R[12][__pld_R[4]]
-__pld_R[12] = __pld_R[12]["sceneId"]
-doScriptScene = __pld_R[12]
-__pld_R[12] = (-1)
-selectItemNo = __pld_R[12]
-__pld_R[12] = gameSave
-__pld_R[13] = gameSave
-__pld_R[13] = __pld_R[13]["storyRoute"]
-__pld_R[13] = __pld_R[13][__pld_R[4]]
-__pld_R[13] = __pld_R[13]["ayanoTime"]
-__pld_R[12]["ayanoTime"] = __pld_R[13]
-__pld_R[12] = cClearNumStoryRoute
-__pld_R[13] = __pld_R[4]
-__pld_R[12](__pld_R[13])
-__pld_R[12] = cInitGame
-__pld_R[12]()
-__pld_R[12] = fontClear
-__pld_R[12]()
-__pld_R[12] = run
-__pld_R[13] = cGetFileName
-__pld_R[14] = "script"
-__pld_R[15] = __pld_R[11]
-do 
-local __pld_rs = __pld_pack(__pld_R[13](__pld_R[14], __pld_R[15]))
-for __pld_i = 1, __pld_rs.n do __pld_set(__pld_R, __pld_B, 13 + __pld_i - 1, __pld_rs[__pld_i]) end
-__pld_top = 13 + __pld_rs.n end
-do local __pld_t, __pld_n = {}, __pld_top - 13 for __pld_i = 1, __pld_n do __pld_t[__pld_i] = __pld_get(__pld_R, __pld_B, 13 + __pld_i - 1) end __pld_R[12](__pld_unpack(__pld_t, 1, __pld_n)) end
-__pld_R[12] = quit
-__pld_R[12]()
-__pld_pc = 355
-elseif __pld_pc == 352 then
-__pld_R[7] = 1
-__pld_R[8] = 1
-__pld_R[9] = 1
-__pld_pc = 355
-elseif __pld_pc == 355 then
-__pld_R[11] = layerLoad
-__pld_R[12] = layerName
-__pld_R[12] = __pld_R[12]["card3"]
-__pld_R[13] = ""
-__pld_R[11](__pld_R[12], __pld_R[13])
-__pld_R[11] = switchScreen
-__pld_R[12] = 0
-__pld_R[13] = ""
-__pld_R[14] = 5
-__pld_R[11](__pld_R[12], __pld_R[13], __pld_R[14])
-__pld_R[11] = wait
-__pld_R[12] = 5
-__pld_R[11](__pld_R[12])
-__pld_pc = 368
-elseif __pld_pc == 368 then
-__pld_R[11] = pressButton
-__pld_R[12] = "CROSS"
-__pld_R[11] = __pld_R[11](__pld_R[12])
-if __pld_R[11] == true then __pld_pc = 372 else __pld_pc = 373 end
-elseif __pld_pc == 372 then
-__pld_pc = 374
-elseif __pld_pc == 373 then
-__pld_R[8] = 0
-__pld_pc = 374
-elseif __pld_pc == 374 then
-__pld_R[11] = pressButton
-__pld_R[12] = "CROSS"
-__pld_R[11] = __pld_R[11](__pld_R[12])
-if not (__pld_R[11] == true) then __pld_pc = 378 else __pld_pc = 379 end
-elseif __pld_pc == 378 then
-__pld_pc = 390
-elseif __pld_pc == 379 then
-if not (__pld_R[8] == 0) then __pld_pc = 380 else __pld_pc = 381 end
-elseif __pld_pc == 380 then
-__pld_pc = 390
-elseif __pld_pc == 381 then
-__pld_R[11] = systemConfig
-__pld_R[11] = __pld_R[11]["unsetConfigButton"]
-__pld_R[11]()
-__pld_R[11] = keyPlaySE
-__pld_R[12] = seName
-__pld_R[12] = __pld_R[12]["cross"]
-__pld_R[11](__pld_R[12])
-selectItemNo = __pld_R[4]
-__pld_pc = 439
-elseif __pld_pc == 390 then
-__pld_R[11] = pressButton
-__pld_R[12] = "TRIANGLE"
-__pld_R[11] = __pld_R[11](__pld_R[12])
-if __pld_R[11] == true then __pld_pc = 394 else __pld_pc = 395 end
-elseif __pld_pc == 394 then
-__pld_pc = 396
-elseif __pld_pc == 395 then
-__pld_R[9] = 0
-__pld_pc = 396
-elseif __pld_pc == 396 then
-__pld_R[11] = pressButton
-__pld_R[12] = "TRIANGLE"
-__pld_R[11] = __pld_R[11](__pld_R[12])
-if not (__pld_R[11] == true) then __pld_pc = 400 else __pld_pc = 401 end
-elseif __pld_pc == 400 then
-__pld_pc = 435
-elseif __pld_pc == 401 then
-if not (__pld_R[9] == 0) then __pld_pc = 402 else __pld_pc = 403 end
-elseif __pld_pc == 402 then
-__pld_pc = 435
-elseif __pld_pc == 403 then
-__pld_R[11] = systemConfig
-__pld_R[11] = __pld_R[11]["unsetConfigButton"]
-__pld_R[11]()
-__pld_R[11] = keyPlaySE
-__pld_R[12] = seName
-__pld_R[12] = __pld_R[12]["cross"]
-__pld_R[11](__pld_R[12])
-__pld_R[11] = layerCopy
-__pld_R[12] = 199
-__pld_R[13] = layerName
-__pld_R[13] = __pld_R[13]["effectBlack"]
-__pld_R[11](__pld_R[12], __pld_R[13])
-__pld_R[11] = fontClear
-__pld_R[11]()
-__pld_R[11] = switchScreen
-__pld_R[12] = 0
-__pld_R[13] = ""
-__pld_R[14] = 60
-__pld_R[11](__pld_R[12], __pld_R[13], __pld_R[14])
-selectItemNo = __pld_R[4]
-__pld_R[11] = comSectionFragmentItemInit
-__pld_R[11]()
-__pld_R[11] = cInitGame
-__pld_R[11]()
-__pld_R[11] = run
-__pld_R[12] = cGetFileName
-__pld_R[13] = "script"
-__pld_R[14] = "snr_fragment_main"
-do 
-local __pld_rs = __pld_pack(__pld_R[12](__pld_R[13], __pld_R[14]))
-for __pld_i = 1, __pld_rs.n do __pld_set(__pld_R, __pld_B, 12 + __pld_i - 1, __pld_rs[__pld_i]) end
-__pld_top = 12 + __pld_rs.n end
-do local __pld_t, __pld_n = {}, __pld_top - 12 for __pld_i = 1, __pld_n do __pld_t[__pld_i] = __pld_get(__pld_R, __pld_B, 12 + __pld_i - 1) end __pld_R[11](__pld_unpack(__pld_t, 1, __pld_n)) end
-__pld_R[11] = quit
-__pld_R[11]()
-__pld_pc = 435
-elseif __pld_pc == 435 then
-__pld_R[11] = wait
-__pld_R[12] = 2
-__pld_R[11](__pld_R[12])
-__pld_pc = 86
-elseif __pld_pc == 439 then
-__pld_R[10] = layerCopy
-__pld_R[11] = 199
-__pld_R[12] = layerName
-__pld_R[12] = __pld_R[12]["effectBlack"]
-__pld_R[10](__pld_R[11], __pld_R[12])
-__pld_R[10] = fontClear
-__pld_R[10]()
-__pld_R[10] = switchScreen
-__pld_R[11] = 0
-__pld_R[12] = ""
-__pld_R[13] = 60
-__pld_R[10](__pld_R[11], __pld_R[12], __pld_R[13])
-__pld_R[10] = cInitGame
-__pld_R[10]()
-__pld_R[10] = run
-__pld_R[11] = cGetFileName
-__pld_R[12] = "script"
-__pld_R[13] = "snr_mainmenu"
-do 
-local __pld_rs = __pld_pack(__pld_R[11](__pld_R[12], __pld_R[13]))
-for __pld_i = 1, __pld_rs.n do __pld_set(__pld_R, __pld_B, 11 + __pld_i - 1, __pld_rs[__pld_i]) end
-__pld_top = 11 + __pld_rs.n end
-do local __pld_t, __pld_n = {}, __pld_top - 11 for __pld_i = 1, __pld_n do __pld_t[__pld_i] = __pld_get(__pld_R, __pld_B, 11 + __pld_i - 1) end __pld_R[10](__pld_unpack(__pld_t, 1, __pld_n)) end
-__pld_R[10] = quit
-__pld_R[10]()
-return
-else __pld_error("pyluadec fallback: invalid pc") end
-end
+layerCopy(199, layerName.effectBlack)
+fontClear()
+switchScreen(0, "", 60)
+cInitGame()
+run(cGetFileName("script", "snr_mainmenu"))
+quit()
 end

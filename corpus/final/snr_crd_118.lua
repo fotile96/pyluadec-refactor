@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_118_e1s_10_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_20_b"))
     wait(1)
     layerLoad(layerName.pose1, cGetFileName("bg", "bg_26_b_0"))
@@ -6,7 +6,7 @@ local l0_0 = function()
     wait(60)
     vms(635, "NONVOICE", "セクション４に存在した分岐、『選択：ユカリ先生』のカードを選択してください。")
 end
-local l0_1 = function()
+local card_118_e1s_10_resolve = function()
     wait(120)
     cLoadPlaySE(cGetFileName("se", "se_30"), false)
     oCard.show(cGetFileName("card", "crd_" .. gameSave.fragmentDoCardId .. "_a"), "『春』のあらすじを作成しました。")
@@ -24,7 +24,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_118_e1s_10_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -45,7 +45,7 @@ main = function()
     keyPlaySE(seName.getCard)
     comEffectYellowIn(60)
     wait(60)
-    l0_1()
+    card_118_e1s_10_resolve()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

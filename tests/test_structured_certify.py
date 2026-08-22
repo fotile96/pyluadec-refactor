@@ -411,7 +411,8 @@ def test_the_compile_refusal_vocabulary_is_reachable(tmp_path, monkeypatch):
                       tmp_path).subprotos[0]
 
     # 1. chunk root: the printed chunk does not compile.
-    monkeypatch.setattr(ss, "print_chunk_or_raise", lambda p: "this is not lua")
+    monkeypatch.setattr(ss, "print_chunk_or_raise",
+                      lambda p, naming=None: "this is not lua")
     c = certify_proto(root, is_chunk_root=True)
     assert c.level == "L1"
     assert c.reason == "compile: candidate chunk did not recompile", c.reason
@@ -800,7 +801,8 @@ def test_a_patched_printer_writes_a_wrong_verdict_into_the_shared_cache(
     from pyluadec.structure import structured as S
 
     p = _proto(_POISON_SRC, tmp_path)
-    monkeypatch.setattr(S, "print_chunk_or_raise", lambda proto: "return 0\n")
+    monkeypatch.setattr(S, "print_chunk_or_raise",
+                     lambda proto, naming=None: "return 0\n")
 
     poisoned = S.certify_proto(p, is_chunk_root=True)
     assert poisoned.level == "L1"

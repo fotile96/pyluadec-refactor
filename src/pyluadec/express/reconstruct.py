@@ -183,6 +183,14 @@ class Reconstructor:
         self.depth = depth
         self.upval_names = upval_names
         self.env: dict[int, Expr] = {}
+        # pcs whose dispatch is subsumed by an already-emitted statement
+        # (the multi-target Assign of a recognized multiple assignment --
+        # see `_setupval`). `_dispatch` returns immediately for these.
+        self._subsumed_pcs: set[int] = set()
+        # the accumulating descending SETUPVAL run of a multiple
+        # assignment: (pc, reg, upval_idx, expr) per store, flushed by the
+        # run's tail (see `_setupval`).
+        self._multi_assign_run: list[tuple[int, int, int, Expr]] = []
         # rc.temps is trusted directly: express.names.classify_registers now
         # applies its own staging-window check before its `controls` override
         # (FORPREP/FORLOOP/TFORLOOP force a register temp by register number)
@@ -701,6 +709,22 @@ class Reconstructor:
         no longer claims this is proven necessary by any test in the suite.
         """
         self._out = []
+        # M8 task 3: a chain whose FINAL alternative is empty (`x = <cond>
+        # and v or x`, the clamp idiom) re-reads the TARGET's incoming value
+        # with no instruction -- a read the pc-linear classifier cannot see,
+        # which is why it graded the incoming definition temp for its one
+        # EXPLICIT reader (this chain's own gate). If that definition's
+        # staged expression is still pending here, materialize it BEFORE the
+        # chain is built: the gate's operand read would otherwise pop it,
+        # and the empty tail's `_read_reg` would then hit the consumed
+        # guard and refuse. Materializing emits the local the original
+        # source actually had (the register IS a named local there, read on
+        # two paths), and both the gate and the empty tail then read the
+        # same name. Only the pending case is repaired: a value consumed by
+        # an UNRELATED earlier statement keeps refusing (conservative, and
+        # no corpus row needs it).
+        if self._chain_has_empty_tail(cv.node) and cv.target in self._pending:
+            self.force_materialize(cv.target, self.env[cv.target])
         expr = self._value_expr(cv.node, cv.target)
         # M7 task 8 (mechanism C, second half): a `CondValue` chain's result
         # is a REGION-computed merge -- the expression already subsumes every
@@ -723,6 +747,16 @@ class Reconstructor:
             self.write_reg(cv.target, expr, pc=self._last_target_def(cv))
         self._finalize_pending()
         return tuple(self._out)
+
+    @staticmethod
+    def _chain_has_empty_tail(node: VNode) -> bool:
+        """True iff the value chain's final alternative contributes no
+        instructions (`lcode.c:discharge2reg` emits nothing when the operand
+        already sits in the destination) -- an `or x`/`and x` right operand
+        reading the TARGET's incoming value."""
+        while isinstance(node, VAlt):
+            node = node.rest
+        return isinstance(node, VTail) and not node.instrs
 
     def _cond_value_stages(self, cv: CondValue) -> bool:
         """`_staging_span_ok(convergence, first-read-of-target-after-it)` for
@@ -1504,6 +1538,8 @@ class Reconstructor:
     def _dispatch(self, li: LirInstr) -> None:
         ri = li.ri
         op, a = ri.op, ri.a
+        if ri.pc in self._subsumed_pcs:
+            return
         # The definition site every write_reg below keys its temp/local
         # decision on. Set here rather than passed down through a dozen
         # helpers; the two writes that belong to an EARLIER instruction (a
@@ -1623,7 +1659,111 @@ class Reconstructor:
                 self._dispatch(li)
                 return
 
+        if self._table_ctx_stack and self._write_would_materialize(li):
+            # M8 (the `snr_novel:main` position bug): a pending constructor
+            # ctx stays open until the table's first read, so a statement
+            # the original placed AFTER the constructor -- here, the `local
+            # p = 0` / `local q = 1` scalars -- dispatched through to
+            # _dispatch_simple and emitted FIRST; the deferred `local t =
+            # {...}` then landed behind them, and the recompile assigned
+            # the table the wrong register (declaration order IS register
+            # order), diverging every instruction downstream. The
+            # discriminator is the same one write_reg keys on: item staging
+            # writes temp-classified registers (silent, ctx stays open --
+            # the dynamic-key constructor fold depends on that), while a
+            # write to a register this definition does NOT grade temp (or
+            # to an already-declared local) emits a real statement -- and a
+            # real statement cannot belong to the constructor's interior,
+            # so the constructor is over: close every open ctx in
+            # position, then dispatch. Hint-0 store-first tables are NOT
+            # this path's business -- the NEWTABLE-side lookahead already
+            # materializes them at the NEWTABLE itself, and closing a
+            # store-first ctx HERE would go through write_reg's staging
+            # arm, whose pop-once `{}` the first store's own table read
+            # consumes (`tests/test_express_keystage.py`'s both-pending
+            # fixture refuses exactly so). Limitation, recorded: a
+            # statement-writing instruction whose registers are all
+            # temp-classified (a bare CALL expression statement) still
+            # slips past and misorders the same way -- no corpus row
+            # carries that shape.
+            while self._table_ctx_stack:
+                self._close_table_ctx()
+            self._dispatch(li)
+            return
+
         self._dispatch_simple(li)
+
+    def _setupval(self, li: LirInstr) -> None:
+        """A single SETUPVAL store, or the tail of a DESCENDING run of
+        SETUPVALs over a contiguous register range (the `adjust_assign`
+        stores of a multiple assignment like `u0, u1 = 1, 0`) emitted as ONE
+        multi-target Assign.
+
+        Why the multi-target form is byte-load-bearing and not cosmetic:
+        `lparser.c` resolves assignment targets left-to-right before the
+        RHS evaluates (`singlevar` -> `indexupvalue` numbers upvalues by
+        first lexical reference) and stores right-to-left as the recursion
+        unwinds, so the original bytecode's upvalue indices follow the
+        TARGET order while its SETUPVALs come out descending. Emitting one
+        statement per store makes the recompiled source's first upvalue
+        reference the LAST target, and the recompiled closure numbers the
+        upvalues the other way round -- swapping every SETUPVAL operand
+        (the `snr_common:main_77_0` residual, M4's diagnosis, closed here).
+        The recognition is over the INSTRUCTION stream (the
+        `_next_touch_is_store_to` precedent), never over emitted text.
+
+        Mechanics: each store reads ITS OWN register under ITS OWN dispatch
+        (the effects-consistency gate attributes reads per dispatched pc,
+        and a cross-pc statement must not read pc4's register in pc3's
+        frame); the accumulated exprs flush as one Assign at the run's
+        tail. Conditions deliberately narrow (corpus census: exactly one
+        instance, length 2): consecutive pcs, all SETUPVAL, `a` descending
+        by exactly 1, every value register pending-or-declared. Mixed
+        SETUPVAL/SETGLOBAL runs and multret producers are NOT claimed.
+        """
+        ri = li.ri
+        nxt = self.fn.instrs.get(ri.pc + 1)
+        continues = (nxt is not None and nxt.ri.op is Op.SETUPVAL
+                     and nxt.ri.a == ri.a - 1)
+        if continues:
+            # mid-run: read own register now (own pc's frame), stash, and
+            # let the tail emit the combined statement.
+            if not (ri.a in self._pending or ri.a in self.declared):
+                self._emit_assign((UpvalTarget(ri.b),),
+                                  (self._read_reg(ri.a),))
+                return
+            self._multi_assign_run.append(
+                (ri.pc, ri.a, ri.b, self._read_reg(ri.a)))
+            self._subsumed_pcs.add(ri.pc)
+            return
+        prev = self.fn.instrs.get(ri.pc - 1)
+        heads_run = (prev is not None and prev.ri.op is Op.SETUPVAL
+                     and prev.ri.a == ri.a + 1)
+        if heads_run and (ri.a in self._pending or ri.a in self.declared):
+            self._multi_assign_run.append(
+                (ri.pc, ri.a, ri.b, self._read_reg(ri.a)))
+            # source order: targets ascending with their registers; the
+            # stash is descending-register (bytecode) order, so reverse.
+            pairs = sorted(self._multi_assign_run, key=lambda x: x[1])
+            self._emit_assign(tuple(UpvalTarget(p[2]) for p in pairs),
+                              tuple(p[3] for p in pairs))
+            self._subsumed_pcs.update(p[0] for p in self._multi_assign_run[:-1])
+            self._multi_assign_run.clear()
+            return
+        self._emit_assign((UpvalTarget(ri.b),), (self._read_reg(ri.a),))
+
+    def _write_would_materialize(self, li: LirInstr) -> bool:
+        """True iff dispatching `li` would append a real statement via
+        `write_reg`'s materialize arm (or a reassignment of a declared
+        local) -- the write_reg predicate, asked of an instruction before
+        it runs."""
+        for reg in li.effects.writes:
+            if reg in self.declared:
+                return True
+            if not (reg in self.rc.temps
+                    or (li.ri.pc, reg) in self.rc.temp_defs):
+                return True
+        return False
 
     def _dispatch_simple(self, li: LirInstr) -> None:
         ri = li.ri
@@ -1664,7 +1804,7 @@ class Reconstructor:
         elif op is Op.GETUPVAL:
             self.write_reg(a, UpvalExpr(b))
         elif op is Op.SETUPVAL:
-            self._emit_assign((UpvalTarget(b),), (self._read_reg(a),))
+            self._setupval(li)
         elif op is Op.SELF:
             self._self(a, b, c)
         elif op in _ARITH:

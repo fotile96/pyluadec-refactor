@@ -189,10 +189,50 @@ def test_dashboard_refusal_key_collapses_every_varying_part():
     assert k("mismatch: const[7]") == "mismatch: const[i]"
     # Every distinct reason in the committed ledger must reduce to a key with
     # no bare decimal left in it, which is the property the histogram needs.
+    # (The committed ledger went all-`L3` at the proposal-channel wiring,
+    # 2026-08-18, so `reasons` is empty today; the mapping assertions above
+    # are the live part of this test, and a new refusal reason re-enters the
+    # loop below the moment one ships. MIN-3 (controller review): the loop
+    # below is CONSTRUCTIVELY A NO-OP today -- it carries zero iterations
+    # until that happens; it is kept because it is the check that fires
+    # then, not because it checks anything now.)
     import json
     reasons = {json.loads(l)["refusal_reason"]
                for l in (root / "corpus" / "ledger.jsonl").read_text().splitlines()
                if l.strip() and json.loads(l)["refusal_reason"]}
-    assert reasons
     for r in reasons:
         assert not any(t.rstrip(":,;").isdigit() for t in k(r).split(" ")), r
+
+
+def test_fallback_and_non_l3_occurrences_currently_coincide():
+    """A CAMPAIGN BYPRODUCT, pinned as current fact -- NOT an invariant
+    (M8 controller review, 2026-08-16).
+
+    At the M7 merge there were ~150 `L3` rows shipping fallback text
+    (hybrid geometry); the M8 campaign's flips took the hybrid frontiers
+    down until the two partitions coincide exactly: every occurrence
+    shipping fallback belongs to a non-`L3` row and vice versa (measured:
+    L3 occurrences 1929 == shipped-structured 1929; non-`L3` 15 == fallback
+    15). Nothing structural preserves this -- a future hybrid change can
+    reopen the gap silently. If this test goes red, the coincidence broke:
+    that is not a defect by itself, but every reader of the ledger that
+    assumed `fallback ⟺ non-L3` must be re-audited in the same commit,
+    and this test's docstring updated to the new geometry."""
+    import json
+    from pathlib import Path as _P
+    entries = [json.loads(l) for l
+               in (_P(__file__).resolve().parents[1] / "corpus" / "ledger.jsonl")
+               .read_text().splitlines() if l.strip()]
+    l3 = non_l3 = fb = st = 0
+    for e in entries:
+        for o in e["occurrences"]:
+            if e["level"] == "L3":
+                l3 += 1
+            else:
+                non_l3 += 1
+            if o["shipped"] == "fallback":
+                fb += 1
+            else:
+                st += 1
+    assert l3 == st, (l3, st)
+    assert non_l3 == fb, (non_l3, fb)

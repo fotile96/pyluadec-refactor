@@ -1493,13 +1493,37 @@ def _finish_if(fn, cfg, idoms, pc2blk, pc: int, cond, cond_base: frozenset[int],
             # JMPs sit between this else-skip and the loop's closing JMP, so
             # this else-skip is in tail position too and `hi` is correct.
             cand = hi
-        if cand < jt:
+        # M8 task 2: a trailing JMP whose PREDECESSOR is the head of a test
+        # statement cannot start life as this if's else-skip when it jumps
+        # exactly to `jt` (i.e. would skip an EMPTY else). A `_COMPARE` head
+        # is always emitted with its own partner JMP inside its statement, so
+        # the only ways `EQ..; JMP(->jt)` can end a then-arm are: (i) a
+        # complete `if <compare> then end` statement closing the arm, whose
+        # pending false-jump `dischargejpc` patches to the next statement's
+        # pc -- which is `jt` exactly when the outer if has no else (the
+        # `snr_common:main_71` shape), or (ii) `luaK_jump`'s jpc
+        # concatenation folding such an inner statement's jump onto a REAL
+        # else-skip of an `else end` (empty else) -- and there the else-less
+        # reading is semantically identical, because an empty else block is.
+        # Both readings jump to the same pc; only the else-less one can claim
+        # the compare head, so treat the pair as the arm's last statement and
+        # leave it for the recursive range to structure. (Stealing the JMP
+        # here strands the compare at its range's end -- the refusal this
+        # fixes, first at `pc 341: if targets out of range` inside the
+        # `while true` attempt.)
+        prev_head = fn.instrs.get(then_last - 1)
+        inner_empty_if_head = (
+            prev_head is not None
+            and prev_head.ri.op in _COMPARE
+            and prev_head.successors[:1] == (then_last,))
+        if cand < jt or (inner_empty_if_head and cand == jt):
             # Backward-targeting trailing JMP: not an else-skip at all (luac's
             # else-skips always jump forward over the else block), but an
             # instruction belonging to the then-body -- typically the closing
             # JMP of a `while`/`while true` loop, or a generic-for's own back
-            # edge, that ends it. Leave it inside the then-body; there is no
-            # else block.
+            # edge, that ends it; or (M8 task 2) the false-jump of a complete
+            # empty-then `if` ending the arm. Leave it inside the then-body;
+            # there is no else block.
             #
             # M3 raised "else-join out of range" here unconditionally, which
             # was the single largest refusal cluster on the corpus (139/169

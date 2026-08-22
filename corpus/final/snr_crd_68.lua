@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_68_s3s_100_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(3244, "NONVOICE", "【直哉】「ここの部分の展開は、またまた『いつもの生活』だね」")
@@ -9,7 +9,7 @@ local l0_0 = function()
     vms(3248, "NONVOICE", "【直哉】「まずはセクション１の『いつもの生活』」")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_68_s3s_100_resolve = function()
     oCard.cardAnswerTrue()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
@@ -17,7 +17,7 @@ local l0_1 = function()
     vms(3250, "NONVOICE", "【直哉】「そして……これがセクション２の『また、いつもの生活』」")
     comPoseDelete()
 end
-local l0_2 = function()
+local card_68_s3s_100_step3 = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(3251, "NONVOICE", "【彩野】「そうなんだ……いろんな物語で出てきているんだね、この場面」")
@@ -60,7 +60,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_68_s3s_100_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -87,7 +87,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_68_s3s_100_resolve()
     local l1_3 = 0
     local l1_4 = 0
     local l1_5 = -1
@@ -114,7 +114,7 @@ main = function()
         end
         wait(30)
     end
-    l0_2()
+    card_68_s3s_100_step3()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

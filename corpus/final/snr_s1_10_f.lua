@@ -1,7 +1,7 @@
-local l0_0 = function(l1_0, l1_1)
+local scene_s1f_10 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cPlayBGMWrap(cGetFileName("bgm", "bgm_12_x"))
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_11_a_0"))
     switchScreen(0, "", 50)
@@ -50,10 +50,10 @@ local l0_0 = function(l1_0, l1_1)
     vms(6666, "NONVOICE", "この住宅街に居を構えている人たちは、いわゆる『中流』よりも少し上の方だと言うことが伺えた。")
     l1_2()
 end
-local l0_1 = function(l1_0, l1_1)
+local scene_s1f_20 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     wait(1)
     comEffectFadeOut(60)
     wait(60)
@@ -421,10 +421,10 @@ local l0_1 = function(l1_0, l1_1)
     vms(6894, "NAO07860", "【直哉】「あ、う、うん……」")
     l1_2()
 end
-local l0_2 = function(l1_0, l1_1)
+local scene_s1f_30 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     wait(1)
     comEffectFadeOut(120)
     wait(120)
@@ -592,10 +592,10 @@ local l0_2 = function(l1_0, l1_1)
     vms(7010, "NONVOICE", "もちろん、と僕は頷いた。")
     l1_2()
 end
-local l0_3 = function(l1_0, l1_1)
+local scene_s1f_40 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     wait(1)
     comEffectFadeOut(120)
     wait(120)
@@ -691,10 +691,10 @@ local l0_3 = function(l1_0, l1_1)
     vms(7084, "NONVOICE", "その笑顔は――やはり、彩野さんに似ていた。")
     l1_2()
 end
-local l0_4 = function(l1_0, l1_1)
+local scene_s1f_50 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     wait(1)
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_20_a_0"))
@@ -942,10 +942,10 @@ local l0_4 = function(l1_0, l1_1)
     vms(7252, "NONVOICE", "そう言って笑う彩野さんの瞳は、不思議なほど澄んでいた。")
     l1_2()
 end
-local l0_5 = function(l1_0, l1_1)
+local scene_s1f_60 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cPlayBGMWrap(cGetFileName("bgm", "bgm_12_x"))
     wait(1)
     comEffectFadeOut(60)
@@ -1021,7 +1021,7 @@ local l0_5 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     wait(120)
 end
-local l0_6 = function()
+local scene_s1f_complete = function()
     local l1_0 = function()
     end
     cPlayOneshotMusic(cGetFileName("mus", "mus_8"))
@@ -1068,29 +1068,29 @@ main = function()
         if doScriptScene == "end" then
             l1_0 = 1
         elseif doScriptScene == "s1f-10" then
-            l0_0(doScriptScene, "彩野さんの家へ")
+            scene_s1f_10(doScriptScene, "彩野さんの家へ")
             doScriptScene = "s1f-20"
         elseif doScriptScene == "s1f-20" then
-            l0_1(doScriptScene, "お母さん")
+            scene_s1f_20(doScriptScene, "お母さん")
             doScriptScene = "s1f-30"
         elseif doScriptScene == "s1f-30" then
-            l0_2(doScriptScene, "彩野さんの部屋へ")
+            scene_s1f_30(doScriptScene, "彩野さんの部屋へ")
             doScriptScene = "s1f-40"
         elseif doScriptScene == "s1f-40" then
-            l0_3(doScriptScene, "電話の相手")
+            scene_s1f_40(doScriptScene, "電話の相手")
             doScriptScene = "s1f-50"
         elseif doScriptScene == "s1f-50" then
-            l0_4(doScriptScene, "待ち合わせの場所へ")
+            scene_s1f_50(doScriptScene, "待ち合わせの場所へ")
             doScriptScene = "s1f-60"
         elseif doScriptScene == "s1f-60" then
-            l0_5(doScriptScene, "『あらすじ』")
+            scene_s1f_60(doScriptScene, "『あらすじ』")
             doScriptScene = "s1f-complete"
         elseif doScriptScene == "s1f-complete" then
             if memoryFlag == true then
                 run(cGetFileName("script", "snr_memory"))
                 quit()
             end
-            l0_6(doScriptScene, "セクション１読了")
+            scene_s1f_complete(doScriptScene, "セクション１読了")
             gameSave.myCard[30].hold = 1
             gameSave.myCard[133].hold = 1
             doScriptScene = "end"

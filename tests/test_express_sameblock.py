@@ -139,3 +139,88 @@ def test_c2_cond_value_staging_is_load_bearing():
     finally:
         rec.Reconstructor._cond_value_stages = real
     assert _levels_of(_REPRO).get("main_0") == "L3"
+
+
+def test_or_chain_operand_reused_as_callee_in_loop_certifies():
+    """A NEIGHBOUR of the `snr_mainmenu:main_7` M-family shape: an `or`
+    chain's operand register, reused after the chain as a CALLEE, stays
+    staged and the whole thing certifies. Measured on this fixture (M8
+    controller review, 2026-08-16): `_merge_veto_skipped_kill` is called
+    10 times and vetoes 0 of them -- the veto does NOT fire here, and
+    never did (its code is untouched through M8). The corpus row differs
+    precisely in what its inter-site region adds: `CALL`-style
+    `R[5..top)` OPEN reads with no intervening write of the slot, which
+    the veto cannot exclude and is right to treat conservatively -- see
+    the runbook census entry pinned at `28b4713`. This test guards the
+    common shape; `test_mainmenu_main_7_refuses_on_the_m_family_today`
+    (same file) holds the corpus row's current refusal so the M-family
+    fix has a red-to-green witness."""
+    src = b"""local menu = {library = 3, novel = 5}
+local function f(i, sel)
+    local t = {}
+    for i = 1, 4, 1 do
+        if i < menu.library or i == menu.novel then
+            t[i] = 1
+        end
+        sel(menu[i] + i, 50, 30)
+    end
+    return t
+end
+f({1, 2, 3, 4}, print)
+"""
+    out = _certify(src) if False else None
+    from pyluadec.ingest import load_bytes
+    from pyluadec.oracle import compile_source
+    from pyluadec.structure.structured import certify_proto
+    p = load_bytes(compile_source(src, strip=True))
+    res = certify_proto(p, is_chunk_root=True)
+    assert res.level == "L3", res.reason
+
+
+def test_mainmenu_main_7_refuses_on_the_m_family_today(corpus_dir):
+    """The M-family corpus row, held as a CURRENT REFUSAL (the red half of
+    the witness; the fix must flip this to L3 -- update it in the same
+    commit). Mechanism per the runbook census (`28b4713`): the
+    skipped-kill veto's OPEN-READ clause fires on the inter-site `R[5..top)`
+    reads, the condition operand materializes, declared-wins materializes
+    the arm's callee through the same slot, and the call-through-a-local
+    costs one MOVE per gate site (+4 total, maxstack 12 -> 13)."""
+    from pyluadec.ingest import load_file
+    from pyluadec.pipeline import walk_proto_paths
+    from pyluadec.structure.structured import certify_proto
+    protos: dict = {}
+    walk_proto_paths("main", load_file(corpus_dir / "snr_mainmenu.lua"), protos)
+    out = certify_proto(protos["main_7"], is_chunk_root=False)
+    assert out.level == "L1"
+    assert out.reason == "mismatch: maxstacksize"
+
+
+def test_story_main_main_3_refuses_on_the_busy_slot_family_today(corpus_dir):
+    """The busy-slot corpus row (red half of the witness; the B2 ruling's
+    fix must flip this -- update in the same commit). Root per the census:
+    the original keeps r11 as a pure stack temp (every callee loaded fresh
+    and consumed by its CALL); our earlier clamp's materialization (the
+    task-3 empty-tail fix) declares the slot, and every later callee
+    prints as `lD_R = g; lD_R(...)` (+MOVE per site, +8 total)."""
+    from pyluadec.ingest import load_file
+    from pyluadec.pipeline import walk_proto_paths
+    from pyluadec.structure.structured import certify_proto
+    protos: dict = {}
+    walk_proto_paths("main", load_file(corpus_dir / "snr_story_main.lua"), protos)
+    out = certify_proto(protos["main_3"], is_chunk_root=False)
+    assert out.level == "L1"
+    assert out.reason == "mismatch: code"
+
+
+def test_graphic_main_4_refuses_on_the_busy_slot_family_today(corpus_dir):
+    """Same family, graphic's row (for-init half): the original spells
+    `u10` fresh for the loop init where our text reads the slot's merged
+    local (+13 instructions)."""
+    from pyluadec.ingest import load_file
+    from pyluadec.pipeline import walk_proto_paths
+    from pyluadec.structure.structured import certify_proto
+    protos: dict = {}
+    walk_proto_paths("main", load_file(corpus_dir / "snr_graphic.lua"), protos)
+    out = certify_proto(protos["main_4"], is_chunk_root=False)
+    assert out.level == "L1"
+    assert out.reason == "mismatch: code"

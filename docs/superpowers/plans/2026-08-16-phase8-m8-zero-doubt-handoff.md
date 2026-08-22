@@ -2,6 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **READ FIRST — controller handoff**: `docs/reports/m8-handoff.md`
+> (2026-08-16). It carries M7's final-review findings routed into M8, the
+> verified tree state, **three corrections to this plan** (Task 6's
+> petition unit, the ≤1.5× gate's collapse to two named rows, the primary
+> metric), and one committed number to fix. Tasks 1–3 are already done;
+> the handoff records what reproduced.
+
 **Goal:** Close the 22 non-`L3` rows so every text-carrying occurrence ships
 structured (fallback → 0 expected), gate the shipped corpus's recompiled
 footprint at ≤ 1.5× per file, and deliver the readability layer (semantic
@@ -238,6 +245,18 @@ is a finding to record, not to overwrite silently.
 
 ### Task 6: Rung petitions (conditional — possibly empty)
 
+**AMENDED 2026-08-16 (controller handoff §3.1, from the tasks 4/5 census):
+the petition unit is the RUNG BUNDLE a row needs, not one rung.** The
+census measured that no single rung alone certifies any remaining row
+(`snr_music:main` needs pool-order AND a maxstacksize clause; the K1 rows
+need the hint rung and live in the `code` family). The original "one
+petition, one decision" wording would get an `L3.2` approved that
+certifies zero rows — a comparator weakened for no return. One petition
+per row or row-family, listing every rung that row needs; approved or
+refused as a bundle. Rows whose bundle is refused go to the §1 stop-loss
+(which the 2026-08-16 partner ruling orders AFTER the bundle attempt, not
+before it — spec §3's ordering ruling).
+
 **Files:**
 - Modify (per approved petition only): `src/pyluadec/verify/normalize.py`
   (`NORMALIZATIONS`, `LADDER_VERSION`), `tests/` for the rung's own gates
@@ -416,6 +435,16 @@ is a finding to record, not to overwrite silently.
   the session's execution-mode ruling.
 
 ## Verification battery (every repair task: Tasks 2–6)
+
+**AMENDED 2026-08-16 (controller handoff §3.3) — the primary metric is
+rows and shipped-fallback occurrences, not refusal-family census.** Task
+2 closed the `structure:` family (a genuine capability milestone:
+`build_sir` now accepts every corpus proto) with ZERO row movement and
+zero product movement — "two refusal families extinct" reads like
+progress toward the goal, but the goal is fallback → 0. Task reports and
+commit messages lead with: non-`L3` row count, text-carrying fallback
+occurrence count, footprint non-1.0 set. Family census is secondary
+diagnostics.
 
 1. Synthetic repro test green (and was red first).
 2. Adjacent test batch green.

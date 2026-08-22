@@ -66,25 +66,89 @@ def test_m7_exit_residual_strictly_below_40():
     assert len(non_l3) < 40, f"measured {len(non_l3)}"
 
 
-def test_m7_exit_readability_floor():
-    """spec §4 acceptance, encoding half: the fraction of non-ASCII string
-    literals in corpus/final/ presented as raw UTF-8 (task 5 approved;
-    measured at close: 17727/17727 = 1.0000)."""
-    total = raw = 0
-    for f in sorted(FINAL.glob("*.lua")):
-        for m in re.finditer(rb'"(?:[^"\\]|\\.)*"', f.read_bytes()):
-            lit = m.group()
-            try:
-                s = lit[1:-1].decode("utf-8")
-            except UnicodeDecodeError:
+def _literal_content(inner: bytes) -> bytes:
+    """A literal's bracketed content with Lua escape sequences resolved --
+    `\\ddd` to its byte, `\\\\`/`\\"` to the escaped char -- so
+    "non-ASCII content" can be judged on WHAT the literal encodes rather
+    than on how it is spelled. That distinction is the whole fix: an
+    escaped literal's source text (`"\\230\\151..."`) is pure ASCII, so the
+    old test's `s.isascii()` skip excluded exactly the literals the gate
+    exists to count (IMP-1)."""
+    out = bytearray()
+    i = 0
+    while i < len(inner):
+        b = inner[i]
+        if b == 0x5C and i + 1 < len(inner):
+            n = inner[i + 1]
+            if 0x30 <= n <= 0x39:                     # \ddd (up to 3 digits)
+                j = i + 1
+                digits = bytearray()
+                while j < len(inner) and len(digits) < 3 \
+                        and 0x30 <= inner[j] <= 0x39:
+                    digits.append(inner[j])
+                    j += 1
+                out.append(int(digits.decode()))
+                i = j
                 continue
-            if s.isascii():
-                continue
+            out.append(n)                             # \\ \" ' etc.
+            i += 2
+            continue
+        out.append(b)
+        i += 1
+    return bytes(out)
+
+
+def _raw_utf8_fraction(files: dict[str, bytes]) -> tuple[int, int]:
+    """`(raw, total)` over a {name: bytes} view of corpus/final/: `total`
+    counts literals whose DECODED CONTENT carries non-ASCII bytes (however
+    spelled), `raw` those whose spelling carries them as raw UTF-8."""
+    raw = total = 0
+    for data in files.values():
+        for m in re.finditer(rb'"(?:[^"\\]|\\.)*"', data):
+            inner = m.group()[1:-1]
+            if not any(b > 127 for b in _literal_content(inner)):
+                continue                              # ASCII content either way
             total += 1
-            if any(b > 127 for b in lit):
+            if any(b > 127 for b in inner):
                 raw += 1
+    return raw, total
+
+
+def test_m7_exit_readability_floor():
+    """spec §4 acceptance, encoding half: the fraction of non-ASCII-CONTENT
+    string literals in corpus/final/ presented as raw UTF-8. IMP-1 (M7
+    final review): the first version skipped any literal whose bracketed
+    TEXT decoded to pure ASCII -- which is exactly what a decimal-escaped
+    literal is -- so the ratio was identically 1.0 for every possible
+    input and the mutation below left it green. The denominator now counts
+    by decoded content (escaped spellings count against the numerator).
+    Measured at the fix (2026-08-16): 17727/17727 raw = 1.0000, and the
+    five mandatory `\\010` newline escapes stay OUT of both counts (ASCII
+    content), as they should."""
+    raw, total = _raw_utf8_fraction(
+        {p.name: p.read_bytes() for p in sorted(FINAL.glob("*.lua"))})
     assert total > 0
     assert raw / total >= 0.99
+
+
+def test_m7_exit_readability_floor_can_actually_fail():
+    """The IMP-1 mutation, committed as the proof that the gate above can
+    fail: rewrite EVERY raw non-ASCII literal in a copied view of the
+    corpus to its decimal-escaped spelling -- the exact regression the
+    gate exists to catch -- and the fraction must collapse. The old test
+    stayed green under this exact mutation (arithmetically forced); a gate
+    that cannot fail is this repo's stated worst case."""
+    files = {p.name: p.read_bytes() for p in sorted(FINAL.glob("*.lua"))}
+    mutated = {}
+    for name, data in files.items():
+        def escape(m: "re.Match[bytes]") -> bytes:
+            return b'"' + b"".join(
+                f"\\{b}".encode() if b > 127 else bytes([b])
+                for b in m.group()[1:-1]) + b'"'
+        mutated[name] = re.sub(rb'"(?:[^"\\]|\\.)*"', escape, data)
+    assert any(mutated[n] != files[n] for n in files)  # the rewrite bit
+    raw, total = _raw_utf8_fraction(mutated)
+    assert raw / total < 0.99
 
 
 def test_m7_exit_box_model_game_text_is_a_pinned_residual():
@@ -104,8 +168,14 @@ def test_m7_exit_box_model_game_text_is_a_pinned_residual():
         for m in pat.finditer(f.read_bytes()):
             if any(b > 127 for b in m.group()):
                 counts[f.name] += 1
-    assert dict(counts) == {
-        "snr_common.lua": 49, "snr_story_main.lua": 2, "snr_novel.lua": 1}
+    # M8 tasks-4/5 campaign (2026-08-16): snr_novel's single line left the
+    # census -- the file is fully structured now (the deferred-constructor
+    # position fix). The multi-assign fix then certified main_77 + its
+    # subtree (27 occurrences), taking snr_common from 49 lines to 3.
+    # The proposal-channel wiring (2026-08-18) took this to ZERO -- no
+    # state machine ships anywhere. The pin keeps the empty shape so
+    # growth is red ("cannot grow silently" is the test's whole point).
+    assert dict(counts) == {}
 
 
 def test_m7_exit_factor_e_never_decides_a_selection():

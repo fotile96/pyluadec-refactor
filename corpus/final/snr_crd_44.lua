@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_44_s2s_220_sel_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(2714, "NONVOICE", "【彩野】「直哉くん、この場所を決める場面なんだけど……」")
@@ -11,7 +11,7 @@ local l0_0 = function()
     vms(2719, "NONVOICE", "【直哉】「あ、うん。カードがつくってあるよ」")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_44_s2s_220_sel_resolve = function()
     oCard.cardAnswerTrue()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
@@ -31,7 +31,7 @@ local l0_1 = function()
     vms(2730, "NONVOICE", "【直哉】「セクション１の最後の場面。『誰かが呼んでた』だったかな。つくってあるよ」")
     comPoseDelete()
 end
-local l0_2 = function()
+local card_44_s2s_220_sel_step3 = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     comPoseLoad("po2_aya_f_2_e")
@@ -78,7 +78,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_44_s2s_220_sel_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -105,7 +105,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_44_s2s_220_sel_resolve()
     local l1_3 = 0
     local l1_4 = 0
     local l1_5 = -1
@@ -132,7 +132,7 @@ main = function()
         end
         wait(30)
     end
-    l0_2()
+    card_44_s2s_220_sel_step3()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

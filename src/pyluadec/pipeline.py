@@ -44,6 +44,14 @@ class DecompileResult:
     # Did the chunk ship as a hybrid at all? False for a fully-structured
     # chunk and for a whole-file fallback.
     hybrid: bool = False
+    # The propose-and-certify channel (M8): proto_path -> did THIS proto's
+    # text in `source` come from a hand-written proposal? The closure of
+    # the substituted sites, same shape as `shipped_fallback`. Protos in
+    # here are certified (the chunk passed a whole-tree compare); the
+    # distinction is provenance, not verdict.
+    shipped_proposal: dict[str, bool] = field(default_factory=dict)
+    # The proposal round's ladder rung; -1 when no proposal tier ran.
+    proposal_rung: int = -1
 
 
 def walk_proto_paths(path: str, p: Proto, out: dict[str, Proto]) -> None:
@@ -81,11 +89,14 @@ def walk_proto_paths(path: str, p: Proto, out: dict[str, Proto]) -> None:
         walk_proto_paths(f"{path}_{i}", s, out)
 
 
-def decompile_chunk(root: Proto) -> DecompileResult:
+def decompile_chunk(root: Proto,
+                    proposals: dict[str, bytes] | None = None,
+                    naming: dict[tuple[str, int], str] | None = None,
+                    ) -> DecompileResult:
     from pyluadec.structure.structured import emit_certified_chunk
     protos: dict[str, Proto] = {}
     walk_proto_paths("main", root, protos)
-    out = emit_certified_chunk(root)
+    out = emit_certified_chunk(root, proposals, naming)
     levels = {path: out.certs[path].level for path in protos}
     rungs = {path: out.certs[path].rung for path in protos}
     reasons = {path: out.certs[path].reason for path in protos}
@@ -111,6 +122,7 @@ def decompile_chunk(root: Proto) -> DecompileResult:
     # only the confession moved to the shipped-artifact fact it was always
     # describing.
     shipped_fallback = {path: path in out.fallback_paths for path in protos}
+    shipped_proposal = {path: path in out.proposal_paths for path in protos}
     confessions = {
         path: ([{"pc_lo": 1, "pc_hi": len(p.code),
                  "reason": "fallback-state-machine", "pass": "structure.fallback"}]
@@ -119,8 +131,27 @@ def decompile_chunk(root: Proto) -> DecompileResult:
     }
     return DecompileResult(source=out.source, confessions_by_proto=confessions,
                            levels=levels, rungs=rungs, reasons=reasons,
-                           shipped_fallback=shipped_fallback, hybrid=out.hybrid)
+                           shipped_fallback=shipped_fallback, hybrid=out.hybrid,
+                           shipped_proposal=shipped_proposal,
+                           proposal_rung=out.proposal_rung)
 
 
 def decompile_file(path) -> DecompileResult:
-    return decompile_chunk(_ingest_file(Path(path)))
+    """`decompile_chunk` over an ingested file, WITH the file's proposals
+    (controller review IMP-2, 2026-08-18: the two standing probes --
+    `probe_behaviour`, `probe_global_state` -- read our text through this
+    entry point, and the first channel wiring left it proposal-less, so
+    on the four channel files those gates verified text that no longer
+    ships. Wiring it here restores `decompile_file == shipped artifact`;
+    the probes then observe the certified text, which is byte-identical
+    to the original bytecode -- measured, not assumed, at the wiring:
+    both probes' verdicts were unchanged by the switch on this corpus).
+
+    The file's naming table rides along for the same reason (M8 naming
+    alignment): `decompile_file` is the entry point the shipped surface
+    is defined by, so it names what ships."""
+    path = Path(path)
+    from pyluadec.structure import proposals
+    from pyluadec.structure import naming as naming_table
+    return decompile_chunk(_ingest_file(path), proposals.for_file(path.name),
+                           naming_table.for_file(path.name))

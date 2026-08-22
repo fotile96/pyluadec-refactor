@@ -144,11 +144,12 @@ def payload_of(result: str) -> str:
 #                                                  `["library"]` lines this
 #                                                  file's pin was about)
 # Measured 2026-08-14: 228/229 identical, 1 pinned divergence.
-EXPECTED_ERROR_NAME_DIVERGENCE = {
-    "snr_novel.lua": (
-        "ERR|attempt to index global 'systemSave' (a nil value)|\n",
-        "ERR|attempt to index field 'v' (a nil value)|\n"),
-}
+# M8 tasks-4/5 campaign (2026-08-16): the pin CONVERGED and was deleted --
+# the deferred-constructor position fix ships snr_novel's literal with its
+# real hash hint, so the table's node array (and with it the divergent
+# error-name path) matches the original. adjudicate_pins reports converged
+# pins as `gone` and fails the gate; deletion is forced, not chosen.
+EXPECTED_ERROR_NAME_DIVERGENCE = {}
 
 
 def main() -> int:

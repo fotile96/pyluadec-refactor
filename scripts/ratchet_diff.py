@@ -188,6 +188,11 @@ class DiffReport:
     level_downgrades: int = 0
     rung_downgrades: int = 0
     shipping_gained: int = 0
+    # The two upgrade flavors the three-value vocabulary makes distinct
+    # (MIN-2, controller review 2026-08-18): uncertified state machine
+    # replaced by reconstructor text vs by proposal text.
+    gained_to_structured: int = 0
+    gained_to_proposal: int = 0
     shipping_lost: int = 0
     #: Occurrences where one side carries no `shipped` field, so the pair was
     #: not compared at all. Kept apart from the two counters above so a zero
@@ -485,14 +490,48 @@ def diff_ledgers(old: list[dict], new: list[dict]) -> DiffReport:
         # is covered by behaviour instead, in
         # `tests/test_ratchet_diff.py::test_a_baseline_without_shipped_needs_no_guard`.
         os_, ns = oo.get("shipped"), no.get("shipped")
+        # The propose-and-certify channel (M8) adds "proposal" as a third
+        # `shipped` value. The relative order it installs -- with its
+        # reasons, so nobody has to re-derive them:
+        #   structured > proposal > fallback.
+        # `proposal -> fallback` is a plain downgrade (certified text lost);
+        # `fallback -> proposal` is a plain upgrade (uncertified state
+        # machine replaced by certified text). The deliberate asymmetry is
+        # `structured -> proposal`: a DOWNGRADE, because the reconstructor
+        # used to print this proto itself and now needs a hand-written
+        # proposal to pass -- exactly the "proposal as regression mask"
+        # move P4 exists to prevent, so the ratchet must see it. The
+        # reverse (`proposal -> structured`) is an upgrade: the
+        # reconstructor learned the shape. (A shape can also move
+        # `structured -> structured` while its cert flips -- the level
+        # checks above already cover that direction.)
         if os_ == "structured" and ns == "fallback":
             rep.shipping_lost += 1
             rep.regressions.append(Regression(
                 kind="shipping-regression", shash=nshash,
                 cluster=cluster_of(new_by.get(nshash, {}).get("refusal_reason")),
                 detail=f"{key[0]}:{key[1]} shipped structured, now fallback"))
-        elif os_ == "fallback" and ns == "structured":
+        elif os_ == "structured" and ns == "proposal":
+            rep.regressions.append(Regression(
+                kind="proposal-mask", shash=nshash,
+                cluster=cluster_of(new_by.get(nshash, {}).get("refusal_reason")),
+                detail=f"{key[0]}:{key[1]} shipped structured, now proposal "
+                "-- the reconstructor used to print this proto itself"))
+        elif os_ == "proposal" and ns == "fallback":
+            rep.shipping_lost += 1
+            rep.regressions.append(Regression(
+                kind="shipping-regression", shash=nshash,
+                cluster=cluster_of(new_by.get(nshash, {}).get("refusal_reason")),
+                detail=f"{key[0]}:{key[1]} shipped proposal, now fallback"))
+        elif os_ == "fallback" and ns in ("structured", "proposal"):
             rep.shipping_gained += 1
+            if ns == "structured":
+                rep.gained_to_structured += 1
+            else:
+                rep.gained_to_proposal += 1
+        elif os_ == "proposal" and ns == "structured":
+            rep.shipping_gained += 1
+            rep.gained_to_structured += 1
         elif os_ is None or ns is None:
             # Counted, not compared. Against a baseline predating M5 task 6
             # the shipping line otherwise reads `0 fallback -> structured, 0
@@ -580,9 +619,10 @@ def format_report(rep: DiffReport, old_path: str, new_path: str) -> str:
     out.append(f"  levels:   {rep.level_upgrades} upgraded, "
                f"{rep.level_downgrades} downgraded")
     out.append(f"  rungs:    {rep.rung_downgrades} downgraded")
-    shipping = (f"  shipping: {rep.shipping_gained} occurrence(s) "
-                f"fallback -> structured, {rep.shipping_lost} structured -> "
-                f"fallback")
+    shipping = (f"  shipping: {rep.gained_to_structured} occurrence(s) "
+                f"fallback -> structured + {rep.gained_to_proposal} "
+                f"fallback -> proposal, {rep.shipping_lost} structured/proposal "
+                f"-> fallback")
     if rep.shipping_incomparable:
         shipping += (f" ({rep.shipping_incomparable} NOT COMPARED -- one side "
                      f"has no `shipped` field; see the schema note below)")

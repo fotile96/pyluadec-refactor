@@ -1,7 +1,7 @@
-local l0_0 = function(l1_0, l1_1)
+local scene_e2f_10 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cPlayBGMWrap(cGetFileName("bgm", "bgm_12_x"))
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_8_c_0"))
     layerLoad(layerName.pose1, "")
@@ -52,10 +52,10 @@ local l0_0 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_1 = function(l1_0, l1_1)
+local scene_e2f_10_2 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cPlayOneshotMusic(cGetFileName("mus", "mus_5"))
     wait(1)
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_24_a_0"))
@@ -76,10 +76,10 @@ local l0_1 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_2 = function(l1_0, l1_1)
+local scene_e2f_30 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     vms(4799, "NONVOICE", "○放課後の教室。夕方の日差しが強く教室に差している。")
     wait(1)
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_1_b_0"))
@@ -116,10 +116,10 @@ local l0_2 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_3 = function(l1_0, l1_1)
+local scene_e2f_40 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cPlayOneshotMusic(cGetFileName("mus", "mus_26"))
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_8_a_0"))
     comEffectWhiteIn(180)
@@ -128,10 +128,10 @@ local l0_3 = function(l1_0, l1_1)
     cPlayBGMWrap(cGetFileName("bgm", "bgm_13_x"))
     l1_2()
 end
-local l0_4 = function(l1_0, l1_1)
+local scene_e2f_50 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     vms(4815, "YUI03740", "【ユウイチ】「やあ、またドーナツをもらいに来たのかい？」")
     vms(4816, "SAK00040", "【サクラ】「ち、ちがいますっ」")
     vms(4817, "YUI03750", "【ユウイチ】「うそうそ、ごめんね」")
@@ -187,10 +187,10 @@ local l0_4 = function(l1_0, l1_1)
     vms(4850, "NAO03980", "【≦＊＊＊≧】「違うよ。僕はユウイチじゃない」")
     l1_2()
 end
-local l0_5 = function(l1_0, l1_1)
+local scene_e2f_55 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cPlayOneshotMusic(cGetFileName("mus", "mus_26"))
     comEffectWhiteOut(120)
     wait(120)
@@ -216,10 +216,10 @@ local l0_5 = function(l1_0, l1_1)
     vms(4861, "NONVOICE", "ここは彼の居るべき場所ではないのだから。")
     l1_2()
 end
-local l0_6 = function(l1_0, l1_1)
+local scene_e2f_60 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cPlayOneshotMusic(cGetFileName("mus", "mus_26"))
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_24_a_0"))
     comEffectWhiteIn(180)
@@ -259,10 +259,10 @@ local l0_6 = function(l1_0, l1_1)
     wait(120)
     l1_2()
 end
-local l0_7 = function(l1_0, l1_1)
+local scene_e2f_70 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cPlayOneshotMusic(cGetFileName("mus", "mus_26"))
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_8_a_0"))
     comEffectWhiteIn(180)
@@ -270,10 +270,10 @@ local l0_7 = function(l1_0, l1_1)
     vms(4887, "NONVOICE", "○その後_n_r○アヤノさんは病院を退院した。_n_r○そして、私の隣には――")
     l1_2()
 end
-local l0_8 = function(l1_0, l1_1)
+local scene_e2f_80 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     wait(1)
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_24_a_0"))
     switchScreen(0, "", 60)
@@ -293,10 +293,10 @@ local l0_8 = function(l1_0, l1_1)
     vms(4897, "NONVOICE", "隣には、彼が居る。")
     l1_2()
 end
-local l0_9 = function(l1_0, l1_1)
+local scene_e2f_90 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     vms(4898, "NAO04040", "【直哉】「いやいや。こういうありきたりなモノの組み合わせから、新しい何かが生まれるかもしれないんだよ、本当」")
     comPoseLoad("po2_sak_s_1_d")
     vms(4899, "SAK00210", "【雪乃】「はいはい、わかりましたわかりました」")
@@ -324,10 +324,10 @@ local l0_9 = function(l1_0, l1_1)
     wait(120)
     l1_2()
 end
-local l0_10 = function(l1_0, l1_1)
+local scene_e2f_100 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     comPoseLoad("po2_sak_s_1_c")
     vms(4916, "NONVOICE", "【雪乃】「（……ふう）」")
     vms(4917, "NONVOICE", "そっと、ため息をついた。")
@@ -356,10 +356,10 @@ local l0_10 = function(l1_0, l1_1)
     vms(4931, "NONVOICE", "……でも。彼にはそんな姿を見られたくなかった。")
     l1_2()
 end
-local l0_11 = function(l1_0, l1_1)
+local scene_e2f_110 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     wait(1)
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_24_a_0"))
     switchScreen(0, "", 120)
@@ -371,10 +371,10 @@ local l0_11 = function(l1_0, l1_1)
     vms(4936, "NONVOICE", "……うん、きっと大丈夫。")
     l1_2()
 end
-local l0_12 = function(l1_0, l1_1)
+local scene_e2f_120 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cLoadPlaySE(cGetFileName("se", "se_110"), false)
     vms(4937, "NAO04110", "【直哉】「雪乃さん！ 妹さんもお見舞いに来たって！ それと彼女、結構気に入ったみたいだよ。このドーナツまん」")
     vms(4938, "CHI00060", "【千秋】「美味しい……です」")
@@ -385,10 +385,10 @@ local l0_12 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_13 = function(l1_0, l1_1)
+local scene_e2f_130 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     wait(1)
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_8_a_0"))
     switchScreen(0, "", 60)
@@ -417,16 +417,16 @@ local l0_13 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_14 = function(l1_0, l1_1)
+local scene_e2f_140 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     l1_2()
 end
-local l0_15 = function(l1_0, l1_1)
+local scene_e2f_160 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cPlayOneshotMusic(cGetFileName("mus", "mus_26"))
     layerLoad(layerName.event, cGetFileName("event", "eve_58_b"))
     comEffectWhiteIn(180)
@@ -498,10 +498,10 @@ local l0_15 = function(l1_0, l1_1)
     wait(400)
     l1_2()
 end
-local l0_16 = function(l1_0, l1_1)
+local scene_e2f_170 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     wait(1)
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_24_a_0"))
     comEffectWhiteIn(180)
@@ -531,10 +531,10 @@ local l0_16 = function(l1_0, l1_1)
     vms(5008, "SAK00530", "【雪乃】「……もう！ そういうの、いいですからっ」")
     l1_2()
 end
-local l0_17 = function(l1_0, l1_1)
+local scene_e2f_180 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     vms(5009, "NONVOICE", "私は何気なく、ボールについたチョコのカケラを指にとって舐めた。")
     vms(5010, "SAK00540", "【雪乃】「本当に、少しぐらい分けてくれたって――あれ？」")
     cPlayOneshotMusic(cGetFileName("mus", "mus_13"))
@@ -593,10 +593,10 @@ local l0_17 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_18 = function(l1_0, l1_1)
+local scene_e2f_190 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cPlayOneshotMusic(cGetFileName("mus", "mus_26"))
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_7_a_0"))
     comEffectWhiteIn(180)
@@ -661,10 +661,10 @@ local l0_18 = function(l1_0, l1_1)
     wait(120)
     l1_2()
 end
-local l0_19 = function(l1_0, l1_1)
+local scene_e2f_200 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cPlayOneshotMusic(cGetFileName("mus", "mus_26"))
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_9_b_0"))
     comEffectWhiteIn(180)
@@ -693,10 +693,10 @@ local l0_19 = function(l1_0, l1_1)
     vms(5092, "SAK00860", "【雪乃】「『セカンドノベル』に、したいと思います」")
     l1_2()
 end
-local l0_20 = function(l1_0, l1_1)
+local scene_e2f_210 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cPlayOneshotMusic(cGetFileName("mus", "mus_26"))
     comEffectYellowIn(180)
     wait(180)
@@ -788,10 +788,10 @@ local l0_20 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_21 = function(l1_0, l1_1)
+local scene_e2f_215 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     wait(1)
     layerLoad(layerName.event, cGetFileName("event", "eve_6_b"))
     switchScreen(0, "", 120)
@@ -843,10 +843,10 @@ local l0_21 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_22 = function(l1_0, l1_1)
+local scene_e2f_220 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     wait(1)
     layerLoad(layerName.event, cGetFileName("event", "eve_12_b"))
     switchScreen(0, "", 120)
@@ -942,10 +942,10 @@ local l0_22 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_23 = function(l1_0, l1_1)
+local scene_e2f_230 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cPlayLoopSeWrap(cGetFileName("loop", "loop_1"))
     wait(1)
     layerLoad(layerName.event, cGetFileName("event", "eve_75_x"))
@@ -1099,10 +1099,10 @@ local l0_23 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_24 = function(l1_0, l1_1)
+local scene_e2f_240 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cPlayBGMWrap(cGetFileName("bgm", "bgm_19_x"))
     wait(1)
     layerLoad(layerName.event, cGetFileName("event", "eve_75_x"))
@@ -1248,10 +1248,10 @@ local l0_24 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_25 = function(l1_0, l1_1)
+local scene_e2f_270 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     wait(1)
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_1_b_0"))
     switchScreen(0, "", 120)
@@ -1302,10 +1302,10 @@ local l0_25 = function(l1_0, l1_1)
     vms(5388, "NONVOICE", "『それをまとめてみるのも面白いんじゃないかな』、と。")
     l1_2()
 end
-local l0_26 = function(l1_0, l1_1)
+local scene_e2f_280 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     wait(1)
     comEffectFadeOut(60)
     wait(1)
@@ -1358,10 +1358,10 @@ local l0_26 = function(l1_0, l1_1)
     vms(5400, "NONVOICE", "私がかつて聞いたウワサと部分部分は同じなのに、明らかに異なる展開をしているお話もあった。")
     l1_2()
 end
-local l0_27 = function(l1_0, l1_1)
+local scene_e2f_290 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     wait(1)
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_4_b_0"))
     switchScreen(0, "", 60)
@@ -1382,10 +1382,10 @@ local l0_27 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_28 = function(l1_0, l1_1)
+local scene_e2f_300 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     wait(1)
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_1_b_0"))
     switchScreen(0, "", 120)
@@ -1466,7 +1466,7 @@ local l0_28 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_29 = function(l1_0, l1_1)
+local scene_e2f_310 = function(scene_id, scene_title)
     local l1_2 = function()
     end
     cLoadPlaySE(cGetFileName("se", "se_30"), false)
@@ -1474,10 +1474,10 @@ local l0_29 = function(l1_0, l1_1)
     wait(120)
     l1_2()
 end
-local l0_30 = function(l1_0, l1_1)
+local scene_e2f_320 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     wait(1)
     comEffectFadeOut(60)
     wait(1)
@@ -1731,10 +1731,10 @@ local l0_30 = function(l1_0, l1_1)
     vms(5647, "NONVOICE", "セカンドノベルを。")
     l1_2()
 end
-local l0_31 = function(l1_0, l1_1)
+local scene_e2f_330 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cLoadPlaySE(cGetFileName("se", "se_42"), false)
     wait(1)
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_7_b_0"))
@@ -1744,10 +1744,10 @@ local l0_31 = function(l1_0, l1_1)
     vms(5649, "NONVOICE", "彼女の視線の方角に目を向ける。昇降口から生徒たちがぞろぞろと出てきていた。")
     l1_2()
 end
-local l0_32 = function(l1_0, l1_1)
+local scene_e2f_340 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     vms(5650, "NONVOICE", "【≦＊＊＊≧】「新しい物語の始まり、か」")
     vms(5651, "NONVOICE", "僕は鞄を開くと、そこからノートを取り出した。彼女にそれを手渡す。")
     vms(5652, "NONVOICE", "【≦女子生徒≧】「これ」")
@@ -1780,10 +1780,10 @@ local l0_32 = function(l1_0, l1_1)
     wait(2000)
     l1_2()
 end
-local l0_33 = function(l1_0, l1_1)
+local scene_e2f_350 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     if not (memoryFlag == true) then
         advPart(false)
         systemConfig.unsetConfigButton()
@@ -1824,7 +1824,7 @@ local l0_33 = function(l1_0, l1_1)
     wait(1000)
     l1_2()
 end
-local l0_34 = function(l1_0, l1_1)
+local scene_e2f_complete = function(scene_id, scene_title)
     local l1_2 = function()
     end
     vms(5670, "NONVOICE", "      セカンドノベル：おわり_r      （Ｃ）日本一ソフトウェア／テクスト。")
@@ -1840,111 +1840,111 @@ main = function()
         if doScriptScene == "end" then
             l1_0 = 1
         elseif doScriptScene == "e2f-10" then
-            l0_0(doScriptScene, "誰も来ない")
-            l0_1(doScriptScene, "雪乃")
+            scene_e2f_10(doScriptScene, "誰も来ない")
+            scene_e2f_10_2(doScriptScene, "雪乃")
             doScriptScene = "e2f-30"
         elseif doScriptScene == "e2f-30" then
-            l0_2(doScriptScene, "誰も来ない")
+            scene_e2f_30(doScriptScene, "誰も来ない")
             doScriptScene = "e2f-40"
         elseif doScriptScene == "e2f-40" then
-            l0_3(doScriptScene, "暗転")
+            scene_e2f_40(doScriptScene, "暗転")
             doScriptScene = "e2f-50"
         elseif doScriptScene == "e2f-50" then
-            l0_4(doScriptScene, "誰も来ない")
+            scene_e2f_50(doScriptScene, "誰も来ない")
             doScriptScene = "e2f-55"
         elseif doScriptScene == "e2f-55" then
-            l0_5(doScriptScene, "どこからか聞こえてくる声")
+            scene_e2f_55(doScriptScene, "どこからか聞こえてくる声")
             doScriptScene = "e2f-60"
         elseif doScriptScene == "e2f-60" then
-            l0_6(doScriptScene, "朝")
+            scene_e2f_60(doScriptScene, "朝")
             doScriptScene = "e2f-70"
         elseif doScriptScene == "e2f-70" then
-            l0_7(doScriptScene, "その後")
+            scene_e2f_70(doScriptScene, "その後")
             doScriptScene = "e2f-80"
         elseif doScriptScene == "e2f-80" then
-            l0_8(doScriptScene, "退院")
+            scene_e2f_80(doScriptScene, "退院")
             doScriptScene = "e2f-90"
         elseif doScriptScene == "e2f-90" then
-            l0_9(doScriptScene, "ありきたりなモノの組み合わせ")
+            scene_e2f_90(doScriptScene, "ありきたりなモノの組み合わせ")
             doScriptScene = "e2f-100"
         elseif doScriptScene == "e2f-100" then
-            l0_10(doScriptScene, "ため息")
+            scene_e2f_100(doScriptScene, "ため息")
             doScriptScene = "e2f-110"
         elseif doScriptScene == "e2f-110" then
-            l0_11(doScriptScene, "次に逢うときは")
+            scene_e2f_110(doScriptScene, "次に逢うときは")
             doScriptScene = "e2f-120"
         elseif doScriptScene == "e2f-120" then
-            l0_12(doScriptScene, "唐突に")
+            scene_e2f_120(doScriptScene, "唐突に")
             doScriptScene = "e2f-130"
         elseif doScriptScene == "e2f-130" then
-            l0_13(doScriptScene, "その後")
+            scene_e2f_130(doScriptScene, "その後")
             doScriptScene = "e2f-140"
         elseif doScriptScene == "e2f-140" then
-            l0_14(doScriptScene, "暗転")
+            scene_e2f_140(doScriptScene, "暗転")
             doScriptScene = "e2f-160"
         elseif doScriptScene == "e2f-160" then
-            l0_15(doScriptScene, "中庭の雪")
+            scene_e2f_160(doScriptScene, "中庭の雪")
             doScriptScene = "e2f-170"
         elseif doScriptScene == "e2f-170" then
-            l0_16(doScriptScene, "気がつくと病室")
+            scene_e2f_170(doScriptScene, "気がつくと病室")
             doScriptScene = "e2f-180"
         elseif doScriptScene == "e2f-180" then
-            l0_17(doScriptScene, "チョコの味")
+            scene_e2f_180(doScriptScene, "チョコの味")
             doScriptScene = "e2f-190"
         elseif doScriptScene == "e2f-190" then
-            l0_18(doScriptScene, "始業式")
+            scene_e2f_190(doScriptScene, "始業式")
             doScriptScene = "e2f-200"
         elseif doScriptScene == "e2f-200" then
-            l0_19(doScriptScene, "２ｎｄＮｏｖｅｌ")
+            scene_e2f_200(doScriptScene, "２ｎｄＮｏｖｅｌ")
             doScriptScene = "e2f-210"
         elseif doScriptScene == "e2f-210" then
-            l0_20(doScriptScene, "プール")
+            scene_e2f_210(doScriptScene, "プール")
             doScriptScene = "e2f-215"
         elseif doScriptScene == "e2f-215" then
-            l0_21(doScriptScene, "ファストフード")
+            scene_e2f_215(doScriptScene, "ファストフード")
             doScriptScene = "e2f-220"
         elseif doScriptScene == "e2f-220" then
-            l0_22(doScriptScene, "プラネタリウム")
+            scene_e2f_220(doScriptScene, "プラネタリウム")
             doScriptScene = "e2f-230"
         elseif doScriptScene == "e2f-230" then
-            l0_23(doScriptScene, "お祭り")
+            scene_e2f_230(doScriptScene, "お祭り")
             doScriptScene = "e2f-240"
         elseif doScriptScene == "e2f-240" then
-            l0_24(doScriptScene, "花火")
+            scene_e2f_240(doScriptScene, "花火")
             doScriptScene = "e2f-270"
         elseif doScriptScene == "e2f-270" then
-            l0_25(doScriptScene, "放課後の教室")
+            scene_e2f_270(doScriptScene, "放課後の教室")
             doScriptScene = "e2f-280"
         elseif doScriptScene == "e2f-280" then
-            l0_26(doScriptScene, "私たちの物語")
+            scene_e2f_280(doScriptScene, "私たちの物語")
             doScriptScene = "e2f-290"
         elseif doScriptScene == "e2f-290" then
-            l0_27(doScriptScene, "伝言ゲーム")
+            scene_e2f_290(doScriptScene, "伝言ゲーム")
             doScriptScene = "e2f-300"
         elseif doScriptScene == "e2f-300" then
-            l0_28(doScriptScene, "文化祭")
+            scene_e2f_300(doScriptScene, "文化祭")
             doScriptScene = "e2f-310"
         elseif doScriptScene == "e2f-310" then
-            l0_29(doScriptScene, "セクションコンプリート")
+            scene_e2f_310(doScriptScene, "セクションコンプリート")
             doScriptScene = "e2f-320"
         elseif doScriptScene == "e2f-320" then
-            l0_30(doScriptScene, "屋上")
+            scene_e2f_320(doScriptScene, "屋上")
             doScriptScene = "e2f-330"
         elseif doScriptScene == "e2f-330" then
-            l0_31(doScriptScene, "授業の終わり")
+            scene_e2f_330(doScriptScene, "授業の終わり")
             doScriptScene = "e2f-340"
         elseif doScriptScene == "e2f-340" then
-            l0_32(doScriptScene, "受け継がれる物語")
+            scene_e2f_340(doScriptScene, "受け継がれる物語")
             doScriptScene = "e2f-350"
         elseif doScriptScene == "e2f-350" then
-            l0_33(doScriptScene, "セカンドノベル")
+            scene_e2f_350(doScriptScene, "セカンドノベル")
             doScriptScene = "e2f-complete"
         elseif doScriptScene == "e2f-complete" then
             if memoryFlag == true then
                 run(cGetFileName("script", "snr_memory"))
                 quit()
             end
-            l0_34(doScriptScene, "セクションＥＸ２読了")
+            scene_e2f_complete(doScriptScene, "セクションＥＸ２読了")
             gameSave.myCard[162].hold = 1
             gameSave.myCard[144].hold = 1
             gameSave.myCard[114].hold = 1

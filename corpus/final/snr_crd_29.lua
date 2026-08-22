@@ -1,11 +1,11 @@
-local l0_0 = function()
+local card_29_s1s_320_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(2226, "NONVOICE", "【彩野】「物語で私を助けてくれた、相手……」")
     vms(2227, "NONVOICE", "【彩野】「珍しく真面目そうな表情をしてた」")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_29_s1s_320_resolve = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(2228, "NONVOICE", "【彩野】「ユウイチが、助けてくれた」")
@@ -151,7 +151,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_29_s1s_320_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -178,7 +178,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_29_s1s_320_resolve()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

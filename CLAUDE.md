@@ -242,7 +242,7 @@ M3–M4 的旧说法「产物为结构化 ⟺ root proto 认证 `L3`」是**替�
   两处 backstop 见 `docs/runbooks/structured-pipeline.md`「The L2 gate」。
 - 行为探针（L1.75 门，M4 task 10 新增）：`PYLUADEC_CORPUS_DIR=... uv run python scripts/probe_behaviour.py`。在打桩环境下**实际调用**每个 chunk 定义的全局函数并比对事件轨迹，干净跑法打印 `behaviour: 228/229 identical, 1 pinned divergence(s), 398196 recorded events on the original side`（2026-08-14 实跑：M6 task 12 让 `snr_mainmenu.lua` 收敛，钉子从 2 降到 1；事件总数 398196 未变）。**钉子的键是两条完整轨迹的 SHA-256**（M6 收口评审改，此前是「首个差异行」，实测那个键能吸收一处无关缺陷——见 `scripts/probe_behaviour.py::pin_evidence`）。设计、能力边界、钉子的指令级证据见 `docs/runbooks/m3-backlog.md`「Behaviour probe (L1.75)」节。
 - 效应表-发射器一致性门：`uv run pytest tests/test_effects_emitter_consistency.py`（语料臂 + 合成操作数网格，无需语料也能跑合成臂）。
-- **Ratchet 门（M5 task 8）**：`PYLUADEC_CORPUS_DIR=... ./scripts/ratchet_job.sh [BASELINE_REF]`——全套件 + 台账 baseline diff + 24 例全量差分执行扫描，**实测 57.9–58.2s（2026-08-14，M6 收口树，1077 个用例，两次）**，`BASELINE_REF` 默认 **`3669950`**（M6 合并点 = 最近一个已合并的里程碑；M6 task 13 曾把默认值从 `eb08890` 前移到 `0957364`，M7 task 1 再前移到 `3669950`，注释「最近一个已合并的里程碑」逐里程碑兑现）。只要 diff：`git show <ref>:corpus/ledger.jsonl > /tmp/base.jsonl && uv run python scripts/ratchet_diff.py /tmp/base.jsonl corpus/ledger.jsonl`。
+- **Ratchet 门（M5 task 8）**：`PYLUADEC_CORPUS_DIR=... ./scripts/ratchet_job.sh [BASELINE_REF]`——全套件 + 台账 baseline diff + 24 例全量差分执行扫描，**实测 57.9–58.2s（2026-08-14，M6 收口树，1077 个用例，两次）**，`BASELINE_REF` 默认 **`72cb6a8`**（M7 里程碑 tip；M8 task 1 前移——当时 master 合并尚未发生，M7 分支是 master 直系后代故台账内容与任何后续合并 tip 相同；M6 task 13 曾把默认值从 `eb08890` 前移到 `0957364`，M7 task 1 再前移到 `3669950`，注释「最近里程碑 tip」逐里程碑兑现）。只要 diff：`git show <ref>:corpus/ledger.jsonl > /tmp/base.jsonl && uv run python scripts/ratchet_diff.py /tmp/base.jsonl corpus/ledger.jsonl`。
 - 单文件结构化反编译 / 看认证结果 / 调试某个未认证函数：命令见 `structured-pipeline.md`「Common operations」节。
 
 ### 台账新字段
@@ -443,13 +443,13 @@ Phase 7 已完成（12 个任务 + task 12 收口轮吸收 controller review 的
 
 ### 交付物（均为整体生成、入库、再生成字节不变、套件把门）
 
-- **`corpus/final/`**（229 文件，3.7 MB）：本地化工程要翻译的合并语料。**229/229 全选我方**——合并是退化的，且退化原因已说准：pred 输在**经我方管线的可重认证性**（机制 F：前作每作用域样板死局部变量→根 `maxstacksize` 失配→整文件回退，228/229 文件），不是语义质量判决；结论另由独立理由支撑（我方 fallback 语义精确、pred 有 6 个已确认 M6 缺陷）。`*-verbatim` 残差结构性为空（无等级即不资格）。
+- **`corpus/final/`**（229 文件，3.7 MB）：本地化工程要翻译的合并语料。**229/229 全选我方**——合并是退化的，且退化原因已说准：pred 输在**经我方管线的可重认证性**（228/229 个根失败，其中机制 F——前作每作用域样板死局部变量→根 `maxstacksize` 失配——占 **163/229 = 71%**，另有 58 个根在 maxstacksize 相等的情况下失败于 `code`、7 个止步于 structure/reconstruct 层、1 个干净；此前「228/229 归因机制 F」的说法错了约 4×，IMP-2 已改正），不是语义质量判决；结论另由独立理由支撑（我方 fallback 语义精确、pred 有 6 个已确认 M6 缺陷）。`*-verbatim` 残差结构性为空（无等级即不资格）。
 - **`corpus/warranty.jsonl`**（229 行 / 1944 处 occurrence 双因子逐格）：Factor T（`predrecert.t_grade`，**shipped-first 顺序**——2026-08-16 修订，发 fallback 文本即 T-，纠正了 task 2 L3-first 造成的 703 个 pred + 49 个我方幻影 T3；文件级选择两种顺序同分布，修订是记录诚实）；Factor E（我方恒 `id`；pred = panel 判决 + 六个修复 proto 的 `wm`；`panel-unpinned>0` 取消资格）。**两个结构性事实**（穷举钉在 `tests/test_m7_exit.py`）：Factor E 从不判别选择（36 组合中 pred 仅 12 胜、全为严格 T 优）；task 4 裁决欠账因选择结果失效结清、欠账人群零行出货。
 - 生成器 `scripts/warranty_build.py --all`（job，触发条件在 docstring）；写盘前先跑 **pin 表 opcode 常驻门**（吸收 M7 agenda 6：`PRED_PINS`/`LOSS_PINS` 全部 62 对 `O<n>/P<n>` 解码核对，proto 上下文经 LOSS 键 / PRED evidence 前缀 / note 内 `main_X:` 标记解析；三个 tamper neuter 证明能抓差一 pc / 错 opcode / 侧翻）。
 
 ### 修复战役（tasks 6–10，对照 M6 合并基线 `3669950`：18 升 0 降）
 
-`L3` **1456/1478（98.5%）/ 1922/1944（97.9%）**；产物 **222 全结构化 / 5 hybrid / 2 整文件 fallback**（snr_music、snr_novel）；117 处 occurrence fallback→structured。收口残差 **22 行 = 15 自身 + 7 继承**，逐行归因在 runbook「What is left」（8 个机制族；地板按 partner 裁决重设为 22 + attribution-complete，决策行在 overall-design §2）。机制 D（clamp）经一个分类否决关闭；机制 C（`_same_block`）经 staging-span 豁免关 2/6 行；机制 G（动态键构造器折叠）让 config.lua 整文件翻 L3；task 9/10 的 reaching-def 泛化与 hint-0 构造预算、键序屏障、NEWTABLE 位置前视各关一族。**K1 的 5 行 = L3.3 rung（NEWTABLE 提示位遮蔽）M8 候选**。
+`L3` **1456/1478（98.5%）/ 1922/1944 处出现（98.9%）**；产物 **222 全结构化 / 5 hybrid / 2 整文件 fallback**（snr_music、snr_novel）；117 处 occurrence fallback→structured。收口残差 **22 行 = 15 自身 + 7 继承**，逐行归因在 runbook「What is left」（8 个机制族；地板按 partner 裁决重设为 22 + attribution-complete，决策行在 overall-design §2）。机制 D（clamp）经一个分类否决关闭；机制 C（`_same_block`）经 staging-span 豁免关 2/6 行；机制 G（动态键构造器折叠）让 config.lua 整文件翻 L3；task 9/10 的 reaching-def 泛化与 hint-0 构造预算、键序屏障、NEWTABLE 位置前视各关一族。**K1 的 5 行 = L3.3 rung（NEWTABLE 提示位遮蔽）M8 候选**。
 
 ### 可读性：两个分句、两种命运
 

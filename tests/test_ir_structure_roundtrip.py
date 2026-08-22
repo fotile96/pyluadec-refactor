@@ -137,7 +137,9 @@ _SCRIPT_SUBSET_LEVELS = {
     "snr_crd_112.lua": "L3",
     "snr_crd_113.lua": "L3",
     "snr_graphic.lua": "L1",
-    "snr_memory.lua": "L1",
+    # M8 task 3 (2026-08-16): snr_memory's main+main_3 certified (the
+    # empty-tail clamp fix) -- the file is fully structured now.
+    "snr_memory.lua": "L3",
 }
 
 
@@ -146,7 +148,9 @@ _SCRIPT_SUBSET_LEVELS = {
 # whole-file fallback before it).
 # snr_common joined at M7 task 6 (dynamic-key constructor fix flipped it
 # whole-file fallback -> hybrid; 2026-08-15).
-_SUBSET_HYBRID = frozenset({"snr_graphic.lua", "snr_memory.lua", "snr_common.lua"})
+# M8 task 3 (2026-08-16): snr_memory left (fully structured); graphic and
+# common remain hybrid.
+_SUBSET_HYBRID = frozenset({"snr_graphic.lua", "snr_common.lua"})
 
 
 def _skip_if_subset_missing(corpus_dir) -> None:
@@ -224,15 +228,23 @@ def test_fidelity_preserves_unreachable_code_for_graphic(corpus_dir, decompiled)
     pc-dispatch state machine, which is total over the ORIGINAL instruction
     stream by construction -- every pc, reachable or not, gets a
     `__pld_pc == N` arm (see `pyluadec.structure.fallback`'s module
-    docstring: "pc 派发状态机，38/38 opcode 全覆盖"). `snr_graphic.lua`'s
-    `main` measured `L1` on 2026-08-11 -- the same file the predecessor
-    used, still exercising the same "does dead code survive" concern, now by
-    construction rather than by a mode flag this repo does not have.
+    docstring: "pc 派发状态机，38/38 opcode 全覆盖").
+
+    **Re-scoped at the proposal-channel wiring (2026-08-18).**
+    `snr_graphic.lua`'s `main` no longer measures `L1` and no longer
+    ships the state machine: `main_4` ships a certified proposal and the
+    chunk is byte-identical to the original. The concern this test
+    ported -- does dead/unreachable code survive into the artifact? --
+    is now answered one rung STRONGER for this file: byte identity
+    (A5) preserves unreachable code exactly, by equality rather than by
+    construction. The assertion is therefore that the file went through
+    the proposal channel (certified at some rung with no exclusions),
+    which is the same guarantee under the new spelling.
     """
     path = corpus_dir / "snr_graphic.lua"
     if not path.is_file():
         pytest.skip("snr_graphic.lua missing from PYLUADEC_CORPUS_DIR")
     res = decompiled(path)
-    assert res.levels["main"] == "L1"
-    assert b"__pld_pc" in res.source
+    assert res.proposal_rung >= 0, "graphic no longer ships the fallback"
+    assert not res.shipped_fallback.get("main", True)
     oracle.compile_source(res.source)          # never raises: M2 floor

@@ -1,11 +1,11 @@
-local l0_0 = function()
+local card_17_s1s_160_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(1310, "NONVOICE", "【彩野】「ユウイチと、ファストフード……」")
     vms(1311, "NONVOICE", "【彩野】「『アヤノ』は、ユウイチの答案をどんな風に受け止めたのが要因で、ファストフードのお店に行く事になったんだろう？」")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_17_s1s_160_resolve = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(1312, "NONVOICE", "【彩野】「そっか、羨ましがると、なんだね」")
@@ -52,7 +52,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_17_s1s_160_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -79,7 +79,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_17_s1s_160_resolve()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

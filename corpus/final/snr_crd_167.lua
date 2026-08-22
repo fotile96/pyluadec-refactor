@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_167_s4s_420_sel_step6 = function()
     cStopBGMWrap()
     comPoseLoad("po2_aya_f_2_e")
     vms(1192, "NONVOICE", "【彩野】「うーん……」")
@@ -17,7 +17,7 @@ local l0_0 = function()
     run(cGetFileName("script", "snr_fragment_main"))
     quit()
 end
-local l0_1 = function()
+local card_167_s4s_420_sel_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(1201, "NONVOICE", "【直哉】「ここで、アヤノさんのノートを調べるんだけど……」")
@@ -54,7 +54,7 @@ local l0_1 = function()
     vms(1217, "NONVOICE", "【直哉】「アヤノさんはそのメモを見て、どう思ったのかというと――」")
     comPoseDelete()
 end
-local l0_2 = function()
+local card_167_s4s_420_sel_resolve = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(1218, "NONVOICE", "【彩野】「確かに、ちょっと気になるね」")
@@ -74,7 +74,7 @@ local l0_2 = function()
     vms(1229, "NONVOICE", "【直哉】「うん。髪の長い女の子。これまでの物語の展開から、彼女の名前は恐らく、この名前だと思う――」")
     comPoseDelete()
 end
-local l0_3 = function()
+local card_167_s4s_420_sel_step3 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_2_e")
     vms(1230, "NONVOICE", "【彩野】「サクラさん……」")
@@ -82,7 +82,7 @@ local l0_3 = function()
     vms(1232, "NONVOICE", "【直哉】「その『質問』の場面が――」")
     comPoseDelete()
 end
-local l0_4 = function()
+local card_167_s4s_420_sel_step4 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(1233, "NONVOICE", "【彩野】「……」")
@@ -104,7 +104,7 @@ local l0_4 = function()
     vms(1245, "NONVOICE", "【直哉】「ユウイチの『答え』は――」")
     comPoseDelete()
 end
-local l0_5 = function()
+local card_167_s4s_420_sel_step5 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(1246, "NONVOICE", "【彩野】「信じてみてもいい……サクラさんを、信じる事……」")
@@ -121,7 +121,7 @@ local l0_5 = function()
     vms(1255, "NONVOICE", "【直哉】「ユウイチは、アヤノさんの机を――」")
     comPoseDelete()
 end
-local l0_6 = function()
+local card_167_s4s_420_sel_step7 = function()
     oCard.cardAnswerTrue()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
@@ -185,7 +185,7 @@ main = function()
         quit()
     end
     local l1_0 = false
-    l0_1()
+    card_167_s4s_420_sel_intro()
     local l1_1 = 0
     local l1_2 = 0
     local l1_3 = -1
@@ -214,7 +214,7 @@ main = function()
         end
         wait(30)
     end
-    l0_2()
+    card_167_s4s_420_sel_resolve()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -243,7 +243,7 @@ main = function()
         end
         wait(30)
     end
-    l0_3()
+    card_167_s4s_420_sel_step3()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -273,7 +273,7 @@ main = function()
         end
         wait(30)
     end
-    l0_4()
+    card_167_s4s_420_sel_step4()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -303,7 +303,7 @@ main = function()
         end
         wait(30)
     end
-    l0_5()
+    card_167_s4s_420_sel_step5()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -333,9 +333,9 @@ main = function()
         wait(30)
     end
     if l1_0 == true then
-        l0_0()
+        card_167_s4s_420_sel_step6()
     end
-    l0_6()
+    card_167_s4s_420_sel_step7()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

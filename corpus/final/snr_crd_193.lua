@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_193_s5s_870_step4 = function()
     cStopBGMWrap()
     comPoseLoad("po2_aya_f_2_e")
     vms(1683, "NONVOICE", "【彩野】「うーん……」")
@@ -17,7 +17,7 @@ local l0_0 = function()
     run(cGetFileName("script", "snr_fragment_main"))
     quit()
 end
-local l0_1 = function()
+local card_193_s5s_870_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_7_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(1692, "NONVOICE", "【直哉】「２月の、中庭……」")
@@ -91,7 +91,7 @@ local l0_1 = function()
     vms(1724, "NONVOICE", "【彩野】「……直哉くん、もう一度サクラさんの日記――。私たちが出会った部分の『９月の物語』を見せてもらっていい？」")
     comPoseDelete()
 end
-local l0_2 = function()
+local card_193_s5s_870_resolve = function()
     keyPlaySE(seName.getCard)
     comEffectYellowIn(60)
     wait(60)
@@ -99,7 +99,7 @@ local l0_2 = function()
     vms(1725, "NONVOICE", "【彩野】「ありがとう……それじゃあ、物語の私たちが、『中庭でお話した場面』のあらすじも、お願いしていい？」")
     comPoseDelete()
 end
-local l0_3 = function()
+local card_193_s5s_870_step3 = function()
     keyPlaySE(seName.getCard)
     comEffectYellowIn(60)
     wait(60)
@@ -108,7 +108,7 @@ local l0_3 = function()
     vms(1726, "NONVOICE", "【彩野】「最後に、『私が書いた日記』を見せてもらっていいかな。９月の日記になると思う」")
     comPoseDelete()
 end
-local l0_4 = function()
+local card_193_s5s_870_step5 = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(1727, "NONVOICE", "【彩野】「……ありがとう。直哉くん」")
@@ -186,7 +186,7 @@ main = function()
         quit()
     end
     local l1_0 = false
-    l0_1()
+    card_193_s5s_870_intro()
     local l1_1 = 0
     local l1_2 = 0
     local l1_3 = -1
@@ -215,7 +215,7 @@ main = function()
         end
         wait(30)
     end
-    l0_2()
+    card_193_s5s_870_resolve()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -244,7 +244,7 @@ main = function()
         end
         wait(30)
     end
-    l0_3()
+    card_193_s5s_870_step3()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -274,13 +274,13 @@ main = function()
         wait(30)
     end
     if l1_0 == true then
-        l0_0()
+        card_193_s5s_870_step4()
     end
     wait(60)
     keyPlaySE(seName.getCard)
     comEffectYellowIn(60)
     wait(120)
-    l0_4()
+    card_193_s5s_870_step5()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

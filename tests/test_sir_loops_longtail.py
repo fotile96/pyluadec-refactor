@@ -326,3 +326,58 @@ def test_empty_while_body_is_a_register_classification_gap_not_a_loop_defect():
     # The same loop with a non-empty body certifies.
     assert certify_proto(load_bytes(compile_source(b"while a do f() end", strip=True)),
                          is_chunk_root=True).level == "L3"
+
+
+# ---------------------------------------------------------------------------
+# M8 task 2: the `while true` + arm-trailing empty `if` gap (the
+# `snr_common:main_71` cluster -- `structure: pc 286: else-join out of range`,
+# whose in-loop first refusal measures at pc 341, "if targets out of range").
+
+def test_arm_trailing_empty_then_if_structures_and_certifies():
+    """The main_71 shape: a `while true` body opens with an `if` whose
+    then-arm ENDS with a complete empty-then `if` (`if f(x) == k then end`).
+    luac emits that inner statement as EQ + a false-JMP patched to the NEXT
+    statement's pc -- which equals the OUTER if's own false target (both
+    land at the statement after the outer `if`). `_finish_if` used to read
+    that trailing JMP as the outer if's else-skip, stealing it from the
+    inner statement and stranding the EQ at its range's end."""
+    src = b"""local function g(a) return a end
+local n = 0
+while true do
+    n = n + 1
+    if n == 1 then
+        local y = g(3)
+        if g(y) == 4 then end
+    end
+    n = g(n)
+end
+"""
+    fn, r = _sir(src)
+    assert any(isinstance(x, WhileTrue) for x in (r,) + tuple(r.body)
+               ) or print_chunk(load_bytes(compile_source(src, strip=True)))  # shape smoke
+    out = certify_proto(load_bytes(compile_source(src, strip=True)),
+                        is_chunk_root=True)
+    assert out.level == "L3", out.reason
+
+
+def test_arm_trailing_empty_then_if_inside_elseif_chain_certifies():
+    """The full corpus geometry: the arm's trailing empty-if is followed by
+    a SIBLING if (the 343 test), i.e. the outer if's false target and the
+    empty-if's patched target are the same pc, reached from three paths."""
+    src = b"""local function g(a) return a end
+local n, t = 0, {}
+while true do
+    n = n + 1
+    if n == 1 then
+        local y = g(3)
+        if g(y) == 4 then end
+    elseif n == 2 then
+        t[n] = g(n)
+    else
+        t[n] = 0
+    end
+end
+"""
+    out = certify_proto(load_bytes(compile_source(src, strip=True)),
+                        is_chunk_root=True)
+    assert out.level == "L3", out.reason

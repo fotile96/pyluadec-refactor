@@ -344,15 +344,23 @@ selection), not a closing-round change.
 - **The merge is degenerate, and the reason should be quoted precisely.**
   `corpus/final/` is byte-identical to our own product (229/229 selections
   ours, verified per-file against `decompile_file().source`). Pred did not
-  lose on semantics — it lost on **re-certifiability**: the predecessor's
-  boilerplate dead locals (mechanism F, §1) fail the root `maxstacksize`
-  comparison in 228 of 229 files, which is a diagnosed, plausibly-benign
-  cause, not a quality verdict on pred's text. The honest headline is "our
-  criterion measures re-certifiability through our own pipeline; pred fails
-  it 99.3 % for one diagnosed reason" — the conclusion still stands on
+  lose on semantics — it lost on **re-certifiability**: 228 of 229 pred
+  roots fail re-certification, and the diagnosed mechanism F (boilerplate
+  dead locals failing the root `maxstacksize` comparison, §1) accounts for
+  **163 of them (71 %)** — 58 more roots fail on `code` with *equal*
+  maxstacksize (not mechanism F; unattributed), 7 refuse at the
+  structure/reconstruct layer, and 1 re-certifies clean. A diagnosed,
+  plausibly-benign majority cause, not a quality verdict on pred's text.
+  The honest headline is "our criterion measures re-certifiability through
+  our own pipeline; pred fails it everywhere, 71 % of that for one
+  diagnosed reason" — the conclusion still stands on
   independent grounds (our fallback is semantically exact; pred carries the
   six confirmed M6 defects), but "the distribution is not close" (an
   earlier sentence here) read like a quality judgment and is withdrawn.
+  (An earlier revision of this paragraph said mechanism F "fails the root
+  maxstacksize comparison in 228 of 229 files" — an attribution wrong by
+  ~4×, caught by the final whole-branch review as IMP-2 and corrected here
+  with the census above, 2026-08-16.)
 
 ### Independent verification at close (controller review 2026-08-16 + this round)
 
@@ -383,7 +391,7 @@ shipped / non-`L3` strictly < 40 (**measured 22**) / raw-UTF-8 floor
 never-decides pinned.
 
 **The repair campaign's ledger** (vs the M6 merge baseline `3669950`):
-`L3` **1456/1478 unique (98.5%) / 1922/1944 occurrences (97.9%)** (M6 close
+`L3` **1456/1478 unique (98.5%) / 1922/1944 occurrences (98.9%)** (M6 close
 97.3% / 97.9%); products **222 fully structured / 5 hybrid / 2 whole-file
 fallback** (M6 close 217/8/4); **18 upgrades, 0 downgrades** on the
 ratchet; 117 occurrences moved fallback → structured. The 22-row residual:
@@ -417,3 +425,112 @@ duality schema candidate; mechanism F if pred-side re-certifiability ever
 matters; the L3.3 NEWTABLE-hint-masking rung; plus the M7 agenda items
 carried unmodified (corpus-wide L2, `next`/`pairs`, probe wire-format,
 `StructureError` attribution, Linux x86_64 verification).
+
+## §5. Final whole-branch review (2026-08-16), and what it routed to M8
+
+The independent review seat for M7 ran **after** the milestone closed and
+after M8 tasks 1–3 had already landed on top — a sequencing deviation
+recorded in the M8 task-1 report. Range `3669950..72cb6a8`, 18 commits.
+**Verdict: merge; no Critical; no finding required rewriting an M7
+commit.** Merged as `0d39272`.
+
+### What the review verified by measurement (not by reading)
+
+- **The certification core is untouched**: `git diff 3669950..72cb6a8` over
+  `src/pyluadec/{verify,ingest,lift,cfg,sir}`, `structure/structured.py`,
+  `oracle.py`, `pipeline.py` is **empty**; `NORMALIZATIONS`,
+  `LADDER_VERSION`, `compare_protos`, `structural_hash`,
+  `key_disagreements`, `_cmp`, `certify_hybrid` → **0 hits** in the whole
+  `src/`+`scripts/` diff.
+- **No gate, floor or threshold was relaxed** — all 16 changed pre-existing
+  test files swept assertion by assertion; every change is a carrier
+  re-derivation forced by the product improving, each with an in-place
+  measurement.
+- **`corpus/final/` = our emitter output, 229/229 byte-exact**; warranty T
+  grades independently recomputed from the ledger: **0 disagreements**;
+  panel re-run: fixed point holds, 217 pins / 316 unpinned; ledger is its
+  generator's fixed point; ratchet vs `3669950` 18 up / 0 down.
+- **Task 5's red-line revision is sound**: one judgment home, no byte
+  decoding in `ingest`/`lift`/`verify`, approval recorded in three places,
+  and **all 23586 distinct corpus string constants round-trip byte-exactly**
+  through the new `str_lit` (0 failures).
+- **8 of 11 new guards are load-bearing** under a full-suite neuter matrix,
+  5 with dedicated named proofs.
+
+### The seven Important findings, all fix-forward in M8
+
+Every one still stands at the M8 tip, so correcting them is an edit to the
+same lines a rewrite would have touched. Priority order is the review's.
+
+1. **IMP-2 — the mechanism-F attribution is wrong by ~4×, and it is the
+   sentence the deliverable's honesty argument rests on.** Six sites
+   (`m7-warranty.md:349`, `CHANGELOG.md:15`, `CLAUDE.md:446`,
+   `m3-backlog.md:3018`, `structured-pipeline.md:4258`, spec §2) say pred
+   boilerplate dead locals "fail the root `maxstacksize` comparison in
+   **228 of 229** files". Measured over all 229 via `predrecert.recert_file`:
+   **163** `mismatch:maxstacksize`, **58** `mismatch:code`, 7 refusals, 1
+   clean. `verify/normalize.py:135-141` compares `maxstacksize` before
+   `code`, so those 58 roots have *equal* maxstacksize — mechanism F is not
+   what stops them. True statement: 228/229 fail *re-certification*; the
+   diagnosed mechanism explains **71%**, not 99.3%, and 65 are unattributed.
+2. **IMP-1 — `tests/test_m7_exit.py:78` `test_m7_exit_readability_floor` is
+   a tautology.** It skips any literal whose bracketed text decodes to pure
+   ASCII — which is exactly what a decimal-escaped literal is — so `raw/total`
+   is identically 1.0 for every possible input. Proven by mutation:
+   rewriting **every** non-ASCII literal in `corpus/final/` to escaped form
+   leaves the test green. The "1.0000 measured" headline is true but was
+   produced by an instrument that could not return anything else. Fix:
+   count escaped non-ASCII literals into the denominator.
+3. **IMP-3 — the occurrence-`L3` ratio is 98.9%, published as 97.9% in four
+   documents** (`m7-warranty.md:386`, `CLAUDE.md:452`, `CHANGELOG.md:20`,
+   `m3-backlog.md:2959`): 1922/1944 = 0.9887. 97.9% is M6's close figure
+   (1904/1944) copied into M7's slot, so the headline reads as "occurrence
+   L3 did not move" when it moved. `structured-pipeline.md:2075` alone is
+   right — the runbook and the report of record disagree.
+4. **IMP-7 — panel/census arithmetic in the report of record**: "533
+   divergent rows across **129 files**" → measured **137**; "the bulk
+   (**488** rows)" → no predicate yields 488 (fingerprint-only = 489);
+   "**321 rows, 168 unpinned**" → re-derived 239 pass / 154 pinned /
+   **167** unpinned; "**8** mechanism clusters" for the 22-row residual →
+   the runbook's own table has **6**; and
+   `structured-pipeline.md:2107`'s "`snr_common:main_77_25` had certified
+   already at task 9's gate" is **false** (L1 at `383b71c`, L3 at
+   `5f11237`), which makes that paragraph's per-task arithmetic sum to −17
+   against an actual −18 — task 10 closed **6** rows, not 5.
+5. **IMP-4 — three new guards are not proven load-bearing by anything in
+   the tree.** `reconstruct.py:1560` `hint_c > 0` (reached **0 times** on
+   the corpus since task 10's lookahead intercepts its shapes; a real
+   carrier exists — `local t = {1,2,3} t.x = 4 return t` — but nothing
+   would catch the guard's removal); `freereg.py:151` `_MAX_STAGING_SPAN =
+   256` (max accepted span **26**, 0 refusals attributable to it);
+   `reconstruct.py:757` `_next_read_after` write-first (fires 21 times,
+   changes **0** verdicts). Also task 9's headline `_is_stack_temp`
+   reaching-def disjunct has no dedicated test.
+6. **IMP-5 — `tests/test_pin_opcodes.py` checks 62 of 203 pc references
+   (30.5%).** The "62 pairs" figure is true; the implied coverage is not.
+   An off-by-one introduced in the unchecked form (`TESTSET at O80`)
+   passes green — the exact defect class the gate was built for.
+7. **IMP-6 — the `unpinned > 0` eligibility veto is inert on this corpus.**
+   133 files carry `pred.unpinned > 0`; deleting the veto and regenerating
+   yields a **byte-identical** `warranty.jsonl`. Worth stating where the
+   report calls it "Factor E's entire decisive role" (`:340`).
+
+Minors (recorded, lower priority): `test_emit_readability.py:524` went
+vacuous when task 5 made `_str_lit` an alias of `str_lit`; the "~17 s"
+warranty-build figure survives at `tests/test_warranty.py:119` and
+`m7-warranty.md:189` while `:295` corrects it to 22.47 s (measured 22.17);
+`emit/lua.py:277-280`'s comment is stale post-task-5; §1's "T2 is exactly
+0" is contradicted by output 30 lines below it; §1's "every proto carries
+1–2 dead locals" is refuted by its own table (582 protos at Δ=0); "the six
+`pred_repairs` files" (5 files, 6 protos); `T_ORDER`'s `T3 > T2` ordering
+is unpinned; the deliverable ships with no consumer-facing schema note;
+spec §8.4's *chosen* enforceable form (every row fixed-or-attributed) is
+ungated while the *rejected* numeric form is what the exit test
+implements; the SDD ledger stops at task 10 (mitigated — `72cb6a8`'s
+commit message is a complete and spot-verified record of tasks 11–12).
+
+**The pattern, not the numbers, is what M8 should carry**: the milestone's
+own documented defect class — prose asserting unmeasured behaviour —
+recurred again inside the round written to correct it. Task 12 corrected
+two false sentences and shipped a gate whose "measured 1.0000" is
+arithmetically forced.

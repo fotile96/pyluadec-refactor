@@ -4254,9 +4254,10 @@ Selection (`warranty_build.select`, spec §6): lexicographic `(T, E)`, tie
 → ours. Two structural facts worth knowing before quoting outcomes:
 **Factor E never decides a selection** (with ours at `id`, pred wins only
 on a strict T advantage — 12 of 36 combinations, pinned as a test), and
-**the merge is degenerate for a diagnosed reason** — pred fails
-re-certification (mechanism F, boilerplate dead locals) in 228/229 files,
-so all 229 files ship ours and `corpus/final/` is byte-identical to our
+**the merge is degenerate for a diagnosed reason** — 228/229 pred roots
+fail re-certification, 163 of them (71%) on mechanism F (boilerplate dead
+locals failing the root `maxstacksize` comparison), so all 229 files ship
+ours and `corpus/final/` is byte-identical to our
 own product. The warranty's value is the recorded per-occurrence evidence,
 not the merging.
 
@@ -4268,3 +4269,299 @@ docstring). **Readability residual**: 52 lines of game dialogue ship as
 `__pld_R[n] = "<Japanese>"` (49 `snr_common`, 2 `snr_story_main`, 1
 `snr_novel`) — encoding-complete but without call context; pinned by
 `tests/test_m7_exit.py`, fix routed to M8.
+
+### The M8 campaign census (tasks 2–3 landed; tasks 4–5 Step-1 measured)
+
+**State after M8 tasks 2+3 (2026-08-16, `927fbcd`): 19 non-`L3` rows — 13
+own + 6 inherited — ALL `mismatch:`** (the `structure:` and `reconstruct:`
+families are extinct: task 2's arm-trailing empty-then recognizer fix took
+`main_71` + root past `build_sir`; task 3's empty-tail clamp fix certified
+`snr_memory`'s whole file and `snr_graphic:main_3`). `L3` **1459/1478
+unique (98.7%) / 1925/1944 occurrences (99.0%)** — shipped-structured
+occurrences are a DIFFERENT quantity, **1882/1944** (do not conflate the
+two; IMP-3/§4's word collision); products **223 fully structured / 4
+hybrid / 2 whole-file fallback**; ratchet vs `72cb6a8`: 3 upgrades, 0
+downgrades.
+
+**The tasks 4+5 Step-1 census, measured 2026-08-16** (first divergence per
+own row, exact-wrapper recompile; the reason field alone names only the
+FIRST mismatch — the full field lists below come from
+`ProtoCert.mismatches`):
+
+| rows (own) | first divergence | mechanism family |
+|---|---|---|
+| `main_25` pc1, `main_24` pc1, `main_71` pc7 | `NEWTABLE` hash-hint C differs (2v3, 1v3, 10v0) | **K1 hint-position** — constructor literal vs statement-build choice |
+| `main_77` pc1, `snr_novel:main` pc1 | `NEWTABLE` vs `LOADK` ordering (+ pool reorder) | **constructor layout** — ours builds statement-first, orig literal-first |
+| `snr_story_main:main_3` pc290, `snr_graphic:main_4` pc355 | JMP offsets + 8/13 extra instrs (+ pool reorder) | **expression layout** — statement-order divergence cascading |
+| `main_77_0` pc3 | `SETUPVAL` B=1 vs B=0 (5-instr proto) | the documented `u0, u1 = 1, 0` multiple-assignment residual (`tests/test_express_residual.py`) |
+| `mainmenu:main_7`, `main_25_4`, `main_76_2` | extra `MOVE`s (+4/+14/+6), maxstack above orig | **materialization surplus (M)** — callee/arg reuse slots materialized where orig staged (`local l1_3 = layerClip; l1_3(l1_4, ...)` vs direct call) |
+| `main_74_18`, `snr_music:main` | maxstack BELOW orig **plus** code/pool co-mismatches (58-item pool reorder on music) | slack + pool order — **no maxstacksize-only rung can certify either row** |
+
+**A plan hypothesis corrected by measurement**: the M8 plan's table read the
+8 maxstacksize rows as "K1 (5) + dead-slack"; the measured split is
+M-family 3 + slack-with-co-mismatch 2, and the K1 rows live among the
+`mismatch: code` population (hint is a code field). Consequence for Task 6:
+**no single rung alone certifies any remaining row** — the L3.2 pool-order
+rung would pair with music:main's maxstacksize clause, and K1 needs the
+L3.3 hint rung; the M-family and layout rows are emitter-side work, not
+rung work.
+
+### The M-family diagnosis, deepened (M8 tasks-4/5 campaign, 2026-08-16)
+
+`snr_mainmenu:main_7`'s +4 `MOVE`s (and, by signature, `main_25_4`'s +14
+and `main_76_2`'s +6) decompose as: `local lD_R = <cond operand>` (the
+condition-tree path materializes a register whose defs are ALL graded
+temp — measured on main_7: (190,8), (194,8), (198,8), (207,8) every one
+in `temp_defs`; the materialization is the RECONSTRUCTOR's doing, not the
+classifier's), then the arm's later callee write to the same register
+hits `write_reg`'s `declared`-wins rule and materializes as
+`lD_R = layerMoveAlpha`, and calling through a local makes luac `MOVE`
+the callee to the call base — one `MOVE` per site, four sites in main_7
+(the identical menu-rebuild block × 4 gate sites). The original has no
+local there: the condition reads `u1.library` via two SEPARATE defs
+(190/194, each read once by its own compare), and the callee is a direct
+global call. Scope release does not help (`local`, reassign and call sit
+in the SAME if-arm). **Solved to the last link (same campaign, next round —
+measurement-first, two hypotheses died on the way):** NOT the condition
+tree (its `cond_operand` pops inline), NOT `_named_local` (all three
+disjuncts false at the four sites, instrumented), NOT the plain
+mention-list half of the skipped-kill veto (the JMP@197 successor's next
+r8 mention is a WRITE at 468, read only at 469). The firing path is
+`_merge_veto_skipped_kill`'s **open-read clause**: the inter-site region
+[253, 468) holds four `CALL`-style `R[5..top)` open reads (pcs
+385/405/425/445, base 5) and no r8 write, so the model cannot exclude
+that the killed value survives to become an open-call argument -- the
+veto fires, (195,8) grades local, the condition operand materializes,
+and `write_reg`'s declared-wins then materializes the arm's callee
+through the same slot (`l1_8 = layerMoveAlpha; l1_8(...)`) for the +1
+MOVE per site. Whether the open call's runtime top ever reaches r8 is
+statically undecidable in general -- this is the veto's documented
+conservatism, not a bug in it. The design question for the fix: the
+ORIGINAL's condition operand was dead at its compare and r8 FREED for
+the callee (freereg reuse), while our `declared` is whole-function and
+`close_scope` cannot see the release (same arm). Candidate directions:
+(a) couple `declared` release to the freereg model's statement-boundary
+drain (the discipline already knows the slot re-became stack), or
+(b) prove the open reads' top < 9 from the callee-side emission and
+narrow the clause. Both are design changes to load-bearing guards --
+own review round each, not a campaign afternoon.
+
+**Priority elevated to GATE-CRITICAL (controller review, 2026-08-16):**
+`snr_mainmenu` is 3.5598x -- the corpus's worst footprint, on a
+permanently loaded script (the original heap-risk case), and the ENTIRE
+1.5x exit ceiling now rests on three single-own-row files:
+`snr_mainmenu` (M-family, `main_7`), `snr_graphic` 1.9509 (`main_4`,
+expression layout), `snr_story_main` 1.6956 (`main_3`, expression
+layout). The direction decision should be made NOW, not at Task 6. Of
+the two candidates: (a) freereg-coupled `declared` release is the
+PRINCIPLED fix -- it addresses the actual gap (the model cannot see a
+same-arm slot release that the original's freereg discipline performed),
+generalizes to any future shape where a materialized local's slot is
+re-staged, and can be neuter-tested against the discipline's own
+statement-boundary drain; (b) open-read narrowing by top-provability is
+a special-case argument (the callee-side emission proves top < 9) that
+leaves the whole-function `declared` gap in place for the next shape.
+Recommendation recorded: (a), with the review round it requires.
+
+**Correction after the implementation-前 review (2026-08-16, measured):
+neither (a) nor the reaching-def refinement saves THIS row.** The
+earlier BFS targeted the plain-clause read (469) instead of the
+open-read sites; re-run against pc 385: def@195 REACHES the open reads
+on the loop-exit path ([253,468) contains no r8 write), so a
+reaching-def refinement of the veto changes nothing here, and (a)'s
+declared release only addresses the SECOND materialization (the
+callee's), whose byte-exact alternative (calling the global directly)
+compiles into a different register (the materialized local occupies r8
+in our text's frame). The byte-exact spelling requires what the
+original did: `u1.library` evaluated TWICE (two def pairs), i.e. a
+duplicated GETTABLE read that STRICT effects forbids and the corpus
+cannot license for an upvalue chain (the M4 NO_METAMETHOD opt-in
+covers script-built tables only). This row therefore needs either a
+partner decision (a corpus-informed double-eval opt-in) or stays with
+recorded attribution -- flagged for the Task 6/stop-loss discussion,
+NOT silently absorbed. The other two gate-critical rows
+(`snr_graphic:main_4`, `snr_story_main:main_3`, expression layout) are
+independent of this.
+
+**Direction (a) was then measured and REJECTED (2026-08-16, controlled
+experiment, reverted the same minute).** [The K1 count-cap experiment of
+the same session met the same verdict: see below.] The proposed rule -- "a
+temp-graded definition stages even over a `declared` slot, because a
+staged value still enters `_pending` (reads pop it inline) and temp
+means exactly one read, so no second name-read can exist" -- moved the
+corpus to **35 shipping regressions** (`snr_common:main_27` structured
+-> fallback among them; 1463 -> below, 8 hybrid files vs 4). The
+soundness argument misses at least one path (most likely: reads the
+discipline attributes to the NEW def are, in the reconstructor's text,
+name-reads of the OLD local when the old value's expression was already
+consumed by an inline pop in the OTHER order -- the per-def single-read
+count and the env's pop order disagree across branches). `declared`
+-wins is load-bearing for temp defs exactly as its docstring says; a
+finer release needs the reaching-def review round it was already
+assigned, not a one-line inversion. Experiment reverted; ledger
+verified byte-identical to pre-experiment (`ratchet_diff` clean, suite
+batch green).
+
+
+### The K1 count-cap experiment: rejected 157-3 (same campaign)
+
+The int2fb boundary was RE-MEASURED (2026-08-16, vendored luac): raw C
+is EXACT for literal hash counts **1..16**, ambiguous at 17 ({17,18}),
+collapsed from 18 on. This corrects the M7-task-9 note twice over: "past
+7 is inexact" understates the exact range, and its worked example "a
+15-field literal decodes to 14" does not reproduce (15 -> 15). Pinned as
+`test_int2fb_exactness_boundary`.
+
+The tempting fix -- cap the fold at the original's hint count, close the
+ctx there, dispatch further SETTABLEs as statement stores -- was
+implemented and **regressed 157 rows** (`snr_common:main_74` structured
+-> fallback among them; whole-file fallback reappeared on 3 files). The
+failure mode is the SAME one M7 task 9's first count gate hit and
+documented: the early close reorders the value staging (the regressed
+emission puts the outer literal's SETTABLEs ahead of a nested table's
+own NEWTABLE staging -- the fold order and the statement stream no
+longer compose). The cap was reverted the same session; ledger verified
+byte-identical post-revert. The K1 cluster therefore stays with the L3.3
+masking rung (a partner petition) or a fold-order-preserving split
+(some signal for the constructor's END other than the count -- none is
+known). Current refusals pinned red by
+`test_literal_statement_split_is_a_recorded_gap`.
+
+### The campaign's Step-1 census is COMPLETE (2026-08-16)
+
+`snr_story_main:main_3` diagnosed last: first divergence pc307
+`GETGLOBAL 12` vs `MOVE 12,11` -- our text assigns each callee to the
+busy slot's local and calls through it (`l1_11 = keyPlaySE;
+l1_11(seName.circle)`), where the original loads the callee fresh per
+statement (`keyPlaySE(seName.circle)`, +8 instructions, const-pool
+reorder). **All three gate-critical rows share this one root** with
+`snr_mainmenu:main_7` and `snr_graphic:main_4`: the whole-function
+`declared` merges a busy slot's per-statement lifetimes, and the
+original re-evaluates (callees, upvalue chains) fresh per use. Rename
+recorded: the "M-family" is really the **busy-slot family**.
+
+**Every remaining own row is now attributed** (the spec §5 stop-loss
+form, attribution-complete): busy-slot family ×5 (`main_7`, `main_4`,
+`main_3`, `main_25_4`, `main_76_2`); K1 hint ×3 (`main_24`, `main_25`,
+`main_71` -- L3.3 rung or fold-split, count-cap falsified); slack+code
+×1 (`main_74_18`, maxstack BELOW original plus a code co-mismatch); +
+6 inherited roots that dissolve with their descendants. Three fix
+directions have been experimentally falsified with zero spillover
+(declared-inversion 35 regressions; count-cap 157; reaching-def
+refinement moot -- the value reaches the open reads). The paths that
+remain are PARTNER DECISIONS at Task 6: the K1/L3.3 rung bundle, the
+busy-slot ruling (reaching-def review round vs a corpus-informed
+fresh-eval opt-in), and `main_74_18`'s disposition.
+
+Also recorded from the same session: a NESTED-literal inversion gap
+(inner literal's values read the outer's staged TableExpr; the outer's
+materialization lands after the inner's statement -- the printed text
+reads a GLOBAL). Certification refuses it, so it cannot ship wrong;
+corpus census: no remaining row names it. Pinned by
+`test_nested_literal_inversion_is_a_recorded_gap`.
+## The propose-and-certify channel (M8 wiring, 2026-08-18)
+
+A hand-written source **proposal** for a proto the reconstructor cannot
+print, certified through the **unmodified** ladder and spliced into the
+chunk at its CLOSURE site. Partner-approved 2026-08-18; the campaign
+that produced the current nine proposals is
+`docs/reports/m8-strategy-survey-fable5.md` §9, the wiring handoff is
+`docs/reports/m8-handoff-proposal-channel.md`.
+
+**The flow.** `structure/proposals.py` holds the pinned `MANIFEST`
+(9 entries; adding/removing one is a deliberate edit held by
+`tests/test_proposal_channel.py`'s enumeration pin) and the inliner: a
+boundary-aware, string/comment-tracking scanner (no `re` -- the package
+ban) that (1) rebinds the wrapper's `u<digits>` upvalue references to
+the enclosing scope's own identifiers (`closure_parts`' pseudo-
+instruction names), and (2) shifts `l<k>_` local prefixes by the site
+depth -- the **shadow-capture fix**: the wrapper spells its locals
+`l1_*`, and spliced at a depth-2 site an unshifted `l1_0` shadows the
+very name `u0` was renamed to, silently turning a capture into a
+self-reference (measured as `nups` mismatches on all three depth-2
+sites in the first wiring round). `emit_certified_chunk`'s proposal
+tier sits between root certification and hybrid: print the tree with
+proposal bodies at the **refusing** sites only (the P4 filter lives in
+`_proposal_round`'s dict narrowing -- the controller review's IMP-1
+found the first wiring passed the dict through unfiltered, so a proposal
+would have displaced a working reconstruction while the ledger said
+`structured`; the filter is load-bearing and pinned by a
+marker-comment test), compile with the real oracle, and compare with
+the untouched ladder and **zero excluded paths**. Any error anywhere
+refuses the chunk; the caller falls to hybrid/whole-fallback exactly as
+before.
+
+**Provenance (P2) and the ledger.** `shipped` gained the value
+`"proposal"` (15 occurrences today, all in the four formerly-hybrid
+files); a proposal-tier chunk records `L3` at the round's rung for
+EVERY proto in the tree -- the whole-tree compare covered ancestors of
+substituted sites too (the pre-hybrid "root certified implies every
+descendant" convention, applied to the new tier). The reconstructor's
+own per-proto verdicts are unchanged and internal; `ratchet_diff.py`
+installs `structured > proposal > fallback` with `structured ->
+proposal` the `proposal-mask` downgrade (the reconstructor used to
+print this proto itself -- the P4 move the ratchet exists to see).
+
+**What the channel is NOT.** It is not a comparator change --
+`verify/` is untouched, `LADDER_VERSION` unchanged; certification went
+through the same door it always had. It is not a return of the retired
+pass registry (spec §2): no apply/rollback, only propose + the existing
+certify. And it is not the fallback: proposal text is certified text,
+so warranty `t_grade` grades it by level (the shipped-first `T-` arm is
+for uncertified state machines). The census sections above are kept as
+the history of the mechanisms the channel superseded; the residual
+population as of this wiring is **empty** -- 1478/1478 `L3`, zero
+fallback occurrences, `corpus/final/` carries no `__pld_` marker, every
+footprint 1.0, and file-level byte identity (mod lineinfo) is 229/229.
+
+## The naming-alignment channel (M8, 2026-08-18)
+
+The last presentation-layer channel: `corpus/naming/name_map.jsonl` (1754
+rows, generated by `corpus/naming/harvest_naming.py` from the OLD project's
+renamed output, fixed-point discipline like the ledger and proposals) maps
+`(proto_path, register) -> readable name` -- 846 main-level function names
+and 908 `scene_id`/`scene_title` params, anchored on the CLOSURE Bx operand
+and parameter position respectively, never on register numbers (the old
+text never recompiles instruction-identical; M6 measured 3903 substantive
+code mismatches corpus-wide). Full survey, adjudications and acceptance
+numbers: `docs/reports/m8-naming-t0.md`; Zndnovel-side guide:
+`docs/runbooks/zndnovel-naming-migration.md`.
+
+The seam is one method: `emit.lua.Printer.local_name(reg)` consults the
+table everywhere the printer would synthesize `l<depth>_<reg>`
+(declarations, references, child params, and the upvalue names children
+capture -- so a renamed parent local renames every capture site too), and
+falls back to the synthesized spelling on a miss. The table is NOT text
+post-processing: nothing ever re-reads an emitted string.
+
+**The ladder is the guard.** The table rides the ordinary print path, so
+`emit_certified_chunk(root, proposals, naming)` threads it into the root
+tier, the proposal round, and the hybrid round alike (the certification
+memo key gained a content token for the table -- `_naming_token` -- since
+the root tier SHIPS the printed bytes and two tables print different
+text). A rename that changes name resolution -- a local shadowing a global
+the body references, flipping GETGLOBAL to a capture; a keyword, breaking
+the compile -- changes the compiled bytecode and is refused by the same
+whole-tree compare that certifies the chunk: a bad name can only degrade
+the ledger, never ship. One measured subtlety worth keeping: inside a
+local's own initializer the local is NOT yet in scope, so
+`local gameSave = function() return gameSave.x end` recompiles with the
+inner reference still global and stays byte-equal -- the flip needs the
+reference in a LATER statement covered by the renamed local's scope
+(pinned by `test_a_shadowing_rename_is_refused_by_certification`).
+
+**Residuals stay ours.** The old project's own auto-names (`v\d+`/`p\d+`,
+`i\d+`/`g\d+`, `arg`, `(for ...)`) are not ported (partner decision,
+2026-08-18); the old text's self-reference `local NAME` materialization is
+our `local function` sugar instead. The four proposal-channel files carry
+no table rows at all (their old readable surface is empty), so the two
+channels never co-occur on this corpus -- measured, and pinned.
+
+**Standing guards.** `corpus/naming/verify_naming.py` is the out-of-suite
+command: P1 byte identity over all 229 finals against the originals (the
+survey §8.2 normalizer -- 229/229), the table's fixed point, and flag
+completeness for the M6 defect zones; `--tamper` runs the neuter demos.
+In-suite: `tests/test_naming_channel.py` (18 tests) pins the loader
+validation, the printer seam, the memo separation, the shadowing refusal,
+and both artifacts' fixed points. Regeneration order and the unit-ID map
+(`unit_map.jsonl`, T2) are documented in `corpus/naming/README.md`.

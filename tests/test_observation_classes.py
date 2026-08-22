@@ -176,7 +176,9 @@ def test_observed_records_have_the_reviewed_shape(doc):
 # lookahead certified snr_common:main_29 -- their observation records moved
 # to orphan quarantine (preserved, not lost).
 # Re-derived 2026-08-16 with the command above.
-_OBSERVED_DIGEST = "acbd1ef8bbe2e56a47e344e41db366d08c98af71ea7bb453c65baaadc476ea7f"
+_OBSERVED_DIGEST = "4f43db4d12e85362f2d17d7969d58f11a7680e5eedce017a4ecdf4b8004bc622"  # M8 proposal channel: 35/29 (see above)
+# observations moved to the orphan quarantine when those protos certified (48/16
+# -> 46/18); their reviewed content is carried verbatim.
 
 
 def test_the_observed_half_is_pinned_by_digest():
@@ -200,7 +202,16 @@ def test_the_observed_half_is_pinned_by_digest():
             "observed": r["observed"]}
            for r in doc["candidates"] if "observed" in r]
     orphans = doc.get("orphan_observations", [])
-    assert (len(obs), len(orphans)) == (48, 16)
+    # M8 task 3 (2026-08-16): 46 / 18 -- the snr_memory main/main_3 rows
+    # left the candidate set entirely (certified), so their two reviewed
+    # observations moved to the orphan quarantine rather than being edited
+    # or dropped. M8 tasks-4/5 (2026-08-16): 45 / 19 -- snr_novel:main
+    # certified (the constructor position fix) and its observation moved
+    # to the quarantine likewise. The multi-assign fix (same campaign)
+    # certified main_77 + main_77_0: 43 / 21.
+    # The proposal-channel wiring (2026-08-18) emptied the refusal
+    # population: every reviewed observation moved to the quarantine.
+    assert (len(obs), len(orphans)) == (35, 29)
     blob = json.dumps({"observed": obs, "orphans": orphans},
                       sort_keys=True, ensure_ascii=True)
     assert hashlib.sha256(blob.encode("ascii")).hexdigest() == _OBSERVED_DIGEST, (
@@ -588,8 +599,17 @@ def test_leaf_refusal_rule_agrees_with_an_independent_stubbing_experiment(corpus
     # snr_graphic:main_2 and snr_memory:main_2 (2026-08-15); 28 after M7
     # task 9's reaching-definition `>` recogniser and hint-0 constructor
     # budget gate; 22 after M7 task 10's key-staged-below-table barrier and
-    # NEWTABLE-position lookahead (2026-08-16).
-    assert len(non_l3) == 22, len(non_l3)
+    # NEWTABLE-position lookahead (2026-08-16); 19 after M8 tasks 2+3 (the
+    # `structure:` and `reconstruct:` families emptied; every remaining row
+    # is a `mismatch:` -- and with no print refusals left, `checked` below
+    # is 0 and this test's per-row equivalence is vacuous until a new
+    # print-refusal family appears); 17 after the M8 tasks-4/5 constructor
+    # position fix certified snr_novel:main and snr_music:main; 15 after
+    # the multi-assign fix certified main_77 + main_77_0 (the parent's
+    # mismatch WAS the child's divergence).
+    # All-L3 since the proposal channel (2026-08-18); the equivalence is
+    # vacuous until a refusal family reappears.
+    assert len(non_l3) == 0, len(non_l3)
     checked = 0
     for (f, path), (row, p) in sorted(non_l3.items()):
         kind = row["refusal_reason"].split(":", 1)[0]
@@ -619,4 +639,9 @@ def test_leaf_refusal_rule_agrees_with_an_independent_stubbing_experiment(corpus
     # task 7's clamp fix, 4 again after M7 task 8 moved snr_graphic/memory's
     # ancestor+ sibling rows from `mismatch:` to `reconstruct:` refusals
     # (still L1 either way; 2026-08-15) -- plus the 2 `structure:` rows.
-    assert checked == 6, checked
+    # M8 task 2 (2026-08-16): the 2 `structure:` rows (main_71 + root) left
+    # the print-refusal population -- build_sir accepts them now and the
+    # refusal moved to `mismatch: code` (constructor-layout class), so the
+    # stubbed print legitimately succeeds on them.
+    # M8 task 3 (2026-08-16): 4 -> 0 (no print-refusal rows remain).
+    assert checked == 0, checked

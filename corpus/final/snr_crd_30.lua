@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_30_s1s_330_step8 = function()
     cStopBGMWrap()
     comPoseLoad("po2_aya_f_2_e")
     vms(2333, "NONVOICE", "【彩野】「うーん……」")
@@ -17,7 +17,7 @@ local l0_0 = function()
     run(cGetFileName("script", "snr_fragment_main"))
     quit()
 end
-local l0_1 = function()
+local card_30_s1s_330_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_7_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(2342, "NONVOICE", "【彩野】「これで、物語は終わりなんだね」")
@@ -41,45 +41,45 @@ local l0_1 = function()
     vms(2356, "NONVOICE", "【彩野】「私が一番初めに直哉くんに書いて貰ったカードは…………」")
     comPoseDelete()
 end
-local l0_2 = function()
+local card_30_s1s_330_resolve = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(2357, "NONVOICE", "【彩野】「この『物語』、一番最初はどんな感じで書き始められているのかな……」")
     comPoseDelete()
 end
-local l0_3 = function()
+local card_30_s1s_330_step3 = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_c")
     vms(2358, "NONVOICE", "【彩野】「いくつかの章や節でこの物語は分かれているみたい。この物語で言う、『第一章』はなんと言うんだろう？」")
     comPoseDelete()
 end
-local l0_4 = function()
+local card_30_s1s_330_step4 = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_c")
     vms(2359, "NONVOICE", "【彩野】「放課後、私とあの子でコックリさんをやることになって。封筒とか、準備が念入りだったよね……」")
     comPoseDelete()
 end
-local l0_5 = function()
+local card_30_s1s_330_step5 = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(2360, "NONVOICE", "【彩野】「ふむ。なるほど……」")
     vms(2361, "NONVOICE", "【彩野】「あ。でももし、何の事件も起きずに私が『平和な日常生活』を送っていたとしたら、それはどんな感じになるのかな？」")
     comPoseDelete()
 end
-local l0_6 = function()
+local card_30_s1s_330_step6 = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_2_e")
     vms(2362, "NONVOICE", "【彩野】「ちょっと私が言うのも嫌なんだけど……彼女に私が屋上から落とされた時の場面は、どんな感じだったかな……」")
     comPoseDelete()
 end
-local l0_7 = function()
+local card_30_s1s_330_step7 = function()
     oCard.cardAnswerTrue()
     cStopBGMWrap()
     comPoseLoad("po2_aya_f_1_a")
     vms(2363, "NONVOICE", "【彩野】「そして最後に、私を助けに来てくれたアイツ。その場面のあらすじは――」")
     comPoseDelete()
 end
-local l0_8 = function()
+local card_30_s1s_330_step9 = function()
     oCard.cardAnswerTrue()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
@@ -171,7 +171,7 @@ main = function()
         quit()
     end
     local l1_0 = false
-    l0_1()
+    card_30_s1s_330_intro()
     local l1_1 = 0
     local l1_2 = 0
     local l1_3 = -1
@@ -200,7 +200,7 @@ main = function()
         end
         wait(30)
     end
-    l0_2()
+    card_30_s1s_330_resolve()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -229,7 +229,7 @@ main = function()
         end
         wait(30)
     end
-    l0_3()
+    card_30_s1s_330_step3()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -258,7 +258,7 @@ main = function()
         end
         wait(30)
     end
-    l0_4()
+    card_30_s1s_330_step4()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -287,7 +287,7 @@ main = function()
         end
         wait(30)
     end
-    l0_5()
+    card_30_s1s_330_step5()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -316,7 +316,7 @@ main = function()
         end
         wait(30)
     end
-    l0_6()
+    card_30_s1s_330_step6()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -345,7 +345,7 @@ main = function()
         end
         wait(30)
     end
-    l0_7()
+    card_30_s1s_330_step7()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -375,9 +375,9 @@ main = function()
         wait(30)
     end
     if l1_0 == true then
-        l0_0()
+        card_30_s1s_330_step8()
     end
-    l0_8()
+    card_30_s1s_330_step9()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

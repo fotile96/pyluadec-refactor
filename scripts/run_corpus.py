@@ -173,6 +173,8 @@ def main() -> int:
     # Private on purpose (see its docstring): the ledger key check below needs
     # exactly the fingerprint the certification memo uses, and a second,
     # public transcription of that field list is the drift this import avoids.
+    from pyluadec.structure import proposals
+    from pyluadec.structure import naming as naming_table
     from pyluadec.structure.structured import _debug_fingerprint
     from pyluadec.verify.ledger import (LedgerEntry, oracle_version, row_l2,
                                         structural_hash, write_ledger)
@@ -209,7 +211,8 @@ def main() -> int:
     for f in files:
         root_bytes = f.read_bytes()
         root = load_file(f)
-        res = decompile_chunk(root)
+        res = decompile_chunk(root, proposals.for_file(f.name),
+                              naming_table.for_file(f.name))
         (outdir / f.name).write_bytes(res.source)
         try:
             oracle.compile_source(res.source)
@@ -241,6 +244,15 @@ def main() -> int:
         protos = {}
         walk_proto_paths("main", root, protos)
         for path, p in protos.items():
+            # The propose-and-certify channel (M8): a proposal-shipped proto
+            # IS certified -- the chunk passed a whole-tree compile-and-compare
+            # with zero excluded paths (rung `res.proposal_rung`) -- so its
+            # ledger verdict is `L3` with that rung and no refusal, while the
+            # RECONSTRUCTOR's own per-proto verdict stays what it was (the
+            # `observed` feed below records it unchanged for
+            # `key_disagreements`). The `shipped` field carries the
+            # provenance distinction (P2): "proposal" vs "structured".
+            shipped_pr = res.shipped_proposal.get(path, False)
             h = structural_hash(p)
             # `shipped` is the M5 task 6 schema change: which EMITTER produced
             # this proto's text in `build/decompiled/<file>.lua`. It is a
@@ -253,9 +265,20 @@ def main() -> int:
             # that is where the chunk identity (`file`) lives.
             shipped_fb = res.shipped_fallback[path]
             occ = {"file": f.name, "proto_path": path,
-                   "shipped": "fallback" if shipped_fb else "structured",
+                   "shipped": ("proposal" if shipped_pr else
+                               "fallback" if shipped_fb else "structured"),
                    "hybrid": res.hybrid, "l2": l2_field}
-            level = res.levels[path] if compile_ok else "L0"
+            if res.proposal_rung >= 0 and compile_ok:
+                # A proposal-tier chunk's whole-tree compare covered EVERY
+                # proto in the tree with zero excluded paths, ancestors of
+                # substituted sites included -- the pre-hybrid convention
+                # ("root certified L3 implies every descendant") applied to
+                # the new tier. `shipped` still distinguishes the proposal
+                # closure from the structured text around it (P2).
+                level, eff_rung, eff_reason = "L3", res.proposal_rung, None
+            else:
+                level = res.levels[path] if compile_ok else "L0"
+                eff_rung, eff_reason = res.rungs[path], res.reasons[path]
             # The un-compile-adjusted verdict, which is what `_memo_key`
             # claims is a function of `(structural_hash, _debug_fingerprint)`.
             observed.setdefault(h, []).append(
@@ -289,18 +312,18 @@ def main() -> int:
                 # `key_disagreements`' docstring for why pin rather than split.
                 if _RANK[level] > _RANK[e.level]:
                     e.level = level
-                    e.l3_level = res.rungs[path]
-                    e.refusal_reason = res.reasons[path]
+                    e.l3_level = eff_rung
+                    e.refusal_reason = eff_reason
             else:
                 shipped_fallback_any[h] = shipped_fb
                 by_hash[h] = LedgerEntry(
                     shash=h, level=level,
-                    l3_level=res.rungs[path] if level == "L3" else None,
+                    l3_level=eff_rung if level == "L3" else None,
                     compile_ok=compile_ok, fallback=shipped_fb,
                     n_insns=len(p.code),
                     confessions=[],
                     occurrences=[occ], oracle=orc, ladder=LADDER_VERSION,
-                    refusal_reason=res.reasons[path] if level != "L3" else None)
+                    refusal_reason=eff_reason if level != "L3" else None)
     for h, e in by_hash.items():
         # `fallback` and its confession are decided ONCE, at the end, from the
         # occurrence aggregate -- not carried along from whichever occurrence

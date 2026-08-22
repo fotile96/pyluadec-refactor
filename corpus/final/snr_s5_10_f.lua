@@ -1,7 +1,7 @@
-local l0_0 = function(l1_0, l1_1)
+local scene_s5f_10 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cStopBGMWrap()
     layerLoad(layerName.event, cGetFileName("event", "eve_0_b"))
     layerLoad(layerName.pose1, "")
@@ -78,10 +78,10 @@ local l0_0 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_1 = function(l1_0, l1_1)
+local scene_s5f_20 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cPlayBGMWrap(cGetFileName("bgm", "bgm_2_x"))
     vms(14378, "AYA18190", "【彩野】「肉肉、野菜、肉肉、野菜、だったっけ？」")
     vms(14379, "YUK06760", "【由加里】「野菜野菜、肉、野菜野菜、肉よっっ！」")
@@ -190,10 +190,10 @@ local l0_1 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_2 = function(l1_0, l1_1)
+local scene_s5f_30 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     vms(14402, "NONVOICE", "そんなこんなで、夕食も（やっと）食べ終わり……。")
     vms(14403, "NONVOICE", "その後、彩野さんの部屋でトランプで遊ぶことになった。")
     cPlayBGMWrap(cGetFileName("bgm", "bgm_4_x"))
@@ -225,10 +225,10 @@ local l0_2 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_3 = function(l1_0, l1_1)
+local scene_s5f_40 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     wait(1)
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_23_a_0"))
     switchScreen(0, "", 120)
@@ -267,10 +267,10 @@ local l0_3 = function(l1_0, l1_1)
     vms(14441, "YUK06840", "【由加里】「じゃ、遠慮なく頂いちゃおうかなー」")
     l1_2()
 end
-local l0_4 = function(l1_0, l1_1)
+local scene_s5f_70 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     comPoseLoad("po2_yuk_f_1_a")
     vms(14442, "YUK06850", "【由加里】「そういえば、直哉君はお酒とか、飲んだりするの？」")
     vms(14443, "NAO13450", "【直哉】「うーん、僕は誘われれば、程度ですかね。それよりもコーヒーの方が中毒らしくて」")
@@ -382,10 +382,10 @@ local l0_4 = function(l1_0, l1_1)
     comPoseDelete()
     l1_2()
 end
-local l0_5 = function(l1_0, l1_1)
+local scene_s5f_80 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cLoadPlaySE(cGetFileName("se", "se_102"), false)
     vms(14511, "NONVOICE", "僕は段ボール箱の中に入っている手紙を手に取った。")
     vms(14512, "NONVOICE", "消印は、『２月』だった。")
@@ -427,7 +427,7 @@ local l0_5 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_6 = function(l1_0, l1_1)
+local scene_s5f_complete = function(scene_id, scene_title)
     local l1_2 = function()
     end
     cPlayOneshotMusic(cGetFileName("mus", "mus_8"))
@@ -457,29 +457,29 @@ main = function()
         if doScriptScene == "end" then
             l1_0 = 1
         elseif doScriptScene == "s5f-10" then
-            l0_0(doScriptScene, "夕方の教室")
+            scene_s5f_10(doScriptScene, "夕方の教室")
             doScriptScene = "s5f-20"
         elseif doScriptScene == "s5f-20" then
-            l0_1(doScriptScene, "彩野の家、晩ご飯")
+            scene_s5f_20(doScriptScene, "彩野の家、晩ご飯")
             doScriptScene = "s5f-30"
         elseif doScriptScene == "s5f-30" then
-            l0_2(doScriptScene, "トランプ")
+            scene_s5f_30(doScriptScene, "トランプ")
             doScriptScene = "s5f-40"
         elseif doScriptScene == "s5f-40" then
-            l0_3(doScriptScene, "マスターからのウイスキー")
+            scene_s5f_40(doScriptScene, "マスターからのウイスキー")
             doScriptScene = "s5f-70"
         elseif doScriptScene == "s5f-70" then
-            l0_4(doScriptScene, "彩野のノート")
+            scene_s5f_70(doScriptScene, "彩野のノート")
             doScriptScene = "s5f-80"
         elseif doScriptScene == "s5f-80" then
-            l0_5(doScriptScene, "９月の手紙")
+            scene_s5f_80(doScriptScene, "９月の手紙")
             doScriptScene = "s5f-complete"
         elseif doScriptScene == "s5f-complete" then
             if memoryFlag == true then
                 run(cGetFileName("script", "snr_memory"))
                 quit()
             end
-            l0_6(doScriptScene, "セクション５読了")
+            scene_s5f_complete(doScriptScene, "セクション５読了")
             gameSave.myCard[193].hold = 1
             gameSave.myCard[139].hold = 1
             doScriptScene = "end"

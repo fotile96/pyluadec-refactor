@@ -1,4 +1,4 @@
-local l0_0 = function(l1_0, l1_1)
+local scene_s8s_10 = function(scene_id, scene_title)
     local l1_2 = function()
         local l2_0 = 25
         comSectionStoryEnd(gameSave.sceneId, gameSave.sceneName, l2_0)
@@ -9,8 +9,8 @@ local l0_0 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionStoryBegin(l1_0, l1_1)
-    if comDlgStorylineSkip(l1_0) == true then
+    comSectionStoryBegin(scene_id, scene_title)
+    if comDlgStorylineSkip(scene_id) == true then
         l1_2()
         return
     end
@@ -23,7 +23,7 @@ local l0_0 = function(l1_0, l1_1)
     vms(16758, "AYA20120", "【アヤノ】「ユウイチ――」")
     l1_2()
 end
-local l0_1 = function(l1_0, l1_1)
+local scene_s8s_30 = function(scene_id, scene_title)
     local l1_2 = function()
         local l2_0 = 25
         comSectionStoryEnd(gameSave.sceneId, gameSave.sceneName, l2_0)
@@ -34,8 +34,8 @@ local l0_1 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionStoryBegin(l1_0, l1_1)
-    if comDlgStorylineSkip(l1_0) == true then
+    comSectionStoryBegin(scene_id, scene_title)
+    if comDlgStorylineSkip(scene_id) == true then
         l1_2()
         return
     end
@@ -62,7 +62,7 @@ local l0_1 = function(l1_0, l1_1)
     wait(5)
     l1_2()
 end
-local l0_2 = function(l1_0, l1_1)
+local scene_s8s_40 = function(scene_id, scene_title)
     local l1_2 = function()
         local l2_0 = 25
         comSectionStoryEnd(gameSave.sceneId, gameSave.sceneName, l2_0)
@@ -73,8 +73,8 @@ local l0_2 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionStoryBegin(l1_0, l1_1)
-    if comDlgStorylineSkip(l1_0) == true then
+    comSectionStoryBegin(scene_id, scene_title)
+    if comDlgStorylineSkip(scene_id) == true then
         l1_2()
         return
     end
@@ -221,7 +221,7 @@ local l0_2 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_3 = function(l1_0, l1_1)
+local scene_s8s_50 = function(scene_id, scene_title)
     local l1_2 = function()
         local l2_0 = 0
         comSectionStoryEnd(gameSave.sceneId, gameSave.sceneName, l2_0)
@@ -232,8 +232,8 @@ local l0_3 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionStoryBegin(l1_0, l1_1)
-    if comDlgStorylineSkip(l1_0) == true then
+    comSectionStoryBegin(scene_id, scene_title)
+    if comDlgStorylineSkip(scene_id) == true then
         l1_2()
         return
     end
@@ -264,11 +264,11 @@ local l0_3 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_4 = function(l1_0, l1_1)
+local scene_s8s_comp = function(scene_id, scene_title)
     local l1_2 = function()
         comSectionComplete()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cPlayOneshotMusic(cGetFileName("mus", "mus_7"))
     layerLoad(layerName.pose1, cGetFileName("cutin", "cut_e_s8"))
     layerLoad(layerName.scene, "")
@@ -296,19 +296,19 @@ main = function()
         if doScriptScene == "end" then
             l1_0 = 1
         elseif doScriptScene == "s8s_10" then
-            l0_0(doScriptScene, "僕の言葉")
+            scene_s8s_10(doScriptScene, "僕の言葉")
             doScriptScene = "s8s_30"
         elseif doScriptScene == "s8s_30" then
-            l0_1(doScriptScene, "セクション８：ユウイチ、直哉")
+            scene_s8s_30(doScriptScene, "セクション８：ユウイチ、直哉")
             doScriptScene = "s8s_40"
         elseif doScriptScene == "s8s_40" then
-            l0_2(doScriptScene, "フェンスの向こう側")
+            scene_s8s_40(doScriptScene, "フェンスの向こう側")
             doScriptScene = "s8s_50"
         elseif doScriptScene == "s8s_50" then
-            l0_3(doScriptScene, "誰も見たことのない夕焼け")
+            scene_s8s_50(doScriptScene, "誰も見たことのない夕焼け")
             doScriptScene = "s8s_comp"
         elseif doScriptScene == "s8s_comp" then
-            l0_4(doScriptScene, "セクション８完了")
+            scene_s8s_comp(doScriptScene, "セクション８完了")
             doScriptScene = "end"
         end
         wait(5)

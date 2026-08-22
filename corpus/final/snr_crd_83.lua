@@ -1,11 +1,11 @@
-local l0_0 = function()
+local card_83_s3s_410_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(3593, "NONVOICE", "【直哉】「アヤノさんが階段にいると、男の人の声が聞こえたんだ」")
     vms(3594, "NONVOICE", "【彩野】「えっと、この声の主って――」")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_83_s3s_410_resolve = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(3595, "NONVOICE", "【彩野】「ユウイチの声……」")
@@ -30,7 +30,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_83_s3s_410_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -58,7 +58,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_83_s3s_410_resolve()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

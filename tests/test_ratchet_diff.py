@@ -97,7 +97,19 @@ def test_the_committed_ledger_against_itself_passes(committed, tmp_path, capsys)
 
 def test_an_upgraded_copy_passes_with_a_summary(committed, tmp_path, capsys):
     new = copy.deepcopy(committed)
-    row = _pick(new, "L1")
+    # The committed ledger went all-`L3` at the proposal-channel wiring
+    # (2026-08-18), so the L1 this fixture used to pick is SYNTHESIZED
+    # from an L3 row first, then upgraded back -- the mutation direction
+    # the test has always exercised (upgrade one row, expect exactly one
+    # upgrade in the summary).
+    committed = copy.deepcopy(committed)
+    row0 = _pick(committed, "L3")
+    row0["level"] = "L1"
+    row0["l3_level"] = None
+    row0["refusal_reason"] = "mismatch: code"
+    for o in row0["occurrences"]:
+        o["shipped"] = "fallback"
+    row = new[[r["shash"] for r in new].index(row0["shash"])]
     row["level"] = "L3"
     row["l3_level"] = 1
     row["refusal_reason"] = None
@@ -767,3 +779,51 @@ def test_a_new_ledger_that_drops_l2_is_a_schema_note_not_an_amnesty(
     assert kinds == ["l2-lost"] * 3, kinds
     assert rc == 1
     assert "not driven" in out
+
+
+# ----------------------------------------------------------------------
+# The propose-and-certify channel's shipped vocabulary (M8). The relative
+# order installed: structured > proposal > fallback, with
+# `structured -> proposal` a DOWNGRADE (the "proposal as regression mask"
+# move P4 exists to prevent -- the ratchet must see it).
+
+def _mk_row(shash, level="L3", shipped="structured"):
+    return {"shash": shash, "level": level, "l3_level": 1 if level == "L3" else None,
+            "compile_ok": True, "fallback": shipped == "fallback",
+            "n_insns": 3, "confessions": [], "occurrences": [
+                {"file": "f.lua", "proto_path": "main", "shipped": shipped,
+                 "hybrid": False, "l2": None}],
+            "oracle": "x", "ladder": "l3-ladder-v1",
+            "refusal_reason": None if level == "L3" else "mismatch: code"}
+
+
+def test_proposal_to_fallback_is_a_downgrade(tmp_path, capsys):
+    rc, out = _run(tmp_path,
+                   [_mk_row("a" * 64, shipped="proposal")],
+                   [_mk_row("a" * 64, shipped="fallback", level="L1")], capsys)
+    assert rc == 1
+    assert "shipped proposal, now fallback" in out
+
+
+def test_fallback_to_proposal_is_an_upgrade(tmp_path, capsys):
+    rc, _ = _run(tmp_path,
+                 [_mk_row("a" * 64, shipped="fallback", level="L1")],
+                 [_mk_row("a" * 64, shipped="proposal")], capsys)
+    assert rc == 0
+
+
+def test_structured_to_proposal_is_a_downgrade(tmp_path, capsys):
+    """THE P4 guard: the reconstructor used to print this proto itself and
+    now needs a proposal -- the mask move, named and non-zero."""
+    rc, out = _run(tmp_path,
+                   [_mk_row("a" * 64, shipped="structured")],
+                   [_mk_row("a" * 64, shipped="proposal")], capsys)
+    assert rc == 1
+    assert "proposal-mask" in out and "used to print this proto itself" in out
+
+
+def test_proposal_to_structured_is_an_upgrade(tmp_path, capsys):
+    rc, _ = _run(tmp_path,
+                 [_mk_row("a" * 64, shipped="proposal")],
+                 [_mk_row("a" * 64, shipped="structured")], capsys)
+    assert rc == 0

@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_3_s1s_30_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(2297, "NONVOICE", "【直哉】「彩野さん、この場面なんだけど……」")
@@ -39,7 +39,7 @@ local l0_0 = function()
     vms(2323, "NONVOICE", "『負けた方が何かをおごる』か。うん。そうなると、見せるカードは……。")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_3_s1s_30_resolve = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(2324, "NONVOICE", "【彩野】「そっか。負けた方がハンバーガーをおごるんだったね」")
@@ -68,7 +68,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_3_s1s_30_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -95,7 +95,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_3_s1s_30_resolve()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

@@ -11,13 +11,16 @@
   byte-identical on regeneration (suite-gated on both corpus env vars).
 - **All 229 files select ours.** The merge is degenerate, and the reason
   is stated precisely: pred loses on *re-certifiability through our own
-  pipeline* (mechanism F — the predecessor's boilerplate dead locals fail
-  the root `maxstacksize` comparison in 228/229 files), not on semantics.
+  pipeline* (228/229 roots fail; the diagnosed mechanism F — boilerplate
+  dead locals failing the root `maxstacksize` comparison — accounts for
+  163/229 = 71%, with 58 more failing on `code` at equal maxstacksize;
+  corrected from an earlier "228/229" attribution, IMP-2), not on
+  semantics.
   Factor E never decides a selection (exhaustively: pred wins only on a
   strict Factor-T advantage; pinned as a test); its decisive role is the
   `panel-unpinned > 0` eligibility veto.
 - **The repair campaign moved the ledger to its best state**:
-  `L3` 1456/1478 unique (98.5%) / 1922/1944 occurrences (97.9%); 222 files
+  `L3` 1456/1478 unique (98.5%) / 1922/1944 occurrences (98.9%); 222 files
   fully structured / 5 hybrid / 2 whole-file fallback; 18 upgrades, 0
   downgrades vs the M6 merge baseline `3669950`. The 22-row residual is
   attributed row-by-row in the runbook (8 mechanism clusters; new in M7:

@@ -1,7 +1,7 @@
-local l0_0 = function(l1_0, l1_1)
+local scene_sof_10 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     comEffectFadeOut(60)
     cInitGame()
     wait(1)
@@ -74,10 +74,10 @@ local l0_0 = function(l1_0, l1_1)
     vms(6069, "NONVOICE", "だから、_n今、_n『物語』を。")
     l1_2()
 end
-local l0_1 = function(l1_0, l1_1)
+local scene_sof_20 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cPlayLoopSeWrap(cGetFileName("loop", "loop_6"))
     comEffectFadeOut(200)
     vms(6070, "NONVOICE", "『じゃあね』と彼女は言って、立ち上がり素早くハンドバッグを手に取ると僕の部屋から出て行った。")
@@ -174,10 +174,10 @@ local l0_1 = function(l1_0, l1_1)
     vms(6122, "NONVOICE", "また夏が訪れたのだ。")
     l1_2()
 end
-local l0_2 = function(l1_0, l1_1)
+local scene_sof_30 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_19_a_0"))
     comEffectWhiteIn(200)
     wait(200)
@@ -337,10 +337,10 @@ local l0_2 = function(l1_0, l1_1)
     vms(6219, "NONVOICE", "彩野さんは何も言わず、ただにっこりと微笑み、お辞儀をした。")
     l1_2()
 end
-local l0_3 = function(l1_0, l1_1)
+local scene_sof_40 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cLoadPlaySE(cGetFileName("se", "se_45"), false)
     comEffectFadeOut(200)
     wait(200)
@@ -465,10 +465,10 @@ local l0_3 = function(l1_0, l1_1)
     vms(6289, "NONVOICE", "僕は答えた。_n_r十数分前と同じように。")
     l1_2()
 end
-local l0_4 = function(l1_0, l1_1)
+local scene_sof_50 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     comEffectFadeOut(200)
     layerLoad(layerName.event, cGetFileName("event", "eve_5_x"))
     layerLoad(layerName.pose1, "")
@@ -757,10 +757,10 @@ local l0_4 = function(l1_0, l1_1)
     end
     l1_2()
 end
-local l0_5 = function(l1_0, l1_1)
+local scene_sof_60 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cStopBGMWrap()
     stopSE(0)
     comEffectFadeOut(200)
@@ -1044,10 +1044,10 @@ local l0_5 = function(l1_0, l1_1)
     comEffectFadeOut(300)
     l1_2()
 end
-local l0_6 = function(l1_0, l1_1)
+local scene_sof_complete = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     oCard.show(cGetFileName("card", "crd_1_a"), "書きとめました：『ある子が学校にくる物語』")
     vms(6629, "NONVOICE", "オープニングが終了しました。")
     vms(6630, "NONVOICE", "【■おしらせ】ゲームメニューに、『Ｓｔｏｒｙ』が追加されました。")
@@ -1060,22 +1060,22 @@ main = function()
         if doScriptScene == "end" then
             l1_0 = 1
         elseif doScriptScene == "sof_10" then
-            l0_0(doScriptScene, "オープニング")
+            scene_sof_10(doScriptScene, "オープニング")
             doScriptScene = "sof_20"
         elseif doScriptScene == "sof_20" then
-            l0_1(doScriptScene, "忘れたい記憶")
+            scene_sof_20(doScriptScene, "忘れたい記憶")
             doScriptScene = "sof_30"
         elseif doScriptScene == "sof_30" then
-            l0_2(doScriptScene, "校内へ")
+            scene_sof_30(doScriptScene, "校内へ")
             doScriptScene = "sof_40"
         elseif doScriptScene == "sof_40" then
-            l0_3(doScriptScene, "廊下を歩く")
+            scene_sof_40(doScriptScene, "廊下を歩く")
             doScriptScene = "sof_50"
         elseif doScriptScene == "sof_50" then
-            l0_4(doScriptScene, "彩野さんの記憶")
+            scene_sof_50(doScriptScene, "彩野さんの記憶")
             doScriptScene = "sof_60"
         elseif doScriptScene == "sof_60" then
-            l0_5(doScriptScene, "僕たちの教室")
+            scene_sof_60(doScriptScene, "僕たちの教室")
             doScriptScene = "sof_complete"
         elseif doScriptScene == "sof_complete" then
             if memoryFlag == true then
@@ -1083,7 +1083,7 @@ main = function()
                 quit()
             end
             if gameSave.startMenuState == 0 then
-                l0_6(doScriptScene, "オープニング読了")
+                scene_sof_complete(doScriptScene, "オープニング読了")
                 gameSave.startMenuState = 1
                 gameSave.myCard[1].hold = 1
             end

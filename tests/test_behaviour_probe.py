@@ -470,9 +470,14 @@ def test_pinned_divergences_are_only_what_they_are_claimed_to_be(behaviour_trace
     o, d = behaviour_traces["snr_mainmenu.lua"]
     assert o == d
 
+    # M8 tasks-4/5 campaign (2026-08-16): snr_novel CONVERGED -- the
+    # deferred-constructor position fix ships its literal with the real
+    # hash hint, so the node array and the pairs() order match. Asserted as
+    # a convergence (not deleted) so a regression putting the file back on
+    # a divergent iteration order fails here too, exactly like
+    # snr_mainmenu's above.
     o, d = behaviour_traces["snr_novel.lua"]
-    assert o != d
-    assert collections.Counter(_lines(o)) == collections.Counter(_lines(d))
+    assert o == d
 
 
 def test_corpus_reach_is_not_vacuous(behaviour_traces):
@@ -595,61 +600,40 @@ def test_injected_forloop_bound_is_caught(corpus_dir, decompiled):
     by hand: turn `__pld_i <= limit` into `__pld_i < limit`, i.e. run the loop
     one iteration short.
 
-    Carrier re-derived at M7 task 8 (2026-08-15), and the move is a measured
-    fact about coverage, not just about text: snr_memory.lua carried this
-    since M6 task 12, but its certification of main_2 removed the `[3]`
-    -register loop the anchor named, and NONE of its three surviving
-    fallback for-loops is executed by the probe's drive (all three injected:
-    trace byte-identical -- the substituted functions that contain them are
-    not reached). The scan over every file whose emitted text still contains
-    a fallback FORLOOP found exactly one behaviorally-visible site:
-    snr_music.lua's pc-144 loop. The anchor is the pc-dispatch arm plus the
-    two staging lines, unique in the file; the injection shortens the bound
-    and the trace moves.
+    Carrier re-derived at M7 task 8 (2026-08-15) on snr_music's FALLBACK
+    pc-144 loop, and re-derived AGAIN at the M8 tasks-4/5 campaign
+    (2026-08-16): the constructor position fix certified snr_music whole
+    -- no fallback text remains in the file, so the pc-dispatch anchor
+    matched nothing. The same loop now ships as a structured numeric-for;
+    shortening ITS bound by one moves the trace (measured). The anchor is
+    the loop head, unique in the file.
     """
     orig, mutated = _injected(
         corpus_dir, decompiled, "snr_music.lua",
-        b"elseif __pld_pc == 144 then\n"
-        b"do local __pld_s = __pld_R[4] local __pld_i = __pld_R[2] + __pld_s\n"
-        b"if (__pld_s > 0 and __pld_i <= __pld_R[3]) or "
-        b"(__pld_s <= 0 and __pld_i >= __pld_R[3]) then\n",
-        b"elseif __pld_pc == 144 then\n"
-        b"do local __pld_s = __pld_R[4] local __pld_i = __pld_R[2] + __pld_s\n"
-        b"if (__pld_s > 0 and __pld_i < __pld_R[3]) or "
-        b"(__pld_s <= 0 and __pld_i >= __pld_R[3]) then\n")
+        b"for l1_5 = 1, #l0_0.musicTitle, 1 do",
+        b"for l1_5 = 1, #l0_0.musicTitle - 1, 1 do")
     assert mutated != orig
 
 
-def test_the_pin_key_does_not_absorb_an_unrelated_change(corpus_dir, decompiled):
+def test_the_pin_key_does_not_absorb_an_unrelated_change():
     """The pin key must be the whole compared evidence, not a projection of it.
 
-    Through M6 the key was `first_difference(o, d)[1:]`. Measured on this tree
-    (2026-08-14, final-review item 8): replacing `= 68` with `= 168` in
-    `snr_novel.lua`'s DECOMPILED source -- 3 sites, in a scratch copy; the
-    corpus is never written -- moves the trace but leaves the first differing
-    line pair byte-for-byte unchanged, so the old key adjudicated the mutated
-    run as the existing pin and the gate stayed green. Both halves are
-    asserted here, so this cannot rot into "the digests differ" without also
-    proving the old key would not have.
+    Through M6 the key was `first_difference(o, d)[1:]`; the M6 final review
+    (item 8) measured that a trace mutation leaving the FIRST differing line
+    pair unchanged was absorbed by that key. Re-derived at the M8 tasks-4/5
+    campaign (2026-08-16) as a SYNTHETIC pair: snr_novel -- the corpus
+    carrier of the original measurement -- CONVERGED when the constructor
+    position fix certified it, and `EXPECTED_DIVERGENCE` is now empty, so no
+    corpus file can carry this regression test. The property is about the
+    key functions, and synthetic traces state it exactly.
     """
-    from scripts.probe_behaviour import (EXPECTED_DIVERGENCE, first_difference,
-                                         pin_evidence, probe_raw)
-    f = corpus_dir / "snr_novel.lua"
-    src = decompiled(f).source
-    assert src.count(b"= 68") == 3
-    o = probe_raw(f.read_bytes(), is_source=False)
-    d = probe_raw(src, is_source=True)
-    m = probe_raw(src.replace(b"= 68", b"= 168"), is_source=True)
-    assert m != d
-    # The old key: unchanged by the injection, so `adjudicate_pins` saw a
-    # matching pin and reported nothing.
+    from scripts.probe_behaviour import first_difference, pin_evidence
+    o = b"A\nB\nC\n"
+    d = b"A\nX\nC\n"
+    m = b"A\nX\nD\n"          # a later-line mutation; first pair unchanged
+    assert first_difference(o, m) == first_difference(o, d)
     assert first_difference(o, m)[1:] == first_difference(o, d)[1:]
-    # The key in force: the clean run matches the pin, the injected run does
-    # not, and `moved` is what fires.
-    assert pin_evidence(o, d) == EXPECTED_DIVERGENCE["snr_novel.lua"]
-    assert pin_evidence(o, m) != EXPECTED_DIVERGENCE["snr_novel.lua"]
-    assert adjudicate_pins({"snr_novel.lua": pin_evidence(o, m)},
-                           EXPECTED_DIVERGENCE) == ([], ["snr_novel.lua"], [])
+    assert pin_evidence(o, m) != pin_evidence(o, d)
 
 
 def test_probe_is_deterministic_across_separate_processes(corpus_dir, decompiled):

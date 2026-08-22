@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_78_s3s_350_sel_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_2_e")
     vms(3475, "NONVOICE", "【彩野】「直哉くん、ここの場面なんだけど……」")
@@ -11,7 +11,7 @@ local l0_0 = function()
     vms(3480, "NONVOICE", "アヤノさんが『先生』に抱いた感情。それは――")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_78_s3s_350_sel_resolve = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_2_e")
     vms(3481, "NONVOICE", "【彩野】「先生は信用できない……。こういう風にアヤノが思った……」")
@@ -40,7 +40,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_78_s3s_350_sel_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -67,7 +67,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_78_s3s_350_sel_resolve()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

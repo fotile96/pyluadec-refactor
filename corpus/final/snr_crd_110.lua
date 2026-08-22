@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_110_s6s_290_step5 = function()
     cStopBGMWrap()
     comPoseLoad("po2_aya_f_2_e")
     vms(559, "NONVOICE", "【彩野】「うーん……」")
@@ -17,7 +17,7 @@ local l0_0 = function()
     run(cGetFileName("script", "snr_fragment_main"))
     quit()
 end
-local l0_1 = function()
+local card_110_s6s_290_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_7_x"))
     comPoseLoad("po2_aya_f_1_c")
     vms(568, "NONVOICE", "【直哉】「……彩野さん……」")
@@ -49,7 +49,7 @@ local l0_1 = function()
     vms(588, "NONVOICE", "【直哉】「アヤノさんは、本当はこんなウワサを望んでいた」")
     comPoseDelete()
 end
-local l0_2 = function()
+local card_110_s6s_290_resolve = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(589, "NONVOICE", "【彩野】「……」")
@@ -57,7 +57,7 @@ local l0_2 = function()
     vms(591, "NONVOICE", "【直哉】「アヤノさんは、クイズの問題を解くときに役立つからと、ある場所で手紙を読むことが多かった」")
     comPoseDelete()
 end
-local l0_3 = function()
+local card_110_s6s_290_step3 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_c")
     vms(592, "NONVOICE", "【彩野】「……」")
@@ -65,7 +65,7 @@ local l0_3 = function()
     vms(594, "NONVOICE", "【直哉】「その場面のあらすじは――」")
     comPoseDelete()
 end
-local l0_4 = function()
+local card_110_s6s_290_step4 = function()
     oCard.cardAnswerNonvoiceTrue()
     comPoseLoad("po2_aya_f_1_c")
     cStopBGMWrap()
@@ -74,7 +74,7 @@ local l0_4 = function()
     vms(597, "NONVOICE", "【直哉】「この『ある子』に含ませていた≪物語の登場人物≫は、彩野さんと――」")
     comPoseDelete()
 end
-local l0_5 = function()
+local card_110_s6s_290_step6 = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_2_e")
     vms(598, "NONVOICE", "【彩野】「でも……」")
@@ -144,7 +144,7 @@ main = function()
         quit()
     end
     local l1_0 = false
-    l0_1()
+    card_110_s6s_290_intro()
     local l1_1 = 0
     local l1_2 = 0
     local l1_3 = -1
@@ -174,7 +174,7 @@ main = function()
         end
         wait(30)
     end
-    l0_2()
+    card_110_s6s_290_resolve()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -204,7 +204,7 @@ main = function()
         end
         wait(30)
     end
-    l0_3()
+    card_110_s6s_290_step3()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -234,7 +234,7 @@ main = function()
         end
         wait(30)
     end
-    l0_4()
+    card_110_s6s_290_step4()
     l1_1 = 0
     l1_2 = 0
     l1_3 = -1
@@ -265,9 +265,9 @@ main = function()
         wait(30)
     end
     if l1_0 == true then
-        l0_0()
+        card_110_s6s_290_step5()
     end
-    l0_5()
+    card_110_s6s_290_step6()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

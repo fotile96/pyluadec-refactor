@@ -1,4 +1,4 @@
-local l0_0 = function()
+local card_77_s3s_340_intro = function()
     cPlayBGMWrap(cGetFileName("bgm", "bgm_5_x"))
     comPoseLoad("po2_aya_f_1_a")
     vms(3454, "NONVOICE", "【直哉】「陸上部のウワサを『きくちゃん』に聞く場面――」")
@@ -10,7 +10,7 @@ local l0_0 = function()
     vms(3459, "NONVOICE", "【直哉】「きくちゃんについては個別にカードをつくってるよ。これを見てもらった方が早いと思う」")
     comPoseDelete()
 end
-local l0_1 = function()
+local card_77_s3s_340_resolve = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(3460, "NONVOICE", "【彩野】「……そっか。あ、それで二回目って事は、初めに登場した部分もあるって事だよね？」")
@@ -22,7 +22,7 @@ local l0_1 = function()
     vms(3465, "NONVOICE", "「してる」「していない」「思い出せない」……一番初めにきくちゃんの描写が出てきたのは、どのシーンだっただろう？")
     comPoseDelete()
 end
-local l0_2 = function()
+local card_77_s3s_340_step3 = function()
     oCard.cardAnswerTrue()
     comPoseLoad("po2_aya_f_1_a")
     vms(3466, "NONVOICE", "【彩野】「ふむ……なるほど」")
@@ -56,7 +56,7 @@ main = function()
         run(cGetFileName("script", "snr_fragment_main"))
         quit()
     end
-    l0_0()
+    card_77_s3s_340_intro()
     local l1_0 = 0
     local l1_1 = 0
     local l1_2 = -1
@@ -83,7 +83,7 @@ main = function()
         end
         wait(30)
     end
-    l0_1()
+    card_77_s3s_340_resolve()
     local l1_3 = 0
     local l1_4 = 0
     local l1_5 = -1
@@ -110,7 +110,7 @@ main = function()
         end
         wait(30)
     end
-    l0_2()
+    card_77_s3s_340_step3()
     comSectionCardEnd(gameSave.fragmentDoSceneId, gameSave.fragmentDoCardId)
     run(cGetFileName("script", "snr_fragment_main"))
     quit()

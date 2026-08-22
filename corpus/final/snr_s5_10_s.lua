@@ -1,4 +1,4 @@
-local l0_0 = function()
+local scene_s5s_shared_v0 = function()
     cPlayOneshotMusic(cGetFileName("mus", "mus_16"))
     comEffectWhiteOut(120)
     cPlayLoopSeWrap(cGetFileName("loop", "loop_5"))
@@ -18,7 +18,7 @@ local l0_0 = function()
     wait(1)
     comEffectFadeOut(30)
 end
-local l0_1 = function()
+local scene_s5s_shared_v1 = function()
     cStopBGMWrap()
     layerLoad(layerName.event, cGetFileName("event", "eve_0_b"))
     layerLoad(layerName.pose1, "")
@@ -62,7 +62,7 @@ local l0_1 = function()
     wait(1)
     comEffectFadeOut(30)
 end
-local l0_2 = function(l1_0, l1_1)
+local scene_s5s_20 = function(scene_id, scene_title)
     local l1_2 = function()
         local l2_0 = 100
         comSectionStoryEnd(gameSave.sceneId, gameSave.sceneName, l2_0)
@@ -73,8 +73,8 @@ local l0_2 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionStoryBegin(l1_0, l1_1)
-    if comDlgStorylineSkip(l1_0, cGetFileName("event", "eve_63_x")) == true then
+    comSectionStoryBegin(scene_id, scene_title)
+    if comDlgStorylineSkip(scene_id, cGetFileName("event", "eve_63_x")) == true then
         l1_2()
         return
     end
@@ -144,7 +144,7 @@ local l0_2 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_3 = function(l1_0, l1_1)
+local scene_s5s_30 = function(scene_id, scene_title)
     local l1_2 = function()
         local l2_0 = 25
         comSectionStoryEnd(gameSave.sceneId, gameSave.sceneName, l2_0)
@@ -155,8 +155,8 @@ local l0_3 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionStoryBegin(l1_0, l1_1)
-    if comDlgStorylineSkip(l1_0) == true then
+    comSectionStoryBegin(scene_id, scene_title)
+    if comDlgStorylineSkip(scene_id) == true then
         l1_2()
         return
     end
@@ -180,7 +180,7 @@ local l0_3 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_4 = function(l1_0, l1_1)
+local scene_s5s_40_2 = function(scene_id, scene_title)
     local l1_2 = function()
     end
     cStopBGMWrap()
@@ -189,9 +189,9 @@ local l0_4 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionStoryBegin(l1_0, l1_1)
-    l0_0()
-    if comDlgStorylineSkip(l1_0, cGetFileName("event", "eve_63_x")) == true then
+    comSectionStoryBegin(scene_id, scene_title)
+    scene_s5s_shared_v0()
+    if comDlgStorylineSkip(scene_id, cGetFileName("event", "eve_63_x")) == true then
         l1_2()
         return true
     end
@@ -242,51 +242,51 @@ local l0_4 = function(l1_0, l1_1)
     l1_2()
     return false
 end
-local l0_5 = function(l1_0, l1_1)
+local scene_s5s_40_3 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     vms(14625, "NONVOICE", "中庭のウワサ話は――")
     l1_2()
 end
-local l0_6 = function(l1_0, l1_1)
+local scene_s5s_40_4 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     comPoseLoad("po1_aya_s_5_b")
     vms(14626, "AYA18440", "【アヤノ】「花が咲き乱れるってウワサだっけ？」")
     l1_2()
 end
-local l0_7 = function(l1_0, l1_1)
+local scene_s5s_40_5 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     comPoseLoad("po1_aya_s_5_b")
     vms(14627, "AYA18450", "【アヤノ】「えっと……人が落ちてくる、みたいな」")
     l1_2()
 end
-local l0_8 = function(l1_0, l1_1)
+local scene_s5s_40_6 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     vms(14628, "SAK05100", "【サクラ】「うーん、ちょっと違うかな。私は聞いたことないです」")
     comPoseLoad("po1_aya_s_5_a")
     vms(14629, "AYA18470", "【アヤノ】「あ、待って！ もしかしたらこのウワサかも……？」")
     l1_2()
 end
-local l0_9 = function(l1_0, l1_1)
+local scene_s5s_40_7 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     vms(14630, "SAK05110", "【サクラ】「違います。もしかして、アヤノさん知らないかも？」")
     comPoseLoad("po1_aya_s_5_a")
     vms(14631, "AYA18470", "【アヤノ】「あ、待って！ もしかしたらこのウワサかも……？」")
     l1_2()
 end
-local l0_10 = function(l1_0, l1_1)
+local scene_s5s_40 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     comPoseLoad("po1_aya_s_5_b")
     vms(14632, "AYA18480", "【アヤノ】「雪が降るって言うウワサ、だったっけ……」")
     vms(14633, "SAK05120", "【サクラ】「あたりです！ もしかして、知ってました？」")
@@ -362,7 +362,7 @@ local l0_10 = function(l1_0, l1_1)
     vms(14682, "NONVOICE", "あるいは、彼女となら友達になれるのかもしれない。そう思ったのだ。")
     l1_2()
 end
-local l0_11 = function(l1_0, l1_1)
+local scene_s5s_140 = function(scene_id, scene_title)
     local l1_2 = function()
     end
     cStopBGMWrap()
@@ -371,9 +371,9 @@ local l0_11 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionStoryBegin(l1_0, l1_1)
-    l0_0()
-    if comDlgStorylineSkip(l1_0, cGetFileName("event", "eve_61_x")) == true then
+    comSectionStoryBegin(scene_id, scene_title)
+    scene_s5s_shared_v0()
+    if comDlgStorylineSkip(scene_id, cGetFileName("event", "eve_61_x")) == true then
         l1_2()
         return true
     end
@@ -398,14 +398,14 @@ local l0_11 = function(l1_0, l1_1)
     l1_2()
     return false
 end
-local l0_12 = function(l1_0, l1_1)
+local scene_s5s_140_2 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     vms(14694, "NONVOICE", "この後、どうしようかな。")
     l1_2()
 end
-local l0_13 = function(l1_0, l1_1)
+local scene_s5s_200 = function(scene_id, scene_title)
     local l1_2 = function()
     end
     cPlayBGMWrap(cGetFileName("bgm", "bgm_4_x"))
@@ -414,8 +414,8 @@ local l0_13 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionStoryBegin(l1_0, l1_1)
-    if comDlgStorylineSkip(l1_0) == true then
+    comSectionStoryBegin(scene_id, scene_title)
+    if comDlgStorylineSkip(scene_id) == true then
         l1_2()
         return
     end
@@ -477,10 +477,10 @@ local l0_13 = function(l1_0, l1_1)
     comEffectFadeOut(60)
     l1_2()
 end
-local l0_14 = function(l1_0, l1_1)
+local scene_s5s_140_3 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     vms(14725, "SAK05460", "【サクラ】「そろそろ帰ろうかな……」")
     cStopBGMWrap()
     wait(1)
@@ -517,7 +517,7 @@ local l0_14 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_15 = function(l1_0, l1_1)
+local scene_s5s_260 = function(scene_id, scene_title)
     local l1_2 = function()
     end
     cStopBGMWrap()
@@ -526,7 +526,7 @@ local l0_15 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionStoryBegin(l1_0, l1_1)
+    comSectionStoryBegin(scene_id, scene_title)
     cPlayOneshotMusic(cGetFileName("mus", "mus_26"))
     comEffectWhiteOut(120)
     wait(120)
@@ -634,7 +634,7 @@ local l0_15 = function(l1_0, l1_1)
     layerLoad(layerName.pose6, "")
     cPlayOneshotMusic(cGetFileName("mus", "mus_26"))
     wait(120)
-    if comDlgStorylineSkip(l1_0, cGetFileName("bg", "bg_8_b_0")) == true then
+    if comDlgStorylineSkip(scene_id, cGetFileName("bg", "bg_8_b_0")) == true then
         l1_2()
         return
     end
@@ -782,7 +782,7 @@ local l0_15 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_16 = function(l1_0, l1_1)
+local scene_s5s_320 = function(scene_id, scene_title)
     local l1_2 = function()
     end
     cStopBGMWrap()
@@ -791,9 +791,9 @@ local l0_16 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionStoryBegin(l1_0, l1_1)
-    l0_0()
-    if comDlgStorylineSkip(l1_0, cGetFileName("bg", "bg_24_a_0")) == true then
+    comSectionStoryBegin(scene_id, scene_title)
+    scene_s5s_shared_v0()
+    if comDlgStorylineSkip(scene_id, cGetFileName("bg", "bg_24_a_0")) == true then
         l1_2()
         return true
     end
@@ -806,10 +806,10 @@ local l0_16 = function(l1_0, l1_1)
     l1_2()
     return false
 end
-local l0_17 = function(l1_0, l1_1)
+local scene_s5s_320_2 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     vms(14831, "NONVOICE", "もしかしたら今日の夕方、少し外に長く居すぎたのが原因かもしれない。")
     comEffectYellowIn(60)
     wait(60)
@@ -820,10 +820,10 @@ local l0_17 = function(l1_0, l1_1)
     vms(14836, "NONVOICE", "また、迷惑をかけちゃ……。")
     l1_2()
 end
-local l0_18 = function(l1_0, l1_1)
+local scene_s5s_320_3 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     oCard.showMiniIn(cGetFileName("card", "crd_182_a"))
     vms(14837, "NONVOICE", "私はナースコールに伸ばし掛けていた腕を布団の中に引っ込めると、頭まで布団をかぶり、目を瞑った。")
     vms(14838, "NONVOICE", "シンとした音が耳の中に残響の様に反射する。その中で私の息遣いだけが世界に取り残されたかのように響いている。")
@@ -858,7 +858,7 @@ local l0_18 = function(l1_0, l1_1)
     wait(120)
     l1_2()
 end
-local l0_19 = function(l1_0, l1_1)
+local scene_s5s_380 = function(scene_id, scene_title)
     local l1_2 = function()
         comSectionGameOver()
     end
@@ -868,7 +868,7 @@ local l0_19 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     vms(14856, "NONVOICE", "■ゲームオーバー")
     wait(60)
     vms(17174, "NONVOICE", "【（ヒント１）】「あらすじ」を見ただけでは、語り尽くせない想いも、ある。")
@@ -876,10 +876,10 @@ local l0_19 = function(l1_0, l1_1)
     wait(60)
     l1_2()
 end
-local l0_20 = function(l1_0, l1_1)
+local scene_s5s_320_4 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     vms(14857, "NONVOICE", "私はナースコールのボタンを押すと、そのまま目を閉じた。")
     cLoadPlaySE(cGetFileName("se", "se_66"), false)
     vms(14858, "NONVOICE", "駆けつけた看護師さんに、身体の様子を聞かれる。")
@@ -901,7 +901,7 @@ local l0_20 = function(l1_0, l1_1)
     comEffectFadeOut(200)
     l1_2()
 end
-local l0_21 = function(l1_0, l1_1)
+local scene_s5s_410 = function(scene_id, scene_title)
     local l1_2 = function()
     end
     cStopBGMWrap()
@@ -910,8 +910,8 @@ local l0_21 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionStoryBegin(l1_0, l1_1)
-    if comDlgStorylineSkip(l1_0, cGetFileName("bg", "bg_24_a_0")) == true then
+    comSectionStoryBegin(scene_id, scene_title)
+    if comDlgStorylineSkip(scene_id, cGetFileName("bg", "bg_24_a_0")) == true then
         l1_2()
         return
     end
@@ -1001,7 +1001,7 @@ local l0_21 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_22 = function(l1_0, l1_1)
+local scene_s5s_430 = function(scene_id, scene_title)
     local l1_2 = function()
     end
     cStopBGMWrap()
@@ -1010,8 +1010,8 @@ local l0_22 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionStoryBegin(l1_0, l1_1)
-    if comDlgStorylineSkip(l1_0, cGetFileName("bg", "bg_24_a_0")) == true then
+    comSectionStoryBegin(scene_id, scene_title)
+    if comDlgStorylineSkip(scene_id, cGetFileName("bg", "bg_24_a_0")) == true then
         l1_2()
         return true
     end
@@ -1083,10 +1083,10 @@ local l0_22 = function(l1_0, l1_1)
     l1_2()
     return false
 end
-local l0_23 = function(l1_0, l1_1)
+local scene_s5s_430_2 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cPlayOneshotMusic(cGetFileName("mus", "mus_16"))
     wait(1)
     layerLoad(layerName.bg1, cGetFileName("bg", "bg_8_c_0"))
@@ -1105,14 +1105,14 @@ local l0_23 = function(l1_0, l1_1)
     vms(14944, "NONVOICE", "……。")
     l1_2()
 end
-local l0_24 = function(l1_0, l1_1)
+local scene_s5s_430_3 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
-    l0_1()
+    comSectionNonLabelBegin(scene_id, scene_title)
+    scene_s5s_shared_v1()
     l1_2()
 end
-local l0_25 = function(l1_0, l1_1)
+local scene_s5s_510 = function(scene_id, scene_title)
     local l1_2 = function()
         comSectionGameOver()
     end
@@ -1122,14 +1122,14 @@ local l0_25 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     vms(14945, "NONVOICE", "■ゲームオーバー")
     wait(60)
     vms(17176, "NONVOICE", "【（ヒント）】言葉によく耳をかたむけ、慎重にカードを選ぼう。")
     wait(60)
     l1_2()
 end
-local l0_26 = function(l1_0, l1_1)
+local scene_s5s_520 = function(scene_id, scene_title)
     local l1_2 = function()
     end
     cStopBGMWrap()
@@ -1138,8 +1138,8 @@ local l0_26 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionStoryBegin(l1_0, l1_1)
-    if comDlgStorylineSkip(l1_0, cGetFileName("bg", "bg_24_a_0")) == true then
+    comSectionStoryBegin(scene_id, scene_title)
+    if comDlgStorylineSkip(scene_id, cGetFileName("bg", "bg_24_a_0")) == true then
         l1_2()
         return
     end
@@ -1162,7 +1162,7 @@ local l0_26 = function(l1_0, l1_1)
     vms(14955, "NONVOICE", "今は――")
     l1_2()
 end
-local l0_27 = function(l1_0, l1_1)
+local scene_s5s_550 = function(scene_id, scene_title)
     local l1_2 = function()
     end
     cStopBGMWrap()
@@ -1171,8 +1171,8 @@ local l0_27 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionStoryBegin(l1_0, l1_1)
-    if comDlgStorylineSkip(l1_0, cGetFileName("bg", "bg_24_a_0")) == true then
+    comSectionStoryBegin(scene_id, scene_title)
+    if comDlgStorylineSkip(scene_id, cGetFileName("bg", "bg_24_a_0")) == true then
         l1_2()
         return
     end
@@ -1293,7 +1293,7 @@ local l0_27 = function(l1_0, l1_1)
     vms(15019, "NONVOICE", "……。")
     l1_2()
 end
-local l0_28 = function(l1_0, l1_1)
+local scene_s5s_580 = function(scene_id, scene_title)
     local l1_2 = function()
     end
     cStopBGMWrap()
@@ -1302,9 +1302,9 @@ local l0_28 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionStoryBegin(l1_0, l1_1)
-    l0_0()
-    if comDlgStorylineSkip(l1_0, cGetFileName("bg", "bg_24_a_0")) == true then
+    comSectionStoryBegin(scene_id, scene_title)
+    scene_s5s_shared_v0()
+    if comDlgStorylineSkip(scene_id, cGetFileName("bg", "bg_24_a_0")) == true then
         l1_2()
         return true
     end
@@ -1452,7 +1452,7 @@ local l0_28 = function(l1_0, l1_1)
     l1_2()
     return false
 end
-local l0_29 = function(l1_0, l1_1)
+local scene_s5s_660 = function(scene_id, scene_title)
     local l1_2 = function()
     end
     cStopBGMWrap()
@@ -1461,8 +1461,8 @@ local l0_29 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionStoryBegin(l1_0, l1_1)
-    if comDlgStorylineSkip(l1_0, cGetFileName("bg", "bg_24_a_0")) == true then
+    comSectionStoryBegin(scene_id, scene_title)
+    if comDlgStorylineSkip(scene_id, cGetFileName("bg", "bg_24_a_0")) == true then
         l1_2()
         return
     end
@@ -1493,7 +1493,7 @@ local l0_29 = function(l1_0, l1_1)
     cStopBGMWrap()
     l1_2()
 end
-local l0_30 = function(l1_0, l1_1)
+local scene_s5s_680 = function(scene_id, scene_title)
     local l1_2 = function()
     end
     cStopBGMWrap()
@@ -1502,8 +1502,8 @@ local l0_30 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionStoryBegin(l1_0, l1_1)
-    if comDlgStorylineSkip(l1_0) == true then
+    comSectionStoryBegin(scene_id, scene_title)
+    if comDlgStorylineSkip(scene_id) == true then
         l1_2()
         return true
     end
@@ -1540,17 +1540,17 @@ local l0_30 = function(l1_0, l1_1)
     l1_2()
     return false
 end
-local l0_31 = function(l1_0, l1_1)
+local scene_s5s_680_2 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     vms(15118, "NONVOICE", "私は――")
     l1_2()
 end
-local l0_32 = function(l1_0, l1_1)
+local scene_s5s_680_3 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     vms(15119, "NONVOICE", "身体が、鉛のように重い。")
     vms(15120, "NONVOICE", "私は震えながら、病室へと戻った。")
     cStopBGMWrap()
@@ -1558,10 +1558,10 @@ local l0_32 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_33 = function(l1_0, l1_1)
+local scene_s5s_680_4 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cStopBGMWrap()
     wait(1)
     comEffectFadeOut(120)
@@ -1574,7 +1574,7 @@ local l0_33 = function(l1_0, l1_1)
     vms(15124, "NONVOICE", "風が、強くなってきた。")
     l1_2()
 end
-local l0_34 = function(l1_0, l1_1)
+local scene_s5s_740 = function(scene_id, scene_title)
     local l1_2 = function()
     end
     cStopBGMWrap()
@@ -1583,8 +1583,8 @@ local l0_34 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionStoryBegin(l1_0, l1_1)
-    if comDlgStorylineSkip(l1_0) == true then
+    comSectionStoryBegin(scene_id, scene_title)
+    if comDlgStorylineSkip(scene_id) == true then
         l1_2()
         return true
     end
@@ -1604,14 +1604,14 @@ local l0_34 = function(l1_0, l1_1)
     l1_2()
     return false
 end
-local l0_35 = function(l1_0, l1_1)
+local scene_s5s_740_2 = function(scene_id, scene_title)
     local l1_2 = function()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
-    l0_1()
+    comSectionNonLabelBegin(scene_id, scene_title)
+    scene_s5s_shared_v1()
     l1_2()
 end
-local l0_36 = function(l1_0, l1_1)
+local scene_s5s_800 = function(scene_id, scene_title)
     local l1_2 = function()
         comSectionGameOver()
     end
@@ -1621,14 +1621,14 @@ local l0_36 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     vms(15134, "NONVOICE", "■ゲームオーバー")
     wait(60)
     vms(17177, "NONVOICE", "【（ヒント）】言葉によく耳をかたむけ、慎重にカードを選ぼう。")
     wait(60)
     l1_2()
 end
-local l0_37 = function(l1_0, l1_1)
+local scene_s5s_805 = function(scene_id, scene_title)
     local l1_2 = function()
         local l2_0 = 25
         comSectionStoryEnd(gameSave.sceneId, gameSave.sceneName, l2_0)
@@ -1639,8 +1639,8 @@ local l0_37 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionStoryBegin(l1_0, l1_1)
-    if comDlgStorylineSkip(l1_0) == true then
+    comSectionStoryBegin(scene_id, scene_title)
+    if comDlgStorylineSkip(scene_id) == true then
         l1_2()
         return
     end
@@ -1664,7 +1664,7 @@ local l0_37 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_38 = function(l1_0, l1_1)
+local scene_s5s_806 = function(scene_id, scene_title)
     local l1_2 = function()
         local l2_0 = 25
         comSectionStoryEnd(gameSave.sceneId, gameSave.sceneName, l2_0)
@@ -1675,8 +1675,8 @@ local l0_38 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionStoryBegin(l1_0, l1_1)
-    if comDlgStorylineSkip(l1_0, cGetFileName("event", "eve_35_a")) == true then
+    comSectionStoryBegin(scene_id, scene_title)
+    if comDlgStorylineSkip(scene_id, cGetFileName("event", "eve_35_a")) == true then
         l1_2()
         return
     end
@@ -1706,7 +1706,7 @@ local l0_38 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_39 = function(l1_0, l1_1)
+local scene_s5s_820 = function(scene_id, scene_title)
     local l1_2 = function()
         local l2_0 = 25
         comSectionStoryEnd(gameSave.sceneId, gameSave.sceneName, l2_0)
@@ -1717,8 +1717,8 @@ local l0_39 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionStoryBegin(l1_0, l1_1)
-    if comDlgStorylineSkip(l1_0, cGetFileName("event", "eve_35_a")) == true then
+    comSectionStoryBegin(scene_id, scene_title)
+    if comDlgStorylineSkip(scene_id, cGetFileName("event", "eve_35_a")) == true then
         l1_2()
         return
     end
@@ -1760,7 +1760,7 @@ local l0_39 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_40 = function(l1_0, l1_1)
+local scene_s5s_870 = function(scene_id, scene_title)
     local l1_2 = function()
         local l2_0 = 25
         comSectionStoryEnd(gameSave.sceneId, gameSave.sceneName, l2_0)
@@ -1771,8 +1771,8 @@ local l0_40 = function(l1_0, l1_1)
     layerLoad(layerName.pose2, "")
     switchScreen(0, "", 5)
     wait(5)
-    comSectionStoryBegin(l1_0, l1_1)
-    if comDlgStorylineSkip(l1_0) == true then
+    comSectionStoryBegin(scene_id, scene_title)
+    if comDlgStorylineSkip(scene_id) == true then
         l1_2()
         return
     end
@@ -1832,11 +1832,11 @@ local l0_40 = function(l1_0, l1_1)
     comEffectFadeOut(120)
     l1_2()
 end
-local l0_41 = function(l1_0, l1_1)
+local scene_s5s_comp = function(scene_id, scene_title)
     local l1_2 = function()
         comSectionComplete()
     end
-    comSectionNonLabelBegin(l1_0, l1_1)
+    comSectionNonLabelBegin(scene_id, scene_title)
     cPlayOneshotMusic(cGetFileName("mus", "mus_8"))
     layerLoad(layerName.pose1, cGetFileName("cutin", "cut_e_s5"))
     layerLoad(layerName.scene, "")
@@ -1857,7 +1857,7 @@ local l0_41 = function(l1_0, l1_1)
     comEffectFadeOut(60)
     l1_2()
 end
-local l0_42 = function(l1_0, l1_1, l1_2, l1_3, l1_4)
+local scene_s5s_dispatch_v42 = function(scene_id, scene_title, l1_2, l1_3, l1_4)
     cStopBGMWrap()
     cPlayOneshotMusic(cGetFileName("mus", "mus_16"))
     comEffectWhiteOut(120)
@@ -1867,7 +1867,7 @@ local l0_42 = function(l1_0, l1_1, l1_2, l1_3, l1_4)
     switchScreen(0, "", 60)
     wait(60)
     comPoseLoad("po1_aya_f_1_c")
-    local l1_5 = 18300 + l1_1
+    local l1_5 = 18300 + scene_title
     vms(15192, "NONVOICE", "サクラさんの『日記』と手帳を見ながら、彩野さんは二人の出来事を――『物語』を――<紡,つむ>ぎ出す。")
     if l1_4 == true then
         vms(15193, "NONVOICE", "【≪彩野≫】「それで――。それで……」")
@@ -1901,9 +1901,9 @@ local l0_42 = function(l1_0, l1_1, l1_2, l1_3, l1_4)
     oCard.cursorPositionInit()
     local l1_9 = gameSave.ayanoTime
     while l1_6 < 1 do
-        vms(l1_5, "NONVOICE", l1_0)
+        vms(l1_5, "NONVOICE", scene_id)
         local l1_10 = oCard.selectCardNotCancelObj()
-        if l1_10 == l1_1 then
+        if l1_10 == scene_title then
             cStopBGMWrap()
             cPlayOneshotMusic(cGetFileName("mus", "mus_1"))
             comEffectYellowIn(30)
@@ -1936,7 +1936,7 @@ local l0_42 = function(l1_0, l1_1, l1_2, l1_3, l1_4)
     end
     return l1_2
 end
-local l0_43 = function(l1_0, l1_1, l1_2, l1_3)
+local scene_s5s_dispatch_v43 = function(scene_id, scene_title, l1_2, l1_3)
     cStopBGMWrap()
     cPlayOneshotMusic(cGetFileName("mus", "mus_16"))
     comEffectWhiteOut(120)
@@ -1959,9 +1959,9 @@ local l0_43 = function(l1_0, l1_1, l1_2, l1_3)
     oCard.cursorPositionInit()
     local l1_7 = gameSave.ayanoTime
     while l1_4 < 1 do
-        vms(15224, "NONVOICE", l1_0)
+        vms(15224, "NONVOICE", scene_id)
         local l1_8 = oCard.selectCardNotCancelObj()
-        if l1_8 == l1_1 then
+        if l1_8 == scene_title then
             cStopBGMWrap()
             cPlayOneshotMusic(cGetFileName("mus", "mus_1"))
             comEffectYellowIn(30)
@@ -2005,7 +2005,7 @@ local l0_43 = function(l1_0, l1_1, l1_2, l1_3)
     end
     return l1_2
 end
-local l0_44 = function()
+local scene_s5s_dispatch_v44 = function()
     cStopBGMWrap()
     cPlayOneshotMusic(cGetFileName("mus", "mus_16"))
     comEffectWhiteOut(120)
@@ -2062,7 +2062,7 @@ local l0_44 = function()
     comEffectWhiteOut(120)
     return true
 end
-local l0_45 = function()
+local scene_s5s_dispatch_v45 = function()
     cStopBGMWrap()
     cPlayOneshotMusic(cGetFileName("mus", "mus_16"))
     comEffectWhiteOut(120)
@@ -2256,80 +2256,80 @@ main = function()
         elseif doScriptScene == "s5s_10" then
             doScriptScene = "s5s_20"
         elseif doScriptScene == "s5s_20" then
-            l0_2(doScriptScene, "サクラさん")
+            scene_s5s_20(doScriptScene, "サクラさん")
             doScriptScene = "s5s_30"
         elseif doScriptScene == "s5s_30" then
-            l0_3(doScriptScene, "セクション５：サクラ")
+            scene_s5s_30(doScriptScene, "セクション５：サクラ")
             doScriptScene = "s5s_40"
         elseif doScriptScene == "s5s_40" then
-            if l0_4(doScriptScene, "サクラの日記：９月１３日") == true then
+            if scene_s5s_40_2(doScriptScene, "サクラの日記：９月１３日") == true then
             else
                 local l1_1 = 0
                 while l1_1 == 0 do
-                    l0_5(doScriptScene, "選択：ウワサとは？")
+                    scene_s5s_40_3(doScriptScene, "選択：ウワサとは？")
                     local l1_2 = 0
                     l1_2 = comDlgSelectItem(false, true, false, true, 1, "none", 0, 0, "sel_s5s_80_sel_a", 115, 80, 1, "sel_s5s_80_sel_b", 115, 120, 2, "sel_s5s_80_sel_c", 115, 160, 3)
                     if l1_2 == 1 then
-                        l0_6(doScriptScene, "花が咲き乱れる")
-                        l0_8(doScriptScene, "違うウワサ")
+                        scene_s5s_40_4(doScriptScene, "花が咲き乱れる")
+                        scene_s5s_40_6(doScriptScene, "違うウワサ")
                     elseif l1_2 == 2 then
-                        l0_7(doScriptScene, "人が落ちてくる")
-                        l0_9(doScriptScene, "違うウワサ")
+                        scene_s5s_40_5(doScriptScene, "人が落ちてくる")
+                        scene_s5s_40_7(doScriptScene, "違うウワサ")
                     elseif l1_2 == 3 then
-                        l0_10(doScriptScene, "雪が降るって言うウワサ")
+                        scene_s5s_40(doScriptScene, "雪が降るって言うウワサ")
                         l1_1 = 1
                     end
                 end
             end
             local l1_1 = 0
-            l1_1 = l0_42("【≪彩野≫】「夏の入り口……初夏。その時の出来事を二人で書こうとしていたと思う」", 180, l1_1, 30, true)
+            l1_1 = scene_s5s_dispatch_v42("【≪彩野≫】「夏の入り口……初夏。その時の出来事を二人で書こうとしていたと思う」", 180, l1_1, 30, true)
             comSectionStoryEndForce(gameSave.sceneId, gameSave.sceneName, l1_1)
             doScriptScene = "s5s_140"
         elseif doScriptScene == "s5s_140" then
-            if l0_11(doScriptScene, "サクラの日記：７月（書きかけ）") == true then
+            if scene_s5s_140(doScriptScene, "サクラの日記：７月（書きかけ）") == true then
                 local l1_1 = 0
-                l1_1 = l0_43("【≪彩野≫】「夏休み明け……男の子と女の子が出会った時の出来事……、だと思う」", 181, l1_1, 30)
+                l1_1 = scene_s5s_dispatch_v43("【≪彩野≫】「夏休み明け……男の子と女の子が出会った時の出来事……、だと思う」", 181, l1_1, 30)
                 comSectionStoryEndForce(gameSave.sceneId, gameSave.sceneName, l1_1)
                 doScriptScene = "s5s_260"
             else
-                l0_12(doScriptScene, "選択：どこに行く？")
+                scene_s5s_140_2(doScriptScene, "選択：どこに行く？")
                 retSelect = comDlgSelectItem(false, true, false, true, 1, "none", 0, 0, "sel_s5s_190_sel_a", 115, 80, 1, "sel_s5s_190_sel_b", 115, 120, 2)
                 if retSelect == 1 then
                     local l1_1 = 0
                     comSectionStoryEndForce(gameSave.sceneId, gameSave.sceneName, l1_1)
                     doScriptScene = "s5s_200"
                 elseif retSelect == 2 then
-                    l0_14(doScriptScene, "もしかしたらアヤノさんが")
+                    scene_s5s_140_3(doScriptScene, "もしかしたらアヤノさんが")
                     local l1_1 = 0
-                    l1_1 = l0_43("【≪彩野≫】「夏休み明け……男の子と女の子が出会った時の出来事……」", 181, l1_1, 30)
+                    l1_1 = scene_s5s_dispatch_v43("【≪彩野≫】「夏休み明け……男の子と女の子が出会った時の出来事……」", 181, l1_1, 30)
                     comSectionStoryEndForce(gameSave.sceneId, gameSave.sceneName, l1_1)
                     doScriptScene = "s5s_260"
                 end
             end
         elseif doScriptScene == "s5s_200" then
-            l0_13(doScriptScene, "中庭のアヤノさん")
+            scene_s5s_200(doScriptScene, "中庭のアヤノさん")
             if gameSave.myCard[194].hold == -1 then
                 local l1_1 = 100
                 comSectionStoryEnd(gameSave.sceneId, gameSave.sceneName, l1_1)
             else
                 local l1_1 = 0
-                l1_1 = l0_43("【≪彩野≫】「夏休み明け……男の子と女の子が出会った時の出来事……」", 181, l1_1, 30, false)
+                l1_1 = scene_s5s_dispatch_v43("【≪彩野≫】「夏休み明け……男の子と女の子が出会った時の出来事……」", 181, l1_1, 30, false)
                 comSectionStoryEndForce(gameSave.sceneId, gameSave.sceneName, l1_1)
             end
             doScriptScene = "s5s_260"
         elseif doScriptScene == "s5s_260" then
-            l0_15(doScriptScene, "サクラの日記：９月１６日")
+            scene_s5s_260(doScriptScene, "サクラの日記：９月１６日")
             local l1_1 = 0
-            l1_1 = l0_42("【≪彩野≫】「その日の夜の出来事、だと思う――」", 182, l1_1, 40, false)
+            l1_1 = scene_s5s_dispatch_v42("【≪彩野≫】「その日の夜の出来事、だと思う――」", 182, l1_1, 40, false)
             comSectionStoryEndForce(gameSave.sceneId, gameSave.sceneName, l1_1)
             doScriptScene = "s5s_320"
         elseif doScriptScene == "s5s_320" then
-            if l0_16(doScriptScene, "サクラの日記：９月１６日（夜）") == true then
+            if scene_s5s_320(doScriptScene, "サクラの日記：９月１６日（夜）") == true then
                 local l1_1 = 0
                 comSectionStoryEndForce(gameSave.sceneId, gameSave.sceneName, l1_1)
                 doScriptScene = "s5s_380"
             else
-                l0_17(doScriptScene, "選択：耐えられそうにない発作")
+                scene_s5s_320_2(doScriptScene, "選択：耐えられそうにない発作")
                 local l1_1 = 0
                 if comSectionStoryCheckRoute("s5s_200") == true then
                     l1_1 = comDlgSelectItem(false, true, false, true, 1, "none", 0, 0, "sel_s5s_350_sel_a", 115, 80, 1, "sel_s5s_350_sel_b", 115, 120, 2)
@@ -2337,80 +2337,80 @@ main = function()
                     l1_1 = comDlgSelectItem(false, true, false, true, 1, "none", 0, 0, "sel_s5s_350_sel_b", 115, 120, 2)
                 end
                 if l1_1 == 1 then
-                    l0_20(doScriptScene, "ナースコールのボタン")
+                    scene_s5s_320_4(doScriptScene, "ナースコールのボタン")
                     local l1_2 = 0
-                    l1_2 = l0_42("【≪彩野≫】「９月１６日から、数日後のお話――」", 183, l1_2, 40, false)
+                    l1_2 = scene_s5s_dispatch_v42("【≪彩野≫】「９月１６日から、数日後のお話――」", 183, l1_2, 40, false)
                     comSectionStoryEndForce(gameSave.sceneId, gameSave.sceneName, l1_2)
                     doScriptScene = "s5s_410"
                 elseif l1_1 == 2 then
-                    l0_18(doScriptScene, "がんばってみる")
+                    scene_s5s_320_3(doScriptScene, "がんばってみる")
                     local l1_2 = 0
                     comSectionStoryEndForce(gameSave.sceneId, gameSave.sceneName, l1_2)
                     doScriptScene = "s5s_380"
                 end
             end
         elseif doScriptScene == "s5s_380" then
-            l0_19(doScriptScene, "ゲームオーバー")
+            scene_s5s_380(doScriptScene, "ゲームオーバー")
             doScriptScene = "end"
         elseif doScriptScene == "s5s_410" then
-            l0_21(doScriptScene, "サクラの日記：９月２０日")
+            scene_s5s_410(doScriptScene, "サクラの日記：９月２０日")
             local l1_1 = 0
-            l1_1 = l0_42("【≪彩野≫】「――電話を……立ち聞き……聞いていたんだ…………」", 184, l1_1, 40, false)
+            l1_1 = scene_s5s_dispatch_v42("【≪彩野≫】「――電話を……立ち聞き……聞いていたんだ…………」", 184, l1_1, 40, false)
             comSectionStoryEndForce(gameSave.sceneId, gameSave.sceneName, l1_1)
             doScriptScene = "s5s_430"
         elseif doScriptScene == "s5s_430" then
-            if l0_22(doScriptScene, "サクラの日記：９月２２日") == true then
+            if scene_s5s_430(doScriptScene, "サクラの日記：９月２２日") == true then
             else
-                l0_23(doScriptScene, "選択：耐えられそうにない発作")
+                scene_s5s_430_2(doScriptScene, "選択：耐えられそうにない発作")
             end
             local l1_1 = 0
-            l1_1 = l0_44()
+            l1_1 = scene_s5s_dispatch_v44()
             if l1_1 == true then
                 local l1_2 = 0
                 comSectionStoryEndForce(gameSave.sceneId, gameSave.sceneName, l1_2)
                 doScriptScene = "s5s_520"
             else
-                l0_24(doScriptScene, "あきらめる")
+                scene_s5s_430_3(doScriptScene, "あきらめる")
                 local l1_2 = 0
                 comSectionStoryEndForce(gameSave.sceneId, gameSave.sceneName, l1_2)
                 doScriptScene = "s5s_510"
             end
         elseif doScriptScene == "s5s_510" then
-            l0_25(doScriptScene, "ゲームオーバー")
+            scene_s5s_510(doScriptScene, "ゲームオーバー")
             doScriptScene = "end"
         elseif doScriptScene == "s5s_520" then
-            l0_26(doScriptScene, "サクラの日記：９月２３日")
+            scene_s5s_520(doScriptScene, "サクラの日記：９月２３日")
             local l1_1 = 0
-            l1_1 = l0_42("【≪彩野≫】「二人で、歌をうたったこと、覚えてる……」", 186, l1_1, 50, false)
+            l1_1 = scene_s5s_dispatch_v42("【≪彩野≫】「二人で、歌をうたったこと、覚えてる……」", 186, l1_1, 50, false)
             comSectionStoryEndForce(gameSave.sceneId, gameSave.sceneName, l1_1)
             doScriptScene = "s5s_550"
         elseif doScriptScene == "s5s_550" then
-            l0_27(doScriptScene, "サクラの日記：９月２９日")
+            scene_s5s_550(doScriptScene, "サクラの日記：９月２９日")
             local l1_1 = 0
-            l1_1 = l0_42("【≪彩野≫】「ばらばらの日記……でも、今ならそれをつなぎ合わせることができると思う……」", 187, l1_1, 50, false)
+            l1_1 = scene_s5s_dispatch_v42("【≪彩野≫】「ばらばらの日記……でも、今ならそれをつなぎ合わせることができると思う……」", 187, l1_1, 50, false)
             comSectionStoryEndForce(gameSave.sceneId, gameSave.sceneName, l1_1)
             doScriptScene = "s5s_580"
         elseif doScriptScene == "s5s_580" then
-            if l0_28(doScriptScene, "サクラの日記：断片") == true then
+            if scene_s5s_580(doScriptScene, "サクラの日記：断片") == true then
             else
                 gameSave.myCard[105].hold = 1
                 gameSave.myCard[106].hold = 1
                 gameSave.myCard[109].hold = 1
             end
             local l1_1 = 0
-            l1_1 = l0_42("【≪彩野≫】「サクラさんが屋上で倒れてから、数日後――。私が、病院を退院する少し前……」", 188, l1_1, 50, false)
+            l1_1 = scene_s5s_dispatch_v42("【≪彩野≫】「サクラさんが屋上で倒れてから、数日後――。私が、病院を退院する少し前……」", 188, l1_1, 50, false)
             comSectionStoryEndForce(gameSave.sceneId, gameSave.sceneName, l1_1)
             doScriptScene = "s5s_660"
         elseif doScriptScene == "s5s_660" then
-            l0_29(doScriptScene, "サクラの日記：１０月３日")
+            scene_s5s_660(doScriptScene, "サクラの日記：１０月３日")
             local l1_1 = 0
-            l1_1 = l0_42("【≪彩野≫】「冬の入り口の……出来事……」", 189, l1_1, 50, false)
+            l1_1 = scene_s5s_dispatch_v42("【≪彩野≫】「冬の入り口の……出来事……」", 189, l1_1, 50, false)
             comSectionStoryEndForce(gameSave.sceneId, gameSave.sceneName, l1_1)
             doScriptScene = "s5s_680"
         elseif doScriptScene == "s5s_680" then
-            if l0_30(doScriptScene, "サクラの日記：１１月１２日") == true then
+            if scene_s5s_680(doScriptScene, "サクラの日記：１１月１２日") == true then
                 local l1_1 = 0
-                l1_1 = l0_42("【≪彩野≫】「サクラさんの、最後の、日記を見せて……直哉くん」", 190, l1_1, 50, false)
+                l1_1 = scene_s5s_dispatch_v42("【≪彩野≫】「サクラさんの、最後の、日記を見せて……直哉くん」", 190, l1_1, 50, false)
                 comSectionStoryEndForce(gameSave.sceneId, gameSave.sceneName, l1_1)
                 doScriptScene = "s5s_740"
             else
@@ -2418,17 +2418,17 @@ main = function()
                 if gameSave.myCard[143].hold == -1 then
                     l1_1 = 1
                 else
-                    l0_31(doScriptScene, "選択：彼の姿")
+                    scene_s5s_680_2(doScriptScene, "選択：彼の姿")
                     l1_1 = comDlgSelectItem(false, true, false, true, 1, "none", 0, 0, "sel_s5s_710_sel_a", 115, 80, 1, "sel_s5s_710_sel_b", 115, 120, 2)
                 end
                 if l1_1 == 1 then
-                    l0_32(doScriptScene, "帰る")
+                    scene_s5s_680_3(doScriptScene, "帰る")
                     local l1_2 = 0
-                    l1_2 = l0_42("【≪彩野≫】「サクラさんの、最後の、日記を見せて……直哉くん」", 190, l1_2, 50, false)
+                    l1_2 = scene_s5s_dispatch_v42("【≪彩野≫】「サクラさんの、最後の、日記を見せて……直哉くん」", 190, l1_2, 50, false)
                     comSectionStoryEndForce(gameSave.sceneId, gameSave.sceneName, l1_2)
                     doScriptScene = "s5s_740"
                 elseif l1_1 == 2 then
-                    l0_33(doScriptScene, "もうしばらく待つ")
+                    scene_s5s_680_4(doScriptScene, "もうしばらく待つ")
                     local l1_2 = 0
                     comSectionStoryEndForce(gameSave.sceneId, gameSave.sceneName, l1_2)
                     doScriptScene = "s5s_720"
@@ -2439,38 +2439,38 @@ main = function()
             run(cGetFileName("script", "snr_e2_10_s"))
             quit()
         elseif doScriptScene == "s5s_740" then
-            if l0_34(doScriptScene, "サクラの日記：２月１３日") == true then
+            if scene_s5s_740(doScriptScene, "サクラの日記：２月１３日") == true then
             else
             end
             local l1_1 = 0
-            l1_1 = l0_45()
+            l1_1 = scene_s5s_dispatch_v45()
             if l1_1 == true then
                 local l1_2 = 0
                 comSectionStoryEndForce(gameSave.sceneId, gameSave.sceneName, l1_2)
                 doScriptScene = "s5s_805"
             else
-                l0_35(doScriptScene, "でも、楽しかった")
+                scene_s5s_740_2(doScriptScene, "でも、楽しかった")
                 local l1_2 = 0
                 comSectionStoryEndForce(gameSave.sceneId, gameSave.sceneName, l1_2)
                 doScriptScene = "s5s_800"
             end
         elseif doScriptScene == "s5s_800" then
-            l0_36(doScriptScene, "ゲームオーバー")
+            scene_s5s_800(doScriptScene, "ゲームオーバー")
             doScriptScene = "end"
         elseif doScriptScene == "s5s_805" then
-            l0_37(doScriptScene, "セクション５：アヤノ")
+            scene_s5s_805(doScriptScene, "セクション５：アヤノ")
             doScriptScene = "s5s_806"
         elseif doScriptScene == "s5s_806" then
-            l0_38(doScriptScene, "アヤノの返信：９月２５日")
+            scene_s5s_806(doScriptScene, "アヤノの返信：９月２５日")
             doScriptScene = "s5s_820"
         elseif doScriptScene == "s5s_820" then
-            l0_39(doScriptScene, "アヤノの返信：１０月３０日")
+            scene_s5s_820(doScriptScene, "アヤノの返信：１０月３０日")
             doScriptScene = "s5s_870"
         elseif doScriptScene == "s5s_870" then
-            l0_40(doScriptScene, "２月、中庭")
+            scene_s5s_870(doScriptScene, "２月、中庭")
             doScriptScene = "s5s_comp"
         elseif doScriptScene == "s5s_comp" then
-            l0_41(doScriptScene, "セクション５完了")
+            scene_s5s_comp(doScriptScene, "セクション５完了")
             doScriptScene = "end"
         end
         wait(5)

@@ -134,6 +134,19 @@ this shape) — a proto-granular clause would pass while exit 1 fails.
 Expected count: 0; the stop-loss exists so the milestone fails loudly
 rather than quietly if a cluster resists.
 
+**Ordering ruling (partner, 2026-08-16), prompted by `snr_music:main`** —
+the row that holds a 3.34× whole-file fallback and whose proto carries no
+translatable text, i.e. the first row for which the stop-loss would be
+*available* rather than forced: **exhaust the active path before invoking
+the stop-loss.** Byte-exact emitter attempts first (§2); then, if a half
+is genuinely unreachable, the rung petition — as a **bundle**, since the
+tasks 4/5 census measured that no single rung certifies any remaining row
+(`snr_music:main` needs pool-order *and* a maxstacksize clause); the
+stop-loss only after that path stops making progress, and invoking it
+requires reporting what was attempted and where it stopped. The stop-loss
+text above is unchanged and still governs *what* qualifies; this ruling
+governs *when* it may be reached for.
+
 ## 2. What "eliminating unknown inconsistencies" means here
 
 With track 1 complete, every shipped occurrence is field-exact under the
