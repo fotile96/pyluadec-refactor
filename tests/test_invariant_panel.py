@@ -127,16 +127,12 @@ def test_file_panel_keys_use_repo_path_spelling(tmp_path):
 # Corpus-gated: one ~6s scan serves every assertion in this section.
 
 @pytest.fixture(scope="module")
-def panel_scan():
+def panel_scan(corpus_dir, pred_corpus_dir):
     """One shared ~6s scan for both corpus-gated Task-4 tests (a module-level
     cache; the suite pays for the scan once)."""
-    from pathlib import Path as _P
-    import os
     import invariant_panel as ip
 
-    corpus = _P(os.environ["PYLUADEC_CORPUS_DIR"])
-    pred = _P(os.environ["PYLUADEC_PRED_CORPUS_DIR"])
-    return ip.scan_all(corpus, pred)
+    return ip.scan_all(corpus_dir, pred_corpus_dir)
 
 
 def test_panel_fixed_point_and_pin_currency(panel_scan):
